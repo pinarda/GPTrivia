@@ -296,6 +296,13 @@ def player_profile(request, player_name):
         max_creator_avg = creator_averages[1]['creator']
     if min_creator_avg == player_name:
         min_creator_avg = creator_averages[len(creator_averages) - 2]['creator']
+    # if the max_creator_avg or min_creator_avg is an empty string
+    # choose the next highest or lowest average score
+    if max_creator_avg == "":
+        max_creator_avg = creator_averages[2]['creator']
+    if min_creator_avg == "":
+        min_creator_avg = creator_averages[len(creator_averages) - 3]['creator']
+
 
     context = {
         'player_name': player_name,
