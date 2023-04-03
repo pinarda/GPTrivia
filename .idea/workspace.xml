@@ -5,8 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/GPTrivia/management/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GPTrivia/management/commands/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GPTrivia/management/commands/create_user.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GPTrivia/templates/registration/login.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GPTrivia/templates/registration/password_change.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GPTrivia/templates/registration/password_change_done.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/base.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/urls.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -30,7 +40,9 @@
     <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectId" id="2NhHnYnWag1mkMhP6oE105j9BoB" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -58,11 +70,11 @@
       <recent name="$PROJECT_DIR$" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/GPTrivia/templates/registration" />
+      <recent name="$PROJECT_DIR$/GPTrivia/management/commands" />
       <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/GPTrivia/tests" />
       <recent name="$PROJECT_DIR$/GPTrivia" />
-      <recent name="$PROJECT_DIR$/GPTrivia/static/GPTrivia" />
-      <recent name="$PROJECT_DIR$/GPTrivia/templates/GPTrivia" />
     </key>
   </component>
   <component name="RunManager" selected="Django tests.Test: GPTrivia.tests.tests.PlayerAnalysisViewTests.test_creators_list_not_empty">
@@ -213,7 +225,7 @@
       <workItem from="1680199278680" duration="92000" />
       <workItem from="1680235863376" duration="10284000" />
       <workItem from="1680309599377" duration="24646000" />
-      <workItem from="1680490636147" duration="5140000" />
+      <workItem from="1680490636147" duration="11812000" />
     </task>
     <servers />
   </component>
@@ -236,17 +248,17 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>180</line>
+          <line>191</line>
           <option name="timeStamp" value="23" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>111</line>
+          <line>122</line>
           <option name="timeStamp" value="25" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>294</line>
+          <line>306</line>
           <option name="timeStamp" value="27" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">

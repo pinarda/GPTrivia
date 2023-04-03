@@ -3,6 +3,11 @@ from .forms import GPTriviaRoundForm
 from .models import GPTriviaRound
 from django.db.models import Avg, F, FloatField, Case, When, Sum, Count
 import numpy as np
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import PasswordChangeDoneView as BasePasswordChangeDoneView
+
 
 playerColorMapping = {
             'Alex': '#D2042D',
@@ -14,7 +19,7 @@ playerColorMapping = {
             'Mom': '#8551ff',
             'Dan': '#0000FF',
             'Dad': '#0000FF',
-            'Chris': '#50C878',
+            'Chris': '#005427',
             'Drew': '#8c564b'
         };
 
@@ -22,6 +27,10 @@ players = [
     'score_alex', 'score_ichigo', 'score_megan', 'score_zach', 'score_jenny', 'score_debi',
     'score_dan', 'score_chris', 'score_drew']
 
+class CustomPasswordChangeDoneView(BasePasswordChangeDoneView):
+    template_name = 'registration/password_change_done.html'
+
+@login_required
 def home(request):
     if request.method == 'POST':
         form_type = request.POST.get('form_type')
@@ -42,6 +51,7 @@ def home(request):
 
     return render(request, 'GPTrivia/home.html', context)
 
+@login_required
 def rounds_list(request):
     rounds = GPTriviaRound.objects.all()
     context = {'rounds': rounds,
@@ -49,6 +59,7 @@ def rounds_list(request):
 
     return render(request, 'GPTrivia/rounds_list.html', context)
 
+@login_required
 def player_analysis(request):
     creators = GPTriviaRound.objects.values_list('creator', flat=True).distinct()
 
@@ -188,6 +199,7 @@ def player_analysis(request):
         'player_color_mapping': playerColorMapping,
     })
 
+@login_required
 def player_profile(request, player_name):
     # Ensure the player_name is in the correct format (e.g., title case)
     player_name = player_name.title()

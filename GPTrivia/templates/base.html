@@ -18,6 +18,12 @@
                 <a href="{% url 'player_analysis' %}">Analysis</a>
                 <a href="{% url 'player_profile' player_name='Alex' %}">Alex's Profile</a>
                 <!-- Add more menu items here as needed -->
+                {% if user.is_authenticated %}
+                    <a href="{% url 'logout' %}">Logout</a>
+                    <li><a href="{% url 'password_change' %}">Change Password</a></li>
+                {% else %}
+                    <a href="{% url 'login' %}">Login</a>
+                {%  endif %}
             </div>
         </div>
         <h1>Hail Science Trivia</h1>
