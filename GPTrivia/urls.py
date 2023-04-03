@@ -23,6 +23,8 @@ from django.contrib.auth.views import (
     PasswordChangeView, PasswordChangeDoneView,
 )
 from .views import CustomPasswordChangeDoneView
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -34,4 +36,4 @@ urlpatterns = [
     path('accounts/password_change/', views.CustomPasswordChangeView.as_view(), name='password_change'),
     path('accounts/password_changed/', views.CustomPasswordChangeDoneView.as_view(), name='password_changed'),
     path('admin/', admin.site.urls),
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
