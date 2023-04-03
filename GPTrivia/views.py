@@ -203,8 +203,8 @@ def player_profile(request, player_name):
     # unless the player is Dan or Debi, in which case call them Dad and Mom
     if player_name == "Dan":
         creator_name = "Dad"
-    elif player_name == "Mom":
-        creator_name = "Debi"
+    elif player_name == "Debi":
+        creator_name = "Mom"
     else:
         creator_name = player_name
 
