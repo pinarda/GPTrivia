@@ -31,11 +31,7 @@ urlpatterns = [
     path('player_profile/<str:player_name>/', views.player_profile, name='player_profile'),
     path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
     path('accounts/logout/', auth_views.LogoutView.as_view(next_page='home'), name='logout'),
-    path('accounts/password_change/', auth_views.PasswordChangeView.as_view(
-        template_name='registration/password_change.html',
-    ), name='password_change'),
-    path('accounts/password_change_done/', auth_views.PasswordChangeDoneView.as_view(
-        template_name='registration/password_change_done.html'
-    ), name='password_change_done'),
+    path('accounts/password_change/', views.CustomPasswordChangeView.as_view(), name='password_change'),
+    path('accounts/password_changed/', views.CustomPasswordChangeDoneView.as_view(), name='password_changed'),
     path('admin/', admin.site.urls),
 ]

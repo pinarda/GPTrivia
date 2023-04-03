@@ -2,6 +2,9 @@ from django.shortcuts import render, redirect
 from .forms import GPTriviaRoundForm
 from .models import GPTriviaRound
 from django.db.models import Avg, F, FloatField, Case, When, Sum, Count
+from django.contrib.auth import views as auth_views
+from django.urls import reverse_lazy
+
 import numpy as np
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
@@ -27,8 +30,12 @@ players = [
     'score_alex', 'score_ichigo', 'score_megan', 'score_zach', 'score_jenny', 'score_debi',
     'score_dan', 'score_chris', 'score_drew']
 
-class CustomPasswordChangeDoneView(BasePasswordChangeDoneView):
-    template_name = 'registration/password_change_done.html'
+class CustomPasswordChangeView(auth_views.PasswordChangeView):
+    template_name = 'registration/password_change.html'
+    success_url = reverse_lazy('password_changed')
+
+class CustomPasswordChangeDoneView(auth_views.PasswordChangeDoneView):
+    template_name = 'registration/password_changed.html'
 
 @login_required
 def home(request):
