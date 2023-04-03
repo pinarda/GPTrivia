@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTriviaSite</title>
+
+    <link rel="stylesheet" href="{% static 'GPTrivia/css/styles.css' %}">
+    <header>
+    <div class="header-container">
+        <div class="dropdown">
+            <img src="/static/GPTrivia/css/menubars.png" class="dropbtn" alt="Menu" onclick="toggleDropdown()" scale="25%">
+            <div id="myDropdown" class="dropdown-content">
+                <a href="{% url 'home' %}">Home</a>
+                <a href="{% url 'rounds_list' %}">Trivia Round List</a>
+                <a href="{% url 'player_analysis' %}">Analysis</a>
+                <a href="{% url 'player_profile' player_name='Alex' %}">Alex's Profile</a>
+                <!-- Add more menu items here as needed -->
+            </div>
+        </div>
+        <h1>Hail Science Trivia</h1>
+    </div>
+</header>
+</head>
+
+
+
+<body>
+<div class="content-container">
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+</div>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

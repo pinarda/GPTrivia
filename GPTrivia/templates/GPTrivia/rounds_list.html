@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% load GPTrivia_extras %}
+
+{% block content %}
+<h1>Trivia Round History</h1>
+
+<div class="table-container">
+    <table id="roundList">
+        <thead id="roundListHead">
+            <tr>
+                <th class="left-column">Title <input type="text" placeholder="Search" onkeyup="filterTable(this, 1)"></th>
+                <th>Creator <input type="text" placeholder="Search" onkeyup="filterTable(this, 2)"></th>
+                <th>Major Category <input type="text" placeholder="Search" onkeyup="filterTable(this, 3)"></th>
+                <th>Minor Category 1 <input type="text" placeholder="Search" onkeyup="filterTable(this, 4)"></th>
+                <th>Minor Category 2 <input type="text" placeholder="Search" onkeyup="filterTable(this, 5)"></th>
+                <th>Date <input type="text" placeholder="Search" onkeyup="filterTable(this, 6)"></th>
+                <th>Round Number <input type="text" placeholder="Search" onkeyup="filterTable(this, 7)"></th>
+                <th>Max Score <input type="text" placeholder="Search" onkeyup="filterTable(this, 8)"></th>
+                <th>Alex <input type="text" placeholder="Search" onkeyup="filterTable(this, 9)"></th>
+                <th>Ichigo <input type="text" placeholder="Search" onkeyup="filterTable(this, 10)"></th>
+                <th>Megan <input type="text" placeholder="Search" onkeyup="filterTable(this, 11)"></th>
+                <th>Zach <input type="text" placeholder="Search" onkeyup="filterTable(this, 12)"></th>
+                <th>Jenny <input type="text" placeholder="Search" onkeyup="filterTable(this, 13)"></th>
+                <th>Debi <input type="text" placeholder="Search" onkeyup="filterTable(this, 14)"></th>
+                <th>Dan <input type="text" placeholder="Search" onkeyup="filterTable(this, 15)"></th>
+                <th>Drew <input type="text" placeholder="Search" onkeyup="filterTable(this, 16)"></th>
+                <th>Paige <input type="text" placeholder="Search" onkeyup="filterTable(this, 17)"></th>
+                <th>Dillon <input type="text" placeholder="Search" onkeyup="filterTable(this, 18)"></th>
+                <th>Jeff <input type="text" placeholder="Search" onkeyup="filterTable(this, 19)"></th>
+                </tr>
+            </tr>
+        </thead>
+        <tbody>
+            {% for round in rounds %}
+                <tr>
+            <td>{{ round.title }}</td>
+            {% with player_class=round.creator %}
+                <td>
+                    {% if round.creator %}
+                        <a href="{% url 'player_profile' player_name=round.creator %}" class="player_name" data-player="{{ player_class }}">{{ round.creator }}</a>
+                    {% else %}
+                        {{ round.creator }}
+                    {% endif %}
+                </td>
+            {% endwith %}
+            <td>{{ round.major_category }}</td>
+            <td>{{ round.minor_category1 }}</td>
+            <td>{{ round.minor_category2 }}</td>
+            <td>{{ round.date }}</td>
+            <td>{{ round.round_number }}</td>
+            <td>{{ round.max_score }}</td>
+            <td>{{ round.score_alex }}</td>
+            <td>{{ round.score_ichigo }}</td>
+            <td>{{ round.score_megan }}</td>
+            <td>{{ round.score_zach }}</td>
+            <td>{{ round.score_jenny }}</td>
+            <td>{{ round.score_debi }}</td>
+            <td>{{ round.score_dan }}</td>
+            <td>{{ round.score_drew }}</td>
+            <td>{{ round.score_paige }}</td>
+            <td>{{ round.score_dillon }}</td>
+            <td>{{ round.score_jeff }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<script>
+    // Define an object to store the filter values for each column
+    var columnFilters = {};
+
+    playerColorMapping = {{ playerColorMapping|safe }}
+
+    function filterTable(input, index) {
+        // If the key pressed was not enter, do nothing
+        if (event.keyCode != 13) {
+            return;
+        }
+
+        // Update the filter value for the current column
+        columnFilters[index] = input.value.toUpperCase();
+
+        var table, tr, td, i, txtValue;
+        table = document.getElementsByTagName("table")[0];
+        tr = table.getElementsByTagName("tr");
+
+        // Loop through all table rows
+        for (i = 0; i < tr.length; i++) {
+            // Assume the row should be displayed initially
+            var displayRow = true;
+
+            // Loop through all columns and their filters
+            for (const [columnIndex, filter] of Object.entries(columnFilters)) {
+                // Skip if the filter is empty
+                if (!filter) {
+                    continue;
+                }
+
+                td = tr[i].getElementsByTagName("td")[parseInt(columnIndex)];
+
+                // If there's a value in the cell, check if it matches the filter
+                if (td) {
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) === -1) {
+                        // If the cell value doesn't match the filter, the row should not be displayed
+                        displayRow = false;
+                        break;
+                    }
+                }
+            }
+
+            // Set the row display based on the displayRow variable
+            tr[i].style.display = displayRow ? "" : "none";
+        }
+        // Remove existing cloned cells
+        // Remove existing cloned cells and show original cells
+        const clonedCells = document.getElementsByClassName("cloned-cell");
+        const originalCells = document.getElementsByClassName("hide-original-cell");
+        while (clonedCells[0]) {
+            clonedCells[0].parentNode.removeChild(clonedCells[0]);
+            originalCells[0].classList.remove("hide-original-cell");
+        }
+        // Recreate cloned cells and hide original cells
+        createClonedCells();
+    }
+
+
+function addStickyHeader() {
+    const table = document.getElementById("roundList");
+    const headerCells = table.querySelectorAll("th");
+
+    // Loop through all header cells and add the sticky-header class
+    for (let i = 0; i < headerCells.length; i++) {
+        headerCells[i].classList.add("sticky-header");
+    }
+
+    // Add the sticky-top-left class to the top-left header cell
+    headerCells[0].classList.add("sticky-top-left");
+}
+
+// Call the function to add the sticky-header class to header cells
+addStickyHeader();
+
+
+function createClonedCells() {
+    const table = document.getElementById("roundList");
+    const rows = table.getElementsByTagName("tr");
+
+    // Loop through all rows in the table
+    for (let i = 0; i < rows.length; i++) {
+        const originalCell = rows[i].getElementsByTagName("td")[0] || rows[i].getElementsByTagName("th")[0];
+        const clonedCell = originalCell.cloneNode(true);
+        clonedCell.classList.add("cloned-cell");
+
+        // Insert the cloned cell before the original cell
+        rows[i].insertBefore(clonedCell, originalCell);
+
+        // Hide the original cell
+        originalCell.classList.add("hide-original-cell");
+    }
+}
+
+// Call the function to create cloned cells
+createClonedCells();
+
+const playerLinks = document.querySelectorAll(".player_name");
+
+    playerLinks.forEach(link => {
+        const playerName = link.getAttribute('data-player');
+        const playerColor = playerColorMapping[playerName];
+
+        link.addEventListener('mouseover', () => {
+            link.style.color = playerColor;
+        });
+
+        link.addEventListener('mouseout', () => {
+            link.style.color = '';
+        });
+    });
+</script>
+
+
+{% endblock %}

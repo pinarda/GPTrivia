@@ -1,0 +1,156 @@
+<!-- GPTrivia/player_profile.html -->
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% load static %}
+
+
+{% block content %}
+    <h1>{{ player_name }}'s Profile</h1>
+
+    <div class="content-wrapper">
+
+        <h2>Creator Statistics:</h2>
+        <button class="expand-collapse-button" type="button", id="toggleTable">Round Categories</button>
+        <button class="expand-collapse-button" id="roundsButton" onclick="toggleRounds()">Show/Hide Created Rounds</button>
+
+        <div class="table-container">
+            {% if created_rounds_cat %}
+                <table border="1" cellpadding="5" cellspacing="0" id="createdRoundsTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Major Category</th>
+                            <th>Number of Rounds</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for round in created_rounds_cat %}
+                            <tr>
+                                <td>{{ round.major_category }}</td>
+                                <td>{{ round.num_rounds }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No rounds created.</p>
+            {% endif %}
+
+            {% if created_rounds %}
+                <table border="1" cellpadding="5" cellspacing="0" id="playerRoundsTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Date</th>
+                            <th>Category</th>
+                            <th>Maximum Score</th>
+                            <th>Round Number</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for round in created_rounds %}
+                            <tr>
+                                <td>{{ round.title }}</td>
+                                <td>{{ round.date }}</td>
+                                <td>{{ round.major_category }}</td>
+                                <td>{{ round.max_score }}</td>
+                                <td>{{ round.round_number }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No rounds created.</p>
+            {% endif %}
+        </div>
+
+        <div class="summary-stats">
+            <h2>Summary Stats:</h2>
+            <p>Number of Rounds Played: {{ total_rounds }}</p>
+            <p>Strongest Category: {{ max_avg }}</p>
+            <p>Weakest Category: {{ min_avg }}</p>
+            <p>Favorite Creator: {{ max_cat_avg }} </p>
+            <p>Least Favorite Creator: {{ min_cat_avg }}</p>
+        </div>
+    </div>
+
+    <script>
+          let playerColorMapping = {{ player_color_mapping|safe }};
+          let playerName = "{{ player_name }}";
+          let textColor = "{{ text_color }}";
+
+          function setButtonColors() {
+            let playerColor = playerColorMapping[playerName];
+            const categoryButton = document.getElementById("categoryButton");
+            const roundsButton = document.getElementById("roundsButton");
+            expandCollapseButton = document.getElementsByClassName("expand-collapse-button");
+            for (let i = 0; i < expandCollapseButton.length; i++) {
+                expandCollapseButton[i].style.backgroundColor = playerColor;
+                expandCollapseButton[i].style.color = textColor;
+            }
+          }
+
+          //darken the color by 10% (the color is represented as a hex string
+            //so we need to convert it to a number, darken it, and then convert it back)
+            function darkenColor(hexColor) {
+                // Convert the hex color to RGB
+                if (hexColor.startsWith('#')) {
+                    hexColor = hexColor.slice(1);
+                }
+
+                // Convert the hex color to RGB
+                const rgb = hexColor.match(/.{1,2}/g).map((color) => parseInt(color, 16));
+
+
+                // Calculate the darkened RGB components
+                const darkenedRgb = rgb.map((color) => {
+                    const darkenedValue = Math.round(color * 0.85);
+                    return Math.max(0, Math.min(255, darkenedValue));
+                });
+
+                // Convert the darkened RGB components back to hexadecimal
+                const darkenedHex = darkenedRgb.map((color) => color.toString(16).padStart(2, '0')).join('');
+
+                return `#${darkenedHex}`;
+            }
+
+
+        function toggleRounds() {
+            const roundsList = document.getElementById('playerRoundsTable');
+            if (roundsList.style.display === "none") {
+                roundsList.style.display = "block";
+            } else {
+                roundsList.style.display = "none";
+            }
+        }
+
+        document.getElementById("toggleTable").addEventListener("click", function() {
+            let table = document.getElementById("createdRoundsTable");
+            if (table.style.display === "none") {
+                table.style.display = "table";
+            } else {
+                table.style.display = "none";
+            }
+        });
+
+
+
+        window.onload = setButtonColors;
+
+        const buttons = document.querySelectorAll(".expand-collapse-button");
+
+        buttons.forEach(link => {
+            const playerColor = playerColorMapping[playerName];
+
+            link.addEventListener('mouseover', () => {
+                link.style.backgroundColor = darkenColor(playerColorMapping[playerName]);
+            });
+
+            link.addEventListener('mouseout', () => {
+                link.style.backgroundColor = playerColorMapping[playerName];
+            });
+        });
+
+    </script>
+{% endblock %}
