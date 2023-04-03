@@ -31,8 +31,8 @@ ALLOWED_HOSTS = ['hailsciencetrivia.com', 'www.hailsciencetrivia.com', '192.168.
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'home'
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 365
-SESSION_ENGINE = 'django.contrib.sessions.backends.db.DbSessionEngine'
-
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
 # Application definition
 
