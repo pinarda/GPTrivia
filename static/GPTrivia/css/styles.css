@@ -1,0 +1,236 @@
+.table-container {
+    max-width: calc(100% - 150px); /* Set the maximum width of the container */
+    max-height: 600px; /* Set the maximum height of the container */
+    overflow: auto; /* Add scrollbars when needed */
+    margin-top: 50px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 9px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+
+#roundList {
+  border-collapse: collapse; /* Collapse borders */
+  width: 100%; /* Full-width */
+  border: none;
+  font-size: 18px; /* Increase font-size */
+}
+
+#roundList th, #roundList td {
+  text-align: left; /* Left-align text */
+  padding: 15px; /* Add padding */
+}
+
+#roundList tr {
+  /* Add a bottom border to all table rows */
+  border-bottom: 1px solid #ddd;
+}
+
+#roundList tr.header, #roundList tr:hover {
+  /* Add a grey background color to the table header and on hover */
+  background-color: #f1f1f1;
+}
+
+input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 16px;
+    padding: 10px 20px;
+    border: none;
+    border-bottom: 1px solid #ccc;
+    background-color: #f2f2f2;
+    margin-bottom: 5px;
+    transition: 0.3s;
+    padding-top: 16px; /* Increase or decrease this value to adjust spacing */
+}
+
+/* Position the search bar below each table header */
+table th {
+position: relative;
+}
+
+
+#roundList tbody{
+    position: relative;
+    top: 27px;
+}
+
+table th input {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    bottom: 10%;
+    width: 100%;
+    padding-bottom: 20px;
+    z-index: 2;
+}
+
+.sticky-header {
+    position: sticky;
+    top: 0;
+    background-color: white;
+    z-index: 3;
+}
+
+
+
+.table-container {
+    max-width: 100%;
+    max-height: 600px;
+    overflow-x: auto;
+    overflow-y: auto;
+    margin-top: 50px;
+    position: relative;
+}
+
+.cloned-cell {
+    position: sticky;
+    left: 0;
+    background-color: white;
+    z-index: 3;
+}
+.sticky-top-left {
+    z-index: 4;
+}
+
+.hide-original-cell {
+    display: none;
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+ul {
+    display: flex;
+    gap: 20px;
+}
+
+li {
+    list-style: none;
+    font-size: 18px;
+}
+
+a {
+    color: black;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+
+header {
+    background-color: #333;
+    color: #fff;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+
+
+body {
+    margin: 0px;
+    padding: 0px;
+    font-family: sans-serif;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    left: 0;
+    background-color: #f1f1f1;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+}
+
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown-content a:hover {
+    background-color: #ddd;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.dropbtn {
+    background-color: transparent;
+    color: white;
+    padding: 25px;
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+    filter: invert(100%);
+    width: 32px;
+    height: auto;
+}
+
+.dropbtn:hover {
+  opacity: 0.3;
+}
+
+.header-container {
+    display: flex;
+    align-items: center;
+    padding: 0;
+    margin: 0;
+}
+
+.content-container {
+    border: 0px solid #ccc;
+    margin: 10px;
+    padding: 30px;
+    box-sizing: border-box;
+}
+
+.expand-collapse-button {
+  border: none;
+  color: white;
+  padding: 10px 24px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+  transition-duration: 0.4s;
+}
+
+.expand-collapse-button:hover {
+  background-color: #45a049; /* Change the background color on hover */
+}
+
+
+.content-wrapper {
+    flex-direction: column;
+}
+
+.summary-stats {
+    order: 2;
+}
+
+.table-container {
+    order: 1;
+}
