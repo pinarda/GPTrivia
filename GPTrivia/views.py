@@ -232,7 +232,7 @@ def player_profile(request, player_name):
     # convert the hex color to a measure of brightness
     brightness = int(player_color[1:3], 16) + int(player_color[3:5], 16) + int(player_color[5:7], 16)
     # if the brightness is less than 384, use white text, otherwise use black text
-    if brightness < 450:
+    if brightness < 500:
         text_color = 'white'
     else:
         text_color = 'black'
