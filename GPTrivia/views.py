@@ -345,7 +345,6 @@ def player_profile(request, player_name):
 
 ## API stuff
 
-@login_required
 class TriviaRoundList(generics.ListAPIView):
     queryset = GPTriviaRound.objects.all()
     serializer_class = GPTriviaRoundSerializer
