@@ -14,6 +14,8 @@ from django.contrib.auth.views import PasswordChangeDoneView as BasePasswordChan
 ## API Libs
 from rest_framework import generics
 from .serializers import GPTriviaRoundSerializer
+from rest_framework.permissions import IsAuthenticated
+
 
 playerColorMapping = {
             'Alex': '#D2042D',
@@ -343,6 +345,8 @@ def player_profile(request, player_name):
 
 ## API stuff
 
+@login_required
 class TriviaRoundList(generics.ListAPIView):
     queryset = GPTriviaRound.objects.all()
     serializer_class = GPTriviaRoundSerializer
+    permission_classes = [IsAuthenticated]
