@@ -37,5 +37,5 @@ urlpatterns = [
     path('accounts/password_changed/', views.CustomPasswordChangeDoneView.as_view(), name='password_changed'),
     path('admin/', admin.site.urls),
     path('trivia-rounds/', views.TriviaRoundList.as_view(), name='trivia_rounds_list'),
-    path('api/v1/', include('api.urls')),
+    path('api/v1/', include('GPTrivia.urls')),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
