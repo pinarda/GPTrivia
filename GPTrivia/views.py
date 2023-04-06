@@ -11,6 +11,9 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import PasswordChangeDoneView as BasePasswordChangeDoneView
 
+## API Libs
+from rest_framework import generics
+from .serializers import GPTriviaRoundSerializer
 
 playerColorMapping = {
             'Alex': '#D2042D',
@@ -337,3 +340,9 @@ def player_profile(request, player_name):
     }
 
     return render(request, 'GPTrivia/player_profile.html', context)
+
+## API stuff
+
+class TriviaRoundList(generics.ListAPIView):
+    queryset = GPTriviaRound.objects.all()
+    serializer_class = GPTriviaRoundSerializer
