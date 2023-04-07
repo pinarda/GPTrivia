@@ -25,6 +25,9 @@ from django.contrib.auth.views import (
 from .views import CustomPasswordChangeDoneView
 from django.conf import settings
 from django.conf.urls.static import static
+from .views import CustomObtainAuthToken
+from django.forms.models import model_to_dict
+
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -37,4 +40,6 @@ urlpatterns = [
     path('accounts/password_changed/', views.CustomPasswordChangeDoneView.as_view(), name='password_changed'),
     path('admin/', admin.site.urls),
     path('api/v1/trivia-rounds/', views.TriviaRoundList.as_view(), name='trivia_rounds_list'),
+    path('api-token-auth/', CustomObtainAuthToken.as_view(), name='api_token_auth'),
+    path('api/v1/player-profile/<str:player_name>/', views.PlayerProfileAPI.as_view(), name='player_profile_api'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

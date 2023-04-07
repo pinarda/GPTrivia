@@ -10,11 +10,28 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import PasswordChangeDoneView as BasePasswordChangeDoneView
+# import QuerySet
+from django.db.models.query import QuerySet
+# import json
+import json
+from django.core.serializers.json import DjangoJSONEncoder
+import datetime
 
 ## API Libs
 from rest_framework import generics
 from .serializers import GPTriviaRoundSerializer
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from django.http import JsonResponse
+from django.core import serializers
+from rest_framework.renderers import JSONRenderer
+from datetime import date
+
+
+
 
 
 playerColorMapping = {
@@ -212,7 +229,7 @@ def player_analysis(request):
     })
 
 @login_required
-def player_profile(request, player_name):
+def player_profile_dict(request, player_name):
     # Ensure the player_name is in the correct format (e.g., title case)
     player_name = player_name.title()
 
@@ -341,11 +358,44 @@ def player_profile(request, player_name):
         'min_cat_avg': min_creator_avg,
     }
 
+    return context
+
+@login_required
+def player_profile(request, player_name):
+    context = player_profile_dict(request, player_name)
     return render(request, 'GPTrivia/player_profile.html', context)
 
 ## API stuff
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime.datetime, datetime.date)):
+            return obj.isoformat()
+        return super().default(obj)
+
+class PlayerProfileAPI(generics.ListAPIView):
+    renderer_classes = [JSONRenderer]
+
+    def get(self, request, player_name):
+        context = player_profile_dict(request, player_name)
+        for key in context:
+            if isinstance(context[key], QuerySet):
+                context[key] = list(context[key].values())
+        return JsonResponse(context, encoder=CustomJSONEncoder)
 
 class TriviaRoundList(generics.ListAPIView):
     queryset = GPTriviaRound.objects.all()
     serializer_class = GPTriviaRoundSerializer
     permission_classes = [IsAuthenticated]
+
+class CustomObtainAuthToken(ObtainAuthToken):
+    def post(self, request, *args, **kwargs):
+        response = super(CustomObtainAuthToken, self).post(request, *args, **kwargs)
+        token = Token.objects.get(key=response.data['token'])
+        user = token.user
+        return Response({
+            'token': token.key,
+            'user_id': user.pk,
+            'username': user.username
+        })
+
