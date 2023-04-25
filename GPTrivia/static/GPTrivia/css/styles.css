@@ -120,7 +120,7 @@ ul {
 
 li {
     list-style: none;
-    font-size: 18px;
+    font-size: 16px;
 }
 
 a {
@@ -160,6 +160,10 @@ body {
     z-index: 10;
 }
 
+.show{
+    display: block;
+}
+
 .dropdown-content a {
     color: black;
     padding: 12px 16px;
@@ -171,20 +175,23 @@ body {
     background-color: #ddd;
 }
 
-.dropdown:hover .dropdown-content {
-    display: block;
-}
+
 
 .dropbtn {
     background-color: transparent;
     color: white;
-    padding: 25px;
-    font-size: 16px;
+    margin: 25px;
     cursor: pointer;
     border: none;
     filter: invert(100%);
     width: 32px;
     height: auto;
+}
+
+
+
+.show {
+  display: block;
 }
 
 .dropbtn:hover {
@@ -233,4 +240,8 @@ body {
 
 .table-container {
     order: 1;
+}
+
+.player_name {
+    order:3;
 }

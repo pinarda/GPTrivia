@@ -9,19 +9,22 @@
     <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
     <link rel="manifest" href="{% static 'favicon.png' %}">
 
+    {% block extra_meta %}{% endblock %}
 
 
     <title>Hail Science</title>
 
     <link rel="stylesheet" href="{% static 'GPTrivia/css/styles.css' %}">
+    {% block extra_css %}{% endblock %}
     <header>
     <div class="header-container">
         <div class="dropdown">
             <img src="/static/GPTrivia/css/menubars.png" class="dropbtn" alt="Menu" onclick="toggleDropdown()" scale="25%">
             <div id="myDropdown" class="dropdown-content">
                 <a href="{% url 'home' %}">Home</a>
-                <a href="{% url 'rounds_list' %}">Trivia Round List</a>
+                <a href="{% url 'scoresheet' %}">Scoresheet</a>
                 <a href="{% url 'player_analysis' %}">Analysis</a>
+                <a href="{% url 'rounds_list' %}">Trivia Round List</a>
                 {% if user.is_authenticated %}
                     <a href="{% url 'player_profile' player_name=user.username %}">{{ user.username }}'s Profile</a>
                 {% endif %}                <!-- Add more menu items here as needed -->
@@ -36,6 +39,24 @@
         <h1>Hail Science Trivia</h1>
     </div>
 </header>
+    <script>
+        function toggleDropdown() {
+            document.getElementById("myDropdown").classList.toggle("show");
+        }
+
+        // Close the dropdown if the user clicks outside of it
+        window.onclick = function(event) {
+            if (!event.target.matches('.dropbtn')) {
+                var dropdowns = document.getElementsByClassName("dropdown-content");
+                for (var i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+    </script>
 </head>
 
 

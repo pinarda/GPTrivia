@@ -1,0 +1,383 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load static GPTrivia_extras %}
+
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/scoresheet.css' %}">
+{% endblock %}
+
+{% block extra_meta %}
+    <link href="{% static 'DataTables/datatables.min.css' %}" rel="stylesheet"/>
+    <script src="{% static 'DataTables/datatables.min.js' %}"></script>
+
+    <script src="{% static '/jquery-tabledit-1.2.3/jquery.tabledit.min.js' %}"></script>    <!-- Include necessary extensions here -->
+    <script src="{% static 'DataTables/Buttons-2.3.6/js/dataTables.buttons.min.js' %}"></script>
+    <script src="{% static 'DataTables/ColReorder-1.6.2/js/dataTables.colReorder.min.js' %}"></script>
+    <script src="{% static 'DataTables/AutoFill-2.5.3/js/dataTables.autoFill.min.js' %}"></script>
+    <script src="{% static 'DataTables/Responsive-2.4.1/js/dataTables.responsive.min.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+    <h1>Trivia Scoresheet - {{ pres_name }}</h1>
+    <table id="scoresheet" class="display">
+        <thead>
+            <tr>
+                <th>Player</th>
+                <th>Joker Round</th>
+                {% for round_title in round_titles %}
+                    <th>{{ round_title }}</th>
+                {% endfor %}
+                <th>Creator Bonus</th>
+                <th>Total Score</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for player in players %}
+                <tr>
+                    <td> <a href="{% url 'player_profile' player_name=player %}" class="player_name" data-player='{{ player }}'>{{ player }}</a> </td>
+                    <td>
+                         <select>
+                             <option value="">- Choose a Joker -</option>
+                             {% for round_title in round_titles %}
+                                 <option value="{{ round_title }}">{{ round_title }}</option>
+                             {% endfor %}
+                         </select>
+                    </td>  {# Joker Round column #}
+                            {% for round_title, creator in round_titles|zip_lists:creators %}
+                                {% with forloop.counter0|add:2 as column_index %}
+                                    <td class="{% if creator == player %}creator-cell{% endif %}" data-column-index="{{ column_index }}" data-round-title="{{ round_title }}"></td>
+                                {% endwith %}
+                            {% endfor %}
+                    <td></td>  {# Creator Bonus column #}
+                    <td></td>  {# Total Score column #}
+                    <td><button class="btn-delete">X</button></td>
+                    <td></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="nameinput">
+        <div style="display: flex; align-items: center;">
+            <input type="text" id="newPlayerName" placeholder="Enter player name">
+            <button id="btn-add">+</button>
+        </div>
+        <button id="btn-save">Save Scoresheet</button>
+    </div>
+
+
+
+    <script>
+        var dataTable;
+        round_titles = {{ round_titles|safe }};
+        creators = {{ creators|safe }};
+        playerColorMapping = {{ player_color_mapping|safe }};
+
+        $("#btn-save").on("click", function () {
+            // Save logic goes here
+            alert("Save button clicked!");
+        });
+
+        $("#btn-add").on("click", function () {
+                // Get the player name from the input
+                var playerName = $("#newPlayerName").val().trim();
+
+                // Check if a player name has been entered
+                if (playerName === "") {
+                    alert("Please enter a player name.");
+                    return;
+                }
+
+                // Clone the second to last row in the table
+                var rowCount = $("#scoresheet tbody tr").length;
+                var $newRow = $("#scoresheet tbody tr:eq(" + (rowCount - 2) + ")").clone();
+
+                // Update the player name in the new row
+                var $playerLink = $newRow.find("td:first .player_name");
+                $playerLink.text(playerName);
+                $playerLink.attr('href', "/player_profile/" + playerName + "/"); // Update the href attribute
+                $playerLink.attr('data-player', playerName); // Update the data-player attribute
+
+                // Clear the other input values in the new row
+                $newRow.find("input").val("");
+                // Clear the Tabledit input values in the new row
+                $newRow.find(".tabledit-input").val("");
+                // also reset the value in the neighboring span
+                $newRow.find(".tabledit-span").text("");
+
+                // Reset the creator and joker cells
+                $newRow.find("select")[0].selectedIndex = 0;
+                $newRow.find('.joker-round-cell').removeClass('joker-round-cell');
+                $newRow.find('.creator-cell').removeClass('creator-cell');
+
+                // Reset the value in the creator bonus cell (numColumns - 4)
+                $newRow.find("td:nth-last-child(4)").text("");
+
+
+
+
+                // Change the color of the delete button
+                if (playerName in playerColorMapping) {
+                    playerColor = playerColorMapping[playerName];
+                } else {
+                    playerColor = "#000000";
+                }
+
+
+                $newRow.find(".btn-delete").css("background-color", playerColor);
+
+                // Add the new row to the table
+                $("#scoresheet tbody").append($newRow);
+                dataTable.row.add($newRow).draw();
+
+                // You may want to recalculate scores for the new row
+                var $row = $newRow.closest('tr');
+                calculateTotalScore($row);
+
+                // Clear the player name input
+                $("#newPlayerName").val("");
+            });
+
+
+        // Get all delete buttons
+        const deleteButtons = document.querySelectorAll('.btn-delete');
+
+        // Set the color of each delete button based on the player's name
+        deleteButtons.forEach(btn => {
+            // Get the player's name from the first cell of the parent row
+            const playerName = btn.parentElement.parentElement.cells[0].innerText;
+            // Get the color from the player color mapping
+            if (playerName in playerColorMapping) {
+                playerColor = playerColorMapping[playerName];
+            } else {
+                playerColor = "#000000";
+            }
+
+            // Set the background color of the delete button
+            btn.style.backgroundColor = playerColor;
+        });
+
+        function updateCreatorBonus() {
+            // Create an empty object to store the scores for each round
+            var roundScores = {};
+
+            // Iterate over each table row
+            $('#scoresheet tbody tr').each(function() {
+                var $row = $(this);
+
+                // Iterate over each round cell
+                $row.find('td[data-round-title]').each(function() {
+                    var roundTitle = $(this).data('round-title');
+                    var score = parseInt($(this).text().trim(), 10);
+
+                    if (!isNaN(score)) {
+                        if (!roundScores[roundTitle]) {
+                            roundScores[roundTitle] = [];
+                        }
+                        roundScores[roundTitle].push(score);
+                    }
+                });
+            });
+
+            // Calculate the median for each round and assign it to the corresponding creator bonus cell
+            {% for creator, round_title in creators|zip_lists:round_titles %}
+                var creatorBonus = 0;
+                if (roundScores['{{ round_title }}']) {
+                    var scores = roundScores['{{ round_title }}'].sort(function(a, b) { return a - b; });
+                    var mid = Math.floor(scores.length / 2);
+                    creatorBonus = (scores.length % 2) ? scores[mid] : (scores[mid - 1] + scores[mid]) / 2;
+                }
+                $('#scoresheet tbody tr:contains("{{ creator }}") td:eq({{ round_titles|length|add:2 }})').text(creatorBonus);
+                // also update that row's total score
+                calculateTotalScore($('#scoresheet tbody tr:contains("{{ creator }}")'), false);
+            {% endfor %}
+        }
+
+        function calculateTotalScore($row, updateCB=true) {
+            var totalScore = 0;
+            var creatorBonusIndex = 2 + {{ round_titles|length }};
+            var jokerRoundIndex = 1;
+            var totalScoreIndex = creatorBonusIndex + 1;
+
+            var jokerRound = $row.children().eq(jokerRoundIndex).find('select').val();
+
+            $row.children().each(function (index, cell) {
+                if (index !== totalScoreIndex && index !== jokerRoundIndex) {
+                    var cellValue = parseFloat($(cell).text().trim(), 10);
+
+                    // Check if the current column matches the selected Joker Round
+                    if (jokerRound && index === round_titles.indexOf(jokerRound) + 2) {
+                        cellValue *= 2;
+                    }
+
+                    if (!isNaN(cellValue)) {
+                        totalScore += cellValue;
+                    }
+                }
+            });
+
+            // Clear joker-round-cell class from previous selections
+            $row.find('.joker-round-cell').removeClass('joker-round-cell');
+
+            // Get the selected joker round title
+            var jokerRoundTitle = $row.find('td:eq(1) select').val();
+
+            // Find the cell with the matching data-round-title attribute and add the joker-round-cell class
+            $row.find('td[data-round-title="' + jokerRoundTitle + '"]').addClass('joker-round-cell');
+
+            {#$row.children().eq(totalScoreIndex).text(totalScore);#}
+            {#$row.children().eq(totalScoreIndex).html('<span class="row-index">' + totalScore.toString() + '</span>');#}
+            $row.children().eq(totalScoreIndex).html('<span data-total-score="' + totalScore + '">' + totalScore + '</span>');
+
+
+
+            if (updateCB) {
+                updateCreatorBonus();
+            }
+
+        }
+
+
+        $(document).ready(function() {
+            var numColumns = $('#scoresheet thead th').length;
+            var numericColumns = [];
+
+            for (var i = 2; i < numColumns; i++) {
+                numericColumns.push({ type: 'num', targets: i });
+            }
+
+            $('table#scoresheet').on('change', 'tbody tr td select', function() {
+                var $row = $(this).closest('tr');
+                calculateTotalScore($row);
+            });
+
+            var isUpdating = false;
+
+            dataTable = $('#scoresheet').DataTable({
+                // DataTables options here
+                colReorder: true,
+                searching: false,
+                lengthChange: false,
+                info: false,
+                paging: false,
+                // This is necessary to invalidate the old table when the data changes
+                drawCallback: function () {
+                    if (isUpdating) {
+                        return;
+                    }
+                    isUpdating = true;
+                    $('#scoresheet tbody tr').each(function () {
+                        var $row = $(this);
+                        calculateTotalScore($row, false);
+                    });
+                    this.api().rows().invalidate().draw('page');
+                    isUpdating = false;
+                },
+                columnDefs: [
+                    {
+                        // Disable sorting for the Joker Round column
+                        // also disable sorting for the last column
+                        targets: [1, numColumns - 2, numColumns-1],
+                        orderable: false,
+                    },
+                    {
+                        targets: [numColumns-1],
+                        visible: true,
+                        width: '1%',
+                    }
+                ]
+            });
+
+            $('#scoresheet').Tabledit({
+                editButton: false,
+                deleteButton: false,
+                hideIdentifier: false,
+                columns: {
+                    identifier: [numColumns-1, ''],
+                    editable: [
+                        {% for round_title in round_titles %}
+                            [{{ forloop.counter0 | add:2 }}, '{{ round_title }}'],
+                        {% endfor %}
+                    ]
+                },
+                onDraw: function() {
+                    console.log('onDraw');
+
+                    $('table#scoresheet').on('change', 'tbody tr td select', function() {
+                        // Calculate the total score for the current row
+                        var $row = $(this).closest('tr');
+                        console.log($row);
+                        calculateTotalScore($row);
+                    });
+                    $('#scoresheet').on('blur', 'tbody tr td input', function() {
+                        var $input = $(this);
+                        var $row = $input.closest('tr');
+                        var newValue = $input.val();
+
+                        $input.siblings('.tabledit-span').text(newValue);
+                        console.log($row);
+                        calculateTotalScore($row);
+                    });
+
+                },
+                onSave: function(rowId, cell, oldValue, newValue) {
+                    // Calculate the total score for the current row
+                    var $row = $('#' + rowId);
+                    console.log($row);
+                    calculateTotalScore($row);
+                },
+                onSuccess: function(data, textStatus, jqXHR) {
+                    console.log('onSuccess(data, textStatus, jqXHR)');
+                    console.log(data);
+                    console.log(textStatus);
+                    console.log(jqXHR);
+                },
+                onFail: function(jqXHR, textStatus, errorThrown) {
+                    console.log('onFail(jqXHR, textStatus, errorThrown)');
+                    console.log(jqXHR);
+                    console.log(textStatus);
+                    console.log(errorThrown);
+                },
+                onAjax: function(action, serialize) {
+                    console.log('onAjax(action, serialize)');
+                    console.log(action);
+                    console.log(serialize);
+                }
+            });
+        });
+
+        const playerLinks = document.querySelectorAll(".player_name");
+
+        playerLinks.forEach(link => {
+            const playerName = link.getAttribute('data-player');
+            const playerColor = playerColorMapping[playerName];
+
+            link.addEventListener('mouseover', () => {
+                link.style.color = playerColor;
+            });
+
+            link.addEventListener('mouseout', () => {
+                link.style.color = '';
+            });
+        });
+
+
+        $("#scoresheet").on("click", ".btn-delete", function () {
+            // Get the row to delete
+            var $row = $(this).closest("tr");
+
+            // Remove the row from the table
+            {#$row.remove();#}
+            dataTable.row($row).remove().draw();
+
+             $("#scoresheet tbody tr").each(function () {
+                 var $row = $(this);
+                 calculateTotalScore($row);
+            });
+        });
+
+    </script>
+{% endblock %}

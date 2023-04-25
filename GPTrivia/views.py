@@ -1,9 +1,12 @@
 from django.shortcuts import render, redirect
 from .forms import GPTriviaRoundForm
-from .models import GPTriviaRound
+from .models import GPTriviaRound, MergedPresentation
 from django.db.models import Avg, F, FloatField, Case, When, Sum, Count
 from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
+from django.shortcuts import render
+from .mail import create_presentation, update_merged_presentation
+
 
 import numpy as np
 from django.contrib.auth.forms import UserCreationForm
@@ -30,9 +33,7 @@ from django.core import serializers
 from rest_framework.renderers import JSONRenderer
 from datetime import date
 
-
-
-
+gmail_key = '8f35edc691b918094035b22807266a1e468bf5f0'
 
 playerColorMapping = {
             'Alex': '#D2042D',
@@ -59,26 +60,6 @@ class CustomPasswordChangeView(auth_views.PasswordChangeView):
 class CustomPasswordChangeDoneView(auth_views.PasswordChangeDoneView):
     template_name = 'registration/password_changed.html'
 
-@login_required
-def home(request):
-    if request.method == 'POST':
-        form_type = request.POST.get('form_type')
-
-        if form_type == 'gptrivia_round_form':
-            gptrivia_round_form = GPTriviaRoundForm(request.POST)
-            if gptrivia_round_form.is_valid():
-                gptrivia_round_form.save()
-                return redirect('home')
-
-    else:
-        gptrivia_round_form = GPTriviaRoundForm()
-
-    context = {
-        'gptrivia_round_form': gptrivia_round_form,
-    }
-
-
-    return render(request, 'GPTrivia/home.html', context)
 
 @login_required
 def rounds_list(request):
@@ -88,8 +69,64 @@ def rounds_list(request):
 
     return render(request, 'GPTrivia/rounds_list.html', context)
 
+
 @login_required
 def player_analysis(request):
+    queryset_rounds = GPTriviaRound.objects.all()
+
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew"]
+
+    # a dicitonary that maps the player name to the string score_playername
+    player_name_mapping = {"Alex": "score_alex", "Ichigo": "score_ichigo", "Megan": "score_megan", "Zach": "score_zach",
+                            "Jenny": "score_jenny", "Debi": "score_debi", "Dan": "score_dan", "Chris": "score_chris", "Drew": "score_drew"}
+
+
+    creators = set()
+    categories = set()
+
+    for round in queryset_rounds:
+        creators.add(round.creator)
+        categories.add(round.major_category)
+
+    rounds = [{
+        'creator': round.creator,
+        'title': round.title,
+        'major_category': round.major_category,
+        'minor_category1': round.minor_category1,
+        'minor_category2': round.minor_category2,
+        # convert date to string
+        'date': round.date.strftime("%m/%d/%Y"),
+        'round_number': round.round_number,
+        'max_score': round.max_score,
+        # if the player_score is None, replace with empty string
+        'score_alex': round.score_alex if round.score_alex is not None else '',
+        'score_ichigo': round.score_ichigo if round.score_ichigo is not None else '',
+        'score_megan': round.score_megan if round.score_megan is not None else '',
+        'score_zach': round.score_zach if round.score_zach is not None else '',
+        'score_jenny': round.score_jenny if round.score_jenny is not None else '',
+        'score_debi': round.score_debi if round.score_debi is not None else '',
+        'score_dan': round.score_dan if round.score_dan is not None else '',
+        'score_chris': round.score_chris if round.score_chris is not None else '',
+        'score_drew': round.score_drew if round.score_drew is not None else '',
+        'replay': str(round.replay).lower(),
+        'cooperative': str(round.cooperative).lower(),
+    } for round in queryset_rounds]
+
+    context = {
+        'rounds': rounds,
+        'playerColorMapping': playerColorMapping,
+        'creators': list(creators),
+        'categories': list(categories),
+        'players': players,
+        "mapping": player_name_mapping,
+    }
+
+    return render(request, 'GPTrivia/player_analysis.html', context)
+
+
+
+@login_required
+def player_analysis_legacy(request):
     creators = GPTriviaRound.objects.values_list('creator', flat=True).distinct()
 
     player_averages = []
@@ -171,6 +208,7 @@ def player_analysis(request):
         # Round Category filtering
 
         categories = GPTriviaRound.objects.values_list('major_category', flat=True).distinct()
+
     for cat in categories:
         queryset = GPTriviaRound.objects.filter(major_category=cat)
 
@@ -218,7 +256,7 @@ def player_analysis(request):
 
 
 
-    return render(request, 'GPTrivia/player_analysis.html', {
+    return render(request, 'GPTrivia/player_analysis_legacy.html', {
         'player_averages': player_averages,
         'player_cat_averages': player_cat_averages,
         'creators': creators,
@@ -364,6 +402,71 @@ def player_profile_dict(request, player_name):
 def player_profile(request, player_name):
     context = player_profile_dict(request, player_name)
     return render(request, 'GPTrivia/player_profile.html', context)
+
+@login_required
+def home(request):
+    try:
+        latest_presentation = MergedPresentation.objects.latest('id')
+        presentation_url = f"https://docs.google.com/presentation/d/{latest_presentation.presentation_id}/embed"
+    except MergedPresentation.DoesNotExist:
+        presentation_url = None
+
+    presentation_name = datetime.date.strftime(datetime.date.today(), '%-m.%d.%Y')
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'generate':
+            new_presentation_id, creators, round_titles = create_presentation()
+            MergedPresentation.objects.create(
+                name=presentation_name,
+                presentation_id=new_presentation_id,
+                creator_list=creators,
+                round_names=round_titles,
+            )
+            print (new_presentation_id, creators, round_titles)
+            presentation_url = f"https://docs.google.com/presentation/d/{new_presentation_id}/embed"
+
+        elif action == 'update':
+            updated_presentation_id, new_creators, round_titles = update_merged_presentation(latest_presentation.presentation_id,
+                                                                               latest_presentation.creator_list)
+            # update the MergedPresentation object that has the same presentation_id as the latest_presentation
+            # by appending the new creators to the creator_list and appending the new round titles to the round_names
+
+            latest_presentation = MergedPresentation.objects.get(presentation_id=latest_presentation.presentation_id)
+            latest_presentation.round_names.extend(round_titles)
+            latest_presentation.creator_list.extend(new_creators)
+            latest_presentation.save()
+
+            print(updated_presentation_id, new_creators, round_titles)
+
+            latest_presentation.creator_list.extend(new_creators)
+            latest_presentation.save()
+            presentation_url = f"https://docs.google.com/presentation/d/{updated_presentation_id}/embed"
+
+    return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name})
+
+@login_required
+def scoresheet(request):
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew"]
+    # for the round titles, we will query the database for the MergePresentation object with the latest id
+    # and get the round_names attribute
+    latest_presentation = MergedPresentation.objects.latest('id')
+    round_titles = latest_presentation.round_names
+    print (round_titles)
+    creators = latest_presentation.creator_list
+    # also get the presentation name
+    presentation_name = latest_presentation.name
+
+    context = {
+        'players': players,
+        'round_titles': round_titles,
+        'creators': creators,
+        'player_color_mapping': playerColorMapping,
+        'pres_name': presentation_name,
+    }
+
+    return render(request, 'GPTrivia/scoresheet.html', context)
+
 
 ## API stuff
 

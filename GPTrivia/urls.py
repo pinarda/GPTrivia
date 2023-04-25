@@ -33,6 +33,7 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('rounds/', views.rounds_list, name='rounds_list'),
     path('player_analysis/', views.player_analysis, name='player_analysis'),
+    path('player_analysis_legacy/', views.player_analysis_legacy, name='player_analysis_legacy'),
     path('player_profile/<str:player_name>/', views.player_profile, name='player_profile'),
     path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
     path('accounts/logout/', auth_views.LogoutView.as_view(next_page='home'), name='logout'),
@@ -42,4 +43,5 @@ urlpatterns = [
     path('api/v1/trivia-rounds/', views.TriviaRoundList.as_view(), name='trivia_rounds_list'),
     path('api-token-auth/', CustomObtainAuthToken.as_view(), name='api_token_auth'),
     path('api/v1/player-profile/<str:player_name>/', views.PlayerProfileAPI.as_view(), name='player_profile_api'),
+    path('scoresheet/', views.scoresheet, name='scoresheet'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

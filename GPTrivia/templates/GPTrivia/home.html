@@ -1,24 +1,24 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/home.css' %}">
+{% endblock %}
 
 {% block content %}
-<h1>Home</h1>
+    <div class="container">
+      {% if presentation_url %}
+        <h3>Tonight's Trivia Slides: {{ pres_name }}</h3>
+        <iframe src="{{ presentation_url }}" width="947" height="569" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
+      {% endif %}
 
-<h2>Add New Trivia Round</h2>
-<form method="post">
-    {% csrf_token %}
-    <table>
-        {% for field in gptrivia_round_form %}
-        <tr>
-            <td>{{ field.label_tag }}</td>
-            <td>{{ field }}</td>
-            <td>{{ field.help_text }}</td>
-            {% if field.errors %}
-            <td class="error">{{ field.errors.as_text }}</td>
-            {% endif %}
-        </tr>
-        {% endfor %}
-    </table>
-    <input type="hidden" name="form_type" value="gptrivia_round_form">
-    <button type="submit">Add New Round</button>
-</form>
+      <h3>Generate Presentation</h3>
+
+      <form method="post">
+        {% csrf_token %}
+        <button type="submit" name="action" value="generate">Generate Presentation</button>
+        <button type="submit" name="action" value="update">Update Presentation</button>
+      </form>
+    </div>
 {% endblock %}
+

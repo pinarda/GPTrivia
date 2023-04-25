@@ -3,9 +3,6 @@
 
 {% load static %}
 
-{% load static %}
-
-
 {% block content %}
     <h1>{{ player_name }}'s Profile</h1>
 
@@ -17,7 +14,7 @@
 
         <div class="table-container">
             {% if created_rounds_cat %}
-                <table border="1" cellpadding="5" cellspacing="0" id="createdRoundsTable" style="display: none;">
+                <table cellpadding="5" cellspacing="0" id="createdRoundsTable" style="display: none;">
                     <thead>
                         <tr>
                             <th>Major Category</th>
@@ -38,7 +35,7 @@
             {% endif %}
 
             {% if created_rounds %}
-                <table border="1" cellpadding="5" cellspacing="0" id="playerRoundsTable" style="display: none;">
+                <table cellpadding="5" cellspacing="0" id="playerRoundsTable" style="display: none;">
                     <thead>
                         <tr>
                             <th>Title</th>
@@ -70,8 +67,8 @@
             <p>Number of Rounds Played: {{ total_rounds }}</p>
             <p>Strongest Category: {{ max_avg }}</p>
             <p>Weakest Category: {{ min_avg }}</p>
-            <p>Favorite Creator: {{ max_cat_avg }} </p>
-            <p>Least Favorite Creator: {{ min_cat_avg }}</p>
+            <p>Favorite Creator: <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a> </p>
+            <p>Least Favorite Creator: <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a></p>
         </div>
     </div>
 
@@ -149,6 +146,21 @@
 
             link.addEventListener('mouseout', () => {
                 link.style.backgroundColor = playerColorMapping[playerName];
+            });
+        });
+
+    const playerLinks = document.querySelectorAll(".player_name");
+
+        playerLinks.forEach(link => {
+            const playerName = link.getAttribute('data-player');
+            const playerColor = playerColorMapping[playerName];
+
+            link.addEventListener('mouseover', () => {
+                link.style.color = playerColor;
+            });
+
+            link.addEventListener('mouseout', () => {
+                link.style.color = '';
             });
         });
 

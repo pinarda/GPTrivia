@@ -1,17 +1,26 @@
 {% extends 'base.html' %}
 {% load GPTrivia_extras %}
 {% block content %}
-<div>
-<label for="creator-selector">Choose a creator:</label>
-<select name="creators" id="creator-selector"  onchange="updatePlot()">
+<select name="creators" id="creator-selector">
+    <option value="" selected>-- Select a creator --</option>
+    {% for creator in creators %}
+    <option value="{{ creator }}">{{ creator }}</option>
+    {% endfor %}
 </select>
-</div>
 
-<div>
-<label for="category-selector">Choose a category:</label>
-<select name="categories" id="category-selector"  onchange="updateCatPlot()">
+<select name="categories" id="category-selector">
+    <option value="" selected>-- Select a category --</option>
+    {% for category in categories %}
+    <option value="{{ category }}">{{ category }}</option>
+    {% endfor %}
 </select>
-</div>
+
+<select name="players" id="player-selector">
+    <option value="" selected>-- Select a player --</option>
+    {% for player in players %}
+    <option value="{{ player }}">{{ player }}</option>
+    {% endfor %}
+</select>
 
 <div id="bar-chart"></div>
 <div id="violin-chart" style="width:100%; height:500px;"></div>
@@ -22,325 +31,338 @@
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script>
 
-    let player_name_mapping = {
-        'score_alex': 'alex',
-        'score_ichigo': 'ichigo',
-        'score_megan': 'megan',
-        'score_zach': 'zach',
-        'score_jenny': 'jenny',
-        'score_debi': 'debi',
-        'score_dan': 'dan',
-        'score_chris': 'chris',
-        'score_drew': 'drew'
-    };
+    let playerColorMapping = {{ playerColorMapping|safe }};
+    let players = {{ players|safe }};
+    let rounds = {{ rounds|safe }};
+    let mapping = {{ mapping|safe }};
 
-    let playerColorMapping = {{ player_color_mapping|safe }};
-    let playerScores = {{ player_scores|safe }};
-    let playerCatAverages = {{ player_cat_averages|safe }};
-    let playerAverages = {{ player_averages|safe }};
-    let playerCatScores = {{ player_cat_scores|safe }};
-    let players = ['score_alex', 'score_ichigo', 'score_megan', 'score_zach', 'score_jenny', 'score_debi',
-                   'score_dan', 'score_chris', 'score_drew'];
-
-
-    let player_names = players.map(player => player.replace('score_', '').replace('__avg', ''));
-    // Populate dropdown with creator names
-    let creatorSelector = document.getElementById('creator-selector');
-    playerAverages.forEach((item, index) => {
-        let option = document.createElement('option');
-        option.value = index;
-        option.textContent = item.creator;
-        creatorSelector.appendChild(option);
-    });
-
-    let categorySelector = document.getElementById('category-selector');
-    playerCatAverages.forEach((item, index) => {
-        let option = document.createElement('option');
-        option.value = index;
-        option.textContent = item.category;
-        categorySelector.appendChild(option);
-    });
-
-    function updatePlot(creatorIndex) {
-        let y_values_list = players.map(player => playerAverages[creatorIndex].hasOwnProperty(player + '__avg') ? playerAverages[creatorIndex][player + '__avg'] : undefined);
-
-        let combined = players.map((player, index) => ({ player: player.slice(6), score: y_values_list[index] }));
-
-        // Step 2: Sort the new array based on the scores
-        combined.sort((a, b) => b.score - a.score);
-
-        // Step 3: Create separate arrays for the sorted player names and scores
-        let sortedPlayers = combined.map(item => item.player);
-        let sortedScores = combined.map(item => item.score);
-
-        // Step 4: Calculate the color for each bar based on the score
-        let colors = sortedScores.map(score => score > 0 ? 'green' : 'red');
-
-
-        let trace = {
-            x: sortedPlayers,
-            y: sortedScores,
-            type: 'bar',
-            marker: { color: colors }
-        };
-
-        let data = [trace];
-
-        let layout = {
-            title: 'Average Scores per Player for Creator: ' + playerAverages[creatorIndex].creator,
-            xaxis: {
-                title: 'Players'
-            },
-            yaxis: {
-                title: 'Average Scores'
-            },
-            coloraxis: {
-                cmin: Math.min(...y_values_list),
-                cmax: Math.max(...y_values_list)
-            }
-        };
-
-        Plotly.newPlot('bar-chart', data, layout);
-    }
-
-    function updateCatPlot(categoryIndex) {
-        let y_values_list = players.map(player => playerCatAverages[categoryIndex].hasOwnProperty(player + '__avg') ? playerCatAverages[categoryIndex][player + '__avg'] : undefined);
-
-        let combined = players.map((player, index) => ({ player: player.slice(6), score: y_values_list[index] }));
-
-        // Step 2: Sort the new array based on the scores
-        combined.sort((a, b) => b.score - a.score);
-
-        // Step 3: Create separate arrays for the sorted player names and scores
-        let sortedPlayers = combined.map(item => item.player);
-        let sortedScores = combined.map(item => item.score);
-
-        // Step 4: Calculate the color for each bar based on the score
-        let colors = sortedScores.map(score => score > 0 ? 'green' : 'red');
-
-        let trace = {
-            x: sortedPlayers,
-            y: sortedScores,
-            type: 'bar',
-            marker: { color: colors }
-        };
-
-        let data = [trace];
-
-        // Sort playerAverages by mean of normalized scores in descending order
-        playerAverages.sort((a, b) => {
-            let meanA = (Object.values(a).reduce((sum, score) => sum + score, 0) - a.creator) / (Object.keys(a).length - 1);
-            let meanB = (Object.values(b).reduce((sum, score) => sum + score, 0) - b.creator) / (Object.keys(b).length - 1);
-            return meanB - meanA;
-        });
-
-
-        let layout = {
-            title: 'Average Scores per Player for Category: ' + playerCatAverages[categoryIndex].category,
-            xaxis: {
-                title: 'Players'
-            },
-            yaxis: {
-                title: 'Average Scores'
-            },
-            coloraxis: {
-                cmin: Math.min(...y_values_list),
-                cmax: Math.max(...y_values_list)
-            }
-        };
-
-        Plotly.newPlot('bar-chart', data, layout);
-    }
-
-    function updateViolinPlot(creatorIndex) {
-        let creator = playerAverages[creatorIndex].creator;
-        let all_scores = {};
-
-        for (let i = 0; i < playerScores.length; i++) {
-            if (playerScores[i].creator === creator) {
-                all_scores = playerScores[i].scores;
-                break;
-            }
+    function updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer) {
+        if (!selectedCreator && !selectedCategory && !selectedPlayer) {
+            // Handle the default case (e.g., display a message or a default chart state)
+            return;
         }
 
-        // Calculate the means of the normalized scores
-        let playerMeans = players.map(player => {
-            let scores = all_scores.map(score => score[player]).filter(score => score !== undefined);
-            let mean = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-            return {
-                player: player,
-                mean: mean,
-            };
-        });
-
-        // Sort players by mean of normalized scores in descending order
-        playerMeans.sort((a, b) => b.mean - a.mean);
-
-        // Update x-axis labels with the sorted player names
-        let sortedPlayers = playerMeans.map(meanObj => meanObj.player);
-        let creator_as_player = creator.toLowerCase();
-        if (creator === 'Dad') creator_as_player = 'dan';
-        if (creator === 'Mom') creator_as_player = 'debi';
-
-        let sortedPlayerNames = sortedPlayers
-        .map(player => {
-            if (player === `score_${creator_as_player}__avg`) {
-                return creator_as_player;
-            } else {
-                return player_names[players.indexOf(player.replace('__avg', ''))];
-            }
-        })
-        .filter(name => name !== creator_as_player);
-
-
-        let data = sortedPlayers.map((player) => {
-            let scores = all_scores.map(score => score[player]).filter(score => score !== undefined);
-            let playerName = player.replace("score_", "");
-            playerName = playerName[0].toUpperCase() + playerName.slice(1);
-
-            return {
-                y: scores,
-                type: 'violin',
-                name: playerName,
-                box: {
-                    visible: true
-                },
-                line: {
-                    color: playerColorMapping[playerName]
-                },
-                meanline: {
-                    visible: true,
-                    color: "black"
-                },
-                marker: {
-                    color: playerColorMapping[playerName]
-                }
-            };
-        });
-
-        let layout = {
-            title: 'Score Distribution per Player for ' + creator,
-            xaxis: {
-                title: 'Players',
-                tickvals: Array.from(Array(sortedPlayerNames.length).keys()),
-                ticktext: sortedPlayerNames
-            },
-            yaxis: {
-                title: 'Scores'
-            },
-            showlegend: false
-        };
-
-        Plotly.newPlot('violin-chart', data, layout);
+        // Implement different behaviors based on the combination of non-default values
+        // Filter the rounds according to the selectedCreator, selectedCategory, and selectedPlayer
+        // Calculate the scores to be displayed
+        // Create and update the plot using Plotly.js according to the calculated scores
+        if (selectedCreator && !selectedCategory && !selectedPlayer) {
+            updateCreatorCategory(selectedCreator, "", "");
+        } else if (!selectedCreator && selectedCategory && !selectedPlayer) {
+            updateCreatorCategory("", selectedCategory, "");
+        } else if (!selectedCreator && !selectedCategory && selectedPlayer) {
+            updateCreatorCategory("", "", selectedPlayer);
+        } else if (selectedCreator && selectedCategory && !selectedPlayer) {
+            updateCreatorCategory(selectedCreator, selectedCategory, "");
+        } else if (selectedCreator && !selectedCategory && selectedPlayer) {
+            updateCreatorAndPlayer(selectedCreator, selectedPlayer);
+        } else if (!selectedCreator && selectedCategory && selectedPlayer) {
+            updateCategoryAndPlayer(selectedCategory, selectedPlayer);
+        } else if (selectedCreator && selectedCategory && selectedPlayer) {
+            updateCreatorCategoryAndPlayer(selectedCreator, selectedCategory, selectedPlayer);
+        }
     }
 
-    function getSortedPlayers(playerScores, categoryIndex) {
-    // Step 1: Calculate the mean for each player
-    let player_means = players.map(player => {
-        let scores = playerScores
-            .filter(score => score.category === playerCatAverages[categoryIndex].category)
-            .map(score => score[player])
-            .filter(score => score !== undefined);
-        let sum = scores.reduce((a, b) => a + b, 0);
-        let mean = sum / scores.length;
-        return { player: player, mean: mean };
-    });
 
-    // Step 2: Sort the players by mean in descending order
-    player_means.sort((a, b) => b.mean - a.mean);
+    function updateCreatorCategory(selectedCreator, selectedCategory, selectedPlayer) {
+        if (!selectedCreator && !selectedCategory && !selectedPlayer) {
+            // Handle the default case (e.g., display a message or a default chart state)
+            return;
+        }
 
-    // Step 3: Return the sorted players
-    return player_means.map(item => item.player);
-}
-
-    function updateCatViolinPlot(categoryIndex) {
-        let category = playerCatAverages[categoryIndex].category;
-        let all_scores = {};
-
-        let filteredScores = playerCatScores.filter(score => score.category === category);
-
-        if (filteredScores.length > 0) {
-            all_scores = filteredScores[0].scores;
+        // Filter rounds by the selected creator
+        if (selectedCreator) {
+            myrounds = rounds.filter((round) => round.creator === selectedCreator);
         } else {
-            all_scores = [];
+            myrounds = rounds;
+        }
+        if (selectedCategory) {
+            myrounds = myrounds.filter((round) => round.major_category === selectedCategory);
+        }
+        if (selectedPlayer) {
+            myrounds = myrounds.filter((round) => round[mapping[selectedPlayer]] !== "");
         }
 
-            // Calculate the means of the normalized scores
-        let playerMeans = players.map(player => {
-            let scores = all_scores.map(score => score[player]).filter(score => score !== undefined);
-            let mean = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-            return {
-                player: player,
-                mean: mean,
-            };
-        });
+        // now we need to decide what we are iterating over to get the data for the bar chart
+        if (selectedPlayer){
+            mylist = players
+        }
+        else {
+            mylist = players.filter((player) => player !== selectedCreator);
+        }
 
-        // Sort players by mean of normalized scores in descending order
-        playerMeans.sort((a, b) => b.mean - a.mean);
+        // Calculate the average scores for each player
+        let averages = {};
+        for (const item of mylist) {
+            let totalScore = 0;
+            let count = 0;
+            //////// NEEDS TO CHANGE BASED ON WHETHER WE ARE ITERATING OVER PLAYERS, CATEGORIES, OR CREATORS
+            for (let round of myrounds) {
+                if (!selectedPlayer) {
+                    if (round[mapping[item]] !== "") {
+                        totalScore += round[mapping[item]]
+                        count++;
+                    }
+                } else {
+                    if (round["creator"] === item || round["creator"] === "Mom" || round["creator"] === "Dad") {
+                        totalScore += round[mapping[selectedPlayer]]
+                        count++;
+                    }
+                }
+            }
+            let averageScore = count ? totalScore / count : 0;
+            averages[item] = averageScore;
+            ////////
+            if (myrounds.length === 0) {
+                averages[item] = 0;
+            }
+        }
 
-        // Update x-axis labels with the sorted player names
-        let sortedPlayers = playerMeans.map(meanObj => meanObj.player);
 
-        let sortedPlayerNames = sortedPlayers
+        // subtract the player's average score for the creator from the player's average score for all rounds
+        if (!selectedPlayer) {
+            averagesDiff = {};
+            for (const item of mylist) {
+                let totalScore = 0;
+                let count = 0;
+                for (let round of rounds) {
+                    if (!selectedPlayer) {
+                        if (round[mapping[item]] !== "") {
+                            totalScore += round[mapping[item]];
+                            count++;
+                        }
+                    } else {
+                        if (round[mapping[selectedPlayer]] !== ""  || round["creator"] === "Mom" || round["creator"] === "Dad") {
+                            totalScore += round[mapping[selectedPlayer]];
+                            count++;
+                        }
+                    }
+                }
+                let averageScore = count ? totalScore / count : 0;
+                averagesDiff[item] = averages[item] - averageScore;
+                if (myrounds.length === 0) {
+                    averagesDiff[item] = 0;
+                }
+            }
+        } else {
+            // Calculate the overall average
+            let totalSum = 0;
+            let totalCount = 0;
+            for (const item of mylist) {
+                totalSum += averages[item];
+                totalCount++;
+            }
+            let overallAverage = totalSum / totalCount;
+
+            // Subtract the overall average from each item's average
+            averagesDiff = {};
+            for (const item of mylist) {
+                averagesDiff[item] = averages[item] - overallAverage;
+            }
+        }
+
+        // remove the creator from the playerAveragesDiff
+        if (selectedCreator) {
+            delete averagesDiff[selectedCreator];
+        }
+        if (selectedPlayer) {
+            delete averagesDiff[selectedPlayer];
+        }
+        // if the selected creator is mom, delete Debis from the playerAveragesDiff
+        if (selectedCreator === "Mom") {
+            delete averagesDiff["Debi"];
+        }
+        if (selectedPlayer === "Mom") {
+            delete averagesDiff["Debi"];
+        }
+        // if the selected creator is Dad, delete Dan from the playerAveragesDiff
+        if (selectedCreator === "Dad") {
+            delete averagesDiff["Dan"];
+        }
+        if (selectedPlayer === "Dad") {
+            delete averagesDiff["Dan"];
+        }
+
+        //sort the playerAveragesDiff
+        averagesDiff = Object.fromEntries(
+            Object.entries(averagesDiff).sort(([,a],[,b]) => b-a)
+        );
+
+        // Create trace data for the bar chart
+        let traceData = [
+            {
+                x: Object.keys(averagesDiff),
+                y: Object.values(averagesDiff),
+                type: 'bar',
+                marker: {
+                    color: Object.keys(averagesDiff).map((player) => playerColorMapping[player]),
+                },
+            },
+        ];
+
+        // Create or update the chart using Plotly.js
+        stg = selectedCreator ? selectedCreator : "All Creators";
+        stg += selectedCategory ? ` ${selectedCategory}` : "";
+        xax = selectedPlayer ? "Creator" : "Player";
+
+        let layout = {
+            title: `Average Scores by Player for ${stg} Rounds`,
+            xaxis: {
+                title: xax,
+            },
+            yaxis: {
+                title: 'Average Score Difference',
+            },
+        };
+
+        Plotly.newPlot('bar-chart', traceData, layout);
+        // also add a violin plot, using the data from the columns of the rounds table
+        // for all creatorRounds, for each player, get the score for that round
+        // for each player, create a list of scores
+        // create a violin plot using the list of scores for each player
 
 
+        let violinData = [];
 
-        let data = sortedPlayers.map((player) => {
-            let scores = all_scores.map(score => score[player]).filter(score => score !== undefined);
-            let playerName = player.replace("score_", "");
-            playerName = playerName[0].toUpperCase() + playerName.slice(1);
-
-            return {
+        for (const playerName of players) {
+            if (playerName === selectedCreator) {
+                continue;
+            }
+            if (selectedCreator === "Mom" && playerName === "Debi") {
+                continue;
+            }
+            if (selectedCreator === "Dad" && playerName === "Dan") {
+                continue;
+            }
+            let scores = [];
+            for (let round of rounds) {
+                if (!selectedPlayer) {
+                    if (round[mapping[playerName]] !== "") {
+                        scores.push(round[mapping[playerName]]);
+                    }
+                } else {
+                    if (round[mapping[selectedPlayer]] !== ""  || round["creator"] === "Mom" || round["creator"] === "Dad") {
+                        scores.push(round[mapping[selectedPlayer]]);
+                    }
+                }
+            }
+            violinData.push({
                 y: scores,
                 type: 'violin',
                 name: playerName,
                 box: {
                     visible: true
                 },
-                line: {
-                    color: playerColorMapping[playerName]
-                },
                 meanline: {
                     visible: true,
-                    color: "black"
+                    color: "black",
                 },
-                marker: {
+                line: {
                     color: playerColorMapping[playerName]
                 }
-            };
-        });
+            });
+        }
 
-        let layout = {
-            title: 'Score Distribution per Player for ' + category,
+        // again, subtract the player's average score for the creator from the player's average score for all rounds
+// subtract the player's average score for the creator from the player's average score for all rounds
+        {#if (!selectedPlayer) {#}
+        {#    averagesDiff = {};#}
+        {#    for (const item of mylist) {#}
+        {#        let totalScore = 0;#}
+        {#        let count = 0;#}
+        {#        for (let round of rounds) {#}
+        {#            if (!selectedPlayer) {#}
+        {#                if (round[mapping[item]] !== "") {#}
+        {#                    totalScore += round[mapping[item]];#}
+        {#                    count++;#}
+        {#                }#}
+        {#            } else {#}
+        {#                if (round[mapping[selectedPlayer]] !== ""  || round["creator"] === "Mom" || round["creator"] === "Dad") {#}
+        {#                    totalScore += round[mapping[selectedPlayer]];#}
+        {#                    count++;#}
+        {#                }#}
+        {#            }#}
+        {#        }#}
+        {#        let averageScore = count ? totalScore / count : 0;#}
+        {#        averagesDiff[item] = averages[item] - averageScore;#}
+        {#        if (myrounds.length === 0) {#}
+        {#            averagesDiff[item] = 0;#}
+        {#        }#}
+        {#    }#}
+        {#} else {#}
+        {#    // Calculate the overall average#}
+        {#    let totalSum = 0;#}
+        {#    let totalCount = 0;#}
+        {#    for (const item of mylist) {#}
+        {#        totalSum += averages[item];#}
+        {#        totalCount++;#}
+        {#    }#}
+        {#    let overallAverage = totalSum / totalCount;#}
+        {##}
+        {#    // Subtract the overall average from each item's average#}
+        {#    averagesDiff = {};#}
+        {#    for (const item of mylist) {#}
+        {#        averagesDiff[item] = averages[item] - overallAverage;#}
+        {#    }#}
+        {#}#}
+
+
+        for (let i = 0; i < violinData.length; i++) {
+            let totalScore = 0;
+            let count = 0;
+            for (let round of myrounds) {
+                if (round[mapping[violinData[i].name]] !== "") {
+                    totalScore += round[mapping[violinData[i].name]];
+                    count++;
+                }
+            }
+            let averageScore = count ? totalScore / count : 0;
+            violinData[i].y = violinData[i].y.map((score) => averageScore - score);
+        }
+
+        // and sort the violinData
+        violinData.sort((a, b) => b.y.reduce((a, b) => a + b, 0) / b.y.length - a.y.reduce((a, b) => a + b, 0) / a.y.length);
+
+        stg = selectedCreator ? selectedCreator : "All Creators";
+        stg += selectedCategory ? ` ${selectedCategory}` : "";
+        xax = selectedPlayer ? "Creator" : "Player";
+
+        let violinLayout = {
+            title: `Scores by Player for ${stg}'s Rounds`,
             xaxis: {
-                title: 'Players',
-                tickvals: Array.from(Array(sortedPlayerNames.length).keys()),
-                ticktext: sortedPlayerNames
+                title: xax,
             },
             yaxis: {
-                title: 'Scores'
+                title: 'Average Score Difference',
             },
-            showlegend: false
         };
 
-        Plotly.newPlot('violin-chart', data, layout);
+        Plotly.newPlot('violin-chart', violinData, violinLayout);
     }
 
-    updateViolinPlot(0);
-    updateCatViolinPlot(0);
-    updatePlot(0);
-    updateCatPlot(0);
+    // Initialize the plot with some default value if needed
+    updatePlotByFilters('', '', '');
 
-    document.getElementById('creator-selector').addEventListener('change', function() {
-        updatePlot(this.value);
-        updateViolinPlot(this.value);
+    // Update event listeners
+    document.getElementById('creator-selector').addEventListener('change', function () {
+        const selectedCreator = this.value;
+        const selectedCategory = document.getElementById('category-selector').value;
+        const selectedPlayer = document.getElementById('player-selector').value;
+        updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer);
     });
 
-    document.getElementById('category-selector').addEventListener('change', function() {
-        updateCatPlot(this.value);
-        updateCatViolinPlot(categorySelector.selectedIndex);
+    document.getElementById('category-selector').addEventListener('change', function () {
+        const selectedCreator = document.getElementById('creator-selector').value;
+        const selectedCategory = this.value;
+        const selectedPlayer = document.getElementById('player-selector').value;
+        updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer);
     });
 
-
+    document.getElementById('player-selector').addEventListener('change', function () {
+        const selectedCreator = document.getElementById('creator-selector').value;
+        const selectedCategory = document.getElementById('category-selector').value;
+        const selectedPlayer = this.value;
+        updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer);
+    });
 </script>
 {% endblock %}

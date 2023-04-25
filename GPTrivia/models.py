@@ -1,4 +1,5 @@
 from django.db import models
+import jsonfield
 
 class GPTriviaRound(models.Model):
     creator = models.CharField(max_length=100)
@@ -26,3 +27,13 @@ class GPTriviaRound(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class MergedPresentation(models.Model):
+    name = models.CharField(max_length=255)
+    presentation_id = models.CharField(max_length=255)
+    round_names = jsonfield.JSONField(default=list)
+    creator_list = jsonfield.JSONField(default=list)
+
+    def __str__(self):
+        return self.name

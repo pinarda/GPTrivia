@@ -1,0 +1,19 @@
+TO DO:
+
+
+In the trivia_rounds table, add a link to the corresponding start slide in the correct presentation.
+
+Finish the stats for the analysis page ("Player" options) / possible add the player specific stuff to the profile pages.
+
+Update list of previous rounds
+
+be able to specify what position to put new rounds, instead of appending to end of presentation
+
+add a round ideas page connected to ChatGPT API for quickly getting ideas for new rounds
+Add an option to autofill any remaining round slots with old rounds from an unused creator.
+Show the number of submitted rounds/who has submitted a round for the current week on the home page.
+
+minigames? such as a timed quiz using previous questions from other creators, or maybe a pokemon style game with trivia questions instead of pokemon battles.
+
+add a select/button to load an old scoresheet.
+Make sure we save the scoresheet to the db every time something is edited. And if we load the page, we want to populate it with the current scoresheet for the presentation, if it already exists.
