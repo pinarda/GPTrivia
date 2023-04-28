@@ -1,0 +1,74 @@
+.joker-round-select {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.creator-cell {
+    background-color: #a3e4d7; /* Change to the color you want for the creator cell */
+}
+
+.joker-round-cell {
+    background-color: #ffd7f0; /* Change to the color you want for the joker round cell */
+}
+
+.btn-delete {
+background-color: transparent; /* Remove default background color */
+border: none; /* Remove default border */
+color: white; /* Set text color to white */
+width: 30px; /* Set width of the button (adjust as needed) */
+height: 30px; /* Set height of the button (adjust as needed) */
+text-align: center; /* Center the text within the button */
+}
+
+#btn-add {
+    background-color: black; /* Remove default background color */
+    border: none; /* Remove default border */
+    color: white; /* Set text color to white */
+    width: 30px; /* Set width of the button (adjust as needed) */
+    height: 30px; /* Set height of the button (adjust as needed) */
+    text-align: center; /* Center the text within the button */
+    font-size: 24px;
+}
+
+#btn-add:hover {
+    opacity: 0.8;
+}
+
+
+.nameinput input {
+    width: 100%;
+    box-sizing: border-box;
+    margin-right: 10px;
+}
+
+#btn-save {
+    background-color: #4CAF50; /* Green */
+    border: none;
+    color: white;
+    padding: 10px 24px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    box-sizing: border-box;
+    float: right;
+}
+
+.nameinput {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+#btn-save:hover {
+    opacity: 0.8;
+}
+
+.btn-delete:hover {
+    opacity: 0.8;
+}
+
+h1{
+    text-align: center;
+}
