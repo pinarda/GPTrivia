@@ -6,6 +6,9 @@ from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
 from django.shortcuts import render
 from .mail import create_presentation, update_merged_presentation
+from datetime import datetime
+from django.core.exceptions import ObjectDoesNotExist
+from django.views.decorators.csrf import csrf_exempt
 
 
 import numpy as np
@@ -457,13 +460,28 @@ def scoresheet(request):
     # also get the presentation name
     presentation_name = latest_presentation.name
 
+    pres_date = datetime.datetime.strptime(presentation_name, '%m.%d.%Y').date()
+    existing_rounds = GPTriviaRound.objects.filter(date=pres_date, title__in=round_titles)
+
+    # Serialize the queryset into a JSON string and then parse it into a list of dictionaries
+    existing_rounds_json = serializers.serialize('json', existing_rounds)
+    existing_rounds_list = json.loads(existing_rounds_json)
+
+    # Replace None values with null
+    for round_dict in existing_rounds_list:
+        for key, value in round_dict['fields'].items():
+            if value is None:
+                round_dict['fields'][key] = "null"
+
     context = {
         'players': players,
         'round_titles': round_titles,
         'creators': creators,
         'player_color_mapping': playerColorMapping,
         'pres_name': presentation_name,
+        'existing_rounds': existing_rounds_list
     }
+
 
     return render(request, 'GPTrivia/scoresheet.html', context)
 
@@ -502,3 +520,45 @@ class CustomObtainAuthToken(ObtainAuthToken):
             'username': user.username
         })
 
+@api_view(['POST'])
+def save_scores(request):
+    data = request.data
+
+    for round_data in data:
+        # Get the round_data fields
+        creator = round_data.get('creator')
+        title = round_data.get('title')
+        date = datetime.datetime.strptime(round_data.get('date'), '%m.%d.%Y').date()
+
+        try:
+            # Try to get the existing trivia_round from the database
+            trivia_round = GPTriviaRound.objects.get(creator=creator, title=title, date=date)
+        except ObjectDoesNotExist:
+            # If it does not exist, create a new instance
+            trivia_round = GPTriviaRound()
+
+        # Assign the round_data fields to the GPTriviaRound instance
+        trivia_round.creator = creator
+        trivia_round.title = title
+        trivia_round.major_category = round_data.get('major_category')
+        trivia_round.minor_category1 = round_data.get('minor_category1')
+        trivia_round.minor_category2 = round_data.get('minor_category2')
+        trivia_round.date = date
+        trivia_round.round_number = round_data.get('round_number')
+        trivia_round.max_score = round_data.get('max_score')
+        trivia_round.score_alex = round_data.get('score_alex')
+        trivia_round.score_ichigo = round_data.get('score_ichigo')
+        trivia_round.score_megan = round_data.get('score_megan')
+        trivia_round.score_zach = round_data.get('score_zach')
+        trivia_round.score_jenny = round_data.get('score_jenny')
+        trivia_round.score_debi = round_data.get('score_debi')
+        trivia_round.score_dan = round_data.get('score_dan')
+        trivia_round.score_chris = round_data.get('score_chris')
+        trivia_round.score_drew = round_data.get('score_drew')
+        trivia_round.replay = round_data.get('replay', False)
+        trivia_round.cooperative = round_data.get('cooperative', False)
+
+        # Save the instance to the database
+        trivia_round.save()
+
+    return Response({"message": "Data saved successfully!"})

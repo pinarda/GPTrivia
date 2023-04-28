@@ -2,7 +2,6 @@
 {% load static %}
 {% load static GPTrivia_extras %}
 
-
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/scoresheet.css' %}">
 {% endblock %}
@@ -16,6 +15,8 @@
     <script src="{% static 'DataTables/ColReorder-1.6.2/js/dataTables.colReorder.min.js' %}"></script>
     <script src="{% static 'DataTables/AutoFill-2.5.3/js/dataTables.autoFill.min.js' %}"></script>
     <script src="{% static 'DataTables/Responsive-2.4.1/js/dataTables.responsive.min.js' %}"></script>
+    {% csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token }}">
 {% endblock %}
 
 {% block content %}
@@ -75,11 +76,122 @@
         round_titles = {{ round_titles|safe }};
         creators = {{ creators|safe }};
         playerColorMapping = {{ player_color_mapping|safe }};
+        const existingRounds = {{ existing_rounds|safe }};
+        players = {{ players|safe }}
+        pres_name = "{{ pres_name|safe }}"
 
-        $("#btn-save").on("click", function () {
-            // Save logic goes here
-            alert("Save button clicked!");
-        });
+        function formatDate(presName) {
+            const parts = presName.split('.');
+            const year = parts[2];
+            const month = parts[0].padStart(2, '0');
+            const day = parts[1].padStart(2, '0');
+
+            return `${year}-${month}-${day}`;
+        }
+
+        const formatted_pres_name = formatDate(pres_name);
+
+
+        function sendDataToServer(rounds) {
+            var csrfToken = $('meta[name="csrf-token"]').attr('content');
+
+            $.ajax({
+                url: "/save_scores/", // Update this to match your server's API endpoint
+                method: "POST",
+                data: JSON.stringify(rounds),
+                contentType: "application/json",
+                beforeSend: function (xhr) {
+                    // Include the CSRF token as a header in the AJAX request
+                    xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                },
+                success: function (response) {
+                    console.log("Data saved successfully!");
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.log("Error saving data: " + errorThrown);
+                }
+            });
+        }
+
+        function saveScores() {
+            var rounds = [];
+
+            // Store the column headers in an array, skipping the first two columns ("Player" and "Joker") and the last four columns
+            var columnHeader = [];
+            $("#scoresheet thead tr th:gt(1):lt(-4)").each(function () {
+                columnHeader.push($(this).text());
+            });
+
+            // Iterate through the round columns
+            for (var roundIndex = 0; roundIndex < columnHeader.length; roundIndex++) {
+                var round = {
+                    creator: "",
+                    title: columnHeader[roundIndex],
+                    round_number: roundIndex + 1,
+                    date: "{{ pres_name }}",
+                    major_category: "",
+                    minor_category1: "",
+                    minor_category2: "",
+                    max_score: 10,
+                    score_alex: null,
+                    score_ichigo: null,
+                    score_megan: null,
+                    score_zach: null,
+                    score_jenny: null,
+                    score_debi: null,
+                    score_dan: null,
+                    score_chris: null,
+                    score_drew: null,
+                    replay: false,
+                    cooperative: false
+                };
+
+                // Iterate through each player row
+                $("#scoresheet tbody tr").each(function () {
+                    var row = $(this);
+                    var playerName = row.children("td:first").text().trim();
+                    console.log("Player name:", playerName);
+
+                    // Get the score cell for the current round
+                    var roundScoreCell = row.children("td[data-column-index=" + (roundIndex + 2) + "]"); // Adjust the index here
+                    var roundScore = roundScoreCell.children("input, span input").val(); // Modify the selector to target both input and span input
+                    console.log("Round score cell:", roundScoreCell);
+                    console.log("Round score:", roundScore);
+
+                    // Check if the current cell has the 'creator-cell' class
+                    var isCreator = roundScoreCell.hasClass("creator-cell");
+                    if (isCreator) {
+                        round.creator = playerName;
+                    }
+
+                    // Update the score for the current player
+                    var parsedScore = parseFloat(roundScore);
+                    if (!isNaN(parsedScore)) {
+                        round[`score_${playerName.toLowerCase()}`] = parsedScore;
+                    }
+                });
+
+
+                rounds.push(round);
+            }
+
+            // Send data to the server
+            sendDataToServer(rounds);
+        };
+
+        $("#btn-save").on("click", saveScores);
+
+        function replaceNoneWithNull(rounds) {
+            return rounds.map(round => {
+                const newRound = { ...round };
+                for (const key in newRound.fields) {
+                    if (newRound.fields[key] === "null") {
+                        newRound.fields[key] = null;
+                    }
+                }
+                return newRound;
+            });
+        }
 
         $("#btn-add").on("click", function () {
                 // Get the player name from the input
@@ -238,6 +350,7 @@
                 updateCreatorBonus();
             }
 
+            saveScores()
         }
 
 
@@ -263,6 +376,10 @@
                 lengthChange: false,
                 info: false,
                 paging: false,
+                order: [
+                    [0, 'asc'], // Sort the first column in ascending order
+                    [1, 'desc'], // Sort the second column in descending order
+                ],
                 // This is necessary to invalidate the old table when the data changes
                 drawCallback: function () {
                     if (isUpdating) {
@@ -306,6 +423,8 @@
                 onDraw: function() {
                     console.log('onDraw');
 
+                    // Call the fillRoundScores function with the existing_rounds data
+                    fillRoundScores(replaceNoneWithNull(existingRounds));
                     $('table#scoresheet').on('change', 'tbody tr td select', function() {
                         // Calculate the total score for the current row
                         var $row = $(this).closest('tr');
@@ -321,7 +440,6 @@
                         console.log($row);
                         calculateTotalScore($row);
                     });
-
                 },
                 onSave: function(rowId, cell, oldValue, newValue) {
                     // Calculate the total score for the current row
@@ -364,20 +482,70 @@
             });
         });
 
+        {#if (existingRounds) {#}
+        {#    for (const round of existingRounds) {#}
+        {#        for (const player of players) {#}
+        {#            const score = round.fields[`score_${player.toLowerCase()}`];#}
+        {#            if (score !== null) {#}
+        {#                // Find the corresponding cell and set its text to the score#}
+        {#                const cell = $(`#scoresheet tbody tr[data-player="${player}"] td[data-round-title="${round.fields.title}"]`);#}
+        {#                cell.text(score);#}
+        {#                // Update the total score for the current row#}
+        {#                const row = cell.closest('tr');#}
+        {#                calculateTotalScore(row);#}
+        {#            }#}
+        {#        }#}
+        {#    }#}
 
-        $("#scoresheet").on("click", ".btn-delete", function () {
-            // Get the row to delete
-            var $row = $(this).closest("tr");
+            function fillRoundScores(existingRounds) {
+                for (const round of existingRounds) {
+                    const fields = round.fields;
+                    const creator = fields.creator;
+                    const title = fields.title;
+                    const date = fields.date;
 
-            // Remove the row from the table
-            {#$row.remove();#}
-            dataTable.row($row).remove().draw();
+                    if (date === formatted_pres_name) {
+                        // Iterate through the player rows and set the scores
+                        const roundIndex = round_titles.indexOf(title);
+                        if (roundIndex !== -1) {
+                            // Populate scores in the table
+                            $("#scoresheet tbody tr").each(function () {
+                                const playerName = $(this).find("td:first a").data("player");
+                                const scoreCell = $(this).find("td:gt(1):lt(-4)").eq(roundIndex);
 
-             $("#scoresheet tbody tr").each(function () {
-                 var $row = $(this);
-                 calculateTotalScore($row);
+                                const score = round.fields[`score_${playerName.toLowerCase()}`];
+                                const scoreValue = score === null ? '' : score;
+
+                                scoreCell.find('.tabledit-span').text(scoreValue);
+                                scoreCell.find('.tabledit-input').val(scoreValue);
+
+                                if (playerName === round.creator) {
+                                    scoreCell.addClass("creator-cell");
+                                }
+
+                                var $row = $(this).closest("tr");
+                                calculateTotalScore($row)
+
+                            });
+                        }
+
+                    }
+                }
+            }
+
+
+            $("#scoresheet").on("click", ".btn-delete", function () {
+                // Get the row to delete
+                var $row = $(this).closest("tr");
+
+                // Remove the row from the table
+                {#$row.remove();#}
+                dataTable.row($row).remove().draw();
+
+                $("#scoresheet tbody tr").each(function () {
+                    var $row = $(this);
+                    calculateTotalScore($row);
+                });
             });
-        });
-
     </script>
 {% endblock %}

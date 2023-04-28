@@ -1,19 +1,43 @@
 TO DO:
 
+TRIVIAL (minutes)
 
-In the trivia_rounds table, add a link to the corresponding start slide in the correct presentation.
+- Show the number of submitted rounds/who has submitted a round for the current week on the home page.
+TODO - Get code onto iMac, reset db and make new users, check that no authentication is in github.
+TODO - Turn dev mode off
 
-Finish the stats for the analysis page ("Player" options) / possible add the player specific stuff to the profile pages.
+MEDIUM (1-2 hrs)
 
-Update list of previous rounds
+- Finish the stats for the analysis page ("Player" options) / possible add the player specific stuff to the profile pages.
+- Add an option to autofill any remaining round slots with old rounds from an unused creator, or a second round from a creator.
+- Add a select/button to load an old scoresheet.
+- Add round type/max score info to scoresheet
+- Customizable player profile (pic, about)
 
-be able to specify what position to put new rounds, instead of appending to end of presentation
 
-add a round ideas page connected to ChatGPT API for quickly getting ideas for new rounds
-Add an option to autofill any remaining round slots with old rounds from an unused creator.
-Show the number of submitted rounds/who has submitted a round for the current week on the home page.
+LARGE (2-8hrs)
 
-minigames? such as a timed quiz using previous questions from other creators, or maybe a pokemon style game with trivia questions instead of pokemon battles.
+TODO - Can we add the joker option to GPTriviaRound, and set the dropdowns correctly when the page loads?
+TODO - Update list of previous rounds/add normalize option to the rounds list
+TODO - Make the site snazzier.
+- Be able to specify what position to put new rounds, instead of appending to end of presentation
+- Add a round ideas page connected to ChatGPT API for quickly getting ideas for new rounds
+- If we add a new player on the scoresheet, we need to modify the GPTriviaround model to accept additional players and save their scores too.
+- Add the prediction models back to the scoresheet
 
-add a select/button to load an old scoresheet.
-Make sure we save the scoresheet to the db every time something is edited. And if we load the page, we want to populate it with the current scoresheet for the presentation, if it already exists.
+
+
+HUGE (>8 hrs)
+
+- In the trivia_rounds table (and player profile), add a link to the corresponding start slide in the correct presentation.
+- Minigames/polls? such as a timed quiz using previous questions from other creators
+- Incorporate the question-level data from the forms
+
+
+
+
+
+
+
+
+

@@ -17,6 +17,7 @@
                 <th>Round Number <input type="text" placeholder="Search" onkeyup="filterTable(this, 7)"></th>
                 <th>Max Score <input type="text" placeholder="Search" onkeyup="filterTable(this, 8)"></th>
                 <th><a href="{% url 'player_profile' player_name="Alex" %}" class="player_name" data-player="Alex">Alex</a> <input type="text" placeholder="Search" onkeyup="filterTable(this, 9)"></th>
+                <th><a href="{% url 'player_profile' player_name="Chris" %}" class="player_name" data-player="Chris">Chris</a> <input type="text" placeholder="Search" onkeyup="filterTable(this, 20)"></th>
                 <th><a href="{% url 'player_profile' player_name="Ichigo" %}" class="player_name" data-player="Ichigo">Ichigo</a> <input type="text" placeholder="Search" onkeyup="filterTable(this, 10)"></th>
                 <th><a href="{% url 'player_profile' player_name="Megan" %}" class="player_name" data-player="Megan"}>Megan</a> <input type="text" placeholder="Search" onkeyup="filterTable(this, 11)"></th>
                 <th><a href="{% url 'player_profile' player_name="Zach" %}" class="player_name" data-player="Zach">Zach</a> <input type="text" placeholder="Search" onkeyup="filterTable(this, 12)"></th>
@@ -50,6 +51,7 @@
             <td>{{ round.round_number }}</td>
             <td>{{ round.max_score }}</td>
             <td>{{ round.score_alex }}</td>
+            <td>{{ round.score_chris }}</td>
             <td>{{ round.score_ichigo }}</td>
             <td>{{ round.score_megan }}</td>
             <td>{{ round.score_zach }}</td>

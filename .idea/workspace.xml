@@ -5,259 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/TODO" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/mail.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/migrations/0002_mergedpresentation.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.bootstrap.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.bootstrap.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.bootstrap4.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.bootstrap4.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.bootstrap5.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.bootstrap5.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.bulma.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.bulma.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.dataTables.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.dataTables.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.foundation.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.foundation.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.jqueryui.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.jqueryui.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.semanticui.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/css/autoFill.semanticui.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.bootstrap.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.bootstrap.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.bootstrap4.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.bootstrap4.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.bootstrap5.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.bootstrap5.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.bulma.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.bulma.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.dataTables.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.dataTables.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.foundation.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.foundation.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.jqueryui.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.jqueryui.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.semanticui.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/autoFill.semanticui.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/dataTables.autoFill.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/AutoFill-2.5.3/js/dataTables.autoFill.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.bootstrap.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.bootstrap.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.bootstrap4.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.bootstrap4.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.bootstrap5.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.bootstrap5.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.bulma.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.bulma.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.dataTables.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.dataTables.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.foundation.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.foundation.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.jqueryui.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.jqueryui.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.semanticui.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/buttons.semanticui.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/common.scss" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/css/mixins.scss" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.bootstrap.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.bootstrap.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.bootstrap4.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.bootstrap4.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.bootstrap5.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.bootstrap5.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.bulma.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.bulma.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.colVis.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.colVis.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.dataTables.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.dataTables.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.foundation.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.foundation.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.html5.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.html5.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.jqueryui.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.jqueryui.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.print.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.print.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.semanticui.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/buttons.semanticui.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/dataTables.buttons.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Buttons-2.3.6/js/dataTables.buttons.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.bootstrap.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.bootstrap.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.bootstrap4.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.bootstrap4.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.bootstrap5.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.bootstrap5.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.bulma.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.bulma.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.dataTables.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.dataTables.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.foundation.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.foundation.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.jqueryui.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.jqueryui.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.semanticui.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/css/colReorder.semanticui.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.bootstrap.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.bootstrap.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.bootstrap4.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.bootstrap4.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.bootstrap5.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.bootstrap5.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.bulma.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.bulma.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.dataTables.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.dataTables.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.foundation.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.foundation.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.jqueryui.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.jqueryui.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.semanticui.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/colReorder.semanticui.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/dataTables.colReorder.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/ColReorder-1.6.2/js/dataTables.colReorder.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.bootstrap.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.bootstrap.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.bootstrap4.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.bootstrap4.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.bootstrap5.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.bootstrap5.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.bulma.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.bulma.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.dataTables.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.dataTables.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.foundation.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.foundation.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.jqueryui.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.jqueryui.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.semanticui.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/dataTables.semanticui.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/jquery.dataTables.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/css/jquery.dataTables.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/images/sort_asc.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/images/sort_asc_disabled.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/images/sort_both.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/images/sort_desc.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/images/sort_desc_disabled.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.bootstrap.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.bootstrap.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.bootstrap4.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.bootstrap4.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.bootstrap5.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.bootstrap5.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.bulma.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.bulma.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.dataTables.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.dataTables.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.foundation.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.foundation.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.jqueryui.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.jqueryui.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.semanticui.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/dataTables.semanticui.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/jquery.dataTables.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/DataTables-1.13.4/js/jquery.dataTables.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.bootstrap.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.bootstrap.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.bootstrap4.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.bootstrap4.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.bootstrap5.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.bootstrap5.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.bulma.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.bulma.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.dataTables.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.dataTables.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.foundation.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.foundation.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.jqueryui.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.jqueryui.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.semanticui.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/css/keyTable.semanticui.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/dataTables.keyTable.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/dataTables.keyTable.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.bootstrap.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.bootstrap.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.bootstrap4.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.bootstrap4.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.bootstrap5.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.bootstrap5.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.bulma.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.bulma.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.dataTables.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.dataTables.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.foundation.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.foundation.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.jqueryui.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.jqueryui.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.semanticui.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/KeyTable-2.8.2/js/keyTable.semanticui.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.bootstrap.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.bootstrap.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.bootstrap4.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.bootstrap4.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.bootstrap5.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.bootstrap5.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.bulma.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.bulma.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.dataTables.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.dataTables.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.foundation.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.foundation.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.jqueryui.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.jqueryui.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.semanticui.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/css/responsive.semanticui.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/dataTables.responsive.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/dataTables.responsive.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.bootstrap.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.bootstrap.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.bootstrap4.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.bootstrap4.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.bootstrap5.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.bootstrap5.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.bulma.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.bulma.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.dataTables.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.dataTables.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.foundation.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.foundation.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.jqueryui.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.jqueryui.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.semanticui.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/Responsive-2.4.1/js/responsive.semanticui.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/datatables.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/datatables.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/datatables.min.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/datatables.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/jQuery-3.6.0/jquery-3.6.0.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/DataTables/jQuery-3.6.0/jquery-3.6.0.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/home.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/scoresheet.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/favicon.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/jquery-tabledit-1.2.3/CHANGELOG.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/jquery-tabledit-1.2.3/LICENSE" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/jquery-tabledit-1.2.3/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/jquery-tabledit-1.2.3/bower.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/jquery-tabledit-1.2.3/example.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/jquery-tabledit-1.2.3/jquery.tabledit.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/jquery-tabledit-1.2.3/jquery.tabledit.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/player_analysis_legacy.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/token.pickle" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/auth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/styles.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/home.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/home.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/player_analysis.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/player_analysis.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/player_profile.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/player_profile.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/TODO" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/TODO" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/rounds_list.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/rounds_list.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/base.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templatetags/GPTrivia_extras.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templatetags/GPTrivia_extras.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/tests/tests.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/tests/tests.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/urls.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/views.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
@@ -493,6 +245,7 @@
       <workItem from="1682095728654" duration="1059000" />
       <workItem from="1682213211108" duration="45481000" />
       <workItem from="1682312618463" duration="19739000" />
+      <workItem from="1682461190262" duration="19132000" />
     </task>
     <servers />
   </component>
@@ -518,22 +271,22 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>258</line>
+          <line>261</line>
           <option name="timeStamp" value="23" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>188</line>
+          <line>191</line>
           <option name="timeStamp" value="25" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>373</line>
+          <line>376</line>
           <option name="timeStamp" value="27" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>418</line>
+          <line>421</line>
           <option name="timeStamp" value="34" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -549,143 +302,92 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>39</line>
+          <line>42</line>
           <option name="timeStamp" value="142" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>240</line>
-          <properties lambdaOrdinal="-1" />
+          <line>353</line>
           <option name="timeStamp" value="137" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>266</line>
-          <properties lambdaOrdinal="-1" />
+          <line>383</line>
           <option name="timeStamp" value="153" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>274</line>
-          <properties lambdaOrdinal="-1" />
+          <line>391</line>
           <option name="timeStamp" value="159" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>252</line>
-          <properties lambdaOrdinal="-1" />
+          <line>365</line>
           <option name="timeStamp" value="161" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>176</line>
-          <properties lambdaOrdinal="-1" />
+          <line>288</line>
           <option name="timeStamp" value="166" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>278</line>
-          <properties lambdaOrdinal="-1" />
+          <line>395</line>
           <option name="timeStamp" value="172" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>286</line>
-          <properties lambdaOrdinal="-1" />
+          <line>403</line>
           <option name="timeStamp" value="176" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>267</line>
-          <properties lambdaOrdinal="-1" />
+          <line>384</line>
           <option name="timeStamp" value="177" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>290</line>
-          <properties lambdaOrdinal="-1" />
+          <line>407</line>
           <option name="timeStamp" value="178" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>294</line>
-          <properties lambdaOrdinal="-1" />
+          <line>411</line>
           <option name="timeStamp" value="179" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>287</line>
-          <properties lambdaOrdinal="-1" />
+          <line>404</line>
           <option name="timeStamp" value="180" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>288</line>
-          <properties lambdaOrdinal="-1" />
+          <line>405</line>
           <option name="timeStamp" value="181" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>216</line>
-          <properties lambdaOrdinal="-1" />
+          <line>328</line>
           <option name="timeStamp" value="189" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>129</line>
-          <properties lambdaOrdinal="-1" />
-          <option name="timeStamp" value="190" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>132</line>
-          <properties lambdaOrdinal="-1" />
-          <option name="timeStamp" value="191" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>124</line>
-          <properties lambdaOrdinal="-1" />
-          <option name="timeStamp" value="195" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>126</line>
-          <properties lambdaOrdinal="-1" />
-          <option name="timeStamp" value="196" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>141</line>
-          <properties lambdaOrdinal="-1" />
-          <option name="timeStamp" value="197" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>322</line>
-          <properties lambdaOrdinal="-1" />
+          <line>441</line>
           <option name="timeStamp" value="198" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>122</line>
-          <properties lambdaOrdinal="-1" />
-          <option name="timeStamp" value="200" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>76</line>
-          <properties lambdaOrdinal="-1" />
+          <line>77</line>
           <option name="timeStamp" value="202" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="django-line">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>39</line>
+          <line>40</line>
           <option name="timeStamp" value="141" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="django-line">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>48</line>
+          <line>49</line>
           <option name="timeStamp" value="144" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="django-line">
