@@ -9,6 +9,8 @@ def main():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "GPTrivia.settings")
     try:
         from django.core.management import execute_from_command_line
+    except:
+        pass
 
     execute_from_command_line(sys.argv)
 
