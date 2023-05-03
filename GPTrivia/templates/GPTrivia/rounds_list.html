@@ -1,11 +1,18 @@
 {% extends "base.html" %}
 {% load GPTrivia_extras %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/rounds_list.css' %}">
+{% endblock %}
+
 {% block extra_meta %}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>
 {% endblock %}
 
+
+
 {% block content %}
-<h1>Trivia Round History</h1>
 
 <div class="table-container">
     <table id="roundList">
@@ -39,7 +46,7 @@
         <tbody>
             {% for round in rounds %}
                 <tr>
-            <td>{{ round.title }}</td>
+            <td class="title-cell">{{ round.title }}</td>
             {% with player_class=round.creator %}
                 <td>
                     {% if round.creator %}

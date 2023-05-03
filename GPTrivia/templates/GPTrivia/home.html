@@ -8,16 +8,15 @@
 {% block content %}
     <div class="container">
       {% if presentation_url %}
-        <h3>Tonight's Trivia Slides: {{ pres_name }}</h3>
-        <iframe src="{{ presentation_url }}" width="947" height="569" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
+{#        <h3>{{ pres_name }}</h3>#}
+        <iframe style="margin: 20px" src="{{ presentation_url }}" width="947" height="569" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
       {% endif %}
 
-      <h3>Generate Presentation</h3>
 
       <form method="post">
         {% csrf_token %}
-        <button type="submit" name="action" value="generate">Generate Presentation</button>
-        <button type="submit" name="action" value="update">Update Presentation</button>
+        <button type="submit" name="action" value="generate">Generate Slides</button>
+        <button type="submit" name="action" value="update">Update Slides</button>
       </form>
     </div>
 {% endblock %}

@@ -1,5 +1,11 @@
 {% extends 'base.html' %}
 {% load GPTrivia_extras %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}">
+{% endblock %}
+
 {% block content %}
 <select name="creators" id="creator-selector">
     <option value="" selected>-- Select a creator --</option>
@@ -15,7 +21,7 @@
     {% endfor %}
 </select>
 
-<select name="players" id="player-selector">
+<select name="players" id="player-selector" style="display: none">
     <option value="" selected>-- Select a player --</option>
     {% for player in players %}
     <option value="{{ player }}">{{ player }}</option>
@@ -197,6 +203,11 @@
                 marker: {
                     color: Object.keys(averagesDiff).map((player) => playerColorMapping[player]),
                 },
+                plot_bgcolor:'rgba(0,0,0,0)',
+                paper_bgcolor:'rgba(0,0,0,0)',
+                font: {
+                    color: "#ffffff",
+                },
             },
         ];
 
@@ -209,10 +220,18 @@
             title: `Average Scores by Player for ${stg} Rounds`,
             xaxis: {
                 title: xax,
+                color: "#ffffff",
             },
             yaxis: {
                 title: 'Average Score Difference',
+                color: "#ffffff",
             },
+            plot_bgcolor:'rgba(0,0,0,0)',
+            paper_bgcolor:'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+            },
+
         };
 
         Plotly.newPlot('bar-chart', traceData, layout);
@@ -259,7 +278,12 @@
                 },
                 line: {
                     color: playerColorMapping[playerName]
-                }
+                },
+                plot_bgcolor:'rgba(0,0,0,0)',
+                paper_bgcolor:'rgba(0,0,0,0)',
+                font: {
+                    color: "#ffffff",
+                },
             });
         }
 
@@ -317,7 +341,11 @@
                 }
             }
             let averageScore = count ? totalScore / count : 0;
+
             violinData[i].y = violinData[i].y.map((score) => averageScore - score);
+            if (myrounds.length === 0) {
+                violinData[i].y = [0];
+            }
         }
 
         // and sort the violinData
@@ -331,9 +359,16 @@
             title: `Scores by Player for ${stg}'s Rounds`,
             xaxis: {
                 title: xax,
+                color: "#ffffff",
             },
             yaxis: {
                 title: 'Average Score Difference',
+                color: "#ffffff",
+            },
+            plot_bgcolor:'rgba(0,0,0,0)',
+            paper_bgcolor:'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
             },
         };
 

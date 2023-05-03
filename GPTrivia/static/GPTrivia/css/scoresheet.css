@@ -1,14 +1,25 @@
+body {
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  background-color: #333;
+    color:white;
+}
+
+.header-container{
+    background-color: #285238;
+}
+
 .joker-round-select {
     width: 100%;
     box-sizing: border-box;
 }
 
 .creator-cell {
-    background-color: #1874ba; /* Change to the color you want for the creator cell */
+    background-color: #285238; /* Change to the color you want for the creator cell */
 }
 
 .joker-round-cell {
-    background-color: #faea7f; /* Change to the color you want for the joker round cell */
+    background-color: #4B296B; /* Change to the color you want for the joker round cell */
 }
 
 .btn-delete {
@@ -42,7 +53,7 @@ text-align: center; /* Center the text within the button */
 }
 
 #btn-save {
-    background-color: #4CAF50; /* Green */
+    background-color: #285238; /* Green */
     border: none;
     color: white;
     padding: 10px 24px;
@@ -71,4 +82,8 @@ text-align: center; /* Center the text within the button */
 
 h1{
     text-align: center;
+}
+
+a {
+    color: white;
 }

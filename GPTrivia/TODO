@@ -1,15 +1,11 @@
 TO DO:
 
 TRIVIAL (minutes)
-
-TODO - Get code onto iMac, reset db and make new users, check that no authentication is in github. INSTALL psycopg2
-TODO - Turn dev mode off
-TODO - delete player, reload page: their second column score remains for some reason. Interestingly, this depends on whether the score is added or was already there on page load.
-TODO - missing presentation on February 24-23 (need to fill out the category_map.csv for this day). and scoresheet for 11/10/22
-TODO - add normalize option to the rounds list
+TODO - Get code onto iMac, reset db and make new users, check that no authentication is in github.
+High - add normalize option to the rounds list
 High - Can we make the scoresheet expand and contract when we change the window size?
-High - Show the number of submitted rounds/who has submitted a round for the current week on the home page.
-High - Need to double click sorting columns for them to work the first time - also, why are the sort icons weird now?
+Medium - Show the number of submitted rounds/who has submitted a round for the current week on the home page.
+Low - Need to double click sorting columns for them to work the first time?
 
 MEDIUM (1-2 hrs)
 
@@ -23,7 +19,7 @@ Medium - Customizable player profile (pic, about)
 
 LARGE (2-8hrs)
 
-TODO - Make the site snazzier.
+High - make the site mobile friendly. (Menu, tables, slides, etc)
 High - Be able to specify what position to put new rounds, instead of appending to end of presentation
 High - Add a round ideas page connected to ChatGPT API for quickly getting ideas for new rounds
 Medium - If we add a new player on the scoresheet, we need to modify the GPTriviaround model to accept additional players and save their scores too.

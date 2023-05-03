@@ -1,5 +1,10 @@
 <!-- GPTrivia/player_profile.html -->
 {% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}">
+{% endblock %}
 
 {% load static %}
 {% block extra_meta %}
@@ -7,12 +12,12 @@
 {% endblock %}
 
 {% block content %}
-    <h1>{{ player_name }}'s Profile</h1>
+    <h1><a href="{% url 'player_profile' player_name=player_name %}" class="player_name" data-player='{{ player_name }}'>{{ player_name }}</a>'s Profile</h1>
 
     <div class="content-wrapper">
 
         <h2>Creator Information:</h2>
-        <button class="expand-collapse-button" type="button", id="toggleTable">Round Categories</button>
+        <button class="expand-collapse-button" id="toggleTable" onclick="toggleCreatedRounds()">Round Categories</button>
         <button class="expand-collapse-button" id="roundsButton" onclick="toggleRounds()">Show/Hide Created Rounds</button>
 
         <div class="table-container">
@@ -82,6 +87,12 @@
         </div>
     </div>
 
+    {% if user.is_authenticated and user.username == player_name %}
+        <form action={% url 'password_change' %}>
+            <button class="expand-collapse-button" id="passwordbtn">Change Password</button>
+        </form>
+    {% endif %}
+
     <script>
           let playerColorMapping = {{ player_color_mapping|safe }};
           let playerName = "{{ player_name }}";
@@ -140,21 +151,38 @@
 
         function toggleRounds() {
             const roundsList = document.getElementById('playerRoundsTable');
+            const createList = document.getElementById('createdRoundsTable');
             if (roundsList.style.display === "none") {
                 roundsList.style.display = "block";
+                if (createList.style.display === "table") {
+                    createList.style.display = "none";
+                }
             } else {
                 roundsList.style.display = "none";
             }
         }
 
-        document.getElementById("toggleTable").addEventListener("click", function() {
-            let table = document.getElementById("createdRoundsTable");
-            if (table.style.display === "none") {
-                table.style.display = "table";
+        function toggleCreatedRounds() {
+            const roundsList = document.getElementById('playerRoundsTable');
+            const createList = document.getElementById('createdRoundsTable');
+            if (createList.style.display === "none") {
+                createList.style.display = "table";
+                if (roundsList.style.display === "block") {
+                    roundsList.style.display = "none";
+                }
             } else {
-                table.style.display = "none";
+                createList.style.display = "none";
             }
-        });
+        }
+
+        {#document.getElementById("toggleTable").addEventListener("click", function() {#}
+        {#    let table = document.getElementById("createdRoundsTable");#}
+        {#    if (table.style.display === "none") {#}
+        {#        table.style.display = "block";#}
+        {#    } else {#}
+        {#        table.style.display = "none";#}
+        {#    }#}
+        {#});#}
 
 
 
@@ -223,6 +251,8 @@
                 }
             });
         });
+
+
 
     </script>
 {% endblock %}

@@ -51,7 +51,11 @@ playerColorMapping = {
             'Dan': '#0000FF',
             'Dad': '#0000FF',
             'Chris': '#005427',
-            'Drew': '#8c564b'
+            'Drew': '#8c564b',
+            'Jeff': '#333333',
+            'Paige': '#333333',
+            'Dillon': '#333333',
+            'Unknown': '#333333',
         };
 
 players = [
@@ -365,6 +369,7 @@ def player_profile_dict(request, player_name):
     # save category of the round with the highest and lowest average score for the player
     max_avg = category_averages[0]['major_category']
     min_avg = category_averages[len(category_averages) - 1]['major_category']
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Dad", "Mom"]
 
     # count the total number of rounds the player has a score for
     total_rounds = GPTriviaRound.objects.filter(**{f"{score_p}__isnull": False}).count()
@@ -390,18 +395,35 @@ def player_profile_dict(request, player_name):
 
     # save creator of the round with the highest and lowest average score for the player
     # but make sure the player isn't the creator of the round with the highest or lowest average score
+    # max_creator_avg = creator_averages[0]['creator']
+    # min_creator_avg = creator_averages[len(creator_averages) - 1]['creator']
+    # if max_creator_avg == player_name:
+    #     max_creator_avg = creator_averages[1]['creator']
+    # if min_creator_avg == player_name:
+    #     min_creator_avg = creator_averages[len(creator_averages) - 2]['creator']
+    # # if the max_creator_avg or min_creator_avg is an empty string
+    # # choose the next highest or lowest average score
+    # if max_creator_avg == "":
+    #     max_creator_avg = creator_averages[2]['creator']
+    # if min_creator_avg == "":
+    #     min_creator_avg = creator_averages[len(creator_averages) - 3]['creator']
+
+    # if the max_creator_avg or min_creator_avg is not in the list of players
+    # continue until we find a player that is in the list of players and is not the player
     max_creator_avg = creator_averages[0]['creator']
     min_creator_avg = creator_averages[len(creator_averages) - 1]['creator']
-    if max_creator_avg == player_name:
-        max_creator_avg = creator_averages[1]['creator']
-    if min_creator_avg == player_name:
-        min_creator_avg = creator_averages[len(creator_averages) - 2]['creator']
-    # if the max_creator_avg or min_creator_avg is an empty string
-    # choose the next highest or lowest average score
-    if max_creator_avg == "":
-        max_creator_avg = creator_averages[2]['creator']
-    if min_creator_avg == "":
-        min_creator_avg = creator_averages[len(creator_averages) - 3]['creator']
+    i = 0
+    while max_creator_avg not in players or max_creator_avg == player_name:
+        i=i+1
+        max_creator_avg = creator_averages[i]['creator']
+    i = 0
+    while min_creator_avg not in players or min_creator_avg == player_name:
+        i=i+1
+        min_creator_avg = creator_averages[len(creator_averages) - 1 - i]['creator']
+
+
+
+
 
     # let's count the number of rounds that the player has created
     created_rounds_count = created_rounds.count()
