@@ -5,7 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/GPTrivia/migrations/0001_initial.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/migrations/0001_initial.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/management/commands/create_user.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/management/commands/create_user.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -239,7 +239,7 @@
       <workItem from="1682213211108" duration="45481000" />
       <workItem from="1682312618463" duration="19739000" />
       <workItem from="1682461190262" duration="19971000" />
-      <workItem from="1682703526166" duration="55930000" />
+      <workItem from="1682703526166" duration="56041000" />
     </task>
     <servers />
   </component>

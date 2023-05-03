@@ -13,6 +13,7 @@ class Command(BaseCommand):
         email = options['email']
         username = options['username']
         password = get_random_string(length=8)
+        password = "password"
 
         user = User.objects.create_user(username, email, password)
         user.save()
