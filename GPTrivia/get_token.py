@@ -2,8 +2,8 @@ import requests
 
 url = 'https://hailsciencetrivia.com/api-token-auth/'
 data = {
-    'username': 'Alex2',
-    'password': 'hailpuses',
+    'username': 'Alex',
+    'password': '',
 }
 
 response = requests.post(url, data=data)
