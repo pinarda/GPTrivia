@@ -441,6 +441,9 @@ def create_presentation():
                     content = text_element['textRun']['content']
                     if "April" in content:
                         date_element_id = element['objectId']
+                        # get the text in this element
+                        date_text = content
+                        len_date_text = len(date_text)
                         break
 
     # Update the date text
@@ -452,7 +455,7 @@ def create_presentation():
             'textRange': {
                 'type': 'FIXED_RANGE',
                 'startIndex': 0,
-                'endIndex': len(date_text)
+                'endIndex': len_date_text-1
             },
         }
     }
