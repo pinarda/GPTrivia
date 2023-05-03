@@ -1,7 +1,7 @@
 TO DO:
 
 TRIVIAL (minutes)
-TODO - Get code onto iMac, reset db and make new users, check that no authentication is in github.
+TODO - Get code onto iMac
 High - add normalize option to the rounds list
 High - Can we make the scoresheet expand and contract when we change the window size?
 Medium - Show the number of submitted rounds/who has submitted a round for the current week on the home page.

@@ -5,8 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/db2.sqlite3" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/get_token.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/get_token.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/TODO" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/TODO" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -60,8 +62,8 @@
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/GPTrivia/templatetags" />
       <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/GPTrivia/templatetags" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/GPTrivia" />
@@ -240,7 +242,7 @@
       <workItem from="1682213211108" duration="45481000" />
       <workItem from="1682312618463" duration="19739000" />
       <workItem from="1682461190262" duration="19971000" />
-      <workItem from="1682703526166" duration="53373000" />
+      <workItem from="1682703526166" duration="55547000" />
     </task>
     <servers />
   </component>
