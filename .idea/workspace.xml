@@ -5,27 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/GPTrivia/migrations/0003_gptriviaround_joker_round_index.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/migrations/0004_remove_gptriviaround_joker_round_index_and_more.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/migrations/0005_gptriviaround_cooperative_gptriviaround_notes_and_more.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/migrations/0006_gptriviaround_link.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/new_rounds.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/roundss.csv" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/TODO" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/TODO" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/mail.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/mail.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/scoresheet.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/scoresheet.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/player_profile.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/player_profile.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/rounds_list.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/rounds_list.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templatetags/GPTrivia_extras.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templatetags/GPTrivia_extras.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/token.pickle" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/token.pickle" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/import_rounds.py" beforeDir="false" afterPath="$PROJECT_DIR$/import_rounds.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rounds.csv" beforeDir="false" afterPath="$PROJECT_DIR$/rounds.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/manage.py" beforeDir="false" afterPath="$PROJECT_DIR$/manage.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -259,7 +240,7 @@
       <workItem from="1682213211108" duration="45481000" />
       <workItem from="1682312618463" duration="19739000" />
       <workItem from="1682461190262" duration="19971000" />
-      <workItem from="1682703526166" duration="37847000" />
+      <workItem from="1682703526166" duration="39093000" />
     </task>
     <servers />
   </component>
