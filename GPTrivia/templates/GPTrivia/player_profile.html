@@ -2,6 +2,9 @@
 {% extends 'base.html' %}
 
 {% load static %}
+{% block extra_meta %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>
+{% endblock %}
 
 {% block content %}
     <h1>{{ player_name }}'s Profile</h1>
@@ -43,6 +46,8 @@
                             <th>Category</th>
                             <th>Maximum Score</th>
                             <th>Round Number</th>
+                            <th>Coop</th>
+                            <th>Link</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -53,6 +58,8 @@
                                 <td>{{ round.major_category }}</td>
                                 <td>{{ round.max_score }}</td>
                                 <td>{{ round.round_number }}</td>
+                                <td>{{ round.cooperative }}</td>
+                                <td><button class="slides-button" type="button" data-presentation-url={{ round.link }}>Slides</button></td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -62,9 +69,12 @@
             {% endif %}
         </div>
 
+
+
         <div class="summary-stats">
             <h2>Summary Stats:</h2>
             <p>Number of Rounds Played: {{ total_rounds }}</p>
+            <p>Number of Rounds Created: {{ created_rounds_count }}</p>
             <p>Strongest Category: {{ max_avg }}</p>
             <p>Weakest Category: {{ min_avg }}</p>
             <p>Favorite Creator: <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a> </p>
@@ -85,6 +95,21 @@
             for (let i = 0; i < expandCollapseButton.length; i++) {
                 expandCollapseButton[i].style.backgroundColor = playerColor;
                 expandCollapseButton[i].style.color = textColor;
+            }
+            let slidesButton = document.getElementsByClassName("slides-button");
+            for (let i = 0; i < slidesButton.length; i++) {
+                slidesButton[i].style.backgroundColor = playerColor;
+                slidesButton[i].style.color = textColor;
+                // no border
+                slidesButton[i].style.border = "none";
+                // on hover, darken the color
+                slidesButton[i].addEventListener("mouseover", function() {
+                    slidesButton[i].style.backgroundColor = darkenColor(playerColor);
+                });
+                // on mouseout, reset the color
+                slidesButton[i].addEventListener("mouseout", function() {
+                    slidesButton[i].style.backgroundColor = playerColor;
+                });
             }
           }
 
@@ -161,6 +186,41 @@
 
             link.addEventListener('mouseout', () => {
                 link.style.color = '';
+            });
+        });
+
+        $(document).ready(function () {
+            $(".slides-button").click(function () {
+                var presentationUrl = $(this).data("presentation-url");
+
+                // Find the row containing the clicked button
+                var $row = $(this).closest("tr");
+
+                // Check if the iframe already exists
+                var $iframe = $row.next("tr.slides-iframe-row");
+
+                if ($iframe.length) {
+                    // If the iframe exists, toggle its visibility
+                    $iframe.toggle();
+                } else {
+                    // If the iframe doesn't exist, create a new row and the iframe
+                    var $newRow = $('<tr class="slides-iframe-row"><td colspan="7"></td></tr>');
+                    var $iframeCell = $newRow.children("td");
+
+                    var iframe = $('<iframe>', {
+                        src: presentationUrl,
+                        width: "100%",
+                        height: "500",
+                        frameborder: "0",
+                        allowfullscreen: "true",
+                        mozallowfullscreen: "true",
+                        webkitallowfullscreen: "true"
+                    });
+
+                    // Append the iframe to the new cell and insert the row after the current row
+                    $iframeCell.append(iframe);
+                    $row.after($newRow);
+                }
             });
         });
 

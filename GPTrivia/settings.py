@@ -34,6 +34,7 @@ SESSION_COOKIE_AGE = 60 * 60 * 24 * 365
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
+
 # Application definition
 
 INSTALLED_APPS = [

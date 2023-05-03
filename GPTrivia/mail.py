@@ -360,6 +360,10 @@ def create_delete_insert_text_requests(element_id, start_index, end_index, new_t
 
     return [delete_text_request, insert_text_request]
 
+def build_credentials():
+    flow = InstalledAppFlow.from_client_secrets_file(
+        CLIENT_SECRET_FILE, SCOPES)
+    return flow.run_local_server(port=8080)
 
 def create_presentation():
     credentials = None
@@ -370,20 +374,22 @@ def create_presentation():
 
     # Check if the credentials have expired
     if credentials.expired and credentials.refresh_token:
-        # Refresh the credentials
-        credentials.refresh(Request())
+        try:
+            # Refresh the credentials
+            credentials.refresh(Request())
 
-        # Save the refreshed credentials back to the 'token.pickle' file
-        with open(token_file_path, 'wb') as token:
-            pickle.dump(credentials, token)
+            # Save the refreshed credentials back to the 'token.pickle' file
+            with open(token_file_path, 'wb') as token:
+                pickle.dump(credentials, token)
+        except Exception as e:
+            print("Failed to refresh the token, getting new credentials")
+            credentials = build_credentials()
+            with open(token_file_path, 'wb') as token:
+                pickle.dump(credentials, token)
 
     # If the credentials are not available or invalid, prompt the user to authenticate again.
     if not credentials or not credentials.valid:
-        if credentials and credentials.expired and credentials.refresh_token:
-            credentials.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES)
-            credentials = flow.run_local_server(port=8000)
+        credentials = build_credentials()
         with open(token_file_path, 'wb') as token:
             pickle.dump(credentials, token)
 

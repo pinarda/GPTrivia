@@ -35,6 +35,8 @@ from django.http import JsonResponse
 from django.core import serializers
 from rest_framework.renderers import JSONRenderer
 from datetime import date
+from django.contrib.postgres.fields import JSONField  # Import this at the top of your file
+
 
 gmail_key = '8f35edc691b918094035b22807266a1e468bf5f0'
 
@@ -67,8 +69,21 @@ class CustomPasswordChangeDoneView(auth_views.PasswordChangeDoneView):
 @login_required
 def rounds_list(request):
     rounds = GPTriviaRound.objects.all()
+    text_color = {}
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Dad", "Mom"]
+    for player in players:
+        # grab the player's hex color from the playerColorMapping dictionary
+        player_color = playerColorMapping[player]
+        # convert the hex color to a measure of brightness
+        brightness = int(player_color[1:3], 16) + int(player_color[3:5], 16) + int(player_color[5:7], 16)
+        # if the brightness is less than 384, use white text, otherwise use black text
+        if brightness < 480:
+            text_color[player] = 'white'
+        else:
+            text_color[player] = 'black'
     context = {'rounds': rounds,
-               'playerColorMapping': playerColorMapping,}
+               'playerColorMapping': playerColorMapping,
+               'text_color_mapping': text_color}
 
     return render(request, 'GPTrivia/rounds_list.html', context)
 
@@ -338,7 +353,10 @@ def player_profile_dict(request, player_name):
     # this will be used to determine the relative position of the player's average score
     # in the category
     for cat_avg in category_averages:
-        cat_avg['avg_score'] = cat_avg['avg_score'] - player_avg
+        if cat_avg['avg_score'] is not None:
+            cat_avg['avg_score'] = cat_avg['avg_score'] - player_avg
+        else:
+            cat_avg['avg_score'] = 0
 
     # sort the category averages by the average score
     category_averages = sorted(category_averages, key=lambda k: k['avg_score'], reverse=True)
@@ -385,6 +403,9 @@ def player_profile_dict(request, player_name):
     if min_creator_avg == "":
         min_creator_avg = creator_averages[len(creator_averages) - 3]['creator']
 
+    # let's count the number of rounds that the player has created
+    created_rounds_count = created_rounds.count()
+
 
     context = {
         'player_name': player_name,
@@ -397,6 +418,7 @@ def player_profile_dict(request, player_name):
         'total_rounds': total_rounds,
         'max_cat_avg': max_creator_avg,
         'min_cat_avg': min_creator_avg,
+        'created_rounds_count': created_rounds_count,
     }
 
     return context
@@ -412,6 +434,7 @@ def home(request):
         latest_presentation = MergedPresentation.objects.latest('id')
         presentation_url = f"https://docs.google.com/presentation/d/{latest_presentation.presentation_id}/embed"
     except MergedPresentation.DoesNotExist:
+        latest_presentation = None
         presentation_url = None
 
     presentation_name = datetime.date.strftime(datetime.date.today(), '%-m.%d.%Y')
@@ -446,42 +469,78 @@ def home(request):
             latest_presentation.save()
             presentation_url = f"https://docs.google.com/presentation/d/{updated_presentation_id}/embed"
 
-    return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name})
+    return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None"})
 
 @login_required
 def scoresheet(request):
     players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew"]
     # for the round titles, we will query the database for the MergePresentation object with the latest id
     # and get the round_names attribute
-    latest_presentation = MergedPresentation.objects.latest('id')
-    round_titles = latest_presentation.round_names
-    print (round_titles)
-    creators = latest_presentation.creator_list
-    # also get the presentation name
-    presentation_name = latest_presentation.name
+    try:
+        latest_presentation = MergedPresentation.objects.latest('id')
+    except MergedPresentation.DoesNotExist:
+        latest_presentation = None
+    if latest_presentation:
+        round_titles = latest_presentation.round_names
+        joker_round_indices = latest_presentation.joker_round_indices
+        if joker_round_indices is None:
+            # the joker round indices are a dictionary with the player name as the key and the index of the joker round as the value
+            # if it is none, default to 0 for all players
+            joker_round_indices = {player: 0 for player in players}
 
-    pres_date = datetime.datetime.strptime(presentation_name, '%m.%d.%Y').date()
-    existing_rounds = GPTriviaRound.objects.filter(date=pres_date, title__in=round_titles)
+        creators = latest_presentation.creator_list
+        # also get the presentation name
+        presentation_name = latest_presentation.name
 
-    # Serialize the queryset into a JSON string and then parse it into a list of dictionaries
-    existing_rounds_json = serializers.serialize('json', existing_rounds)
-    existing_rounds_list = json.loads(existing_rounds_json)
+        pres_date = datetime.datetime.strptime(presentation_name, '%m.%d.%Y').date()
+        existing_rounds = GPTriviaRound.objects.filter(date=pres_date, title__in=round_titles)
 
-    # Replace None values with null
-    for round_dict in existing_rounds_list:
-        for key, value in round_dict['fields'].items():
-            if value is None:
-                round_dict['fields'][key] = "null"
+        # change the boolean values to strings
+        for round in existing_rounds:
+            # the boolean columns are replay and cooperative
+            if round.replay:
+                round.replay = "true"
+            else:
+                round.replay = "false"
+            if round.cooperative:
+                round.cooperative = "true"
+            else:
+                round.cooperative = "false"
 
-    context = {
-        'players': players,
-        'round_titles': round_titles,
-        'creators': creators,
-        'player_color_mapping': playerColorMapping,
-        'pres_name': presentation_name,
-        'existing_rounds': existing_rounds_list
-    }
+        # Serialize the queryset into a JSON string and then parse it into a list of dictionaries
+        existing_rounds_json = serializers.serialize('json', existing_rounds)
+        existing_rounds_list = json.loads(existing_rounds_json)
 
+        # Replace None values with null
+        for round_dict in existing_rounds_list:
+            for key, value in round_dict['fields'].items():
+                if value is None:
+                    round_dict['fields'][key] = "null"
+
+
+        print(joker_round_indices)
+        context = {
+            'players': players,
+            'round_titles': round_titles,
+            'creators': creators,
+            'player_color_mapping': playerColorMapping,
+            'pres_name': presentation_name,
+            'existing_rounds': existing_rounds_list,
+            'joker_round_indices': joker_round_indices,
+            'presentation_id': latest_presentation.presentation_id,
+        }
+
+    else:
+        context = {
+            'players': players,
+            'round_titles': [],
+            'creators': [],
+            'player_color_mapping': playerColorMapping,
+            'pres_name': "None",
+            'existing_rounds': [],
+            'joker_round_indices': 0,
+            'presentation_id': "",
+        }
 
     return render(request, 'GPTrivia/scoresheet.html', context)
 
@@ -524,7 +583,11 @@ class CustomObtainAuthToken(ObtainAuthToken):
 def save_scores(request):
     data = request.data
 
-    for round_data in data:
+    rounds = data.get('rounds', [])
+    joker_round_indices = data.get('joker_round_indices', {})
+    presentation_id = data.get('presentation_id', None)
+
+    for round_data in rounds:
         # Get the round_data fields
         creator = round_data.get('creator')
         title = round_data.get('title')
@@ -561,4 +624,13 @@ def save_scores(request):
         # Save the instance to the database
         trivia_round.save()
 
-    return Response({"message": "Data saved successfully!"})
+    # Update the joker_round_indices in the MergedPresentation
+    if presentation_id:
+        try:
+            presentation = MergedPresentation.objects.get(presentation_id=presentation_id)
+            presentation.joker_round_indices = joker_round_indices
+            presentation.save()
+        except ObjectDoesNotExist:
+            return JsonResponse({"message": "Presentation not found."}, status=400)
+
+    return JsonResponse({"message": "Data saved successfully!"})

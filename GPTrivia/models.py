@@ -22,8 +22,10 @@ class GPTriviaRound(models.Model):
     score_dan = models.FloatField(null=True)
     score_chris = models.FloatField(null=True)
     score_drew = models.FloatField(null=True)
-    replay = False
-    cooperative = False
+    replay = models.BooleanField(default=False)
+    cooperative = models.BooleanField(default=False)
+    notes = models.TextField(blank=True)
+    link = models.CharField(max_length=255, blank=True, default='https://docs.google.com/presentation/d/1gC9DR9TmQK_9ls8Npw8Sc99qKI6YN9nRqLuVj0W07ns/embed?start=false&slide=id.g717c8ec4cb_2_0')
 
     def __str__(self):
         return self.title
@@ -34,6 +36,8 @@ class MergedPresentation(models.Model):
     presentation_id = models.CharField(max_length=255)
     round_names = jsonfield.JSONField(default=list)
     creator_list = jsonfield.JSONField(default=list)
+    joker_round_indices = jsonfield.JSONField(null=True, blank=True)
+
 
     def __str__(self):
         return self.name

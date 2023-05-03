@@ -2,36 +2,38 @@ TO DO:
 
 TRIVIAL (minutes)
 
-- Show the number of submitted rounds/who has submitted a round for the current week on the home page.
-TODO - Get code onto iMac, reset db and make new users, check that no authentication is in github.
+TODO - Get code onto iMac, reset db and make new users, check that no authentication is in github. INSTALL psycopg2
 TODO - Turn dev mode off
+TODO - delete player, reload page: their second column score remains for some reason. Interestingly, this depends on whether the score is added or was already there on page load.
+TODO - missing presentation on February 24-23 (need to fill out the category_map.csv for this day). and scoresheet for 11/10/22
+TODO - add normalize option to the rounds list
+High - Can we make the scoresheet expand and contract when we change the window size?
+High - Show the number of submitted rounds/who has submitted a round for the current week on the home page.
+High - Need to double click sorting columns for them to work the first time - also, why are the sort icons weird now?
 
 MEDIUM (1-2 hrs)
 
-- Finish the stats for the analysis page ("Player" options) / possible add the player specific stuff to the profile pages.
-- Add an option to autofill any remaining round slots with old rounds from an unused creator, or a second round from a creator.
-- Add a select/button to load an old scoresheet.
-- Add round type/max score info to scoresheet
-- Customizable player profile (pic, about)
+High - Finish the stats for the analysis page ("Player" options) / possible add the player specific stuff to the profile pages. NORMALIZE SCORES before computing stats
+High - Add an option to autofill any remaining round slots with old rounds from an unused creator, or a second round from a creator.
+       Also, a button to make an entirely new presentation with reused rounds (using Hail Science Remix template)
+High - Add round type/max score info to scoresheet, and spots to manually enter the round categories, and automatically get links to new rounds.
+Medium - Add a select/button to load an old scoresheet.
+Medium - Customizable player profile (pic, about)
 
 
 LARGE (2-8hrs)
 
-TODO - Can we add the joker option to GPTriviaRound, and set the dropdowns correctly when the page loads?
-TODO - Update list of previous rounds/add normalize option to the rounds list
 TODO - Make the site snazzier.
-- Be able to specify what position to put new rounds, instead of appending to end of presentation
-- Add a round ideas page connected to ChatGPT API for quickly getting ideas for new rounds
-- If we add a new player on the scoresheet, we need to modify the GPTriviaround model to accept additional players and save their scores too.
-- Add the prediction models back to the scoresheet
-
+High - Be able to specify what position to put new rounds, instead of appending to end of presentation
+High - Add a round ideas page connected to ChatGPT API for quickly getting ideas for new rounds
+Medium - If we add a new player on the scoresheet, we need to modify the GPTriviaround model to accept additional players and save their scores too.
+Medium - Add the prediction models back to the scoresheet (try joint conditioning on both player and category)
 
 
 HUGE (>8 hrs)
 
-- In the trivia_rounds table (and player profile), add a link to the corresponding start slide in the correct presentation.
-- Minigames/polls? such as a timed quiz using previous questions from other creators
-- Incorporate the question-level data from the forms
+Low - Minigames/polls? such as a timed quiz using previous questions from other creators
+Low - Incorporate the question-level data from the forms
 
 
 

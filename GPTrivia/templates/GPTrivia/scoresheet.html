@@ -40,18 +40,18 @@
                 <tr>
                     <td> <a href="{% url 'player_profile' player_name=player %}" class="player_name" data-player='{{ player }}'>{{ player }}</a> </td>
                     <td>
-                         <select>
-                             <option value="">- Choose a Joker -</option>
-                             {% for round_title in round_titles %}
-                                 <option value="{{ round_title }}">{{ round_title }}</option>
-                             {% endfor %}
-                         </select>
-                    </td>  {# Joker Round column #}
-                            {% for round_title, creator in round_titles|zip_lists:creators %}
-                                {% with forloop.counter0|add:2 as column_index %}
-                                    <td class="{% if creator == player %}creator-cell{% endif %}" data-column-index="{{ column_index }}" data-round-title="{{ round_title }}"></td>
-                                {% endwith %}
+                        <select class="joker-dropdown" data-player="{{ player|lower }}">
+                            <option value="">- Choose a Joker -</option>
+                            {% for round_title in round_titles %}
+                                <option value="{{ round_title }}">{{ round_title }}</option>
                             {% endfor %}
+                        </select>
+                    </td> {# Joker Round column #}
+                    {% for round_title, creator in round_titles|zip_lists:creators %}
+                        {% with forloop.counter0|add:2 as column_index %}
+                            <td class="{% if creator == player %}creator-cell{% endif %}" data-column-index="{{ column_index }}" data-round-title="{{ round_title }}"></td>
+                        {% endwith %}
+                    {% endfor %}
                     <td></td>  {# Creator Bonus column #}
                     <td></td>  {# Total Score column #}
                     <td><button class="btn-delete">X</button></td>
@@ -79,6 +79,34 @@
         const existingRounds = {{ existing_rounds|safe }};
         players = {{ players|safe }}
         pres_name = "{{ pres_name|safe }}"
+        joker_round_indices = {{ joker_round_indices|safe }}
+        console.log("joker_round_indices: " + joker_round_indices)
+
+        // Iterate through each joker dropdown
+        $('select.joker-dropdown[data-player]').each(function() {
+            var dropdown = $(this);
+            var playerName = dropdown.data('player');
+            var selectedJokerRound = joker_round_indices[playerName];
+
+            // Set the selected option based on the joker round index
+            if (selectedJokerRound) {
+                dropdown.val(selectedJokerRound);
+            }
+        });
+
+        function debounce(func, wait) {
+            var timeout;
+            return function() {
+                var context = this,
+                    args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(function() {
+                    func.apply(context, args);
+                }, wait);
+            };
+        }
+
+        var debouncedSaveScores = debounce(saveScores, 100);
 
         function formatDate(presName) {
             const parts = presName.split('.');
@@ -92,20 +120,24 @@
         const formatted_pres_name = formatDate(pres_name);
 
 
-        function sendDataToServer(rounds) {
+        function sendDataToServer(rounds, jokerRoundIndices) {
             var csrfToken = $('meta[name="csrf-token"]').attr('content');
 
             $.ajax({
                 url: "/save_scores/", // Update this to match your server's API endpoint
                 method: "POST",
-                data: JSON.stringify(rounds),
+                data: JSON.stringify({
+                        rounds: rounds,
+                        joker_round_indices: jokerRoundIndices,
+                        presentation_id: "{{ presentation_id }}",
+                    }),
                 contentType: "application/json",
                 beforeSend: function (xhr) {
                     // Include the CSRF token as a header in the AJAX request
                     xhr.setRequestHeader("X-CSRFToken", csrfToken);
                 },
                 success: function (response) {
-                    console.log("Data saved successfully!");
+                    console.log("Data saved successfully to presentation " + "{{ presentation_id }}");
                 },
                 error: function (jqXHR, textStatus, errorThrown) {
                     console.log("Error saving data: " + errorThrown);
@@ -115,6 +147,7 @@
 
         function saveScores() {
             var rounds = [];
+            var jokerRoundIndices = {};
 
             // Store the column headers in an array, skipping the first two columns ("Player" and "Joker") and the last four columns
             var columnHeader = [];
@@ -143,7 +176,7 @@
                     score_chris: null,
                     score_drew: null,
                     replay: false,
-                    cooperative: false
+                    cooperative: false,
                 };
 
                 // Iterate through each player row
@@ -169,6 +202,10 @@
                     if (!isNaN(parsedScore)) {
                         round[`score_${playerName.toLowerCase()}`] = parsedScore;
                     }
+
+                    // Get the selected joker round index for the current player
+                    var jokerRoundIndex = row.children("td:eq(1)").find("select").val();
+                    jokerRoundIndices[playerName.toLowerCase()] = jokerRoundIndex;
                 });
 
 
@@ -176,7 +213,7 @@
             }
 
             // Send data to the server
-            sendDataToServer(rounds);
+            sendDataToServer(rounds, jokerRoundIndices);
         };
 
         $("#btn-save").on("click", saveScores);
@@ -350,7 +387,7 @@
                 updateCreatorBonus();
             }
 
-            saveScores()
+            debouncedSaveScores()
         }
 
 
@@ -547,5 +584,7 @@
                     calculateTotalScore($row);
                 });
             });
+
+
     </script>
 {% endblock %}
