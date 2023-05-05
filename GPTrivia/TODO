@@ -1,7 +1,6 @@
 TO DO:
 
 TRIVIAL (minutes)
-TODO - Get code onto iMac
 High - add normalize option to the rounds list
 High - Can we make the scoresheet expand and contract when we change the window size?
 Medium - Show the number of submitted rounds/who has submitted a round for the current week on the home page.
@@ -9,6 +8,9 @@ Low - Need to double click sorting columns for them to work the first time?
 
 MEDIUM (1-2 hrs)
 
+TODO - Figure out why the production site's generate button is timing out (in under 30 seconds or so).
+TODO - If there is no text on the title slide, we need a way to add the name to the 2nd slide and the scoresheet
+TODO - need to handle really long round names (make the font smaller?)
 High - Finish the stats for the analysis page ("Player" options) / possible add the player specific stuff to the profile pages. NORMALIZE SCORES before computing stats
 High - Add an option to autofill any remaining round slots with old rounds from an unused creator, or a second round from a creator.
        Also, a button to make an entirely new presentation with reused rounds (using Hail Science Remix template)
