@@ -5,7 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/GPTrivia/management/commands/create_user.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/management/commands/create_user.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/mail.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/mail.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -239,7 +241,9 @@
       <workItem from="1682213211108" duration="45481000" />
       <workItem from="1682312618463" duration="19739000" />
       <workItem from="1682461190262" duration="19971000" />
-      <workItem from="1682703526166" duration="56041000" />
+      <workItem from="1682703526166" duration="56454000" />
+      <workItem from="1683136510485" duration="1000" />
+      <workItem from="1683251103600" duration="156000" />
     </task>
     <servers />
   </component>
@@ -286,12 +290,12 @@
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <condition expression="content not in [&quot;01\n&quot;, &quot;Categories\n&quot;, &quot;02\n&quot;, &quot;03\n&quot;, &quot;04\n&quot;, &quot;05\n&quot;, &quot;06\n&quot;, &quot;ROUND1\x0b&quot;]" language="Python" mode="CODE_FRAGMENT" />
           <url>file://$PROJECT_DIR$/GPTrivia/mail.py</url>
-          <line>567</line>
+          <line>568</line>
           <option name="timeStamp" value="59" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/mail.py</url>
-          <line>580</line>
+          <line>581</line>
           <option name="timeStamp" value="60" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -307,12 +311,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/mail.py</url>
-          <line>378</line>
+          <line>379</line>
           <option name="timeStamp" value="210" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/mail.py</url>
-          <line>368</line>
+          <line>369</line>
           <option name="timeStamp" value="222" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -398,13 +402,11 @@
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/player_analysis.html</url>
           <line>225</line>
-          <properties lambdaOrdinal="-1" />
           <option name="timeStamp" value="226" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/player_analysis.html</url>
           <line>234</line>
-          <properties lambdaOrdinal="-1" />
           <option name="timeStamp" value="227" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="django-line">

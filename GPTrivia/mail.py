@@ -26,7 +26,8 @@ MAIL_NAME_MAP = {
     'Debi': 'Debi',
     'Dan': 'Dan',
     'Chris': 'Chris',
-    'Drew': 'Drew'
+    'Drew': 'Drew',
+    'doodlwagon': "Jenny",
 }
 
 
