@@ -6,7 +6,6 @@
   <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}">
 {% endblock %}
 
-{% load static %}
 {% block extra_meta %}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>
 {% endblock %}
@@ -49,8 +48,8 @@
                             <th>Title</th>
                             <th>Date</th>
                             <th>Category</th>
-                            <th>Maximum Score</th>
-                            <th>Round Number</th>
+                            <th class="score-col">Max Score</th>
+                            <th>Rd</th>
                             <th>Coop</th>
                             <th>Link</th>
                         </tr>
@@ -61,7 +60,7 @@
                                 <td>{{ round.title }}</td>
                                 <td>{{ round.date }}</td>
                                 <td>{{ round.major_category }}</td>
-                                <td>{{ round.max_score }}</td>
+                                <td class="score-col">{{ round.max_score }}</td>
                                 <td>{{ round.round_number }}</td>
                                 <td>{{ round.cooperative }}</td>
                                 <td><button class="slides-button" type="button" data-presentation-url={{ round.link }}>Slides</button></td>

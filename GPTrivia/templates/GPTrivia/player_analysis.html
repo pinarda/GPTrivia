@@ -217,7 +217,7 @@
         xax = selectedPlayer ? "Creator" : "Player";
 
         let layout = {
-            title: `Average Scores by Player for ${stg} Rounds`,
+            title: `Average Scores for ${stg} Rounds`,
             xaxis: {
                 title: xax,
                 color: "#ffffff",
@@ -234,7 +234,7 @@
 
         };
 
-        Plotly.newPlot('bar-chart', traceData, layout);
+        Plotly.newPlot('bar-chart', traceData, layout, {displayModeBar: false});
         // also add a violin plot, using the data from the columns of the rounds table
         // for all creatorRounds, for each player, get the score for that round
         // for each player, create a list of scores
@@ -356,7 +356,7 @@
         xax = selectedPlayer ? "Creator" : "Player";
 
         let violinLayout = {
-            title: `Scores by Player for ${stg}'s Rounds`,
+            title: `Scores for ${stg}'s Rounds`,
             xaxis: {
                 title: xax,
                 color: "#ffffff",
@@ -372,7 +372,7 @@
             },
         };
 
-        Plotly.newPlot('violin-chart', violinData, violinLayout);
+        Plotly.newPlot('violin-chart', violinData, violinLayout, {displayModeBar: false});
     }
 
     // Initialize the plot with some default value if needed
@@ -399,5 +399,12 @@
         const selectedPlayer = this.value;
         updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer);
     });
+
+    window.onresize = function() {
+        var plotDivs = document.getElementById('bar-chart');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('violin-chart');
+        Plotly.Plots.resize(plotDivs);
+    };
 </script>
 {% endblock %}

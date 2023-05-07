@@ -12,3 +12,13 @@ a {
 .header-container{
     background-color: #303030;
 }
+
+@media screen and (max-width: 850px) {
+    td {
+        font-size: small;
+    }
+
+    .score-col {
+        display: none;
+    }
+}

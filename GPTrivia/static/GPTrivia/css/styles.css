@@ -311,8 +311,89 @@ a .logo {
     padding-right: 10px;
 }
 
+@media screen and (max-width: 700px) {
+    .logo-menu-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        padding-right: 0px;
+    }
 
-@media screen and (max-width: 1050px) {
+    #mobileMenu {
+        margin-right: auto;
+    }
+
+    .logo {
+        width: 50%;
+        height: 50%;
+        padding-left: 10px;
+    }
+
+    .logo img {
+        width: 90%;
+        height: 90%;
+        padding: 0px;
+    }
+
+    #menu-button {
+        display: flex;
+        scale: 80%;
+        background-color: transparent;
+        color: white;
+        cursor: pointer;
+        border: none;
+        height: auto;
+        box-shadow: none;
+        margin: 0px;
+        padding: 0px;
+
+    }
+
+    .menu-buttons {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .menu-buttons.show {
+        display: flex;
+    }
+
+    .header-container {
+        justify-content: center;
+    }
+
+    .header-content {
+        justify-content: space-between;
+    }
+
+    nav {
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .top-row {
+        justify-content: center;
+    }
+
+    .logo {
+        display: flex;
+        justify-content: center;
+        width: fit-content;
+    }
+
+    .header-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+}
+
+
+@media screen and (max-width: 1050px) and (min-width: 700px) {
     .logo-menu-container {
         display: flex;
         justify-content: center;
@@ -331,8 +412,7 @@ a .logo {
     }
 
     .logo img {
-        width: 90%;
-        height: 90%;
+        height: 45px;
         padding: 0px;
     }
 
@@ -390,6 +470,8 @@ a .logo {
     }
 
 }
+
+
 
 @media screen and (min-width: 1051px) {
   #mobileMenu {

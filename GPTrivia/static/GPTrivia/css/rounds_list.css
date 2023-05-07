@@ -22,3 +22,24 @@ body {
 a {
     color: white;
 }
+
+@media screen and (max-width: 850px) {
+    #roundList {
+      border-collapse: collapse; /* Collapse borders */
+      width: 100%; /* Full-width */
+      border: none;
+      font-size: 14px; /* Increase font-size */
+      line-height: 1;
+    }
+
+    #roundList tbody tr td {
+        padding: 5px;
+        margin:5px;
+        text-align: center;
+    }
+
+    .cloned-cell {
+        font-size: small;
+        width: min-content;
+    }
+}
