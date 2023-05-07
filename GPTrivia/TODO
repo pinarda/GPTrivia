@@ -15,7 +15,7 @@ TODO - Check for dad/dan and debi/mom in the scoresheet, this is leading to miss
 TODO - still some blank creators in the db
 TODO - update last week's rounds with category, coop, max score, and link
 TODO - Add round type/max score/replay info to scoresheet, and spots to manually enter the round categories, and automatically get links to new rounds.
-
+TODO - reordering the columns on the scoresheet deletes all scores
 High - add a new page where you can make a presentation.
 High - Finish the stats for the analysis page ("Player" options) / possible add the player specific stuff to the profile pages. NORMALIZE SCORES before computing stats
 High - Add an option to autofill any remaining round slots with old rounds from an unused creator, or a second round from a creator.
