@@ -39,10 +39,18 @@
 {#            </div>#}
 {#            <a href="{% url 'home' %}"><img src="/static/GPTrivia/css/Hail Science Trivia.png" width="auto", height="40px" style="margin-left: 20px"></a>#}
 {#        </div>#}
+<header>
     <div class="header-container">
-        <div class="header-content" style="display: flex; align-items: center; justify-content: space-between; width: 95%;">
-            <a href="{% url 'home' %}"><img src="/static/GPTrivia/css/Hail Science Trivia.png" width="auto", height="40px" style="margin-top: 15px; margin-bottom: 15px; margin-left: 40px"></a>
-            <div class="menu-buttons" style="display: flex; justify-content: space-between; width: 50%;">
+        <div class="header-content">
+            <div class="logo-menu-container" style="display: flex; justify-content: space-between;">
+                <a class="logo" href="{% url 'home' %}">
+                    <img src="/static/GPTrivia/css/Hail Science Trivia.png">
+                </a>
+                <button id="menu-button">
+                    <img src="/static/GPTrivia/css/menubars.png" class="dropbtn" alt="Menu" onclick="toggleMenu()" scale="20%">
+                </button>
+            </div>
+            <div class="menu-buttons" id="menu-buttons">
                 <div class="scorebtn">
                     <a style="color: white; font-size: large" href={% url 'scoresheet' %}>Scoresheet</a>
                 </div>
@@ -68,26 +76,42 @@
                 {%  endif %}
             </div>
         </div>
+        <div id="mobileMenu" class="hide-on-mobile">
+            <div class="scorebtn">
+                <a style="color: white; font-size: large" href={% url 'scoresheet' %}>Scoresheet</a>
+            </div>
+            <div class="analysisbtn">
+                <a style="color: white; font-size: large" href={% url 'player_analysis' %}>Analysis</a>
+            </div>
+            <div class="roundsbtn">
+                <a style="color: white; font-size: large" href={% url 'rounds_list' %}>Rounds List</a>
+            </div>
+            {% if user.is_authenticated %}
+                <div class="profilebtn">
+                    <a style="color: white; font-size: large" href="{% url 'player_profile' player_name=user.username %}">{{ user.username }}'s Profile</a>
+                </div>
+            {% endif %}
+            {% if user.is_authenticated %}
+                <div class="logoutbtn">
+                    <a style="color: white; font-size: large" href="{% url 'logout' %}">Logout</a>
+                </div>
+            {% else %}
+                <div class="loginbtn">
+                    <a style="color: white; font-size: large" href="{% url 'login' %}">Login</a>
+                </div>
+            {%  endif %}
+        </div>
     </div>
-
 </header>
     <script>
-        function toggleDropdown() {
-            document.getElementById("myDropdown").classList.toggle("show");
+        function toggleMenu() {
+        var menu = document.getElementById('mobileMenu');
+        if (menu.style.display === "block") {
+            menu.style.display = "none";
+        } else {
+            menu.style.display = "block";
         }
-
-        // Close the dropdown if the user clicks outside of it
-        window.onclick = function(event) {
-            if (!event.target.matches('.dropbtn')) {
-                var dropdowns = document.getElementsByClassName("dropdown-content");
-                for (var i = 0; i < dropdowns.length; i++) {
-                    var openDropdown = dropdowns[i];
-                    if (openDropdown.classList.contains('show')) {
-                        openDropdown.classList.remove('show');
-                    }
-                }
-            }
-        }
+    }
     </script>
 </head>
 
@@ -102,4 +126,6 @@
 </div>
 {% block extra_js %}{% endblock %}
 </body>
+
+
 </html>

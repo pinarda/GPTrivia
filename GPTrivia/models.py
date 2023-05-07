@@ -3,7 +3,7 @@ import jsonfield
 
 class GPTriviaRound(models.Model):
     creator = models.CharField(max_length=100)
-    title = models.CharField(max_length=100)
+    title = models.CharField(max_length=150)
     major_category = models.CharField(max_length=100)
     minor_category1 = models.CharField(max_length=100)
     minor_category2 = models.CharField(max_length=100)

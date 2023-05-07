@@ -11,17 +11,23 @@ MEDIUM (1-2 hrs)
 TODO - Figure out why the production site's generate button is timing out (in under 30 seconds or so).
 TODO - If there is no text on the title slide, we need a way to add the name to the 2nd slide and the scoresheet
 TODO - need to handle really long round names (make the font smaller?)
+TODO - Check for dad/dan and debi/mom in the scoresheet, this is leading to missing dad's scores for some rounds
+TODO - still some blank creators in the db
+TODO - update last week's rounds with category, coop, max score, and link
+TODO - Add round type/max score/replay info to scoresheet, and spots to manually enter the round categories, and automatically get links to new rounds.
+
+High - add a new page where you can make a presentation.
 High - Finish the stats for the analysis page ("Player" options) / possible add the player specific stuff to the profile pages. NORMALIZE SCORES before computing stats
 High - Add an option to autofill any remaining round slots with old rounds from an unused creator, or a second round from a creator.
        Also, a button to make an entirely new presentation with reused rounds (using Hail Science Remix template)
-High - Add round type/max score info to scoresheet, and spots to manually enter the round categories, and automatically get links to new rounds.
+Medium - Add a confirm button on delete player
 Medium - Add a select/button to load an old scoresheet.
 Medium - Customizable player profile (pic, about)
 
 
 LARGE (2-8hrs)
 
-High - make the site mobile friendly. (Menu, tables, slides, etc)
+TODO - make the site mobile friendly. (Menu, tables, slides, etc) If the menu items get too close togther, put the rightmost items into a dropdown menu. Make the header Hail Science adjust size to fit on screen
 High - Be able to specify what position to put new rounds, instead of appending to end of presentation
 High - Add a round ideas page connected to ChatGPT API for quickly getting ideas for new rounds
 Medium - If we add a new player on the scoresheet, we need to modify the GPTriviaround model to accept additional players and save their scores too.
