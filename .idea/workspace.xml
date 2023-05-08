@@ -6,15 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/home.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/home.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/player_analysis.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/player_analysis.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/player_profile.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/player_profile.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/rounds_list.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/rounds_list.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/styles.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/player_analysis.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/player_analysis.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/player_profile.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/player_profile.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/scoresheet.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/scoresheet.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/base.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -252,7 +245,8 @@
       <workItem from="1682703526166" duration="56454000" />
       <workItem from="1683136510485" duration="1000" />
       <workItem from="1683251103600" duration="7395000" />
-      <workItem from="1683302743043" duration="19914000" />
+      <workItem from="1683302743043" duration="20253000" />
+      <workItem from="1683504930480" duration="4708000" />
     </task>
     <servers />
   </component>
@@ -335,77 +329,77 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>390</line>
+          <line>396</line>
           <option name="timeStamp" value="137" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>421</line>
+          <line>427</line>
           <option name="timeStamp" value="153" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>429</line>
+          <line>435</line>
           <option name="timeStamp" value="159" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>402</line>
+          <line>408</line>
           <option name="timeStamp" value="161" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>325</line>
+          <line>331</line>
           <option name="timeStamp" value="166" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>433</line>
+          <line>439</line>
           <option name="timeStamp" value="172" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>441</line>
+          <line>447</line>
           <option name="timeStamp" value="176" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>422</line>
+          <line>428</line>
           <option name="timeStamp" value="177" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>445</line>
+          <line>456</line>
           <option name="timeStamp" value="178" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>449</line>
+          <line>473</line>
           <option name="timeStamp" value="179" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>442</line>
+          <line>448</line>
           <option name="timeStamp" value="180" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>443</line>
+          <line>449</line>
           <option name="timeStamp" value="181" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>365</line>
+          <line>371</line>
           <option name="timeStamp" value="189" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>479</line>
+          <line>503</line>
           <option name="timeStamp" value="198" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>77</line>
+          <line>83</line>
           <option name="timeStamp" value="202" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
@@ -420,7 +414,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="django-line">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
-          <line>40</line>
+          <line>46</line>
           <option name="timeStamp" value="141" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="django-line">
