@@ -4,12 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/scoresheet.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/scoresheet.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
-    </list>
+    <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -246,7 +241,7 @@
       <workItem from="1683136510485" duration="1000" />
       <workItem from="1683251103600" duration="7395000" />
       <workItem from="1683302743043" duration="20253000" />
-      <workItem from="1683504930480" duration="4708000" />
+      <workItem from="1683504930480" duration="5146000" />
     </task>
     <servers />
   </component>

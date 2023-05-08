@@ -87,3 +87,24 @@ h1{
 a {
     color: white;
 }
+
+.joker-dropdown {
+    max-width: 120px;
+}
+
+
+@media screen and (max-width: 1000px) {
+
+    #round-select {
+        display: flex;
+        justify-content: center;
+        margin: auto;
+    }
+
+}
+
+@media screen and (min-width: 1000px) {
+    #round-select{
+        display:none;
+    }
+}
