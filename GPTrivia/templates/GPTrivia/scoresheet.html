@@ -22,7 +22,7 @@
 {% block content %}
     <h1>Trivia Scoresheet - {{ pres_name }}</h1>
     <select id="round-select">
-        <option value="">- View Round -</option>
+        <option value="0">- View Round -</option>
         {% for round_title in round_titles %}
             <option value="{{ forloop.counter0|add:1 }}">{{ round_title }}</option>
         {% endfor %}
@@ -457,18 +457,29 @@
                 ]
             });
 
-            $('#round-select').on('change', function() {
-                var roundIndex = parseInt($(this).val(), 10);
-                dataTable.columns().visible(false);
-                dataTable.column(0).visible(true);
-                dataTable.column(1).visible(true);
-                dataTable.column(roundIndex+1).visible(true);
-                // make this column not editable
-                dataTable.column(roundIndex+1).nodes().to$().find('select').prop('disabled', true);
-                dataTable.columns(-2).visible(true);
-                dataTable.columns(-3).visible(true); // Show the last two columns (Delete and the empty one)
-                dataTable.columns(-1).visible(true);
-            });
+            function updateColumnVisibility() {
+                var screenWidth = $(window).width();
+                if (screenWidth < 1000) {
+                    var roundIndex = parseInt($("#round-select").val(), 10);
+                    dataTable.columns().visible(false);
+                    dataTable.column(0).visible(true);
+                    dataTable.column(1).visible(true);
+                    dataTable.column(roundIndex+1).visible(true);
+                    // make this column not editable
+                    dataTable.columns(-2).visible(true);
+                    dataTable.columns(-3).visible(true); // Show the last two columns (Delete and the empty one)
+                    dataTable.columns(-1).visible(true); // Show the last two columns (Delete and the empty one)
+                } else {
+                    dataTable.columns().visible(true);
+                }
+            }
+
+            $('#round-select').on('change', updateColumnVisibility);
+
+            // Call updateColumnVisibility initially and when the window is resized
+            updateColumnVisibility();
+            $(window).on('resize', updateColumnVisibility);
+
 
             $('#scoresheet').Tabledit({
                 editButton: false,
