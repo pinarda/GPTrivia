@@ -414,7 +414,7 @@
 
             dataTable = $('#scoresheet').DataTable({
                 // DataTables options here
-                colReorder: true,
+                colReorder: false,
                 searching: false,
                 lengthChange: false,
                 info: false,
@@ -456,6 +456,10 @@
                     }
                 ]
             });
+            dataTable.on('column-reorder', function(e, settings, details) {
+                // Call your FillRoundScores function when columns are reordered
+                fillRoundScores(replaceNoneWithNull(existingRounds));
+            });
 
             function updateColumnVisibility() {
                 var screenWidth = $(window).width();
@@ -473,12 +477,6 @@
                     dataTable.columns().visible(true);
                 }
             }
-
-            $('#round-select').on('change', updateColumnVisibility);
-
-            // Call updateColumnVisibility initially and when the window is resized
-            updateColumnVisibility();
-            $(window).on('resize', updateColumnVisibility);
 
 
             $('#scoresheet').Tabledit({
@@ -538,7 +536,15 @@
                     console.log(serialize);
                 }
             });
+            $('#round-select').on('change', updateColumnVisibility);
+
+            // Call updateColumnVisibility initially and when the window is resized
+            updateColumnVisibility();
+            $(window).on('resize', updateColumnVisibility);
         });
+
+
+
 
         const playerLinks = document.querySelectorAll(".player_name");
 

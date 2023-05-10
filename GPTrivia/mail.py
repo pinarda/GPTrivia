@@ -7,6 +7,8 @@ from googleapiclient.discovery import build
 from googleapiclient.http import HttpRequest
 import httplib2
 from google_auth_httplib2 import AuthorizedHttp
+from googleapiclient.errors import HttpError
+import google.auth
 
 
 from google.oauth2 import service_account
@@ -158,6 +160,30 @@ def find_shared_presentations(credentials, processed_senders=[]):
 #             slide_id = re.search(r'https://docs\.google\.com/presentation/d/([\w-]+)', slide_url).group(1)
 #             print(f"Slide ID: {slide_id}")
 #             # Use the Google Slides API to merge the presentations (currently this just prints the slide ID)
+
+def update_slide_permissions(slide_id):
+    try:
+        # Authenticate and create a service object
+        creds, _ = google.auth.default()
+        service = build('drive', 'v3', credentials=creds)
+
+        # Define the new permissions
+        new_permission = {
+            'type': 'anyone',
+            'role': 'reader'
+        }
+
+        # Update the permissions for the given slide
+        service.permissions().create(
+            fileId=slide_id,
+            body=new_permission
+        ).execute()
+
+        print(f"Slide {slide_id} access set to 'Anyone with a link'.")
+
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        return None
 
 def mark_as_read(gmail_service, msg_id):
     gmail_service.users().messages().modify(
@@ -593,6 +619,8 @@ def create_presentation():
     remove_first_slide(credentials, new_presentation_id)
 
     creator_names = [MAIL_NAME_MAP[creator] for creator in creators_list]
+
+    update_slide_permissions(new_presentation_id)
 
     return new_presentation_id, creator_names, round_titles
 

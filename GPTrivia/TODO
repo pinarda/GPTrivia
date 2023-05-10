@@ -1,7 +1,11 @@
 TO DO:
 
 TRIVIAL (minutes)
+
+TODO TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
+
 High - add normalize option to the rounds list
+High - add zeros to the created round category counts if the creator hasn't made any rounds in that category
 High - Can we make the scoresheet expand and contract when we change the window size?
 Medium - Show the number of submitted rounds/who has submitted a round for the current week on the home page.
 Low - Need to double click sorting columns for them to work the first time?
@@ -10,15 +14,13 @@ MEDIUM (1-2 hrs)
 
 TODO - Figure out why the production site's generate button is timing out (in under 30 seconds or so).
 TODO - If there is no text on the title slide, we need a way to add the name to the 2nd slide and the scoresheet
-TODO - need to handle really long round names (make the font smaller?)
+TODO - need to handle really long round names (make the font smaller?), seemed like this was breaking the script to update slide 2
 TODO - Check for dad/dan and debi/mom in the scoresheet, this is leading to missing dad's scores for some rounds
 TODO - Add round type/max score/replay info to scoresheet, and spots to manually enter the round categories, and automatically get links to new rounds.
-TODO - reordering the columns on the scoresheet deletes all scores
-TODO - fix the rounds list, when on mobile the sort box obscures the entry
-TODO - seems like 
+TODO - (can't edit scores in mobile view, they just revert automatically)
+
 High - add sorting to the player round page, also want to be able to see the lowest high score on a round.
 High - add a link to the rounds list page on the round category counts that filters by rounds that person has created with that category
-TODO - add zeros to the created round category counts if the creator hasn't made any rounds in that category
 High - add a new page where you can make a presentation.
 High - Finish the stats for the analysis page ("Player" options) / possible add the player specific stuff to the profile pages. NORMALIZE SCORES before computing stats
 High - Add an option to autofill any remaining round slots with old rounds from an unused creator, or a second round from a creator.
@@ -26,6 +28,8 @@ High - Add an option to autofill any remaining round slots with old rounds from 
 Medium - Add a confirm button on delete player
 Medium - Add a select/button to load an old scoresheet.
 Medium - Customizable player profile (pic, about)
+Medium - reordering the columns on the scoresheet deletes all scores (set colReorder to true in the datatables initialization to see this)
+
 
 
 LARGE (2-8hrs)
