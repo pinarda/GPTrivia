@@ -12,7 +12,7 @@ Low - Need to double click sorting columns for them to work the first time?
 
 MEDIUM (1-2 hrs)
 
-TODO - Figure out why the production site's generate button is timing out (in under 30 seconds or so).
+TODO - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be
 TODO - If there is no text on the title slide, we need a way to add the name to the 2nd slide and the scoresheet
 TODO - need to handle really long round names (make the font smaller?), seemed like this was breaking the script to update slide 2
 TODO - Check for dad/dan and debi/mom in the scoresheet, this is leading to missing dad's scores for some rounds

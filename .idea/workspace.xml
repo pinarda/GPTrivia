@@ -5,30 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/package-lock.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/package.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/public/favicon.ico" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/public/index.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/public/logo192.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/public/logo512.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/public/manifest.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/public/robots.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/src/App.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/src/App.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/src/App.test.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/src/index.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/src/index.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/src/logo.svg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/src/reportWebVitals.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scoresheet/src/setupTests.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/TODO" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/TODO" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/token.pickle" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/token.pickle" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -270,7 +249,7 @@
       <workItem from="1683302743043" duration="20253000" />
       <workItem from="1683504930480" duration="7273000" />
       <workItem from="1683515301524" duration="18029000" />
-      <workItem from="1683829686166" duration="2735000" />
+      <workItem from="1683829686166" duration="3382000" />
     </task>
     <servers />
   </component>
