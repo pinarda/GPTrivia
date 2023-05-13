@@ -17,7 +17,7 @@ TODO - If there is no text on the title slide, we need a way to add the name to 
 TODO - need to handle really long round names (make the font smaller?), seemed like this was breaking the script to update slide 2
 TODO - Check for dad/dan and debi/mom in the scoresheet, this is leading to missing dad's scores for some rounds
 TODO - Add round type/max score/replay info to scoresheet, and spots to manually enter the round categories, and automatically get links to new rounds.
-TODO - (can't edit scores in mobile view, they just revert automatically)
+TODO - (can't edit scores in mobile view, they just revert automatically) refreshing when scoresheet is in mobile view deletes jokers?
 
 High - add sorting to the player round page, also want to be able to see the lowest high score on a round.
 High - add a link to the rounds list page on the round category counts that filters by rounds that person has created with that category
@@ -25,7 +25,6 @@ High - add a new page where you can make a presentation.
 High - Finish the stats for the analysis page ("Player" options) / possible add the player specific stuff to the profile pages. NORMALIZE SCORES before computing stats
 High - Add an option to autofill any remaining round slots with old rounds from an unused creator, or a second round from a creator.
        Also, a button to make an entirely new presentation with reused rounds (using Hail Science Remix template)
-Medium - Add a confirm button on delete player
 Medium - Add a select/button to load an old scoresheet.
 Medium - Customizable player profile (pic, about)
 Medium - reordering the columns on the scoresheet deletes all scores (set colReorder to true in the datatables initialization to see this)

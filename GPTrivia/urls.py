@@ -44,5 +44,6 @@ urlpatterns = [
     path('api-token-auth/', CustomObtainAuthToken.as_view(), name='api_token_auth'),
     path('api/v1/player-profile/<str:player_name>/', views.PlayerProfileAPI.as_view(), name='player_profile_api'),
     path('scoresheet/', views.scoresheet, name='scoresheet'),
+    path('scoresheet_new/', views.scoresheet, name='scoresheet_new'),
     path('save_scores/', views.save_scores, name='save_scores'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

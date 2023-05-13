@@ -326,7 +326,7 @@
                 // Iterate over each round cell
                 $row.find('td[data-round-title]').each(function() {
                     var roundTitle = $(this).data('round-title');
-                    var score = parseInt($(this).text().trim(), 10);
+                    var score = parseFloat($(this).text().trim(), 10);
 
                     if (!isNaN(score)) {
                         if (!roundScores[roundTitle]) {
@@ -393,7 +393,8 @@
                 updateCreatorBonus();
             }
 
-            debouncedSaveScores()
+            {#debouncedSaveScores()#}
+            {#saveScores()#}
         }
 
 
@@ -479,7 +480,7 @@
             }
 
 
-            $('#scoresheet').Tabledit({
+            scoretable = $('#scoresheet').Tabledit({
                 editButton: false,
                 deleteButton: false,
                 hideIdentifier: false,
@@ -501,6 +502,7 @@
                         var $row = $(this).closest('tr');
                         console.log($row);
                         calculateTotalScore($row);
+                        saveScores()
                     });
                     $('#scoresheet').on('blur', 'tbody tr td input', function() {
                         var $input = $(this);
@@ -510,6 +512,7 @@
                         $input.siblings('.tabledit-span').text(newValue);
                         console.log($row);
                         calculateTotalScore($row);
+                        saveScores()
                     });
                 },
                 onSave: function(rowId, cell, oldValue, newValue) {
@@ -517,6 +520,7 @@
                     var $row = $('#' + rowId);
                     console.log($row);
                     calculateTotalScore($row);
+                    saveScores()
                 },
                 onSuccess: function(data, textStatus, jqXHR) {
                     console.log('onSuccess(data, textStatus, jqXHR)');
@@ -610,10 +614,16 @@
 
                     }
                 }
+                saveScores()
             }
 
 
             $("#scoresheet").on("click", ".btn-delete", function () {
+                   // Ask for confirmation before deleting
+                var confirmed = confirm("Are you sure you want to delete this row?");
+                if (!confirmed) {
+                    return; // If the user clicked Cancel, don't do anything more
+                }
                 // Get the row to delete
                 var $row = $(this).closest("tr");
 
@@ -624,6 +634,7 @@
                 $("#scoresheet tbody tr").each(function () {
                     var $row = $(this);
                     calculateTotalScore($row);
+                    saveScores()
                 });
             });
 

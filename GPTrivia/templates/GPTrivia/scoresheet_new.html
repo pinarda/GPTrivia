@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load static GPTrivia_extras %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/scoresheet.css' %}">
+{% endblock %}
+
+{% block extra_meta %}
+    <link href="{% static 'DataTables/datatables.min.css' %}" rel="stylesheet"/>
+    <script src="{% static 'DataTables/datatables.min.js' %}"></script>
+
+    <script src="{% static '/jquery-tabledit-1.2.3/jquery.tabledit.min.js' %}"></script>    <!-- Include necessary extensions here -->
+    <script src="{% static 'DataTables/Buttons-2.3.6/js/dataTables.buttons.min.js' %}"></script>
+    <script src="{% static 'DataTables/ColReorder-1.6.2/js/dataTables.colReorder.min.js' %}"></script>
+    <script src="{% static 'DataTables/AutoFill-2.5.3/js/dataTables.autoFill.min.js' %}"></script>
+    <script src="{% static 'DataTables/Responsive-2.4.1/js/dataTables.responsive.min.js' %}"></script>
+    {% csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token }}">
+{% endblock %}
+
+{% block content %}
+    <h1>Trivia Scoresheet - {{ pres_name }}</h1>
+    <select id="round-select">
+        <option value="0">- View Round -</option>
+        {% for round_title in round_titles %}
+            <option value="{{ forloop.counter0|add:1 }}">{{ round_title }}</option>
+        {% endfor %}
+    </select>
+    <table id="scoresheet" class="display">
+{#        here's where the Material UI table will go, which will a player, joker, creator bonus, and total score column, along with scores for each round. There will be a header row and one row per player.l b#}
+    </table>
+
+    <div class="nameinput">
+        <div style="display: flex; align-items: center;">
+            <input type="text" id="newPlayerName" placeholder="Enter player name">
+            <button id="btn-add">+</button>
+        </div>
+        <button id="btn-save">Save Scoresheet</button>
+    </div>
+
+
+
+    <script>
+        var dataTable;
+        round_titles = {{ round_titles|safe }};
+        creators = {{ creators|safe }};
+        playerColorMapping = {{ player_color_mapping|safe }};
+        const existingRounds = {{ existing_rounds|safe }};
+        players = {{ players|safe }}
+        pres_name = "{{ pres_name|safe }}"
+        joker_round_indices = {{ joker_round_indices|safe }}
+        console.log("joker_round_indices: " + joker_round_indices)
+
+        // Iterate through each joker dropdown
+
+
+    </script>
+{% endblock %}
