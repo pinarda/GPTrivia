@@ -4,6 +4,7 @@ In this directory:
 gunicorn GPTrivia.wsgi:application -c gunicorn.conf.py --access-logfile -
 then:
 sudo nginx
+(config for nginx is in /usr/local/etc/nginx/nginx.conf)
 
 
 
