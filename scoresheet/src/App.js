@@ -246,6 +246,7 @@ import {hover} from "@testing-library/user-event/dist/hover";
         margin: 8px 12px;
         font-size: 0.8rem;
         font-family: "Monaco";
+        background-color: #333;
       }
       
       && {

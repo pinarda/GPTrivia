@@ -33,11 +33,11 @@ DONE - need to save joker_round_indices in the database on save
 DONE - When we create/delete rounds and players, we also need to update the presentations table
 DONE - handling of mobile view (probably just another dropdown to select a single column + total score to view?)
 DONE - fix button font
+DONE - Enter player background is white in website view
 
 
 TRIVIAL (minutes)
 
-TODO - Enter player background is white in website view
 TODO - Round names are not correctly changing when we change the date in website view
 TODO - Select dropdowns are horizontally aligned in website view, not vertical
 TODO - clicking today repeatedly screws things up
@@ -52,6 +52,7 @@ High - add a Host trivia user that is the only one who can edit the scoresheet (
 High - add normalize option to the rounds list
 High - add zeros to the created round category counts if the creator hasn't made any rounds in that category
 Medium - Show the number of submitted rounds/who has submitted a round for the current week on the home page.
+Medium - have round title text size alter after we change a round name
 
 MEDIUM (1-2 hrs)
 
