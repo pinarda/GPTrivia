@@ -27,6 +27,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from .views import CustomObtainAuthToken
 from django.forms.models import model_to_dict
+from django.views.decorators.csrf import csrf_exempt
+
 
 
 urlpatterns = [
@@ -42,11 +44,11 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/trivia-rounds/', views.TriviaRoundList.as_view(), name='trivia_rounds_list'),
     path('api/v1/presentations/', views.PresentationList.as_view(), name='presentations'),
-    path('api-token-auth/', CustomObtainAuthToken.as_view(), name='api_token_auth'),
+    path('api-token-auth/', csrf_exempt(CustomObtainAuthToken.as_view()), name='api_token_auth'),
     path('api/v1/player-profile/<str:player_name>/', views.PlayerProfileAPI.as_view(), name='player_profile_api'),
     path('scoresheet/', views.scoresheet, name='scoresheet'),
     path('scoresheet_new/', views.scoresheet_new, name='scoresheet_new'),
-    path('save_scores/', views.save_scores, name='save_scores'),
-    path('create_round/<str:date>/<int:number>/', views.create_round, name='create_round'),
-    path('delete_round/<int:round_id>/', views.delete_round, name='delete_round'),
+    path('save_scores/', csrf_exempt(views.save_scores), name='save_scores'),
+    path('create_round/<str:date>/<int:number>/', csrf_exempt(views.create_round), name='create_round'),
+    path('delete_round/<int:round_id>/', csrf_exempt(views.delete_round), name='delete_round'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
