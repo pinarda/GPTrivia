@@ -342,8 +342,8 @@ const PlayerTable = () => {
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
-    let url = "http://localhost:8000"
-    // let url = "https://hailsciencetrivia.com"
+    // let url = "http://localhost:8000"
+    let url = "https://hailsciencetrivia.com"
 
     function sortPlayers(b, a) {
       const totalScoreA = rounds.reduce((total, round) => total + (round[a] || 0), 0) + (
