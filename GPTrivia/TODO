@@ -2,41 +2,81 @@ TO DO:
 
 TRIVIAL (minutes)
 
-TODO TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
+TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
+TEST - get player profile links working on production site
+REDID ENTIRE SCORESHEET INSTEAD - (can't edit scores in mobile view, they just revert automatically) refreshing when scoresheet is in mobile view deletes jokers?
+REDID ENTIRE SCORESHEET INSTEAD - Need to double click sorting columns for them to work the first time?
+REDID ENTIRE SCORESHEET INSTEAD - reordering the columns on the scoresheet deletes all scores (set colReorder to true in the datatables initialization to see this)
+DONE/REDID ENTIRE SCORESHEET INSTEAD - Add a select/button to load an old scoresheet.
+DONE - Automatically fill out joker for historical rounds
+DONE - add player profile links to the scoresheet
+DONE - total column is using wrong creator bonus rows (see may 05 2023)
+DONE - Make round names editable?
+DONE - change dropdown to sort dates and auto select newest date
+DONE - implement add player functionality
+DONE - Change the default players to display
+DONE - sorting isn't working right on the scoresheet (see may 05 2023)
+DONE - Fix Dan/dad and Debi/mom creator bug
+DONE - added cooperative button and category dropdowns, Add max score/replay info to scoresheet,
+DONE - set coop, category status on load if they are already set (for historical rounds)
+DONE - after editing round name, creator cell highlighting is lost (but creator score unchanged) (also, need to make sure we can set the creator for a round manually in case it doesn't work on load)
+DONE - need to handle creator bonus when a player made multiple rounds in one night (See May 12 2023)
+DONE - (also - changing round name saves a new round in the database, and doesn't delete the old one, maybe need to check the round index and overwrite that way?) (Probably same problem with changing the creator)
+DONE - Add save functionality
+DONE - Need a way to add or remove a column
+DONE - Scores are not updated if a player's score for a round is deleted and not replaced in the scoresheet
+DONE - Style dropdowns, delete buttons, overall table
+DONE - on round name change, jokers are lost (because scores variable is not updated, the round name does not exist in the scores variable)
+DONE - zero score is not saved
+DONE - add new player is broken
+DONE - The joker rounds switch to blank (instead of select) if you switch from a date where there are jokers set (may 5 2023) to one where they are not (feb 17 2023)
+DONE - Can we make the scoresheet expand and contract when we change the window size?
+DONE - need to save joker_round_indices in the database on save
+DONE - When we create/delete rounds and players, we also need to update the presentations table
+DONE - handling of mobile view (probably just another dropdown to select a single column + total score to view?)
+DONE - fix button font
 
+TABLE THINGS BELOW
+
+TODO - Enter player background is white in website view
+TODO - Round names are not correctly changing when we change the date in website view
+TODO - Select dropdowns are horizontally aligned in website view, not vertical
+TODO - clicking today repeatedly screws things up
+TODO - cut the number of sig figs being displayed in the table (see 3.17.2023)
+
+TODO - need to handle really long round names (make the font smaller?), seemed like this was breaking the script to update slide 2
+
+TODO - pip install django-cors-headers on server, material ui?
+High - add a Host trivia user that is the only one who can edit the scoresheet (and generate the presentation?)
 High - add normalize option to the rounds list
 High - add zeros to the created round category counts if the creator hasn't made any rounds in that category
-High - Can we make the scoresheet expand and contract when we change the window size?
 Medium - Show the number of submitted rounds/who has submitted a round for the current week on the home page.
-Low - Need to double click sorting columns for them to work the first time?
 
 MEDIUM (1-2 hrs)
 
-TODO - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be
-TODO - If there is no text on the title slide, we need a way to add the name to the 2nd slide and the scoresheet
-TODO - need to handle really long round names (make the font smaller?), seemed like this was breaking the script to update slide 2
-TODO - Check for dad/dan and debi/mom in the scoresheet, this is leading to missing dad's scores for some rounds
-TODO - Add round type/max score/replay info to scoresheet, and spots to manually enter the round categories, and automatically get links to new rounds.
-TODO - (can't edit scores in mobile view, they just revert automatically) refreshing when scoresheet is in mobile view deletes jokers?
+TODO - Add historical presentations to the presentations table (with joker info)
+TODO - Check for dad/dan and debi/mom in the old scoresheets, this is leading to missing dad's scores for some rounds
+TODO - If there is no text on the title slide, we need a way to fail silently and move on
+TODO - Automatically get links to new rounds.
 
+TODO - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be (Could be a timezone issue)
 High - add sorting to the player round page, also want to be able to see the lowest high score on a round.
 High - add a link to the rounds list page on the round category counts that filters by rounds that person has created with that category
 High - add a new page where you can make a presentation.
 High - Finish the stats for the analysis page ("Player" options) / possible add the player specific stuff to the profile pages. NORMALIZE SCORES before computing stats
 High - Add an option to autofill any remaining round slots with old rounds from an unused creator, or a second round from a creator.
        Also, a button to make an entirely new presentation with reused rounds (using Hail Science Remix template)
-Medium - Add a select/button to load an old scoresheet.
 Medium - Customizable player profile (pic, about)
-Medium - reordering the columns on the scoresheet deletes all scores (set colReorder to true in the datatables initialization to see this)
-
-
+Medium - consider redoing the rounds list (maybe react-virtuoso?), also think about collapsible tables for readability.
+MEdium - Allow Host account to edit historical rounds and everyone to edit current round
 
 LARGE (2-8hrs)
 
-High - Be able to specify what position to put new rounds, instead of appending to end of presentation
+High - Trivia Round Maker - enter ten questions and answers, select a theme from a dropdown, and it will generate a round for you.
 High - Add a round ideas page connected to ChatGPT API for quickly getting ideas for new rounds
+Medium - Be able to specify what position to put new rounds, instead of appending to end of presentation
 Medium - If we add a new player on the scoresheet, we need to modify the GPTriviaround model to accept additional players and save their scores too.
-Medium - Add the prediction models back to the scoresheet (try joint conditioning on both player and category)
+Medium - Add the prediction models back to the scoresheet (try joint conditioning on both player and category) (and the blog?)
 
 
 HUGE (>8 hrs)

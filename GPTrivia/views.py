@@ -25,7 +25,7 @@ import datetime
 
 ## API Libs
 from rest_framework import generics
-from .serializers import GPTriviaRoundSerializer
+from .serializers import GPTriviaRoundSerializer, MergedPresentationSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
@@ -567,6 +567,10 @@ def scoresheet(request):
     return render(request, 'GPTrivia/scoresheet.html', context)
 
 
+@login_required
+def scoresheet_new(request):
+    return render(request, 'GPTrivia/scoresheet_new.html', {})
+
 ## API stuff
 
 class CustomJSONEncoder(json.JSONEncoder):
@@ -590,6 +594,11 @@ class TriviaRoundList(generics.ListAPIView):
     serializer_class = GPTriviaRoundSerializer
     permission_classes = [IsAuthenticated]
 
+class PresentationList(generics.ListAPIView):
+    queryset = MergedPresentation.objects.all()
+    serializer_class = MergedPresentationSerializer
+    permission_classes = [IsAuthenticated]
+
 class CustomObtainAuthToken(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
         response = super(CustomObtainAuthToken, self).post(request, *args, **kwargs)
@@ -602,33 +611,90 @@ class CustomObtainAuthToken(ObtainAuthToken):
         })
 
 @api_view(['POST'])
+def create_round(request, date, number):
+    # Logic to create a new round
+    print("here")
+    new_round = GPTriviaRound.objects.create(date=date, round_number=number, title=f"Round {number}")  # Update with necessary fields
+    # set the date
+    # print(date)
+    # try:
+    #     newdate = datetime.datetime.strptime(date, '%m.%d.%Y').date()
+    #     print(newdate)
+    # except Exception as e:
+    #     try:
+    #         newdate = datetime.datetime.strptime(date, '%Y-%m-%d').date()
+    #         print(newdate)
+    #     except ValueError:
+    #         # handle the case where date_str doesn't match any format
+    #         print("error")
+    #         newdate = None
+    # new_round.date = newdate
+    # # set the round number
+    # new_round.round_number = number
+    # set it's name to "Round {number}"
+    # new_round.title = f"Round {number}"
+    serializer = GPTriviaRoundSerializer(new_round)
+    return Response(serializer.data)  # Return new round details
+
+@api_view(['DELETE'])
+def delete_round(request, round_id):
+    round_to_delete = GPTriviaRound.objects.get(id=round_id)
+    # get the date of the round to delete
+    thedate = round_to_delete.date
+    round_to_delete.delete()
+    # if there aren't any rounds with the same date left, remove the MergedPresentation object with the same date
+    print("round deleted successfully: " + str(round_id))
+    print ("remaining rounds with date: " + str(thedate) + ": " + str(GPTriviaRound.objects.filter(date=thedate).count()))
+    print ("GPTriviaRound.objects.filter(date=thedate): " + str(GPTriviaRound.objects.filter(date=thedate)))
+    print ("GPTriviaRound.objects.filter(date=thedate).count(): " + str(GPTriviaRound.objects.filter(date=thedate).count()))
+    print ("thedate.strftime: " + thedate.strftime("%m.%d.%Y"))
+    print("MergedPresentation.objects.filter(name=thedate.strftime): " + str(MergedPresentation.objects.filter(name=thedate.strftime("%m.%d.%Y"))))
+
+    if GPTriviaRound.objects.filter(date=thedate).count() == 0:
+        print("deleting merged presentation with date: " + str(thedate))
+        MergedPresentation.objects.filter(name=thedate.strftime("%m.%d.%Y")).delete()
+    return Response({'message': 'Round deleted successfully'})
+
+@api_view(['POST'])
 def save_scores(request):
     data = request.data
-
     rounds = data.get('rounds', [])
     joker_round_indices = data.get('joker_round_indices', {})
     presentation_id = data.get('presentation_id', None)
+    round_names = data.get('round_names', [])
+    creator_list = data.get('round_creators', [])
 
     for round_data in rounds:
         # Get the round_data fields
         creator = round_data.get('creator')
         title = round_data.get('title')
-        date = datetime.datetime.strptime(round_data.get('date'), '%m.%d.%Y').date()
+        print(creator)
+        date_str = round_data.get('date')
+        try:
+            newdate = datetime.datetime.strptime(date_str, '%m.%d.%Y').date()
+        except Exception as e:
+            try:
+                newdate = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+            except ValueError:
+                # handle the case where date_str doesn't match any format
+                newdate = None
+        # print the date to the console
 
         try:
             # Try to get the existing trivia_round from the database
-            trivia_round = GPTriviaRound.objects.get(creator=creator, title=title, date=date)
+            # trivia_round = GPTriviaRound.objects.get(creator=creator, title=title, date=newdate)
+            # New idea, just use the round id
+            trivia_round = GPTriviaRound.objects.get(id=round_data.get('id'))
         except ObjectDoesNotExist:
             # If it does not exist, create a new instance
             trivia_round = GPTriviaRound()
-
         # Assign the round_data fields to the GPTriviaRound instance
         trivia_round.creator = creator
         trivia_round.title = title
         trivia_round.major_category = round_data.get('major_category')
         trivia_round.minor_category1 = round_data.get('minor_category1')
         trivia_round.minor_category2 = round_data.get('minor_category2')
-        trivia_round.date = date
+        trivia_round.date = newdate
         trivia_round.round_number = round_data.get('round_number')
         trivia_round.max_score = round_data.get('max_score')
         trivia_round.score_alex = round_data.get('score_alex')
@@ -644,15 +710,36 @@ def save_scores(request):
         trivia_round.cooperative = round_data.get('cooperative', False)
 
         # Save the instance to the database
-        trivia_round.save()
+        # first, log the trivia_round to the console
+        try:
+            print(trivia_round)
+            trivia_round.save()
+        except Exception as e:
+            print(f"Error saving trivia_round: {e}")
 
     # Update the joker_round_indices in the MergedPresentation
     if presentation_id:
         try:
             presentation = MergedPresentation.objects.get(presentation_id=presentation_id)
             presentation.joker_round_indices = joker_round_indices
+            presentation.creator_list = creator_list
+            presentation.round_names = round_names
             presentation.save()
         except ObjectDoesNotExist:
             return JsonResponse({"message": "Presentation not found."}, status=400)
+    else:
+        # create a new MergedPresentation object
+        try:
+            MergedPresentation.objects.create(
+                name=datetime.datetime.strptime(date_str, '%Y-%m-%d').date().strftime("%m.%d.%Y"),
+                presentation_id="",
+                creator_list=creator_list,
+                round_names=round_names,
+                joker_round_indices=joker_round_indices,
+            )
+        except Exception as e:
+            print(f"Error creating MergedPresentation object: {e}")
+            return JsonResponse({"message": "Error creating MergedPresentation object."}, status=400)
+
 
     return JsonResponse({"message": "Data saved successfully!"})

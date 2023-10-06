@@ -26,7 +26,7 @@ SECRET_KEY = "django-insecure-dnu^#ycvr7cm#x900=e2@whtrf7xj7#6--528a6tmm)-$5x$1k
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['hailsciencetrivia.com', 'www.hailsciencetrivia.com', '192.168.0.178', '127.0.0.1']
+ALLOWED_HOSTS = ['hailsciencetrivia.com', 'www.hailsciencetrivia.com', '192.168.0.178', '127.0.0.1', "localhost"]
 
 LOGGING = {
     'version': 1,
@@ -53,6 +53,12 @@ SESSION_COOKIE_AGE = 60 * 60 * 24 * 365
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
+CORS_ORIGIN_ALLOW_ALL = False
+CORS_ALLOW_CREDENTIALS = True
+CORS_ORIGIN_WHITELIST = [
+    'http://localhost:3000',  # Change to your React app's server address
+    'http://127.0.0.1:8000',
+]
 
 # Application definition
 
@@ -66,6 +72,7 @@ INSTALLED_APPS = [
     "GPTrivia",
     "rest_framework",
     'rest_framework.authtoken',
+    'corsheaders',
 ]
 
 REST_FRAMEWORK = {
@@ -83,6 +90,7 @@ REST_FRAMEWORK = {
 }
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",

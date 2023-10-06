@@ -5,9 +5,28 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/GPTrivia/servers.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GPTrivia/static/scoresheet/main.46a27737.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GPTrivia/static/scoresheet/main.b9517d6b.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/e2666952-f55c-4010-88fa-0799f91d9940.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/e2666952-f55c-4010-88fa-0799f91d9940.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/TODO" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/TODO" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/scoresheet.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/scoresheet.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/base.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/token.pickle" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/token.pickle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scoresheet/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scoresheet/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scoresheet/public/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/public/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scoresheet/src/App.css" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/src/App.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scoresheet/src/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/src/App.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scoresheet/src/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/src/index.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -47,12 +66,15 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "/Users/alex/git/GPTrivia/GPTrivia/templates/GPTrivia",
+    "last_opened_file_path": "/Users/alex/git/GPTrivia/GPTrivia/static/scoresheet",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm"
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "ts.external.directory.path": "/Applications/PyCharm.app/Contents/plugins/javascript-impl/jsLanguageServicesImpl/external",
+    "vue.rearranger.settings.migration": "true"
   },
   "keyToStringList": {
     "DatabaseDriversLRU": [
@@ -62,16 +84,18 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet" />
+      <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet/build" />
       <recent name="$PROJECT_DIR$/GPTrivia/templates/GPTrivia" />
       <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/GPTrivia/templatetags" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet" />
+      <recent name="$PROJECT_DIR$/GPTrivia/static/GPTrivia" />
+      <recent name="$PROJECT_DIR$/GPTrivia/static" />
       <recent name="$PROJECT_DIR$/GPTrivia" />
       <recent name="$PROJECT_DIR$" />
-      <recent name="$PROJECT_DIR$/GPTrivia/utils" />
-      <recent name="$PROJECT_DIR$/../" />
-      <recent name="$PROJECT_DIR$/GPTrivia/templates/registration" />
     </key>
   </component>
   <component name="RunManager" selected="Python.import_rounds">
@@ -249,7 +273,25 @@
       <workItem from="1683302743043" duration="20253000" />
       <workItem from="1683504930480" duration="7273000" />
       <workItem from="1683515301524" duration="18029000" />
-      <workItem from="1683829686166" duration="3382000" />
+      <workItem from="1683829686166" duration="3887000" />
+      <workItem from="1687563589193" duration="37591000" />
+      <workItem from="1687914571726" duration="5134000" />
+      <workItem from="1688058201555" duration="599000" />
+      <workItem from="1688062381198" duration="2352000" />
+      <workItem from="1694739246027" duration="1533000" />
+      <workItem from="1694806835926" duration="1808000" />
+      <workItem from="1694829224069" duration="587000" />
+      <workItem from="1694926922279" duration="98243000" />
+      <workItem from="1695659781930" duration="861000" />
+      <workItem from="1695797684994" duration="4282000" />
+      <workItem from="1695833695464" duration="304000" />
+      <workItem from="1695834557387" duration="17615000" />
+      <workItem from="1695917357158" duration="1824000" />
+      <workItem from="1696040257980" duration="8473000" />
+      <workItem from="1696192893149" duration="7307000" />
+      <workItem from="1696356427320" duration="461000" />
+      <workItem from="1696361641940" duration="599000" />
+      <workItem from="1696473433973" duration="34633000" />
     </task>
     <servers />
   </component>
@@ -329,6 +371,11 @@
           <url>file://$PROJECT_DIR$/import_rounds.py</url>
           <line>43</line>
           <option name="timeStamp" value="223" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
+          <line>709</line>
+          <option name="timeStamp" value="233" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
@@ -410,6 +457,50 @@
           <line>495</line>
           <option name="timeStamp" value="228" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
+          <line>1495</line>
+          <option name="timeStamp" value="230" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
+          <line>1288</line>
+          <option name="timeStamp" value="238" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
+          <line>1491</line>
+          <option name="timeStamp" value="239" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
+          <line>1463</line>
+          <option name="timeStamp" value="240" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
+          <line>1220</line>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="307" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
+          <line>796</line>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="309" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
+          <line>138</line>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="310" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
+          <line>236</line>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="311" />
+        </line-breakpoint>
         <line-breakpoint enabled="true" type="django-line">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
           <line>46</line>
@@ -424,21 +515,21 @@
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/GPTrivia$auth.coverage" NAME="auth Coverage Results" MODIFIED="1681685244111" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_tests_PlayerAnalysisViewTests_test_creators_list_not_empty.coverage" NAME="Test: GPTrivia.tests.tests.PlayerAnalysisViewTests.test_creators_list_not_empty Coverage Results" MODIFIED="1680237815698" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
-    <SUITE FILE_PATH="coverage/GPTrivia$get_token.coverage" NAME="get_token Coverage Results" MODIFIED="1681676094924" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/GPTrivia" />
-    <SUITE FILE_PATH="coverage/GPTrivia$auth__1_.coverage" NAME="auth (1) Coverage Results" MODIFIED="1681756810026" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_test_views_TestViews_test_home_view.coverage" NAME="Test: GPTrivia.test_views.TestViews.test_home_view Coverage Results" MODIFIED="1680132279552" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_PlayerAnalysisViewTests_test_creators_list_not_empty.coverage" NAME="Test: GPTrivia.tests.PlayerAnalysisViewTests.test_creators_list_not_empty Coverage Results" MODIFIED="1680135371448" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_PlayerAnalysisViewTests.coverage" NAME="Test: GPTrivia.tests.PlayerAnalysisViewTests Coverage Results" MODIFIED="1680196159003" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_test_views_TestViews_test_player_analysis_view.coverage" NAME="Test: GPTrivia.tests.test_views.TestViews.test_player_analysis_view Coverage Results" MODIFIED="1680133133075" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/GPTrivia$mail.coverage" NAME="mail Coverage Results" MODIFIED="1682987616129" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/GPTrivia" />
+    <SUITE FILE_PATH="coverage/GPTrivia$get_token.coverage" NAME="get_token Coverage Results" MODIFIED="1681676094924" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/GPTrivia" />
+    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_tests_PlayerAnalysisViewTests_test_creators_list_not_empty.coverage" NAME="Test: GPTrivia.tests.tests.PlayerAnalysisViewTests.test_creators_list_not_empty Coverage Results" MODIFIED="1680237815698" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/GPTrivia$import_rounds.coverage" NAME="import_rounds Coverage Results" MODIFIED="1683094115242" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/GPTrivia$auth__1_.coverage" NAME="auth (1) Coverage Results" MODIFIED="1681756810026" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/GPTrivia$views.coverage" NAME="views Coverage Results" MODIFIED="1680132143599" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/GPTrivia" />
     <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_tests_PlayerAnalysisViewTests_test_create_presentation.coverage" NAME="Test: GPTrivia.tests.tests.PlayerAnalysisViewTests.test_create_presentation Coverage Results" MODIFIED="1682268816566" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
-    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_PlayerAnalysisViewTests.coverage" NAME="Test: GPTrivia.tests.PlayerAnalysisViewTests Coverage Results" MODIFIED="1680196159003" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
-    <SUITE FILE_PATH="coverage/GPTrivia$import_rounds.coverage" NAME="import_rounds Coverage Results" MODIFIED="1683094115242" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/GPTrivia$mail.coverage" NAME="mail Coverage Results" MODIFIED="1682987616129" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/GPTrivia" />
-    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_test_views_TestViews.coverage" NAME="Test: GPTrivia.tests.test_views.TestViews Coverage Results" MODIFIED="1680132322959" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
-    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_test_views_TestViews_test_player_analysis_view.coverage" NAME="Test: GPTrivia.tests.test_views.TestViews.test_player_analysis_view Coverage Results" MODIFIED="1680133133075" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
-    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_test_views_TestViews_test_rounds_list_view.coverage" NAME="Test: GPTrivia.tests.test_views.TestViews.test_rounds_list_view Coverage Results" MODIFIED="1680133005979" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
-    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_tests_PlayerAnalysisViewTests.coverage" NAME="Test: GPTrivia.tests.tests.PlayerAnalysisViewTests Coverage Results" MODIFIED="1680196327685" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
-    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_PlayerAnalysisViewTests_test_creators_list_not_empty.coverage" NAME="Test: GPTrivia.tests.PlayerAnalysisViewTests.test_creators_list_not_empty Coverage Results" MODIFIED="1680135371448" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_PlayerAnalysisViewTests_test_player_analysis_view_creators.coverage" NAME="Test: GPTrivia.tests.PlayerAnalysisViewTests.test_player_analysis_view_creators Coverage Results" MODIFIED="1680133739143" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/GPTrivia$auth.coverage" NAME="auth Coverage Results" MODIFIED="1681685244111" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_tests_PlayerAnalysisViewTests.coverage" NAME="Test: GPTrivia.tests.tests.PlayerAnalysisViewTests Coverage Results" MODIFIED="1680196327685" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_test_views_TestViews.coverage" NAME="Test: GPTrivia.tests.test_views.TestViews Coverage Results" MODIFIED="1680132322959" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/GPTrivia$Test__GPTrivia_tests_test_views_TestViews_test_rounds_list_view.coverage" NAME="Test: GPTrivia.tests.test_views.TestViews.test_rounds_list_view Coverage Results" MODIFIED="1680133005979" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
   </component>
 </project>

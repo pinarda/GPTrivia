@@ -1,0 +1,33 @@
+How to start the server:
+
+In this directory:
+gunicorn GPTrivia.wsgi:application -c gunicorn.conf.py --access-logfile -
+then:
+sudo nginx
+
+
+
+How to make sure the database is updated (in this directory):
+
+python manage.py makemigrations
+python manage.py migrate
+
+
+
+Before deployment:
+
+python manage.py collectstatic
+switch debug to FALSE in settings.py
+
+
+
+To run the server locally:
+
+python manage.py runserver
+
+
+
+For the scoresheet react app development:
+
+Start the server locally (python manage.py runserver)
+See the README in the scoresheet directory (npm start)
