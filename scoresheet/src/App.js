@@ -961,6 +961,7 @@ const PlayerTable = () => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,  // Add the CSRF token here
               'Authorization': `Token ${localStorage.getItem('token')}`,
             },
             body: JSON.stringify(payload),
@@ -1009,6 +1010,7 @@ const PlayerTable = () => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
                 'Authorization': `Token ${localStorage.getItem('token')}`,
             },
         })
@@ -1051,6 +1053,7 @@ const PlayerTable = () => {
         fetch(url + `/delete_round/${roundId}/`, {
             method: 'DELETE',
             headers: {
+                'X-CSRFToken': csrfToken,
               'Authorization': `Token ${localStorage.getItem('token')}`,
             },
         })
