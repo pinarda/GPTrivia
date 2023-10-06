@@ -5,10 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/GPTrivia/static/scoresheet/build/static/js/main.fb153daa.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/static/scoresheet/build/static/js/main.f90f9c6f.js" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -48,7 +45,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "/Users/alex/git/GPTrivia/GPTrivia/static/scoresheet/build/static/js",
+    "last_opened_file_path": "/Users/alex/git/GPTrivia/GPTrivia/static/scoresheet",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -66,8 +63,8 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet/build/static/js" />
       <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet" />
+      <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet/build/static/js" />
       <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet/build" />
       <recent name="$PROJECT_DIR$/GPTrivia/templates/GPTrivia" />
       <recent name="$PROJECT_DIR$" />
@@ -274,7 +271,7 @@
       <workItem from="1696356427320" duration="461000" />
       <workItem from="1696361641940" duration="599000" />
       <workItem from="1696473433973" duration="35327000" />
-      <workItem from="1696613486593" duration="8042000" />
+      <workItem from="1696613486593" duration="8183000" />
     </task>
     <servers />
   </component>
