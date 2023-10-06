@@ -23,6 +23,11 @@ a {
     color: white;
 }
 
+.table-container {
+    overflow: auto;
+    min-height: 270px !important;
+}
+
 @media screen and (max-width: 850px) {
     #roundList {
       border-collapse: collapse; /* Collapse borders */
@@ -42,4 +47,11 @@ a {
         font-size: small;
         width: min-content;
     }
+
+
+    .table-container {
+        overflow: auto;
+        min-height: 150px !important;
+    }
+
 }

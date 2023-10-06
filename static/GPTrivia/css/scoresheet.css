@@ -100,7 +100,6 @@ a {
         justify-content: center;
         margin: auto;
     }
-
 }
 
 @media screen and (min-width: 1000px) {
@@ -108,4 +107,3 @@ a {
         display:none;
     }
 }
-
