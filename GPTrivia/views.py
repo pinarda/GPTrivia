@@ -727,6 +727,25 @@ def save_scores(request):
             presentation.save()
         except ObjectDoesNotExist:
             return JsonResponse({"message": "Presentation not found."}, status=400)
+    elif date_str:
+        try:
+            presentation = MergedPresentation.objects.get(name=datetime.datetime.strptime(date_str, '%Y-%m-%d').date().strftime("%m.%d.%Y"))
+            presentation.joker_round_indices = joker_round_indices
+            presentation.creator_list = creator_list
+            presentation.round_names = round_names
+            presentation.save()
+        except ObjectDoesNotExist:
+            try:
+                MergedPresentation.objects.create(
+                    name=datetime.datetime.strptime(date_str, '%Y-%m-%d').date().strftime("%m.%d.%Y"),
+                    presentation_id="",
+                    creator_list=creator_list,
+                    round_names=round_names,
+                    joker_round_indices=joker_round_indices,
+                )
+            except Exception as e:
+                print(f"Error creating MergedPresentation object: {e}")
+                return JsonResponse({"message": "Error creating MergedPresentation object."}, status=400)
     else:
         # create a new MergedPresentation object
         try:

@@ -1,7 +1,7 @@
 TO DO:
 
 TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
-TEST - get player profile links working on production site
+DONE - get player profile links working on production site
 REDID ENTIRE SCORESHEET INSTEAD - (can't edit scores in mobile view, they just revert automatically) refreshing when scoresheet is in mobile view deletes jokers?
 REDID ENTIRE SCORESHEET INSTEAD - Need to double click sorting columns for them to work the first time?
 REDID ENTIRE SCORESHEET INSTEAD - reordering the columns on the scoresheet deletes all scores (set colReorder to true in the datatables initialization to see this)
@@ -39,16 +39,16 @@ DONE - getting a lot of 403 forbidden which may explain some of the above (at le
 DONE - Round names are not correctly changing when we change the date in website view
 DONE - Select dropdowns are horizontally aligned in website view, not vertical
 DONE - cut the number of sig figs being displayed in the table (see 3.17.2023)
-
+DONE - clicking today repeatedly screws things up
+DONE - seems like something in the presentations db is getting screwed up (wrong presentation row is being modified, could have to do with today button?)
+DONE - pip install django-cors-headers on server, material ui?
 
 TRIVIAL (minutes)
 
-TODO - clicking today repeatedly screws things up
-TODO - seems like something in the presentations db is getting screwed up (wrong presentation row is being modified, could have to do with today button?)
-
+TODO - still losing jokers on refresh - probably has to do with when we use the today button
 TODO - need to handle really long round names (make the font smaller?), seemed like this was breaking the script to update slide 2
 
-TODO - pip install django-cors-headers on server, material ui?
+High - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
 High - add a Host trivia user that is the only one who can edit the scoresheet (and generate the presentation?)
 High - add normalize option to the rounds list
 High - add zeros to the created round category counts if the creator hasn't made any rounds in that category
