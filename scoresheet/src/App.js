@@ -393,14 +393,14 @@ const PlayerTable = () => {
 
 
     function getFontSize(textLength) {
-        if (textLength.length < 10) {
-          return '1.2rem'; // Default font size
-        } else if (textLength.length < 20) {
-          return '1.1rem'; // Smaller font size for text length between 10 and 20
-        } else if (textLength.length < 30) {
-          return '1rem'; // Smaller font size for text length between 10 and 20
+        if (textLength.length < 9) {
+          return '1rem'; // Default font size
+        } else if (textLength.length < 18) {
+          return '0.9rem'; // Smaller font size for text length between 10 and 20
+        } else if (textLength.length < 27) {
+          return '0.8rem'; // Smaller font size for text length between 10 and 20
         } else {
-          return '0.8rem'; // Even smaller font size for text length 20 and above
+          return '0.6rem'; // Even smaller font size for text length 20 and above
         }
       };
 
