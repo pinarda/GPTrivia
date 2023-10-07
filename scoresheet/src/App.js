@@ -773,7 +773,7 @@ const PlayerTable = () => {
             const year = today.getFullYear();
             const month = today.getMonth() + 1;
             const day = today.getDate();
-            if (currentDate.getFullYear() === year && currentDate.getMonth() + 1 === month && currentDate.getDate() === day) {
+            if (currentDate.getFullYear() === year && currentDate.getMonth() + 1 === month && currentDate.getDate() + 1 === day) {
                 return;
             }
             // remember to pad the month and day with leading zeros (they must be converted to strings first)
