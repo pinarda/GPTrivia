@@ -767,13 +767,15 @@ const PlayerTable = () => {
             setTempTitles(initialTempTitles);
         } else {
             // if the currently selected date is already today, don't do anything
-            if (selectedDate === eventOrDate) {
-                return;
-            }
+            let currentDateString = selectedDate;
+            let currentDate = Date(currentDateString);
             const today = new Date();
             const year = today.getFullYear();
             const month = today.getMonth() + 1;
             const day = today.getDate();
+            if (currentDate.getFullYear() === year && currentDate.getMonth() + 1 === month && currentDate.getDate() === day) {
+                return;
+            }
             // remember to pad the month and day with leading zeros (they must be converted to strings first)
             const todayStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
             setDates(prevDates => [...prevDates, todayStr]);
