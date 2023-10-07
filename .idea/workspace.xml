@@ -6,6 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scoresheet/src/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/src/App.js" afterDir="false" />
     </list>
@@ -273,7 +275,7 @@
       <workItem from="1696356427320" duration="461000" />
       <workItem from="1696361641940" duration="599000" />
       <workItem from="1696473433973" duration="35327000" />
-      <workItem from="1696613486593" duration="15680000" />
+      <workItem from="1696613486593" duration="15855000" />
     </task>
     <servers />
   </component>
