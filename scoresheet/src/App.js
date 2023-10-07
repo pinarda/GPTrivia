@@ -16,11 +16,11 @@ import {
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import Button from '@mui/material/Button';
-import styled from 'styled-components'
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import styled, { createGlobalStyle } from 'styled-components';
 import {hover} from "@testing-library/user-event/dist/hover";
 
 
@@ -300,6 +300,13 @@ import {hover} from "@testing-library/user-event/dist/hover";
       }
     `;
 
+      const GlobalStyle = createGlobalStyle`
+          .MuiPopover-root .MuiPaper-root {
+            display: block;
+          }
+    `;
+
+
 
 const PlayerTable = () => {
     const defaultPlayers = useMemo(() => {
@@ -343,8 +350,8 @@ const PlayerTable = () => {
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
-    // let url = "http://localhost:8000"
-    let url = "https://hailsciencetrivia.com"
+    let url = "http://localhost:8000"
+    // let url = "https://hailsciencetrivia.com"
 
     function sortPlayers(b, a) {
       const totalScoreA = rounds.reduce((total, round) => total + (round[a] || 0), 0) + (
@@ -753,7 +760,16 @@ const PlayerTable = () => {
             setSelectedDate(eventOrDate.target.value);
             const filteredRounds = rounds.filter(round => round.date === eventOrDate.target.value);
             setRounds(filteredRounds);
+            let initialTempTitles = [];
+            filteredRounds.forEach(round => {
+                initialTempTitles.push(round.title);
+            });
+            setTempTitles(initialTempTitles);
         } else {
+            // if the currently selected date is already today, don't do anything
+            if (selectedDate === eventOrDate) {
+                return;
+            }
             const today = new Date();
             const year = today.getFullYear();
             const month = today.getMonth() + 1;
@@ -762,7 +778,6 @@ const PlayerTable = () => {
             const todayStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
             setDates(prevDates => [...prevDates, todayStr]);
             setSelectedDate(todayStr);
-            // reset tempTitles
             setTempTitles([]);
         }
     }
@@ -1080,9 +1095,8 @@ const PlayerTable = () => {
 
 
   return (
-
-
-
+    <>
+    <GlobalStyle />
     <StyledTableContainer>
       <Grid container alignItems="center" spacing={1}>
 
@@ -1237,16 +1251,30 @@ const PlayerTable = () => {
                           }}
                           onBlur={(event) => handleScoreChange(event, player, round.title, round)}
                       >
-                          {scores[player] && scores[player][round.title] ? scores[player][round.title] : round[player]}
+                          {(() => {
+                                const cellValue = scores[player] && scores[player][round.title]
+                                                  ? scores[player][round.title]
+                                                  : round[player];
+
+                                return (typeof cellValue === 'number')
+                                       ? parseFloat(cellValue.toFixed(2))
+                                       : cellValue;
+                            })()}
                       </StyledTableCell>
                   ))}
                   <StyledTableCell>
-                      <div className={"textCell"}>{scores[player] && scores[player][selectedRounds[player]]}</div>
-                  </StyledTableCell>
-                  <StyledTableCell><div className={"textCell"}>{
-                        rounds.filter(round => {
-                          const playerName = player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1);
+                  <div className={"textCell"}>
+                    {(() => {
+                      const roundScore = scores[player] && scores[player][selectedRounds[player]];
+                      return (typeof roundScore === 'number') ? parseFloat(roundScore.toFixed(2)) : roundScore;
+                    })()}
+                  </div>
+                </StyledTableCell>
+                  <StyledTableCell><div className={"textCell"}>{(() => {
+                      const playerName = player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1);
 
+                      const total = rounds
+                        .filter(round => {
                           if (playerName === "Dan") {
                             return round.creator === "Dad" || round.creator === "Dan";
                           } else if (playerName === 'Debi') {
@@ -1256,27 +1284,42 @@ const PlayerTable = () => {
                           }
                         })
                         .map(round => medianScores[rounds.indexOf(round)])
-                        .reduce((acc, score) => acc + (score || 0), 0)
-                      }</div></StyledTableCell>
+                        .reduce((acc, score) => acc + (score || 0), 0);
+
+                      return (typeof total === 'number') ? parseFloat(total.toFixed(2)) : total;
+
+                    })()}
+                  </div></StyledTableCell>
 
                   <StyledTableCell>
                       <div className={"textCell"}>
-                          {rounds.reduce((total, round) => total + (round[player] || 0), 0) + (
-                        rounds.filter(round => {
-                              const playerName = player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1);
-                                  if (playerName === "Dan") {
-                                    return round.creator === "Dad" || round.creator === "Dan";
-                                  } else if (playerName === 'Debi') {
-                                    return round.creator === 'Mom' || round.creator === 'Debi';
-                                  } else {
-                                    return round.creator === playerName;
-                                  }
-                                })
+                        {(() => {
+                          const playerName = player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1);
+
+                          const roundTotal = rounds.reduce((total, round) => total + (round[player] || 0), 0);
+
+                          const creatorBonus = rounds
+                            .filter(round => {
+                              if (playerName === "Dan") {
+                                return round.creator === "Dad" || round.creator === "Dan";
+                              } else if (playerName === 'Debi') {
+                                return round.creator === 'Mom' || round.creator === 'Debi';
+                              } else {
+                                return round.creator === playerName;
+                              }
+                            })
                             .map(round => medianScores[rounds.indexOf(round)])
-                            .reduce((acc, score) => acc + (score || 0), 0)
-                          ) + (scores[player] && scores[player][selectedRounds[player]] ? scores[player][selectedRounds[player]] : 0)}
+                            .reduce((acc, score) => acc + (score || 0), 0);
+
+                          const selectedRoundScore = scores[player] && scores[player][selectedRounds[player]] ? scores[player][selectedRounds[player]] : 0;
+
+                          const finalTotal = roundTotal + creatorBonus + selectedRoundScore;
+
+                          return (typeof finalTotal === 'number') ? parseFloat(finalTotal.toFixed(2)) : finalTotal;
+
+                        })()}
                       </div>
-                  </StyledTableCell>
+                    </StyledTableCell>
                       <StyledTableCell>
                           <XButton player={player} onClick={() => handleRemovePlayer(player)}>X</XButton>
                       </StyledTableCell>
@@ -1514,6 +1557,7 @@ const PlayerTable = () => {
         </TableBody>
       </StyledTable>
     </StyledTableContainer>
+    </>
   );
 };
 

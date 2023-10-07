@@ -34,16 +34,17 @@ DONE - When we create/delete rounds and players, we also need to update the pres
 DONE - handling of mobile view (probably just another dropdown to select a single column + total score to view?)
 DONE - fix button font
 DONE - Enter player background is white in website view
+DONE - save button broken in web view, also add round (what about delete?)
+DONE - getting a lot of 403 forbidden which may explain some of the above (at least the last one)
+DONE - Round names are not correctly changing when we change the date in website view
+DONE - Select dropdowns are horizontally aligned in website view, not vertical
+DONE - cut the number of sig figs being displayed in the table (see 3.17.2023)
 
 
 TRIVIAL (minutes)
 
-TODO - Round names are not correctly changing when we change the date in website view
-TODO - Select dropdowns are horizontally aligned in website view, not vertical
 TODO - clicking today repeatedly screws things up
-TODO - cut the number of sig figs being displayed in the table (see 3.17.2023)
-TODO - save button broken in web view, also add round (what about delete?)
-TODO - getting a lot of 403 forbidden which may explain some of the above (at least the last one)
+TODO - seems like something in the presentations db is getting screwed up (wrong presentation row is being modified, could have to do with today button?)
 
 TODO - need to handle really long round names (make the font smaller?), seemed like this was breaking the script to update slide 2
 
