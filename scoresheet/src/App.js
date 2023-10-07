@@ -77,7 +77,6 @@ import {hover} from "@testing-library/user-event/dist/hover";
         return 'black'
     }
 
-
     // Function to darken the background color on hover
     function darkenBackground(hexColor) {
         if (hexColor[0] === '#') {
@@ -188,7 +187,6 @@ import {hover} from "@testing-library/user-event/dist/hover";
       text-align: center;
         font-family: Monaco;
         font-size: 0.8rem;
-      
     `;
 
 
@@ -260,6 +258,8 @@ import {hover} from "@testing-library/user-event/dist/hover";
           border: none;
         }
     `
+
+
 
     const StyledTable = styled(Table)`
       & tbody {
@@ -350,8 +350,8 @@ const PlayerTable = () => {
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
-    // let url = "http://localhost:8000"
-    let url = "https://hailsciencetrivia.com"
+    let url = "http://localhost:8000"
+    // let url = "https://hailsciencetrivia.com"
 
     function sortPlayers(b, a) {
       const totalScoreA = rounds.reduce((total, round) => total + (round[a] || 0), 0) + (
@@ -390,6 +390,19 @@ const PlayerTable = () => {
         const [month, day, year] = dateStr.split('.');
         return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
+
+
+    function getFontSize(textLength) {
+        if (textLength.length < 10) {
+          return '1.2rem'; // Default font size
+        } else if (textLength.length < 20) {
+          return '1.1rem'; // Smaller font size for text length between 10 and 20
+        } else if (textLength.length < 30) {
+          return '1rem'; // Smaller font size for text length between 10 and 20
+        } else {
+          return '0.8rem'; // Even smaller font size for text length 20 and above
+        }
+      };
 
     useEffect(() => {
        console.log("isSaved updated:", isSaved);
@@ -973,14 +986,14 @@ const PlayerTable = () => {
             joker_round_indices: formattedSelectedRounds,  // Add appropriate data here
             presentation_id: presID,  // Add appropriate data here
             round_names: roundNames,
-            round_creators: roundCreators
+            round_creators: roundCreators,
         };
 
         fetch(url + '/save_scores/', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken,  // Add the CSRF token here
+              'X-CSRFToken': csrfToken,  // Add the CSRF token here
               'Authorization': `Token ${localStorage.getItem('token')}`,
             },
             body: JSON.stringify(payload),
@@ -1043,19 +1056,6 @@ const PlayerTable = () => {
             console.error('Error:', error);
         });
     }
-
-     // A function to determine font size based on text length
-      const getFontSize = textLength => {
-        if (textLength < 10) {
-          return '1.4rem'; // Default font size
-        } else if (textLength < 20) {
-          return '1.2rem'; // Smaller font size for text length between 10 and 20
-        } else if (textLength < 30) {
-          return '1rem'; // Smaller font size for text length between 10 and 20
-        } else {
-          return '0.8rem'; // Even smaller font size for text length 20 and above
-        }
-      };
 
     const handleTempTitleChange = (index, newTitle) => {
         setTempTitles(prevTitles => {
@@ -1189,6 +1189,8 @@ const PlayerTable = () => {
                     fullWidth
                     multiline
                     rowsMax={3}
+                    // use getFontSIze to set the font size based on the length of the title
+                    inputProps={{ style: { fontSize: getFontSize(round.title) } }}
                 />
             </StyledTableCell>
             ))}
