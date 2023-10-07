@@ -653,6 +653,7 @@ const PlayerTable = () => {
                 setSelectedRounds(initialSelectedRoundsWithPrefix);
             } else {
                 setSelectedRounds(playerNames.reduce((acc, curr) => ({...acc, [curr]: "Select"}), {}));
+                setPresID(0);
             }
         })
         .catch(error => {
