@@ -768,7 +768,7 @@ const PlayerTable = () => {
         } else {
             // if the currently selected date is already today, don't do anything
             let currentDateString = selectedDate;
-            let currentDate = Date(currentDateString);
+            let currentDate = new Date(currentDateString);
             const today = new Date();
             const year = today.getFullYear();
             const month = today.getMonth() + 1;
