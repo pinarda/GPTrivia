@@ -781,6 +781,7 @@ const PlayerTable = () => {
             setDates(prevDates => [...prevDates, todayStr]);
             setSelectedDate(todayStr);
             setTempTitles([]);
+            setPresID(0);
         }
     }
 
