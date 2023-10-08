@@ -37,7 +37,8 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.modify',
           'https://www.googleapis.com/auth/presentations',
           'https://www.googleapis.com/auth/script.external_request',
           'https://www.googleapis.com/auth/script.scriptapp',
-          'https://www.googleapis.com/auth/script.projects']
+          'https://www.googleapis.com/auth/script.projects',
+          'https://www.googleapis.com/auth/drive']
 # # Replace with your actual client_secret file
 # CLIENT_SECRET_FILE = '../../../../client_secret.json'
 CLIENT_SECRET_FILE = '/Users/alex/client_secret.json'
@@ -387,10 +388,162 @@ def create_delete_insert_text_requests(element_id, start_index, end_index, new_t
 
     return [delete_text_request, insert_text_request]
 
+def copy_template(template_id, copy_title, qas):
+    credentials=None
+    # Check if the token.pickle file exists
+    if os.path.exists(token_file_path):
+        with open(token_file_path, 'rb') as token:
+            credentials = pickle.load(token)
+
+    # If the credentials are not available or invalid, prompt the user to authenticate again.
+    if not credentials or not credentials.valid:
+        if credentials and credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES)
+            credentials = flow.run_local_server(port=8080)
+        with open(token_file_path, 'wb') as token:
+            pickle.dump(credentials, token)
+
+    # Check if the credentials have expired
+    if credentials.expired and credentials.refresh_token:
+        # Refresh the credentials
+        credentials.refresh(Request())
+
+        # Save the refreshed credentials back to the 'token.pickle' file
+        with open(token_file_path, 'wb') as token:
+            pickle.dump(credentials, token)
+
+
+    try:
+        service = build('slides', 'v1', credentials=credentials)
+        http = httplib2.Http(timeout=300)
+        authorized_http = AuthorizedHttp(credentials, http=http)
+        script_service = build('script', 'v1', http=authorized_http)
+        # Copy the presentation
+        presentation = service.presentations().create(
+            body={
+                'title': copy_title
+            }
+        ).execute()
+        new_presentation_id = presentation.get('presentationId')
+
+        # Step 2: Get the slides from the original presentation
+        original_presentation = service.presentations().get(
+            presentationId=template_id
+        ).execute()
+        slides = original_presentation.get('slides')
+
+        # Step 3: Copy the slides to the new presentation
+        request = {
+            'function': 'copySlides',
+            'parameters': [template_id, new_presentation_id],
+            'devMode': True
+        }
+        response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
+
+        remove_first_slide(credentials, new_presentation_id)
+
+        # update text on slides:
+
+        requests = []
+        for slide in slides:
+            for shape in slide.get('pageElements', []):
+                if 'shape' in shape and 'text' in shape['shape']:
+                    text_content = shape['shape']['text']['textElements']
+                    # Concatenate text elements to get full text
+                    full_text = ''.join([elem.get('textRun', {}).get('content', '') for elem in text_content])
+                    # Check for placeholder text
+                    for qa_label, new_text in qas.items():
+                        if qa_label in full_text:
+                            # Step 4: Build update request
+                            requests.append({
+                                'replaceAllText': {
+                                    'containsText': {
+                                        'text': qa_label,
+                                        'matchCase': True,
+                                    },
+                                    'replaceText': new_text,
+                                    #'pageObjectIds': [page_id],  # Restrict to current page
+                                }
+                            })
+
+        replace_round_title_request = {
+            'replaceAllText': {
+                'containsText': {
+                    'text': 'RoundTitle',  # The text to be replaced
+                    'matchCase': True,
+                },
+                'replaceText': copy_title,  # The new text
+                # Omitting 'pageObjectIds' to apply replacement throughout the presentation
+            }
+        }
+        requests.append(replace_round_title_request)
+
+        # Step 5: Send update requests
+        if requests:
+            service.presentations().batchUpdate(
+                presentationId=new_presentation_id,
+                body={'requests': requests}
+            ).execute()
+
+        # Get the link to the copied presentation
+        return new_presentation_id
+
+    except HttpError as error:
+        print(f'An error occurred: {error}')
+        return None
+
 def build_credentials():
     flow = InstalledAppFlow.from_client_secrets_file(
         CLIENT_SECRET_FILE, SCOPES)
     return flow.run_local_server(port=8080)
+
+def share_slides(presId):
+    credentials=None
+    # Check if the token.pickle file exists
+    if os.path.exists(token_file_path):
+        with open(token_file_path, 'rb') as token:
+            credentials = pickle.load(token)
+
+    # If the credentials are not available or invalid, prompt the user to authenticate again.
+    if not credentials or not credentials.valid:
+        if credentials and credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES)
+            credentials = flow.run_local_server(port=8080)
+        with open(token_file_path, 'wb') as token:
+            pickle.dump(credentials, token)
+
+    # Check if the credentials have expired
+    if credentials.expired and credentials.refresh_token:
+        # Refresh the credentials
+        credentials.refresh(Request())
+
+        # Save the refreshed credentials back to the 'token.pickle' file
+        with open(token_file_path, 'wb') as token:
+            pickle.dump(credentials, token)
+
+
+    try:
+        # Share the copied presentation with yourself
+        drive_service = build('drive', 'v3', credentials=credentials)
+        drive_service.permissions().create(
+            fileId=presId,
+            body={
+                'type': 'user',
+                'role': 'writer',
+                'emailAddress': 'hailsciencetrivia@gmail.com'
+            },
+            fields='id'
+        ).execute()
+        return True
+    except HttpError as error:
+        print(f'An error occurred: {error}')
+        return None
+
+
 
 def create_presentation():
     credentials = None
@@ -625,4 +778,10 @@ def create_presentation():
     return new_presentation_id, creator_names, round_titles
 
 if __name__ == '__main__':
-    create_presentation()
+    questions_answers = {
+        'Question1': 'What is the capital of France?',
+        'Answer1': 'Paris',
+        # ... and so on for each question and answer
+    }
+    # copy_template('109EgKCocHzTtUF9hVJVKEfV0HzFjaBfpWPKXaLNsos0', 'test', questions_answers)
+    share_slides("1sZkp63495N6XRVWoe6_56fch-0nGZ2KF9YWWqgc_PdE")

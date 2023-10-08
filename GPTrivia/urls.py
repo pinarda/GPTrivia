@@ -28,6 +28,7 @@ from django.conf.urls.static import static
 from .views import CustomObtainAuthToken
 from django.forms.models import model_to_dict
 from django.views.decorators.csrf import csrf_exempt
+from .views import RoundMaker, GenerateIdeaView, PreviewView, ShareView
 
 
 
@@ -51,4 +52,8 @@ urlpatterns = [
     path('save_scores/', csrf_exempt(views.save_scores), name='save_scores'),
     path('create_round/<str:date>/<int:number>/', csrf_exempt(views.create_round), name='create_round'),
     path('delete_round/<int:round_id>/', csrf_exempt(views.delete_round), name='delete_round'),
+    path('round_maker/', RoundMaker.as_view(), name='round_maker'),
+    path('generate_idea/', GenerateIdeaView.as_view(), name='generate_round'),
+    path('preview/', PreviewView.as_view(), name='preview'),
+    path('share/', ShareView.as_view(), name='share'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

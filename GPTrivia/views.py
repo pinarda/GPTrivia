@@ -5,10 +5,16 @@ from django.db.models import Avg, F, FloatField, Case, When, Sum, Count
 from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
 from django.shortcuts import render
-from .mail import create_presentation, update_merged_presentation
+from .mail import create_presentation, update_merged_presentation, copy_template, share_slides
 from datetime import datetime
 from django.core.exceptions import ObjectDoesNotExist
 from django.views.decorators.csrf import csrf_exempt
+import openai
+from django.views import View
+import os
+import random
+
+
 
 
 import numpy as np
@@ -69,6 +75,23 @@ class CustomPasswordChangeView(auth_views.PasswordChangeView):
 class CustomPasswordChangeDoneView(auth_views.PasswordChangeDoneView):
     template_name = 'registration/password_changed.html'
 
+class PreviewView(View):
+    def post(self, request, *args, **kwargs):
+        round_title = request.POST.get('round_title')
+        presentation_id = request.POST.get('presentation_id')
+        qas_json_string = request.POST.get('qas')
+        # Convert the JSON string to a dictionary
+        qas_dict = json.loads(qas_json_string)
+
+        new_id = copy_template(presentation_id, round_title, qas_dict)
+        print (qas_dict)
+        return JsonResponse({'new_id': new_id})
+
+class ShareView(View):
+    def post(self, request, *args, **kwargs):
+        presentation_id = request.POST.get('presentation_id')
+        share_slides(presentation_id)
+        return JsonResponse({'success': True})
 
 @login_required
 def rounds_list(request):
@@ -444,6 +467,83 @@ def player_profile_dict(request, player_name):
     }
 
     return context
+
+# views.py
+class GenerateIdeaView(View):
+    def post(self, request, *args, **kwargs):
+        items_list = ["Physical Science", "Biology", "Anatomy", "Human Organs", "Bones and Muscles", "Cells", "Cell Structures", "Medicine", "Common Diseases", "Medical Milestones", "Genetics", "Basic Genetics", "Evolution",
+                      "Evolutionary Milestones", "Extinct Species", "Ecology", "Ecosystems", "Endangered Species", "Chemistry", "Atoms", "Atomic Structure", "Notable Elements", "The Periodic Table", "Element Categories",
+                      "Chemical Reactions", "Organic Chemistry", "Organic Compounds", "Inorganic Chemistry", "Inorganic Compounds", "Physics", "Mechanics", "Laws of Motion", "Simple Machines", "Optics",
+                      "Light and Color", "Optical Illusions", "Electricity and Magnetism", "Basic Circuits", "Magnetic Fields", "Quantum Mechanics", "Basic Quantum Concepts", "Relativity", "Basic Concepts of Relativity",
+                      "Entertainment", "Music", "Famous Musicians", "Hit Singles and Albums", "Movies", "Famous Directors and Actors", "Box Office Hits", "Television", "Famous TV Shows", "Memorable TV Characters", "Books",
+                      "Famous Authors", "Bestselling Books", "Video Games", "Popular Video Games", "Renowned Game Developers", "Theater and Musicals", "Famous Plays and Musicals", "Notable Playwrights and Composers",
+                      "Iconic Theaters", "Comics and Animation", "Popular Comics", "Famous Animators and Studios", "Iconic Animated Characters", "History", "Ancient Civilizations", "Ancient Egyptian Civilization",
+                      "Ancient Greek Civilization", "Ancient Roman Civilization", "Ancient Chinese Civilization", "Ancient Mesopotamian Civilization", "Medieval History", "Medieval Feudal System", "Medieval Crusades",
+                      "Medieval Black Death", "Renaissance and Enlightenment", "Renaissance Art and Inventions", "Enlightenment Thinkers and Ideas", "Modern History", "World Wars", "World War I Events", "World War II Events",
+                      "Cold War Events", "Significant 20th Century Events", "American History", "American Revolution Events", "American Civil War Events", "Significant American Legislation", "American Civil Rights Movement",
+                      "Asian History", "Chinese Dynasties", "Japanese Shogunate History", "Indian Independence Movement", "European History", "British Monarchy History", "French Revolution Events", "Russian Revolution Events",
+                      "African History", "Ancient African Kingdoms", "African Colonial Era", "African Post-Colonial Era", "Latin American History", "Pre-Columbian Civilizations", "Latin American Colonial Era",
+                      "Latin American Independence Movements", "Food", "Cuisines", "Italian Cuisine", "Chinese Cuisine", "Mexican Cuisine", "Indian Cuisine", "French Cuisine", "Cooking Techniques", "Baking", "Grilling", "Frying",
+                      "Ingredients", "Vegetables", "Fruits", "Meats", "Dairy Products", "Dishes", "Appetizers", "Main Courses", "Desserts", "Snacks", "Drinks", "Alcoholic Beverages", "Non-Alcoholic Beverages", "Coffee and Tea",
+                      "Dietary Preferences", "Vegetarianism", "Veganism", "Food Industry", "Famous Chefs", "Popular Restaurants", "Nature", "Animals", "Mammals", "Birds", "Reptiles", "Amphibians", "Fish", "Insects", "Plants",
+                      "Trees", "Flowers", "Natural Phenomena", "Weather Events", "Natural Disasters", "Ecosystems", "Forests", "Deserts", "Oceans", "Conservation", "Endangered Species", "Conservation Efforts", "Geology",
+                      "Rocks and Minerals", "Fossils", "Water Bodies", "Rivers and Lakes", "Oceans and Seas", "Exploration", "Famous Naturalists", "Technology", "Computing", "Hardware", "Software", "Internet", "Electronics",
+                      "Gadgets and Devices", "Home Appliances", "Telecommunications", "Mobile Technology", "Networking", "Transportation Technology", "Automotive Technology", "Aviation Technology", "Energy Technology",
+                      "Renewable Energy", "Fossil Fuels", "Medical Technology", "Medical Devices", "Telemedicine", "Industrial Technology", "Robotics", "Automation", "Emerging Technologies", "Artificial Intelligence",
+                      "Virtual Reality and Augmented Reality", "Sports", "Team Sports", "Football (Soccer)", "American Football", "Baseball", "Basketball", "Hockey", "Individual Sports", "Tennis", "Golf", "Swimming",
+                      "Athletics (Track and Field)", "Boxing", "Water Sports", "Sailing", "Surfing", "Winter Sports", "Skiing", "Snowboarding", "Motorsports", "Formula 1", "NASCAR", "Racket Sports", "Badminton", "Table Tennis",
+                      "Equestrian Sports", "Horse Racing", "International Competitions", "Olympics", "World Cup (various sports)", "Sports Personalities", "Famous Athletes", "Notable Coaches", "Music", "Musical Genres",
+                      "Pop Music", "Rock Music", "Hip-Hop Music", "Country Music", "Classical Music", "Musical Instruments", "String Instruments", "Wind Instruments", "Percussion Instruments", "Keyboard Instruments",
+                      "Musical Performance", "Solo Performance", "Ensemble Performance", "Music Production", "Recording Techniques", "Music Producers", "Music Industry", "Record Labels", "Music Awards", "Famous Musicians and Bands",
+                      "Iconic Singers", "Legendary Bands", "Music Events and Festivals", "Music Festivals", "Charity Concerts", "Humanities", "Philosophy", "Famous Philosophers", "Philosophical Movements", "Literature", "Literature Genres",
+                      "Fiction Novels", "Poetry Collections", "Drama Plays", "Fantasy Novels", "Mystery Novels", "Science Fiction Novels", "Historical Literature Periods", "Classical Literature", "Modern Literature", "Famous Authors",
+                      "Notable Poets", "Iconic Novelists", "Celebrated Playwrights", "Major Literary Works", "Classic Novels", "Significant Poems", "Memorable Plays", "Literary Awards", "Booker Prize Winners", "Pulitzer Prize Winners",
+                      "Nobel Prize in Literature Laureates", "Geography and Languages", "Physical Geography", "Landforms", "Bodies of Water", "Political Geography", "Countries and Capitals", "Borders and Territories", "Languages",
+                      "World Languages", "Linguistics", "Regional Studies", "African Geography and Languages", "Asian Geography and Languages", "European Geography and Languages", "North American Geography and Languages",
+                      "South American Geography and Languages", "Oceania Geography and Languages", "Travel and Tourism", "Famous Landmarks", "World Cities", "Languages", "Language Families", "Indo-European Languages",
+                      "Sino-Tibetan Languages", "Afro-Asiatic Languages", "World Languages", "English", "Spanish", "Mandarin Chinese", "French", "Arabic", "Linguistics", "Phonetics and Phonology", "Linguistic Syntax", "Writing Systems",
+                      "Alphabets", "Syllabaries", "Historical and Ancient Languages", "Latin", "Ancient Greek", "Regional Languages", "European Languages", "Asian Languages", "African Languages", "Language in Society", "Sociolinguistics",
+                      "Dialects and Varieties", "Government", "Political Systems", "Democracy", "Monarchy", "Republic", "Branches of Government", "The Executive Branch", "The Legislative Branch", "The Judicial Branch", "Elections and Voting", "Electoral Systems",
+                      "Political Campaigns", "Political Parties and Ideologies", "Major Political Parties", "Government Institutions", "Parliaments and Congresses", "Courts", "International Relations", "International Organizations",
+                      "Diplomacy", "Public Policy", "Economic Policy", "Environmental Policy", "Civil Rights and Liberties", "Human Rights", "Freedom of Speech", "Legal Systems", "Common Law", "Civil Law", "Historical and Political Figures",
+                      "Heads of State", "Influential Politicians", "Political Activism", "Protests and Movements", "Word Games", "Current Events", "Hodgepodge", "Family", "Mathematics", "Computer Science", "Clouds", "Space", "Space Travel"]
+        random_item = random.choice(items_list)
+        suggestion = f'How about {random_item}?'
+        return JsonResponse({'suggestion': suggestion})
+
+class RoundMaker(View):
+    template_name = 'GPTrivia/round_maker.html'
+
+    def get(self, request, *args, **kwargs):
+        request.session['conversation_history'] = [
+            {"role": "system", "content": "Your name is Swooper, the swoop snake. At the beginning of every conversation (not every single reply), the first thing you say is 'Swoop!' in a high pitched voice. You also have wings. You're sssmooth-talking and sssensual. Now, whenever someone says something to you, make sure to respond in the voice of that character. Also, your job is trivia round recommender. No matter what the reply is, you find a way to suggest challenging and off-the-wall trivia rounds that the user might enjoy making. And you do not under any circumstances provide actual question, only ideas for rounds. Here's an example of what you might say:'Sssmooth moves, my friend! But you ssseem like sssomeone who might enjoy a great trivia round. How about trying a \"sssensational sssoundtrack\" trivia, filled with questions about famous movie ssscores and theme sssongs? Sssounds exciting, doesn't it?' Also, if someone starts their message with 'SWOOP', you break out of character entirely and answer like a normal helpful assistant."}
+        ]
+        return render(request, self.template_name)
+
+    def post(self, request, *args, **kwargs):
+        user_input = request.POST.get('user_input')
+        openai.api_key = os.getenv('OPENAI_API_KEY')
+
+        # Get the conversation history from the session
+        conversation_history = request.session.get('conversation_history', [])
+        # Append the user's message to the conversation history
+        conversation_history.append({"role": "user", "content": user_input})
+
+        try:
+            response = openai.ChatCompletion.create(
+                # model="gpt-3.5-turbo",
+                model="gpt-4",
+                messages=conversation_history,
+                max_tokens=150
+            )
+            print(response)
+            gpt_response = response['choices'][0]['message']['content']
+            conversation_history.append({"role": "assistant", "content": gpt_response})
+            request.session['conversation_history'] = conversation_history
+        except Exception as e:
+            gpt_response = str(e)
+
+        return JsonResponse({'gpt_response': gpt_response})
 
 @login_required
 def player_profile(request, player_name):

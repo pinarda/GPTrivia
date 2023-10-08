@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+{% load GPTrivia_extras %}
+{% load static %}
+{% load custom_tags %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/round_maker.css' %}">
+{% endblock %}
+
+{% block content %}
+
+
+
+<style>
+
+    .input-row {
+        min-height: 50px;  /* Adjust as needed */
+    }
+
+    .accordion {
+        background-color: #eee;
+        color: #444;
+        cursor: pointer;
+        padding: 18px;
+        width: 100%;
+        border: none;
+        text-align: left;
+        outline: none;
+        font-size: 15px;
+        transition: 0.4s;
+    }
+
+    .active, .accordion:hover {
+        background-color: #ccc;
+    }
+
+    .panel {
+        padding: 0 18px;
+        display: none;
+        background-color: white;
+        overflow: hidden;
+    }
+</style>
+
+<!-- Accordion menu -->
+Out of time? No ideas for your round? Try S.W.O.O.P. (Simple Way of Obtaining Presentation)!
+<button class="accordion">Generate Ideas with Swooper</button>
+<div class="panel">
+    <form method="post" id="chat-form">
+        {% csrf_token %}
+        <input type="text" name="user_input" id="user-input" placeholder="Type your message" required>
+        <button type="submit" id="gpt-submit">Submit</button>
+        <img id="submit-spinner1" src="{% static 'GPTrivia/css/snakecircle.png' %}" style="display:none;" alt="Loading..." width="20px" height="20px">
+    </form>
+
+    <div id="chat-response">
+        <!-- The ChatGPT response will be inserted here -->
+        {{ gpt_response|safe }}
+    </div>
+
+    <div style="margin-top: 2rem"> Not feeling chatty? Try this instead: </div>
+
+    <button id="generate-round-button">Generate Idea</button>
+    <div id="round-suggestion"></div>
+</div>
+
+
+<!-- ... your other HTML ... -->
+
+<button class="accordion">Enter Your Questions</button>
+<div class="panel">
+    <table style="width: 100%;">
+        <!-- First Row -->
+        <tr>
+            <td style="padding: 10px;">
+                <label for="round-title">Round Title</label><br>
+                <input type="text" id="round-title" name="round_title">
+                <input type="checkbox" id="coop" name="coop">
+                <label for="coop">Coop?</label>
+            </td>
+        </tr>
+        <!-- Question and Answer Rows -->
+        {% for i in 10|get_range %}
+            <tr>
+                <td style="padding: 10px;">
+                    <label for="question-{{ i }}">Question {{ i }}</label><br>
+                    <input type="text" id="question-{{ i }}" name="questions"><br><br>
+                    <label for="answer-{{ i }}">Answer {{ i }}</label><br>
+                    <input type="text" id="answer-{{ i }}" name="answers"><br><br>
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<!-- ... your other HTML ... -->
+
+
+<!-- ... your other HTML ... -->
+
+
+<button class="accordion">Preview & Submit</button>
+<div class="panel">
+    <!-- Theme Selector -->
+    <select id="theme-selector">
+        <option value="theme1">Minimal</option>
+        <option value="theme2">Trivial Pursuit</option>
+        <!-- ... other themes ... -->
+    </select>
+
+    <!-- Preview Button -->
+    <button id="preview-button">Preview</button>
+    <img id="preview-spinner" src="{% static 'GPTrivia/css/snakecircle.png' %}" style="display:none;" alt="Loading..." width="20px" height="20px">
+
+    <!-- Google Slides Embed -->
+    <div class="embed-container">
+        <iframe id="slides-preview" style="display:none;" src="https://docs.google.com/presentation/d/109EgKCocHzTtUF9hVJVKEfV0HzFjaBfpWPKXaLNsos0/edit?usp=drive_link" width="100%" height="500px" aspectRatio="16:9" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
+    </div>
+
+    <!-- Submit Button -->
+    <button style="display:none;" id="submit-button">Submit</button>
+    <img id="submit-spinner2" src="{% static 'GPTrivia/css/snakecircle.png' %}" style="display:none;" alt="Loading..." width="20px" height="20px">
+
+    <div id="submission-message"></div>  <!-- Element where the submission message will be displayed -->
+</div>
+
+<!-- JavaScript for accordion functionality -->
+<script>
+    var acc = document.getElementsByClassName("accordion");
+    var i;
+
+
+    for (i = 0; i < acc.length; i++) {
+        acc[i].addEventListener("click", function() {
+            this.classList.toggle("active");
+            var panel = this.nextElementSibling;
+            if (panel.style.display === "block") {
+                panel.style.display = "none";
+            } else {
+                panel.style.display = "block";
+            }
+        });
+    }
+</script>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+    function typeWriter(text, elem, i, interval) {
+        if (i < text.length) {
+            $(elem).append(text[i]);
+            i++;
+            setTimeout(function() {
+                typeWriter(text, elem, i, interval);
+            }, interval);
+        }
+    }
+
+    $(document).ready(function() {
+        $('#chat-form').on('submit', function(e) {
+            $('#submit-spinner1').show();  // Hide spinner
+            e.preventDefault();
+            $.ajax({
+                url: '/round_maker/',
+                method: 'POST',
+                data: {
+                    user_input: $('#user-input').val(),
+                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(data) {
+                    $('#submit-spinner1').hide();  // Hide spinner
+                    $('#chat-response').html('');  // Clear the previous response
+                    var words = data.gpt_response.split('');
+                    typeWriter(words, '#chat-response', 0, 30);  // Display new response word by word
+                }
+            });
+        });
+    });
+
+    $(document).ready(function() {
+        $('#generate-round-button').on('click', function() {
+            $.ajax({
+                url: '/generate_idea/',
+                method: 'POST',
+                data: {
+                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(data) {
+                    $('#round-suggestion').text(data.suggestion);
+                }
+            });
+        });
+    });
+
+    $(document).ready(function() {
+        var presentationId = '109EgKCocHzTtUF9hVJVKEfV0HzFjaBfpWPKXaLNsos0';  // Initial value
+
+
+    $(document).ready(function() {
+        $('#submit-button').on('click', function() {
+            $('#submit-spinner2').show();  // Show spinner
+            $.ajax({
+                url: '/share/',  // URL to the Django view
+                method: 'POST',
+                data: {
+                    presentation_id: presentationId,
+                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(data) {
+                    $('#submit-spinner2').hide();  // Hide spinner
+                    var roundTitle = $('#round-title').val();  // Get the value of the round-title element
+                    var submissionMessage = 'Submitted ' + roundTitle + '!';  // Construct the submission message
+                    $('#submission-message').text(submissionMessage);  // Display the submission message
+                }
+            });
+        });
+    });
+
+        function updateIframeSrc() {
+            var iframeSrc;
+            if ($(window).width() < 900) {
+                // If screen width is less than 900px, use presentation view
+                iframeSrc = 'https://docs.google.com/presentation/d/' + presentationId + '/embed';
+            } else {
+                // Otherwise, use edit view
+                iframeSrc = 'https://docs.google.com/presentation/d/' + presentationId + '/edit?usp=drive_link';
+            }
+            $('#slides-preview').attr('src', iframeSrc);
+        }
+
+        // Update iframe src on initial load
+        updateIframeSrc();
+
+        // Update iframe src whenever the window is resized
+        $(window).resize(updateIframeSrc);
+
+        $('#theme-selector').on('change', function() {
+            var selectedTheme = $(this).val();
+
+            switch (selectedTheme) {
+                case 'theme1':
+                    presentationId = '109EgKCocHzTtUF9hVJVKEfV0HzFjaBfpWPKXaLNsos0';
+                    break;
+                case 'theme2':
+                    presentationId = '1x8J9cEpFeMMYAJ_Inxw4Z_2-zYBwa5NMfOsN8pZKVHQ';
+                    break;
+                // ... add cases for other themes as needed ...
+                default:
+                    console.error('Unknown theme selected:', selectedTheme);
+                    break;
+            }
+
+            console.log('Updated presentationId:', presentationId);
+        });
+
+        $('#preview-button').on('click', function() {
+            $('#preview-spinner').show();  // Show spinner
+            var roundTitle = $('#round-title').val();  // Assuming your round title input has id 'round-title'
+
+            // Initialize an empty qas dictionary
+            var qas = {};
+
+            // Loop through each question and answer, and add them to the qas dictionary
+            for (var i = 1; i <= 10; i++) {
+                var questionText = $('#question-' + i).val();
+                var answerText = $('#answer-' + i).val();
+                if (i == 10){
+                    qas['Question' + 0] = questionText;
+                    qas['Answer' + 0] = answerText;
+                } else {
+                    qas['Question' + i] = questionText;
+                    qas['Answer' + i] = answerText;
+                }
+            }
+
+            $.ajax({
+                url: '/preview/',  // URL to the Django view
+                method: 'POST',
+                data: {
+                    round_title: roundTitle,
+                    presentation_id: presentationId,
+                    qas: JSON.stringify(qas),
+                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(data) {
+                    $('#preview-spinner').hide();  // Hide spinner
+                    presentationId = data.new_id;  // Update the presentationId variable with the new id
+                    updateIframeSrc()
+                    $('#slides-preview').css('display', 'block');
+                    $('#submit-button').css('display', 'block');
+                }
+            });
+        });
+    });
+</script>
+
+{% endblock %}
