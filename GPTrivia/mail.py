@@ -487,6 +487,20 @@ def copy_template(template_id, copy_title, qas):
                 body={'requests': requests}
             ).execute()
 
+        drive_service = build('drive', 'v3', credentials=credentials)
+        # Create the permission object
+        permission = {
+            'type': 'anyone',
+            'role': 'reader'
+        }
+
+        # Update permissions
+        drive_service.permissions().create(
+            fileId=new_presentation_id,
+            body=permission,
+            fields='id'
+        ).execute()
+
         # Get the link to the copied presentation
         return new_presentation_id
 
