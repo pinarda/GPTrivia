@@ -27,7 +27,7 @@ SECRET_KEY = "django-insecure-dnu^#ycvr7cm#x900=e2@whtrf7xj7#6--528a6tmm)-$5x$1k
 DEBUG = True
 # DEBUG = False
 
-ALLOWED_HOSTS = ['hailsciencetrivia.com', 'www.hailsciencetrivia.com', '192.168.0.178', '127.0.0.1', "localhost", "192.168.0.100"]
+ALLOWED_HOSTS = ['hailsciencetrivia.com', 'www.hailsciencetrivia.com', '192.168.0.178', '127.0.0.1', "localhost", "192.168.0.100", "67.165.238.242"]
 
 LOGGING = {
     'version': 1,
