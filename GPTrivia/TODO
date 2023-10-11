@@ -59,6 +59,7 @@ TRIVIAL (minutes)
 TODO - on analysis page, nones in the max score (if nothing is entered in scoresheet) is breaking the page - default to 10??
 TODO - need to handle really long round names (make the font smaller?), seemed like this was breaking the script to update slide 2
 
+High - make the rounds list table extend to the bottom of the page
 High - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
 High - add a Host trivia user that is the only one who can edit the scoresheet (and generate the presentation?), and/or a console "are you sure" when editing a previous date
 High - add normalize option to the rounds list
@@ -88,6 +89,7 @@ Low - General CSS tweaking, mainly for mobile view
 
 LARGE (2-8hrs)
 
+High - Add page where you can write your answers, and use gpt for automatic scoring on submit.
 High - Finish the stats for the analysis page ("Player" options) / possibly add the player specific stuff to the profile pages. NORMALIZE SCORES before computing stats
 Medium - If we add a new player on the scoresheet, we need to modify the GPTriviaround model to accept additional players and save their scores too.
 Medium - Add the prediction models back to the scoresheet (try joint conditioning on both player and category) (and the blog?)
