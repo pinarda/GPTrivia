@@ -9,9 +9,11 @@ a {
     color: black;
 }
 
-.header-container{
-    background-color: #303030;
-}
+/*.header-container{*/
+/*    background-color: #303030;*/
+/*}*/
+
+
 
 @media screen and (max-width: 850px) {
     td {
@@ -22,3 +24,33 @@ a {
         display: none;
     }
 }
+
+.header-container{
+    background-color: #2d3047;
+}
+
+.red{
+    color: #588b8b;
+}
+
+.orange {
+    color: #ffffff;
+}
+
+.yellow {
+    color: #ffd5c2;
+}
+
+.green {
+    color: #f28f3b;
+}
+
+.blue {
+    color: #c8553d;
+}
+
+.purple {
+    color: #93b7be;
+}
+
+/*https://coolors.co/palette/588b8b-ffffff-ffd5c2-f28f3b-c8553d-2d3047-93b7be*/

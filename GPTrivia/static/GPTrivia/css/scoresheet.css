@@ -5,9 +5,36 @@ body {
     color:white;
 }
 
+/*https://coolors.co/palette/0d322c-1e7662-28b79f-a1dceb-ed192e-ce1628-a61120*/
+
 .header-container{
-    background-color: #285238;
+    background-color: #1e7662;
 }
+
+.red{
+    color: #0d322c;
+}
+
+.orange {
+    color: #28b79f;
+}
+
+.yellow {
+    color: #a1dceb;
+}
+
+.green {
+    color: #ed192e;
+}
+
+.blue {
+    color: #ce1628;
+}
+
+.purple {
+    color: #a61120;
+}
+
 
 .joker-round-select {
     width: 100%;

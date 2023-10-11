@@ -1,5 +1,5 @@
 .header-container{
-    background-color: #5c3566;
+    background-color: #b8475d;
 }
 
 body {
@@ -39,12 +39,30 @@ div {
     display: flex;
 }
 
-.red {
-    color: #ff0000;
+/*https://coolors.co/palette/ea9ba2-83203e-b8475d-cdb9ae-e6dcd7-ffffff-3f4c51*/
+
+.red{
+    color: #ea9ba2;
+}
+
+.orange {
+    color: #83203e;
+}
+
+.yellow {
+    color: #cdb9ae;
+}
+
+.green {
+    color: #e6dcd7;
+}
+
+.blue {
+    color: #ffffff;
 }
 
 .purple {
-    color: #dc00dc;
+    color: #3f4c51;
 }
 
 .content-container {

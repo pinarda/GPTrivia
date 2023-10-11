@@ -132,7 +132,7 @@ import {hover} from "@testing-library/user-event/dist/hover";
     });
 
     const StyledButton = styled.button`
-        background-color: #285238; /* Green */
+        background-color: #1e7662; /* Green */
         border: none;
         color: white;
         padding: 5px 12px;
@@ -144,7 +144,7 @@ import {hover} from "@testing-library/user-event/dist/hover";
       font-family: "Monaco";
       
       &:hover {
-        background-color: ${props => darkenBackground('#285238')};// Darken the background color on hover
+        background-color: ${props => darkenBackground('#1e7662')};// Darken the background color on hover
       }
   `
 
@@ -1247,9 +1247,9 @@ const PlayerTable = () => {
                           style={{
                               backgroundColor:
                                   selectedRounds[player] === round.title
-                                      ? '#258ea6'
+                                      ? '#1e7662'
                                       : roundCreators[round.title] === player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1)
-                                          ? '#285238'
+                                          ? '#1e7662'
                                           : '#333',
                               color: 'white',
                               fontFamily: 'Monaco',

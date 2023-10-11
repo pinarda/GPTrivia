@@ -5,11 +5,6 @@ body {
   color:white;
 }
 
-.header-container{
-    /*background-color: #89BD9E; a nice light greenish color */
-    /*background-color: #8B1E3F; !* a nice dark red color *!*/
-    background-color: #DB4C40;
-}
 
 
 #bar-chart{
@@ -46,10 +41,32 @@ body {
     justify-content: center;
 }
 
-.red {
-    color: #e30000;
+/*https://coolors.co/palette/72bad5-0e4c6d-03324e-01263d-ef4043-be1e2d-c43240*/
+
+.header-container{
+    background-color: #f94144;
+}
+
+.red{
+    color: #ffffff;
+}ffffff
+
+.orange {
+    color: #0e4c6d;
+}
+
+.yellow {
+    color: #72bad5;
+}
+
+.green {
+    color: #01263d;
+}
+
+.blue {
+    color: #be1e2d;
 }
 
 .purple {
-    color: purple;
+    color: #03324e;
 }

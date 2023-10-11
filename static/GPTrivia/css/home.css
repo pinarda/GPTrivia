@@ -76,11 +76,36 @@ container {
   align-content: center;
 }
 
-div {
-  display: inline;
-}
+
 
 main {
   align-content: center;
   justify-content: center;
+}
+
+/*https://coolors.co/palette/ffd373-fd8021-e05400-0073cc-003488-001d59-001524*/
+
+.header-container{
+    background-color: #0073cc;
+}
+
+.red{
+    color: #ffd373;
+}
+
+.orange {
+    color: #fd8021;
+}
+
+.yellow {
+    color: #e05400;
+}
+
+.green {
+    color: #003488;
+}
+
+
+.purple {
+    color: #001524;
 }
