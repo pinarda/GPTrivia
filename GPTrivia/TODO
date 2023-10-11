@@ -47,6 +47,8 @@ DONE - Add a round ideas page connected to ChatGPT API for quickly getting ideas
 DONE - Trivia Round Maker - enter ten questions and answers, select a theme from a dropdown, and it will generate a round for you.
 DONE - still losing jokers on refresh - probably has to do with when we use the today button
 DONE - have round title text size alter after we change a round name
+DONE - scoresheet lost connection to database? - failed to fetch api_token_auth in console (it's looking for localhost:8000)
+DONE - css on the presentation page and SWOOP
 
 TEST FIX - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be (Could be a timezone issue)
     NOTE: I changed the timeout setting for the workers in gunicorn.conf.py to 300, or 5 minutes
@@ -55,7 +57,6 @@ TEST FIX - Figure out why the production site's generate button is timing out (i
 TRIVIAL (minutes)
 
 TODO - on analysis page, nones in the max score (if nothing is entered in scoresheet) is breaking the page - default to 10??
-TODO - scoresheet lost connection to database? - failed to fetch api_token_auth in console (it's looking for localhost:8000)
 TODO - need to handle really long round names (make the font smaller?), seemed like this was breaking the script to update slide 2
 
 High - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
@@ -68,7 +69,6 @@ Medium - Show the number of submitted rounds/who has submitted a round for the c
 
 MEDIUM (1-2 hrs)
 
-TODO - css on the presentation page and SWOOP
 TODO - Add historical presentations to the presentations table (with joker info)
 TODO - Check for dad/dan and debi/mom in the old scoresheets, this is leading to missing dad's scores for some rounds
 TODO - If there is no text on the title slide, we need a way to fail silently and move on
