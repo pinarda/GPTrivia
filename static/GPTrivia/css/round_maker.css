@@ -1,5 +1,6 @@
 .header-container{
-    background-color: #b8475d;
+    /*background-color: #b8475d;*/
+    background-color: #9d4edd;
 }
 
 body {
@@ -39,26 +40,25 @@ div {
     display: flex;
 }
 
-/*https://coolors.co/palette/ea9ba2-83203e-b8475d-cdb9ae-e6dcd7-ffffff-3f4c51*/
-
+/*https://coolors.co/palette/ff6d00-ff8500-ff9e00-240046-5a189a-9d4edd-18af9d*/
 .red{
-    color: #ea9ba2;
+    color: #ff6d00;
 }
 
 .orange {
-    color: #83203e;
+    color: #ff8500;
 }
 
 .yellow {
-    color: #cdb9ae;
+    color: #ff9e00;
 }
 
 .green {
-    color: #e6dcd7;
+    color: #240046;
 }
 
 .blue {
-    color: #ffffff;
+    color: #18af9d;
 }
 
 .purple {
