@@ -92,6 +92,12 @@
         </form>
     {% endif %}
 
+{#    {% if user.is_authenticated and user.username == player_name %}#}
+{#        <form action={% url 'profilepic' %}>#}
+{#            <button class="expand-collapse-button" id="picbtn">Upload Profile Pic</button>#}
+{#        </form>#}
+{#    {% endif %}#}
+
     <script>
           let playerColorMapping = {{ player_color_mapping|safe }};
           let playerName = "{{ player_name }}";
