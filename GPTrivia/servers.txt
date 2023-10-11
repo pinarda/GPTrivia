@@ -5,7 +5,7 @@ gunicorn GPTrivia.wsgi:application -c gunicorn.conf.py --access-logfile -
 then:
 sudo nginx
 (config for nginx is in /usr/local/etc/nginx/nginx.conf)
-
+(logs for nginx: /usr/local/var/log/nginx)
 
 
 How to make sure the database is updated (in this directory):
@@ -19,7 +19,9 @@ Before deployment:
 
 python manage.py collectstatic
 switch debug to FALSE in settings.py
+switch url to hailsciencetrivia.com/ in scoresheet/src/App.js
 
+REMEMBER TO CAFFEINATE THE SERVER
 
 
 To run the server locally:

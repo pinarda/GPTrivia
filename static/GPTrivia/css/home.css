@@ -1,12 +1,12 @@
 body {
-  font-family: Arial, sans-serif;
+  font-family: YoungSerif;
   line-height: 1.6;
   color: #333;
   background-color: #333;
 }
 
 .header-container{
-    background-color: #006494;
+    background-color: #00527a;
 }
 
 h1 {
@@ -38,6 +38,7 @@ button {
   color: white;
   padding: 10px 20px;
   text-align: center;
+  font-family: YoungSerif;
   text-decoration: none;
   display: inline-block;
   font-size: 16px;

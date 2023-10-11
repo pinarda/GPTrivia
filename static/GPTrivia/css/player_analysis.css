@@ -1,13 +1,16 @@
 body {
-  font-family: Arial, sans-serif;
+  font-family: YoungSerif;
   line-height: 1.6;
   background-color: #333;
   color:white;
 }
 
 .header-container{
-    background-color: #4B296B;
+    /*background-color: #89BD9E; a nice light greenish color */
+    /*background-color: #8B1E3F; !* a nice dark red color *!*/
+    background-color: #DB4C40;
 }
+
 
 #bar-chart{
     display: flex;
@@ -43,3 +46,10 @@ body {
     justify-content: center;
 }
 
+.red {
+    color: #e30000;
+}
+
+.purple {
+    color: purple;
+}

@@ -8,6 +8,8 @@
     <link rel="icon" href="{% static 'img/favicon.png' %}">
     <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
     <link rel="manifest" href="{% static 'favicon.png' %}">
+    {% include "font_loader.html" %}
+
 
     {% block extra_meta %}{% endblock %}
 
@@ -17,39 +19,20 @@
     <link rel="stylesheet" href="{% static 'GPTrivia/css/styles.css' %}">
     {% block extra_css %}{% endblock %}
     <header>
-{#    <div class="header-container"  style="display: flex;  align-items: flex-start;">#}
-{#        <div class="top-row">#}
-{#            <div class="dropdown">#}
-{#                <img src="/static/GPTrivia/css/menubars.png" class="dropbtn" alt="Menu" onclick="toggleDropdown()" scale="35%">#}
-{#                <div id="myDropdown" class="dropdown-content">#}
-{#                    <a href="{% url 'home' %}">Home</a>#}
-{#                    <a href="{% url 'scoresheet' %}">Scoresheet</a>#}
-{#                    <a href="{% url 'player_analysis' %}">Analysis</a>#}
-{#                    <a href="{% url 'rounds_list' %}">Trivia Round List</a>#}
-{#                    {% if user.is_authenticated %}#}
-{#                        <a href="{% url 'player_profile' player_name=user.username %}">{{ user.username }}'s Profile</a>#}
-{#                    {% endif %}                <!-- Add more menu items here as needed -->#}
-{#                    {% if user.is_authenticated %}#}
-{#                        <a href="{% url 'logout' %}">Logout</a>#}
-{#                        <li><a href="{% url 'password_change' %}">Change Password</a></li>#}
-{#                    {% else %}#}
-{#                        <a href="{% url 'login' %}">Login</a>#}
-{#                    {%  endif %}#}
-{#                </div>#}
-{#            </div>#}
-{#            <a href="{% url 'home' %}"><img src="/static/GPTrivia/css/Hail Science Trivia.png" width="auto", height="40px" style="margin-left: 20px"></a>#}
-{#        </div>#}
     <div class="header-container">
-        <div class="header-content">
-            <div class="logo-menu-container" style="display: flex; justify-content: space-between;">
+        <div class="header-content" style="display: flex; flex-direction: column;">
+            <div class="logo-menu-container" style="display: flex; justify-content: space-between; align-items: center;">
                 <a class="logo" href="{% url 'home' %}">
-                    <img src="/static/GPTrivia/css/Hail Science Trivia.png">
+{#                    <img src="/static/GPTrivia/css/Hail Science Trivia.png">#}
+                    <img src={% static 'apple-touch-icon.png' %}>
+
+                    <span>Hail Science<span class="red"> T</span><span class="orange">r</span><span class="yellow">i</span><span class="green">v</span><span class="blue">i</span><span class="purple">a</span></span>
                 </a>
                 <button id="menu-button">
                     <img src="/static/GPTrivia/css/menubars.png" class="dropbtn" alt="Menu" onclick="toggleMenu()" scale="20%">
                 </button>
             </div>
-            <div class="menu-buttons" id="menu-buttons">
+            <div class="menu-buttons" id="menu-buttons" style="display: flex; flex-direction:row; justify-content: space-between; max-width: 700px">
                 <div class="scorebtn">
                     <a style="color: white; font-size: large" href={% url 'scoresheet_new' %}>Scoresheet</a>
                 </div>
@@ -80,29 +63,29 @@
         </div>
         <div id="mobileMenu" class="hide-on-mobile">
             <div class="scorebtn">
-                <a style="color: white; font-size: large" href={% url 'scoresheet_new' %}>Scoresheet</a>
+                <a style="color: white;" href={% url 'scoresheet_new' %}>Scoresheet</a>
             </div>
             <div class="analysisbtn">
-                <a style="color: white; font-size: large" href={% url 'player_analysis' %}>Analysis</a>
+                <a style="color: white;" href={% url 'player_analysis' %}>Analysis</a>
             </div>
             <div class="roundsbtn">
-                <a style="color: white; font-size: large" href={% url 'rounds_list' %}>Rounds List</a>
+                <a style="color: white;" href={% url 'rounds_list' %}>Rounds List</a>
             </div>
             <div class="makerbtn">
-                <a style="color: white; font-size: large" href={% url 'round_maker' %}>S.W.O.O.P.</a>
+                <a style="color: white;" href={% url 'round_maker' %}>S.W.O.O.P.</a>
             </div>
             {% if user.is_authenticated %}
                 <div class="profilebtn">
-                    <a style="color: white; font-size: large" href="{% url 'player_profile' player_name=user.username %}">{{ user.username }}'s Profile</a>
+                    <a style="color: white;" href="{% url 'player_profile' player_name=user.username %}">{{ user.username }}'s Profile</a>
                 </div>
             {% endif %}
             {% if user.is_authenticated %}
                 <div class="logoutbtn">
-                    <a style="color: white; font-size: large" href="{% url 'logout' %}">Logout</a>
+                    <a style="color: white;" href="{% url 'logout' %}">Logout</a>
                 </div>
             {% else %}
                 <div class="loginbtn">
-                    <a style="color: white; font-size: large" href="{% url 'login' %}">Login</a>
+                    <a style="color: white;" href="{% url 'login' %}">Login</a>
                 </div>
             {%  endif %}
         </div>

@@ -28,6 +28,7 @@
         outline: none;
         font-size: 15px;
         transition: 0.4s;
+        font-family: YoungSerif;
     }
 
     .active, .accordion:hover {
@@ -43,9 +44,11 @@
 </style>
 
 <!-- Accordion menu -->
-Out of time? No ideas for your round? Try S.W.O.O.P. (Simple Way of Obtaining Presentation)!
+    <div>Out of time? No ideas for your round? Try the S.W.O.O.P.<br>(Speedy Way of Obtaining Presentations)!
+</div> <br>
 <button class="accordion">Generate Ideas with Swooper</button>
 <div class="panel">
+    <br>
     <form method="post" id="chat-form">
         {% csrf_token %}
         <input type="text" name="user_input" id="user-input" placeholder="Type your message" required>
@@ -62,6 +65,7 @@ Out of time? No ideas for your round? Try S.W.O.O.P. (Simple Way of Obtaining Pr
 
     <button id="generate-round-button">Generate Idea</button>
     <div id="round-suggestion"></div>
+    <br>
 </div>
 
 
@@ -218,7 +222,7 @@ Out of time? No ideas for your round? Try S.W.O.O.P. (Simple Way of Obtaining Pr
 
         function updateIframeSrc() {
             var iframeSrc;
-            if ($(window).width() < 900) {
+            if ($(window).width() < 800) {
                 // If screen width is less than 900px, use presentation view
                 iframeSrc = 'https://docs.google.com/presentation/d/' + presentationId + '/embed';
             } else {

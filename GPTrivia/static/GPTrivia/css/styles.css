@@ -5,6 +5,36 @@
     margin-top: 50px;
 }
 
+.logo {
+    font-family: YoungSerif;
+    color: white;
+    font-size: 3rem;
+}
+
+.red{
+    color: #d00000;
+}
+
+.orange {
+    color: orange;
+}
+
+.yellow {
+    color: yellow;
+}
+
+.green {
+    color: palegreen;
+}
+
+.blue {
+    color: deepskyblue;
+}
+
+.purple {
+    color: #7b3cb9;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -147,7 +177,7 @@ header div{
 body {
     margin: 0px;
     padding: 0px;
-    font-family: sans-serif;
+    font-family: YoungSerif;
 }
 
 .dropdown {
@@ -283,9 +313,11 @@ body {
 }
 
 .logo img {
-    height: 45px;
-    padding: 15px;
-    margin-left: 15px;
+    width: 70px;
+    vertical-align: sub;
+    color: white;
+    /*padding: 15px;*/
+    /*margin-left: 15px;*/
 }
 
 #menu-button {
@@ -297,9 +329,10 @@ body {
 .menu-buttons {
     display: flex;
     justify-content: space-between;
-    width: 70%;
+    width: 90%;
     margin: 0px;
     flex: 0 1 auto;
+    font-family: YoungSerif;
 }
 
 a .logo {
@@ -312,7 +345,7 @@ a .logo {
     padding-right: 10px;
 }
 
-@media screen and (max-width: 700px) {
+@media screen and (max-width: 790px) {
     .logo-menu-container {
         display: flex;
         justify-content: center;
@@ -322,20 +355,22 @@ a .logo {
     }
 
     #mobileMenu {
-        margin-right: auto;
+        margin-right: 0;
+        font-family: YoungSerif;
+        font-size:calc(12px + 1.5vw);
     }
 
-    .logo {
-        width: 50%;
-        height: 50%;
-        padding-left: 10px;
-    }
+    /*.logo {*/
+    /*    width: 50%;*/
+    /*    height: 50%;*/
+    /*    padding-left: 10px;*/
+    /*}*/
 
-    .logo img {
-        width: 90%;
-        height: 90%;
-        padding: 0px;
-    }
+    /*.logo img {*/
+    /*    width: 90%;*/
+    /*    height: 90%;*/
+    /*    padding: 0px;*/
+    /*}*/
 
     #menu-button {
         display: flex;
@@ -379,103 +414,47 @@ a .logo {
         justify-content: center;
     }
 
-    .logo {
-        display: flex;
-        justify-content: center;
-        width: fit-content;
-    }
+    /*.logo {*/
+    /*    display: flex;*/
+    /*    justify-content: center;*/
+    /*    width: fit-content;*/
+    /*}*/
 
     .header-container {
         display: flex;
         justify-content: center;
         align-items: center;
-    }
-
-}
-
-
-@media screen and (max-width: 1050px) and (min-width: 700px) {
-    .logo-menu-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%;
-    }
-
-    #mobileMenu {
-        margin-right: auto;
-    }
-
-    .logo {
-        width: 50%;
-        height: 50%;
-        padding: 0px;
-    }
-
-    .logo img {
-        height: 45px;
-        padding: 0px;
-    }
-
-    #menu-button {
-        display: flex;
-        scale: 90%;
-        background-color: transparent;
-        color: white;
-        cursor: pointer;
-        border: none;
-        height: auto;
-        box-shadow: none;
-        margin: 0px;
-        padding: 0px;
     }
 
     .menu-buttons {
-        display: none;
-        flex-direction: column;
-        width: 100%;
-    }
-
-    .menu-buttons.show {
-        display: flex;
-    }
-
-    .header-container {
-        justify-content: center;
-    }
-
-    .header-content {
-        justify-content: space-between;
-    }
-
-    nav {
-        flex-direction: column;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .top-row {
-        justify-content: center;
+        display: none !important;
     }
 
     .logo {
-        display: flex;
-        justify-content: center;
-        width: fit-content;
+        font-size: 6.5vw;
+    }
+
+    .logo img {
+        width: 9vw;
+    }
+
+    .dropbtn {
+        width: 9vw;
+        margin: 2vw;
     }
 
     .header-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
+        padding: 10px;
     }
 
 }
 
 
 
-@media screen and (min-width: 1051px) {
+@media screen and (min-width: 790px) {
   #mobileMenu {
     display: none !important;
   }
+
+
 }
