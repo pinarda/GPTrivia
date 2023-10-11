@@ -2,12 +2,12 @@
     background-color: #5c3566;
 }
 
-/*body {*/
-/*  font-family: YoungSerif;*/
-/*  line-height: 1.6;*/
-/*  background-color: #333;*/
-/*  color:white;*/
-/*}*/
+body {
+  font-family: YoungSerif;
+  line-height: 1.6;
+  background-color: #333;
+  color:white;
+}
 
 .embed-container {
     position: relative;

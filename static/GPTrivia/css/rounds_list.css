@@ -63,3 +63,10 @@ a {
 .purple {
     color: #7c2bff;
 }
+
+.content-container {
+    padding-top: 0px;
+    margin-top: -30px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
