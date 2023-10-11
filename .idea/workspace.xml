@@ -5,24 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scoresheet/src/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/src/App.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.02f18561.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.20456afc.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.37f20d16.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.3c80d835.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.649cc428.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.7c6835c3.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.7ff87319.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.cd9b131f.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.d5e5a193.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.da752dac.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.e8c25001.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.f90f9c6f.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.fb153daa.js" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -292,7 +275,7 @@
       <workItem from="1696699069730" duration="29247000" />
       <workItem from="1696792655142" duration="15306000" />
       <workItem from="1696815528698" duration="10037000" />
-      <workItem from="1696955873961" duration="15164000" />
+      <workItem from="1696955873961" duration="15503000" />
     </task>
     <servers />
   </component>
