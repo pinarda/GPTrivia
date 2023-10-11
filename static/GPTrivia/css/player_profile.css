@@ -5,6 +5,10 @@ body {
   color:black;
 }
 
+button {
+    font-family: YoungSerif;
+}
+
 a {
     color: black;
 }
