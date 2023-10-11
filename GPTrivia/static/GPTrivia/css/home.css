@@ -14,7 +14,6 @@ h1 {
 }
 
 .container {
-  max-width: 1100px;
   text-align: center;
 }
 
@@ -59,7 +58,7 @@ iframe {
   border-radius: 5px;
   aspect-ratio: auto 16 / 9;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  max-width: 1100px;
+  max-height: 70vh;
 }
 
 
