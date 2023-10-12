@@ -170,6 +170,7 @@ header {
 
 header div{
     align-items: center;
+    text-align: center;
     padding: 0;
     margin: 0;
 }
@@ -215,11 +216,11 @@ body {
 .dropbtn {
     background-color: transparent;
     color: white;
-    margin: 15px;
+    margin: 5px;
     cursor: pointer;
     border: none;
     filter: invert(100%);
-    width: 45px;
+    width: 55px;
     height: auto;
 }
 
@@ -435,12 +436,13 @@ a .logo {
     }
 
     .logo img {
-        width: 9vw;
+        width: 8vw;
+        margin-right: 0vw;
     }
 
     .dropbtn {
         width: 7vw;
-        margin: 2vw;
+        margin: 0.5vw;
     }
 
     .header-container {
