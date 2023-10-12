@@ -106,11 +106,11 @@ main {
 /*}*/
 
 .red{
-    color: #ff6f7e
+    color: rgb(255, 118, 128)
 }
 
 .orange {
-    color: rgba(45, 45, 45, 0.9);
+      color: rgb(255, 141, 70);
 }
 
 .yellow {
@@ -118,13 +118,15 @@ main {
 }
 
 .green {
-    color: rgba(255, 255, 255, 1);
+    color: rgba(255, 255, 255, 0.7);
 }
 
 .blue {
-    color: rgb(255, 141, 70);
+      color: rgba(146, 232, 155, 0.8);
+
+
 }
 
 .purple {
-    color: rgba(146, 232, 155, 0.8);
+    color: rgba(201, 145, 255, 0.65);
 }
