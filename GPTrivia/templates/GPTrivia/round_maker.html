@@ -61,8 +61,10 @@
     <form method="post" id="chat-form">
         {% csrf_token %}
         <input type="text" name="user_input" id="user-input" placeholder="Type your message" required>
-        <button type="submit" id="gpt-submit">Submit</button>
-        <img class="spinner" id="submit-spinner1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
+        <div>
+            <button type="submit" id="gpt-submit">Submit</button>
+            <img class="spinner" id="submit-spinner1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
+        </div>
     </form>
 
     <div id="chat-response">
