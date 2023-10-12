@@ -24,9 +24,12 @@
             <div class="logo-menu-container" style="display: flex; justify-content: space-between; align-items: center;">
                 <a class="logo" href="{% url 'home' %}">
 {#                    <img src="/static/GPTrivia/css/Hail Science Trivia.png">#}
-                    <img src={% static 'apple-touch-icon.png' %}>
+                    {% block image %}
+                        <img src={% static 'apple-touch-icon.png' %}>
+                    {% endblock %}
 
-                    <span>Hail Science<span class="red"> T</span><span class="orange">r</span><span class="yellow">i</span><span class="green">v</span><span class="blue">i</span><span class="purple">a</span></span>
+
+                    <span>{% block text %}Hail Science{% endblock %}<span class="red"> T</span><span class="orange">r</span><span class="yellow">i</span><span class="green">v</span><span class="blue">i</span><span class="purple">a</span></span>
                 </a>
                 <button id="menu-button">
                     <img src="/static/GPTrivia/css/menubars.png" class="dropbtn" alt="Menu" onclick="toggleMenu()" scale="20%">

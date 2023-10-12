@@ -74,6 +74,7 @@ div {
 
 button {
     font-family: YoungSerif;
+    margin: 5px
 }
 
 main {
@@ -81,9 +82,20 @@ main {
 }
 
 select {
-    font-family: YoungSerif
+    font-family: YoungSerif;
+    margin: 5px;
 }
 
 input {
     font-family: YoungSerif;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(-360deg); }
+}
+
+.spinner {
+    animation: spin 2s linear infinite;  /* Adjust the 2s value to make the spin faster or slower */
+    margin: 5px;
 }

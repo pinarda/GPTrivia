@@ -48,25 +48,30 @@ body {
 }
 
 .red{
-    color: rgb(255, 150, 86);
+        color: rgba(255, 243, 245, 0.7);
+
 }
 
 .orange {
-    color: rgba(255, 221, 0, 0.8);
+        color: rgba(255, 255, 255, 0.5);
+
+
 }
 
 .yellow {
-    color: #72bad5;
+        color: rgb(255, 150, 86);
+
 }
 
 .green {
-    color: rgba(255, 255, 255, 0.5);
+        color: rgba(255, 221, 0, 0.8);
 }
 
 .blue {
-    color: #be1e2d;
+    color: rgba(146, 232, 155, 0.8);
+
 }
 
 .purple {
-    color: rgba(146, 232, 155, 0.8);
+    color: #72bad5;
 }

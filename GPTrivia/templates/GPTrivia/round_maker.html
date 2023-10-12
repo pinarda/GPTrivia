@@ -7,7 +7,17 @@
   <link rel="stylesheet" href="{% static 'GPTrivia/css/round_maker.css' %}">
 {% endblock %}
 
+
+{% block image %}
+    <img src="{% static 'snake.png' %}" alt="New Image">
+{% endblock %}
+
+{% block text %}
+    Swooping Snakes
+{% endblock %}
+
 {% block content %}
+
 
 
 
@@ -52,7 +62,7 @@
         {% csrf_token %}
         <input type="text" name="user_input" id="user-input" placeholder="Type your message" required>
         <button type="submit" id="gpt-submit">Submit</button>
-        <img id="submit-spinner1" src="{% static 'GPTrivia/css/snakecircle.png' %}" style="display:none;" alt="Loading..." width="20px" height="20px">
+        <img class="spinner" id="submit-spinner1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
     </form>
 
     <div id="chat-response">
@@ -102,18 +112,21 @@
 <!-- ... your other HTML ... -->
 
 
-<button class="accordion">Preview & Submit</button>
+<button class="accordion">Preview, Edit & Submit</button>
 <div class="panel">
     <!-- Theme Selector -->
-    <select id="theme-selector">
-        <option value="theme1">Minimal</option>
-        <option value="theme2">Trivial Pursuit</option>
-        <!-- ... other themes ... -->
-    </select>
+    <div>
+        Select a theme:
+        <select id="theme-selector">
+            <option value="theme1">Minimal</option>
+            <option value="theme2">Trivial Pursuit</option>
+            <!-- ... other themes ... -->
+        </select>
 
-    <!-- Preview Button -->
-    <button id="preview-button">Preview</button>
-    <img id="preview-spinner" src="{% static 'GPTrivia/css/snakecircle.png' %}" style="display:none;" alt="Loading..." width="20px" height="20px">
+        <!-- Preview Button -->
+        <button id="preview-button">Preview</button>
+        <img class="spinner" id="preview-spinner" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
+    </div>
 
     <!-- Google Slides Embed -->
     <div class="embed-container">
@@ -122,7 +135,7 @@
 
     <!-- Submit Button -->
     <button style="display:none;" id="submit-button">Submit</button>
-    <img id="submit-spinner2" src="{% static 'GPTrivia/css/snakecircle.png' %}" style="display:none;" alt="Loading..." width="20px" height="20px">
+    <img class="spinner" id="submit-spinner2" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
 
     <div id="submission-message"></div>  <!-- Element where the submission message will be displayed -->
 </div>
