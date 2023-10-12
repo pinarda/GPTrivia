@@ -1,7 +1,3 @@
-.header-container{
-    /*background-color: #b8475d;*/
-    background-color: #9d4edd;
-}
 
 body {
   font-family: YoungSerif;
@@ -40,6 +36,12 @@ div {
     display: flex;
 }
 
+.header-container{
+    /*background-color: #b8475d;*/
+    /*background-color: #9d4edd;*/
+    background-color: #240046;
+}
+
 /*https://coolors.co/palette/ff6d00-ff8500-ff9e00-240046-5a189a-9d4edd-18af9d*/
 .red{
     color: #ff6d00;
@@ -54,7 +56,7 @@ div {
 }
 
 .green {
-    color: #240046;
+    color: #9d4edd;
 }
 
 .blue {
@@ -62,7 +64,7 @@ div {
 }
 
 .purple {
-    color: #3f4c51;
+    color: #55686e;
 }
 
 .content-container {

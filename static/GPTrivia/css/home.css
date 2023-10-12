@@ -105,7 +105,26 @@ main {
 /*    color: #003488;*/
 /*}*/
 
+.red{
+    color: #ff6f7e
+}
+
+.orange {
+    color: rgba(45, 45, 45, 0.9);
+}
+
+.yellow {
+    color: #d5cd72;
+}
+
+.green {
+    color: rgba(255, 255, 255, 1);
+}
+
+.blue {
+    color: rgb(255, 141, 70);
+}
 
 .purple {
-    color: purple;
+    color: rgba(146, 232, 155, 0.8);
 }
