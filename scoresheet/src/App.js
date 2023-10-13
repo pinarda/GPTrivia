@@ -1247,9 +1247,9 @@ const PlayerTable = () => {
                           style={{
                               backgroundColor:
                                   selectedRounds[player] === round.title
-                                      ? '#ce1628'
+                                      ? '#1e7662'
                                       : roundCreators[round.title] === player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1)
-                                          ? '#1e7662'
+                                          ? '#a61120'
                                           : '#333',
                               color: 'white',
                               fontFamily: 'Monaco',
