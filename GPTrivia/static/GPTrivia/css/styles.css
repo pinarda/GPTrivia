@@ -342,10 +342,6 @@ a .logo {
     flex: 0 1 auto;
 }
 
-.logo-menu-container {
-    padding-right: 10px;
-}
-
 @media screen and (max-width: 790px) {
     .logo-menu-container {
         display: flex;
