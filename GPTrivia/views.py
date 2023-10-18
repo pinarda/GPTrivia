@@ -564,7 +564,7 @@ def home(request):
         action = request.POST.get('action')
 
         if action == 'generate':
-            new_presentation_id, creators, round_titles = create_presentation()
+            new_presentation_id, creators, round_titles, round_links = create_presentation()
             MergedPresentation.objects.create(
                 name=presentation_name,
                 presentation_id=new_presentation_id,
@@ -574,8 +574,33 @@ def home(request):
             print (new_presentation_id, creators, round_titles)
             presentation_url = f"https://docs.google.com/presentation/d/{new_presentation_id}/embed"
 
+            for round_index in range(len(round_titles)):
+                new_round = GPTriviaRound()
+                # Assign the round_data fields to the GPTriviaRound instance
+                new_round.creator = creators[round_index]
+                new_round.title = round_titles[round_index]
+                new_round.major_category = ""
+                new_round.minor_category1 = ""
+                new_round.minor_category2 = ""
+                new_round.date = datetime.datetime.strptime(presentation_name, "%m.%d.%Y").date().strftime('%Y-%m-%d')
+                new_round.round_number = round_index + 1
+                new_round.max_score = 10
+                new_round.score_alex = 0
+                new_round.score_ichigo = 0
+                new_round.score_megan = 0
+                new_round.score_zach = 0
+                new_round.score_jenny = 0
+                new_round.score_debi = 0
+                new_round.score_dan = 0
+                new_round.score_chris = 0
+                new_round.score_drew = 0
+                new_round.replay = 0
+                new_round.cooperative = 0
+                new_round.link = round_links[round_index]
+                new_round.save()
+
         elif action == 'update':
-            updated_presentation_id, new_creators, round_titles = update_merged_presentation(latest_presentation.presentation_id,
+            updated_presentation_id, new_creators, round_titles, new_links = update_merged_presentation(latest_presentation.presentation_id,
                                                                                latest_presentation.creator_list)
             # update the MergedPresentation object that has the same presentation_id as the latest_presentation
             # by appending the new creators to the creator_list and appending the new round titles to the round_names
@@ -590,6 +615,31 @@ def home(request):
             latest_presentation.creator_list.extend(new_creators)
             latest_presentation.save()
             presentation_url = f"https://docs.google.com/presentation/d/{updated_presentation_id}/embed"
+
+            for round_index in range(len(round_titles)):
+                new_round = GPTriviaRound()
+                # Assign the round_data fields to the GPTriviaRound instance
+                new_round.creator = new_creators[round_index]
+                new_round.title = round_titles[round_index]
+                new_round.major_category = ""
+                new_round.minor_category1 = ""
+                new_round.minor_category2 = ""
+                new_round.date = datetime.datetime.strptime(presentation_name, "%m.%d.%Y").date().strftime('%Y-%m-%d')
+                new_round.round_number = round_index + 1
+                new_round.max_score = 10
+                new_round.score_alex = 0
+                new_round.score_ichigo = 0
+                new_round.score_megan = 0
+                new_round.score_zach = 0
+                new_round.score_jenny = 0
+                new_round.score_debi = 0
+                new_round.score_dan = 0
+                new_round.score_chris = 0
+                new_round.score_drew = 0
+                new_round.replay = 0
+                new_round.cooperative = 0
+                new_round.link = new_links[round_index]
+                new_round.save()
 
     return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None"})
 

@@ -25,8 +25,8 @@ MAIL_NAME_MAP = {
     'Megan': 'Megan',
     'Zach': 'Zach',
     'Jenny': 'Jenny',
-    'Debi': 'Mom',
-    'Dan': 'Dad',
+    'Debi': 'Debi',
+    'Dan': 'Dan',
     'Chris': 'Chris',
     'Drew': 'Drew',
     'doodlwagon': "Jenny",
@@ -162,11 +162,11 @@ def find_shared_presentations(credentials, processed_senders=[]):
 #             print(f"Slide ID: {slide_id}")
 #             # Use the Google Slides API to merge the presentations (currently this just prints the slide ID)
 
-def update_slide_permissions(slide_id):
+def update_slide_permissions(slide_id, credentials):
     try:
         # Authenticate and create a service object
-        creds, _ = google.auth.default()
-        service = build('drive', 'v3', credentials=creds)
+        # creds, _ = google.auth.default()
+        service = build('drive', 'v3', credentials=credentials)
 
         # Define the new permissions
         new_permission = {
@@ -250,6 +250,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators):
     FUNCTION_NAME = 'copySlides'
 
     round_titles = []
+    copied_links = []  # List to store links to the first slide of each copied presentation in the new presentation
 
     for url in shared_urls:
         shared_presentation_id = url.split('/')[-2]
@@ -261,6 +262,9 @@ def update_merged_presentation(merged_presentation_id, merged_creators):
         response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
 
         shared_presentation = slides_service.presentations().get(presentationId=shared_presentation_id).execute()
+        a_new_presentation = slides_service.presentations().get(presentationId=merged_presentation_id).execute()
+
+        current_slide_count = len(a_new_presentation['slides'])
 
         # Get the first slide of the presentation
         first_slide = shared_presentation['slides'][0]
@@ -279,6 +283,13 @@ def update_merged_presentation(merged_presentation_id, merged_creators):
 
         # Add the title to the list of round titles
         round_titles.append(title_text)
+
+        response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
+        slides = slides_service.presentations().get(presentationId=merged_presentation_id).execute().get('slides', [])
+        copied_slide_id = slides[current_slide_count]['objectId']
+        # Construct the link for the first slide of the copied presentation in the new presentation
+        link_to_copied_slide = f"https://docs.google.com/presentation/d/{merged_presentation_id}/edit#slide=id.{copied_slide_id}"
+        copied_links.append(link_to_copied_slide)
 
 
     # update the second slide with the round titles and creators
@@ -363,7 +374,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators):
 
     creator_names = [MAIL_NAME_MAP[creator] for creator in creators]
 
-    return merged_presentation_id, creator_names, round_titles
+    return merged_presentation_id, creator_names, round_titles, copied_links
 
 
 def create_delete_insert_text_requests(element_id, start_index, end_index, new_text):
@@ -675,6 +686,7 @@ def create_presentation():
 
 
     round_titles = []
+    copied_links = []  # List to store links to the first slide of each copied presentation in the new presentation
 
     for url in shared_urls:
         shared_presentation_id = url.split('/')[-2]
@@ -685,6 +697,9 @@ def create_presentation():
         }
 
         shared_presentation = slides_service.presentations().get(presentationId=shared_presentation_id).execute()
+        a_new_presentation = slides_service.presentations().get(presentationId=new_presentation_id).execute()
+
+        current_slide_count = len(a_new_presentation['slides'])
 
         # Get the first slide of the presentation
         first_slide = shared_presentation['slides'][0]
@@ -705,8 +720,14 @@ def create_presentation():
         round_titles.append(title_text)
 
         response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
+        slides = slides_service.presentations().get(presentationId=new_presentation_id).execute().get('slides', [])
+        copied_slide_id = slides[current_slide_count]['objectId']
+        # Construct the link for the first slide of the copied presentation in the new presentation
+        link_to_copied_slide = f"https://docs.google.com/presentation/d/{new_presentation_id}/edit#slide=id.{copied_slide_id}"
+        copied_links.append(link_to_copied_slide)
 
     creators_list = list(creators)
+
 
     # HERE IS WHERE I WANT TO ADD THE CODE TO MODIFY THE SECOND SLIDE TO REPLACE THE PLACEHOLDER NAMES
     # WITH THE NAMES FROM THE CREATOR LIST AND THE ROUND TITLES WITH THE ROUND TITLES LIST
@@ -787,15 +808,16 @@ def create_presentation():
 
     creator_names = [MAIL_NAME_MAP[creator] for creator in creators_list]
 
-    update_slide_permissions(new_presentation_id)
+    update_slide_permissions(new_presentation_id, credentials)
 
-    return new_presentation_id, creator_names, round_titles
+    return new_presentation_id, creator_names, round_titles, copied_links
 
 if __name__ == '__main__':
-    questions_answers = {
-        'Question1': 'What is the capital of France?',
-        'Answer1': 'Paris',
-        # ... and so on for each question and answer
-    }
+    create_presentation()
+    # questions_answers = {
+    #     'Question1': 'What is the capital of France?',
+    #     'Answer1': 'Paris',
+    #     # ... and so on for each question and answer
+    # }
     # copy_template('109EgKCocHzTtUF9hVJVKEfV0HzFjaBfpWPKXaLNsos0', 'test', questions_answers)
-    share_slides("1sZkp63495N6XRVWoe6_56fch-0nGZ2KF9YWWqgc_PdE")
+    # share_slides("1sZkp63495N6XRVWoe6_56fch-0nGZ2KF9YWWqgc_PdE")

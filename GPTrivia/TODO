@@ -56,8 +56,12 @@ TEST FIX - Figure out why the production site's generate button is timing out (i
 
 TRIVIAL (minutes)
 
+TODO - deleting a player from the scoresheet kills the jokers???
+
 TODO - on analysis page, nones in the max score (if nothing is entered in scoresheet) is breaking the page - default to 10??
 TODO - need to handle really long round names (make the font smaller?), seemed like this was breaking the script to update slide 2
+
+High - Try using autogen api - could give the players a single question/answer that is fact-checked and interesting (could benchmark GPT 3.5 v 4 v autogen?)
 
 High - make the rounds list table extend to the bottom of the page
 High - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
@@ -83,7 +87,7 @@ Medium - Customizable player profile (pic, about)
 Medium - consider redoing the rounds list (maybe react-virtuoso?), also think about collapsible tables for readability. (is this a real issue? server might just be slow if it's the first request made in a while.)
 Medium - Allow Host account to edit historical rounds and everyone to edit current round
 Medium - Be able to specify what position to put new rounds, instead of appending to end of presentation
-Low - General CSS tweaking, mainly for mobile view
+Low - General CSS tweaking, mainly for mobile view (scoresheet esp., but also centering SWOOP?)
 
 
 
@@ -100,7 +104,7 @@ Medium - Add the prediction models back to the scoresheet (try joint conditionin
 HUGE (>8 hrs)
 
 Low - Minigames/polls? such as a timed quiz using previous questions from other creators (could use gpt to identify questions on slides and pull them in for stats/use them as inspiration for minigame questions)
-Low - Incorporate the question-level data from the forms
+Low - Have GPT-V read in all questions and answers from past slides and put them into database, along with the question-level data indicating whether players got the right answer.
 
 
 
