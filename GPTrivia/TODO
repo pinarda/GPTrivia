@@ -49,22 +49,24 @@ DONE - still losing jokers on refresh - probably has to do with when we use the 
 DONE - have round title text size alter after we change a round name
 DONE - scoresheet lost connection to database? - failed to fetch api_token_auth in console (it's looking for localhost:8000)
 DONE - css on the presentation page and SWOOP
+DONE - make the rounds list table extend to the bottom of the page
+DONE - Automatically get links to new rounds.
+DONE - need to handle really long round names (make the font smaller?), seemed like this was breaking the script to update slide 2
 
+REBUILD SCORESHEET - on analysis page, nones in the max score (if nothing is entered in scoresheet) is breaking the page - default to 10??
 TEST FIX - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be (Could be a timezone issue)
     NOTE: I changed the timeout setting for the workers in gunicorn.conf.py to 300, or 5 minutes
 
 
 TRIVIAL (minutes)
 
-TODO - deleting a player from the scoresheet kills the jokers???
-
-TODO - on analysis page, nones in the max score (if nothing is entered in scoresheet) is breaking the page - default to 10??
-TODO - need to handle really long round names (make the font smaller?), seemed like this was breaking the script to update slide 2
+TODO - fix the URL for links to rounds in mail.py (create_presentation and updated_merged_presentation), want the permissions to be anyone with link (this error affects viewing the slides (403) and apparently updating presentations, which only works on Alex account?), and URL to be view, not edit
+TODO - and update_merged_presentation appears to be erroring (fails after the round is marked as read though), and not updating presentations or rounds table
+TODO - deleting a player from the scoresheet kills the jokers??? (maybe around line 668 in App.js?)
+TODO - add "link" input to scoresheet, to allow display and manual entry of link to a specific round if it was not added through the generate/update buttons
+High - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
 
 High - Try using autogen api - could give the players a single question/answer that is fact-checked and interesting (could benchmark GPT 3.5 v 4 v autogen?)
-
-High - make the rounds list table extend to the bottom of the page
-High - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
 High - add a Host trivia user that is the only one who can edit the scoresheet (and generate the presentation?), and/or a console "are you sure" when editing a previous date
 High - add normalize option to the rounds list
 High - add zeros to the created round category counts if the creator hasn't made any rounds in that category
@@ -77,7 +79,7 @@ MEDIUM (1-2 hrs)
 TODO - Add historical presentations to the presentations table (with joker info)
 TODO - Check for dad/dan and debi/mom in the old scoresheets, this is leading to missing dad's scores for some rounds
 TODO - If there is no text on the title slide, we need a way to fail silently and move on
-TODO - Automatically get links to new rounds.
+
 
 High - add sorting to the player round page, also want to be able to see the lowest high score on a round.
 High - add a link to the rounds list page on the round category counts that filters by rounds that person has created with that category
@@ -87,7 +89,7 @@ Medium - Customizable player profile (pic, about)
 Medium - consider redoing the rounds list (maybe react-virtuoso?), also think about collapsible tables for readability. (is this a real issue? server might just be slow if it's the first request made in a while.)
 Medium - Allow Host account to edit historical rounds and everyone to edit current round
 Medium - Be able to specify what position to put new rounds, instead of appending to end of presentation
-Low - General CSS tweaking, mainly for mobile view (scoresheet esp., but also centering SWOOP?)
+Medium - General CSS tweaking, mainly for mobile view (scoresheet esp.)
 
 
 
@@ -97,6 +99,7 @@ High - Add page where you can write your answers, and use gpt for automatic scor
 High - Finish the stats for the analysis page ("Player" options) / possibly add the player specific stuff to the profile pages. NORMALIZE SCORES before computing stats
 Medium - If we add a new player on the scoresheet, we need to modify the GPTriviaround model to accept additional players and save their scores too.
 Medium - Add the prediction models back to the scoresheet (try joint conditioning on both player and category) (and the blog?)
+Medium - add a creator name input to SWOOP, somehow pass that to create presentation functionality (one option - save the round in the database as it is submitted, not after presentation is created)
 
 
 

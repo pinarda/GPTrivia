@@ -765,6 +765,28 @@ def create_presentation():
                             round_end_index = round_start_index + len(round_placeholder)
                             delete_insert_requests = create_delete_insert_text_requests(
                                 element_id, round_start_index, round_end_index, new_text)
+
+                            if len(new_text) > 40:
+                                # Add a request to modify the font size; you can adjust the font size value as needed
+                                font_size_request = {
+                                    "updateTextStyle": {
+                                        "objectId": element_id,
+                                        "textRange": {
+                                            "type": "FIXED_RANGE",  # Explicitly specifying the range type
+                                            "startIndex": round_start_index,
+                                            "endIndex": round_start_index + len(new_text)
+                                        },
+                                        "style": {
+                                            "fontSize": {
+                                                "magnitude": 16,  # Change this to your desired font size
+                                                "unit": "PT"
+                                            }
+                                        },
+                                        "fields": "fontSize"
+                                    }
+                                }
+                                delete_insert_requests.append(font_size_request)
+
                             slides_service.presentations().batchUpdate(
                                 presentationId=new_presentation_id,
                                 body={'requests': delete_insert_requests}

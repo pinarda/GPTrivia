@@ -1018,7 +1018,7 @@ const PlayerTable = () => {
         minor_category2: selectedMinor2Categories[round.title] || '',
         date: round.date || new Date(),
         round_number: index + 1,
-        max_score: maxScores[round.title] || null,
+        max_score: maxScores[round.title] || 10,
         replay: isReplay[round.title] || false,
         cooperative: cooperativeStatus[round.title] || false,
         notes: round.notes || '', // You can update this field as necessary

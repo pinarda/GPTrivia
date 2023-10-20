@@ -3,6 +3,7 @@ body {
   line-height: 1.6;
   background-color: #333;
   color:white;
+    height: 100%;
 }
 
 .header-container{
@@ -23,9 +24,14 @@ a {
     color: white;
 }
 
+.content-container {
+    height: 100%;
+}
+
 .table-container {
     overflow: auto;
-    min-height: 270px !important;
+    /*min-height: 270px !important;*/
+    height: 100%;
 }
 
 @media screen and (max-width: 850px) {
@@ -51,7 +57,8 @@ a {
 
     .table-container {
         overflow: auto;
-        min-height: 150px !important;
+        /*min-height: 150px !important;*/
+        height: 100%;
     }
 
 }
@@ -61,6 +68,7 @@ a {
     margin-top: -30px;
     padding-left: 10px;
     padding-right: 10px;
+    height: 100%;
 }
 
 /*https://coolors.co/palette/f94144-f3722c-f8961e-f9c74f-90be6d-43aa8b-577590*/
