@@ -1,2 +1,3 @@
 # GPTrivia
-Hail Science Trivia
+Hail Science Trivia!
+hailsciencetrivia.com

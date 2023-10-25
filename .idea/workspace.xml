@@ -7,14 +7,17 @@
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/TODO" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/TODO" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/mail.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/mail.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/home.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/home.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/player_analysis.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/player_analysis.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/player_profile.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/player_profile.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/round_maker.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/round_maker.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/rounds_list.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/rounds_list.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/scoresheet.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/scoresheet.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/base.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/token.pickle" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/token.pickle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scoresheet/src/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/src/App.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,30 +52,30 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_ADD_EXTERNAL_FILES": "true",
-    "DefaultHtmlFileTemplate": "HTML File",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "/Users/alex/git/GPTrivia/GPTrivia/static/scoresheet",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
-    "ts.external.directory.path": "/Applications/PyCharm.app/Contents/plugins/javascript-impl/jsLanguageServicesImpl/external",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
+    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/alex/git/GPTrivia/GPTrivia/static/scoresheet&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/Applications/PyCharm.app/Contents/plugins/javascript-impl/jsLanguageServicesImpl/external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "DatabaseDriversLRU": [
-      "sqlite"
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;sqlite&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet" />
@@ -300,7 +303,9 @@
       <workItem from="1697648090960" duration="3131000" />
       <workItem from="1697651981242" duration="511000" />
       <workItem from="1697653806468" duration="660000" />
-      <workItem from="1697818170676" duration="1355000" />
+      <workItem from="1697818170676" duration="1861000" />
+      <workItem from="1697822055466" duration="45000" />
+      <workItem from="1698205556746" duration="6938000" />
     </task>
     <servers />
   </component>

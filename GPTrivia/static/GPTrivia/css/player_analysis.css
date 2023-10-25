@@ -47,6 +47,12 @@ body {
     background-color: #f94144;
 }
 
+.footer-container{
+    background-color: #f94144;
+    position: absolute;
+    font-family: YoungSerif;
+}
+
 .red{
         color: rgba(255, 243, 245, 0.7);
 

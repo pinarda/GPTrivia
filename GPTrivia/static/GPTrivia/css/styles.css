@@ -5,6 +5,14 @@
     margin-top: 50px;
 }
 
+#footer-text{
+    margin: 0px;
+    color: white;
+    padding: 5px;
+    text-align: center;
+    font-family: YoungSerif;
+}
+
 .logo {
     font-family: YoungSerif;
     color: white;
@@ -114,11 +122,7 @@ table th input {
 
 .table-container {
     max-width: 100%;
-    max-height: 78vh;
-    overflow-x: auto;
-    overflow-y: auto;
-    margin-top: 50px;
-    position: relative;
+    max-height: 90%;
 }
 
 .cloned-cell {
@@ -178,6 +182,13 @@ header div{
 body {
     margin: 0px;
     padding: 0px;
+    font-family: YoungSerif;
+}
+
+.footer-container {
+    bottom: 0;
+    width: 100%;
+    position: absolute;
     font-family: YoungSerif;
 }
 
@@ -245,7 +256,7 @@ body {
 .content-container {
     border: 0px solid #ccc;
     margin: 10px;
-    padding: 30px;
+    padding: 10px;
     box-sizing: border-box;
 }
 

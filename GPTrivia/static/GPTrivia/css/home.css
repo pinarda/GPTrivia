@@ -5,8 +5,10 @@ body {
   background-color: #333;
 }
 
-.header-container{
-    background-color: #00527a;
+.footer-container{
+    background-color: #0073cc;
+    position: absolute;
+    font-family: YoungSerif;
 }
 
 h1 {

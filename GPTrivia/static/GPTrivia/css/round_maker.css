@@ -42,6 +42,14 @@ div {
     background-color: #240046;
 }
 
+.footer-container{
+    /*background-color: #b8475d;*/
+    /*background-color: #9d4edd;*/
+    background-color: #240046;
+    position: absolute;
+    font-family: YoungSerif;
+}
+
 /*https://coolors.co/palette/ff6d00-ff8500-ff9e00-240046-5a189a-9d4edd-18af9d*/
 .red{
     color: #ff6d00;
