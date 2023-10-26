@@ -84,7 +84,7 @@ input[type="text"] {
     border: none;
     border-bottom: 1px solid #ccc;
     background-color: #f2f2f2;
-    margin-bottom: 5px;
+    margin-bottom: 20px;
     transition: 0.3s;
     padding-top: 16px; /* Increase or decrease this value to adjust spacing */
 }
@@ -97,16 +97,14 @@ position: relative;
 
 #roundList tbody{
     position: relative;
-    top: 5vh;
 }
 
 table th input {
     position: absolute;
-    top: 100%;
+    top: 70%;
     left: 0;
     bottom: 10%;
     width: 100%;
-    padding-bottom: 20px;
     z-index: 2;
 }
 
@@ -371,7 +369,6 @@ a .logo {
 
     #roundList tbody{
         position: relative;
-        top: 10vh;
     }
 
     /*.logo {*/

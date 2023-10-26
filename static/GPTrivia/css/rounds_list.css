@@ -18,6 +18,7 @@ body {
 #roundListHead tr th{
     background-color: #96031A;
     color: white;
+    padding-bottom: 50px;
 }
 
 .title-cell{
