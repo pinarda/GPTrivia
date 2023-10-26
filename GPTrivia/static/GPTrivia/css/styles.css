@@ -258,6 +258,8 @@ body {
     margin: 10px;
     padding: 10px;
     box-sizing: border-box;
+    min-height: calc(100vh - 200px);
+
 }
 
 .expand-collapse-button {

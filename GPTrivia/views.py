@@ -13,6 +13,9 @@ import openai
 from django.views import View
 import os
 import random
+from autogen import AssistantAgent, UserProxyAgent
+import autogen
+
 
 
 
@@ -344,6 +347,34 @@ def player_profile_dict(request, player_name):
         .order_by('-num_rounds')
     )
 
+    zero_rounds_cat = (
+        GPTriviaRound.objects.values('major_category')
+    )
+
+    # Assuming created_rounds_cat and zero_rounds_cat are lists after evaluating the queryset:
+    created_rounds_cat_list = list(created_rounds_cat)
+    zero_rounds_cat_list = list(zero_rounds_cat)
+
+    # Create a set of existing major categories in created_rounds_cat for faster lookup
+    existing_categories = set([item['major_category'] for item in created_rounds_cat_list])
+
+    # Check each category in zero_rounds_cat_list
+    for item in zero_rounds_cat_list:
+        if item['major_category'] not in existing_categories:
+            created_rounds_cat_list.append({
+                'major_category': item['major_category'],
+                'num_rounds': 0
+            })
+            existing_categories.add(item['major_category'])  # update the set
+
+    # now if there's a category that the player has not created a round for, add it to the created_rounds_cat
+
+
+    # also add zeros for any categories that the player has not created a round for
+    # GPTriviaRound.objects.values('major_category').annotate(num_rounds=0).exclude(major_category__in=created_rounds_cat)
+    # then append the zeros to the created_rounds_cat
+
+
     # Fetch the created round names for the given player, and order by creation date
     created_rounds = (
         GPTriviaRound.objects
@@ -452,9 +483,10 @@ def player_profile_dict(request, player_name):
     created_rounds_count = created_rounds.count()
 
 
+
     context = {
         'player_name': player_name,
-        'created_rounds_cat': created_rounds_cat,
+        'created_rounds_cat': created_rounds_cat_list,
         'created_rounds': created_rounds,
         'player_color_mapping': playerColorMapping,
         'text_color': text_color,

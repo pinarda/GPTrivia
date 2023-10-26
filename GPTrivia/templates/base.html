@@ -111,14 +111,24 @@
 
 
 <body>
-<div class="content-container">
-    <main>
-        {% block content %}
-        {% endblock %}
-    </main>
-</div>
-{% block extra_js %}{% endblock %}
+    <div class="content-container">
+        <main>
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+    {% block extra_js %}{% endblock %}
 </body>
 
 
+
 </html>
+
+<footer>
+    <div class="footer-container">
+        <div class="footer-content">
+        <div class="footer-bottom">
+            <p id="footer-text">Hail Science Trivia © 2023</p>
+        </div>
+    </div>
+</footer>

@@ -6,6 +6,10 @@ body {
   color:white;
 }
 
+br {
+    margin: 5px 0;
+}
+
 .embed-container {
     position: relative;
     padding-bottom: 56.25%; /* 16:9 aspect ratio */
@@ -31,6 +35,11 @@ div {
     text-align: left;
 }
 
+#question-response {
+    justify-content: left;
+    text-align: left;
+}
+
 .panel {
     width: 90%;
     display: flex;
@@ -40,6 +49,14 @@ div {
     /*background-color: #b8475d;*/
     /*background-color: #9d4edd;*/
     background-color: #240046;
+}
+
+.footer-container{
+    /*background-color: #b8475d;*/
+    /*background-color: #9d4edd;*/
+    background-color: #240046;
+    position: inherit;
+    font-family: YoungSerif;
 }
 
 /*https://coolors.co/palette/ff6d00-ff8500-ff9e00-240046-5a189a-9d4edd-18af9d*/
@@ -69,6 +86,14 @@ div {
 
 .content-container {
     display: flex;
+    min-height: calc(100vh - 200px);
+}
+
+@media screen and (max-width: 850px) {
+    .content-container {
+        display: flex;
+        min-height: calc(100vh - 73px - 10vw);
+    }
 }
 
 button {
@@ -98,3 +123,4 @@ input {
     animation: spin 2s linear infinite;  /* Adjust the 2s value to make the spin faster or slower */
     margin: 5px;
 }
+

@@ -1,6 +1,5 @@
 body {
   font-family: Arial, sans-serif;
-  line-height: 1.6;
   background-color: #333;
   color:white;
     height: 100%;
@@ -8,6 +7,12 @@ body {
 
 .header-container{
     background-color: #96031A;
+}
+
+.footer-container {
+    background-color: #96031A;
+    position: absolute;
+    font-family: YoungSerif;
 }
 
 #roundListHead tr th{
@@ -24,17 +29,17 @@ a {
     color: white;
 }
 
-.content-container {
-    height: 100%;
-}
 
 .table-container {
     overflow: auto;
-    /*min-height: 270px !important;*/
+    /*min-height: 150px !important;*/
     height: 100%;
+    max-height: calc(100vh - 220px);
+    margin-top: 0px;
 }
 
-@media screen and (max-width: 850px) {
+
+@media screen and (max-width: 790px) {
     #roundList {
       border-collapse: collapse; /* Collapse borders */
       width: 100%; /* Full-width */
@@ -59,16 +64,20 @@ a {
         overflow: auto;
         /*min-height: 150px !important;*/
         height: 100%;
+        max-height: calc(100vh - 180px - 10vw + 90px);
     }
 
 }
 
 .content-container {
-    padding-top: 0px;
-    margin-top: -30px;
-    padding-left: 10px;
-    padding-right: 10px;
     height: 100%;
+    margin-bottom: 0px;
+    padding-bottom: 0px;
+    margin-top: 0px;
+    padding-top: 20px;
+    position: fixed;
+    right:0;
+    left:0;
 }
 
 /*https://coolors.co/palette/f94144-f3722c-f8961e-f9c74f-90be6d-43aa8b-577590*/

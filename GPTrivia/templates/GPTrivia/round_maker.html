@@ -72,6 +72,20 @@
         {{ gpt_response|safe }}
     </div>
 
+{#    <form method="post" id="question-form">#}
+{#        {% csrf_token %}#}
+{#        <input type="text" name="question_input" id="question-input" placeholder="Type your message" required>#}
+{#        <div>#}
+{#            <button type="submit" id="question-submit">Submit</button>#}
+{#            <img class="spinner" id="submit-spinner87" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">#}
+{#        </div>#}
+{#    </form>#}
+{##}
+{#    <div id="question-response">#}
+{#        <!-- The ChatGPT response will be inserted here -->#}
+{#        {{ autogen_response|safe }}#}
+{#    </div>#}
+
     <div style="margin-top: 2rem"> Not feeling chatty? Try this instead: </div>
 
     <button id="generate-round-button">Generate Idea</button>
@@ -167,7 +181,12 @@
 <script>
     function typeWriter(text, elem, i, interval) {
         if (i < text.length) {
-            $(elem).append(text[i]);
+            // If the current character is a newline, append a <br> tag, otherwise append the character
+            if (text[i] === '\n') {
+                $(elem).append('<br>');
+            } else {
+                $(elem).append(text[i]);
+            }
             i++;
             setTimeout(function() {
                 typeWriter(text, elem, i, interval);
@@ -191,6 +210,29 @@
                     $('#chat-response').html('');  // Clear the previous response
                     var words = data.gpt_response.split('');
                     typeWriter(words, '#chat-response', 0, 30);  // Display new response word by word
+                }
+            });
+        });
+    });
+
+    $(document).ready(function() {
+        $('#question-form').on('submit', function(e) {
+            $('#submit-spinner87').show();  // Hide spinner
+            e.preventDefault();
+            $.ajax({
+                url: '/autogen/',
+                method: 'POST',
+                data: {
+                    user_input: $('#question-input').val(),
+                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(data) {
+                    $('#submit-spinner87').hide();  // Hide spinner
+                    $('#question-response').html('');  // Clear the previous response
+                    // Insert a newline before 'Answer' and remove 'TERMINATE'
+                    var formattedResponse = data.autogen_response.replace(' Answer:', '\n \n Answer:').replace('TERMINATE', '');
+
+                    typeWriter(formattedResponse, '#question-response', 0, 30);  // Display new response word by word
                 }
             });
         });

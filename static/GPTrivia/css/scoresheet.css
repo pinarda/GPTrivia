@@ -11,6 +11,12 @@ body {
     background-color: #1e7662;
 }
 
+.footer-container{
+    background-color: #1e7662;
+    position: absolute;
+    font-family: YoungSerif;
+}
+
 .red{
     color: #0d322c;
 }
