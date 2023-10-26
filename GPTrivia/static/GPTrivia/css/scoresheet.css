@@ -13,7 +13,7 @@ body {
 
 .footer-container{
     background-color: #1e7662;
-    position: absolute;
+    position: inherit;
     font-family: YoungSerif;
 }
 
