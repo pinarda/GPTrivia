@@ -97,7 +97,7 @@ position: relative;
 
 #roundList tbody{
     position: relative;
-    top: 10vh;
+    top: 5vh;
 }
 
 table th input {
@@ -367,6 +367,11 @@ a .logo {
         margin-right: 0;
         font-family: YoungSerif;
         font-size:calc(12px + 1.5vw);
+    }
+
+    #roundList tbody{
+        position: relative;
+        top: 10vh;
     }
 
     /*.logo {*/
