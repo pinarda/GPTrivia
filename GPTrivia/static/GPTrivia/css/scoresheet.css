@@ -22,7 +22,17 @@ input.largerCheckbox {
     height: 40px;
 }
 
+.content-container {
+    display: flex;
+    min-height: calc(100vh - 200px);
+}
 
+@media screen and (max-width: 850px) {
+    .content-container {
+        display: flex;
+        min-height: calc(100vh - 73px - 10vw);
+    }
+}
 
 .red{
     color: #0d322c;
