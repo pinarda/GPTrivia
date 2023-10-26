@@ -80,7 +80,6 @@ th, td {
 input[type="text"] {
     width: 100%;
     box-sizing: border-box;
-    font-size: 16px;
     padding: 10px 20px;
     border: none;
     border-bottom: 1px solid #ccc;
@@ -98,7 +97,7 @@ position: relative;
 
 #roundList tbody{
     position: relative;
-    top: 45px;
+    top: 5vh;
 }
 
 table th input {
