@@ -97,11 +97,12 @@ position: relative;
 
 #roundList tbody{
     position: relative;
+    top: 10px;
 }
 
 table th input {
     position: absolute;
-    top: 70%;
+    top: 75%;
     left: 0;
     bottom: 10%;
     width: 100%;
@@ -369,6 +370,7 @@ a .logo {
 
     #roundList tbody{
         position: relative;
+        top: 10px;
     }
 
     /*.logo {*/
