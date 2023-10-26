@@ -1342,7 +1342,7 @@ const PlayerTable = () => {
                     <StyledFormControlLabel
                       control={
                         <Checkbox
-                            style={{transform: 'scale(2)'}}
+                            style={{transform: 'scale(1.5)'}}
                           checked={cooperativeStatus[round.title] || false}
                           onChange={(event) => handleCooperativeChange(round.title, event.target.checked)}
                         />
