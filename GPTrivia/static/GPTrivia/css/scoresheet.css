@@ -17,6 +17,13 @@ body {
     font-family: YoungSerif;
 }
 
+input.largerCheckbox {
+    width: 40px;
+    height: 40px;
+}
+
+
+
 .red{
     color: #0d322c;
 }
