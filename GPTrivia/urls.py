@@ -28,7 +28,7 @@ from django.conf.urls.static import static
 from .views import CustomObtainAuthToken
 from django.forms.models import model_to_dict
 from django.views.decorators.csrf import csrf_exempt
-from .views import RoundMaker, GenerateIdeaView, PreviewView, ShareView, AutoGenView
+from .views import RoundMaker, GenerateIdeaView, PreviewView, ShareView
 
 
 
