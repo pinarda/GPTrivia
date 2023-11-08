@@ -210,32 +210,44 @@
                     csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
                 },
                 success: function(data) {
-                    $('#submit-spinner1').hide();  // Hide spinner
                     $('#chat-response').html('');  // Clear the previous response
                     var words = data.gpt_response.split('');
                     typeWriter(words, '#chat-response', 0, 30);  // Display new response word by word
 
-                    // Check if the DALL-E image URL is not null or undefined
-                    if (data.dalle_image_url) {
-                        // Create an img tag for the image
-                        var imageElement = $('<img>')
-                            .attr('src', data.dalle_image_url) // Set the src attribute to the image URL
-                            .attr('alt', 'Generated Image') // Set the alt text for the image
-                            .css({
-                                'max-width': '50%', // Ensure the image is not larger than the container
-                                'height': 'auto',    // Maintain the aspect ratio of the image
-                            });
-
-                        // Clear the previous image and append the new one to the #dalle-image-link div
-                        $('#dalle-image-link').html('').append(imageElement);
-                    } else {
-                        // Clear the #dalle-image-link div if there is no image
-                        $('#dalle-image-link').html('');
-                    }
+                    generateDalleImage(words);
                 }
             });
         });
     });
+
+
+    function generateDalleImage(words) {
+        $.ajax({
+            url: '/generate_image/', // Endpoint for DALL-E image generation
+            method: 'POST',
+            data: {
+                gpt_response: words,
+                csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(data) {
+                // If the server responds with an immediate task identifier or status
+                var imageElement = $('<img>').attr('src', data.dalle_image_url).attr('alt', 'Generated Image').css({
+                    'max-width': '50%', // Ensure the image is not larger than the container
+                    'height': 'auto',    // Maintain the aspect ratio of the image
+                });
+                $('#dalle-image-link').html('').append(imageElement);
+                $('#submit-spinner1').hide();  // Hide spinner
+
+            },
+            error: function(error) {
+                // Handle errors here
+                $('#submit-spinner1').hide();  // Hide spinner
+                console.error('Error generating image:', error);
+            }
+        });
+    }
+
+
 
     $(document).ready(function() {
         $('#question-form').on('submit', function(e) {

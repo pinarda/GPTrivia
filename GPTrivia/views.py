@@ -598,6 +598,30 @@ class AutoGenView(View):
 
         return JsonResponse({'autogen_response': auto_resp["content"]})
 
+class GenerateImageView(View):
+    def post(self, request, *args, **kwargs):
+        gpt_response = request.POST.get('gpt_response')
+        openai.api_key = os.getenv('OPENAI_API_KEY')
+
+        try:
+            # Call to DALL-E to generate an image based on the conversation
+            dalle_response = openai.Image.create(
+                prompt=f"Draw an image of the following creature: Swooper, the swoop snake. He has wings. He's sssmooth-talking, and myssterious. Swooper has just suggested the following round: {gpt_response} Draw Swooper with his clothing and surroundings reflecting the theme of his suggested round, and make sure the image is artistic and stylized, NOT photorealistic or computer-generated. Remember, Swooper is ALWAYS in costume.",
+                # This assumes you want to generate an image based on the last text response from GPT-4
+                n=1,  # Number of images to generate
+                size="1024x1024",  # The size of the image
+                model='dall-e-3'
+            )
+            image_url = dalle_response['data'][0]['url']  # URL of the generated image
+            print(image_url)
+
+        except Exception as e:
+            image_url = None  # No image if there's an error
+            print(image_url)
+
+        return JsonResponse({'dalle_image_url': image_url})
+
+
 class RoundMaker(View):
     template_name = 'GPTrivia/round_maker.html'
 
@@ -629,21 +653,20 @@ class RoundMaker(View):
             conversation_history.append({"role": "assistant", "content": gpt_response})
             request.session['conversation_history'] = conversation_history
 
-            # Call to DALL-E to generate an image based on the conversation
-            dalle_response = openai.Image.create(
-                prompt=f"Draw an image of the following creature: Swooper, the swoop snake. You have wings. You're sssmooth-talking, and myssterious. Swooper's job is trivia round recommender. Swooper has just suggested the following round: {gpt_response} I want you to draw Swooper, and have him be dressed up and have his surroundings reflect the theme of the suggested round. Make sure the image is artistic and stylized, NOT photorealistic or computer-generated.",
-                # This assumes you want to generate an image based on the last text response from GPT-4
-                n=1,  # Number of images to generate
-                size="1024x1024",  # The size of the image
-                model='dall-e-3'
-            )
-            image_url = dalle_response['data'][0]['url']  # URL of the generated image
+            # # Call to DALL-E to generate an image based on the conversation
+            # dalle_response = openai.Image.create(
+            #     prompt=f"Draw an image of the following creature: Swooper, the swoop snake. You have wings. You're sssmooth-talking, and myssterious. Swooper's job is trivia round recommender. Swooper has just suggested the following round: {gpt_response} I want you to draw Swooper, and have him be dressed up and have his surroundings reflect the theme of the suggested round. Make sure the image is artistic and stylized, NOT photorealistic or computer-generated.",
+            #     # This assumes you want to generate an image based on the last text response from GPT-4
+            #     n=1,  # Number of images to generate
+            #     size="1024x1024",  # The size of the image
+            #     model='dall-e-3'
+            # )
+            # image_url = dalle_response['data'][0]['url']  # URL of the generated image
 
         except Exception as e:
             gpt_response = str(e)
-            image_url = None  # No image if there's an error
 
-        return JsonResponse({'gpt_response': gpt_response, 'dalle_image_url': image_url})
+        return JsonResponse({'gpt_response': gpt_response})
 
 @login_required
 def player_profile(request, player_name):
