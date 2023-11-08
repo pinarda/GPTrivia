@@ -23,7 +23,6 @@ input.largerCheckbox {
 }
 
 .content-container {
-    display: flex;
     min-height: calc(100vh - 200px);
 }
 
