@@ -35,6 +35,10 @@ div {
     text-align: left;
 }
 
+#dalle-image-link{
+    margin-top: 20px;
+}
+
 #question-response {
     justify-content: left;
     text-align: left;
