@@ -47,6 +47,23 @@ from datetime import date
 from django.contrib.postgres.fields import JSONField  # Import this at the top of your file
 
 
+config_list = autogen.config_list_from_json(
+    "OAI_CONFIG_LIST",
+    filter_dict={
+        "model": {
+            "gpt-4",
+        }
+    }
+)
+
+config_list = [
+    {
+        'model': 'gpt-4',
+        'api_key': "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"
+    }
+]
+
+
 gmail_key = '8f35edc691b918094035b22807266a1e468bf5f0'
 
 playerColorMapping = {
@@ -543,6 +560,44 @@ class GenerateIdeaView(View):
         suggestion = f'How about {random_item}?'
         return JsonResponse({'suggestion': suggestion})
 
+class AutoGenView(View):
+    def post(self, request, *args, **kwargs):
+        llm_config = {"config_list": config_list, "seed": 42}
+        user_proxy = autogen.UserProxyAgent(
+            name="User_proxy",
+            system_message="""
+    Reply TERMINATE if the task has been solved at full satisfaction. 
+    Otherwise, reply CONTINUE, or the reason why the task is not solved yet.""",
+            human_input_mode="NEVER",
+            is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
+            llm_config=llm_config,
+
+        )
+        qm = autogen.AssistantAgent(
+            name="QuestionMaster",
+            llm_config=llm_config,
+            system_message="You provide creative ideas for ONE SINGLE trivia question based on a theme provided to you by the User_proxy. You also provide an answer to your question. You start the question with the word 'Question:' and the answer with the word 'Answer:'. You are careful to make sure that the selected trivia idea is creative and unusual, but not too niche of a topic for a general-audience trivia night."
+        )
+        cr = autogen.AssistantAgent(
+            name="Critic",
+            system_message="You look through answers provided by the QuestionMaster after review by the Analyzer to check if the answer is wrong. If not correct, either request a new question or if possible, provide a corrected answer.",
+            llm_config=llm_config,
+        )
+        final = autogen.AssistantAgent(
+            name="Finalizer",
+            system_message="Once the Critic says the answer is correct, simply state the question provided by the QuestionMaster and answer provided by the Critic, absolutely nothing else. Start the question with the format 'Question:' and the answer with the format 'Answer:' and end the message with the statement after the period with the word `TERMINATE` (all caps, no period).",
+            llm_config=llm_config,
+            is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
+        )
+        groupchat = autogen.GroupChat(agents=[qm, cr, final, user_proxy], messages=[], max_round= 10)
+        manager = autogen.GroupChatManager(groupchat=groupchat, llm_config=llm_config, is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"), system_message="Reply `TERMINATE` in the end when everything is done.")
+
+        user_proxy.initiate_chat(manager, message=request.POST.get('user_input'))
+
+        auto_resp = manager.last_message(final)
+
+        return JsonResponse({'autogen_response': auto_resp["content"]})
+
 class RoundMaker(View):
     template_name = 'GPTrivia/round_maker.html'
 
@@ -564,7 +619,8 @@ class RoundMaker(View):
         try:
             response = openai.ChatCompletion.create(
                 # model="gpt-3.5-turbo",
-                model="gpt-4",
+                # model="gpt-4",
+                model = "gpt-4-1106-preview",
                 messages=conversation_history,
                 max_tokens=150
             )
@@ -572,10 +628,22 @@ class RoundMaker(View):
             gpt_response = response['choices'][0]['message']['content']
             conversation_history.append({"role": "assistant", "content": gpt_response})
             request.session['conversation_history'] = conversation_history
+
+            # Call to DALL-E to generate an image based on the conversation
+            dalle_response = openai.Image.create(
+                prompt=f"Draw an image of the following creature: Swooper, the swoop snake. You have wings. You're sssmooth-talking, and myssterious. Swooper's job is trivia round recommender. Swooper has just suggested the following round: {gpt_response} I want you to draw Swooper, and have him be dressed up and have his surroundings reflect the theme of the suggested round. Make sure the image is stylized, not photorealistic.",
+                # This assumes you want to generate an image based on the last text response from GPT-4
+                n=1,  # Number of images to generate
+                size="1024x1024",  # The size of the image
+                model='dall-e-3'
+            )
+            image_url = dalle_response['data'][0]['url']  # URL of the generated image
+
         except Exception as e:
             gpt_response = str(e)
+            image_url = None  # No image if there's an error
 
-        return JsonResponse({'gpt_response': gpt_response})
+        return JsonResponse({'gpt_response': gpt_response, 'dalle_image_url': image_url})
 
 @login_required
 def player_profile(request, player_name):

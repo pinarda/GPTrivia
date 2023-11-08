@@ -6,9 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/TODO" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/TODO" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/round_maker.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/round_maker.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/scoresheet.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/scoresheet.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/token.pickle" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/token.pickle" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/views.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
@@ -303,7 +301,7 @@
       <workItem from="1698264355625" duration="20163000" />
       <workItem from="1698341763050" duration="1472000" />
       <workItem from="1698719899478" duration="93000" />
-      <workItem from="1699069380649" duration="3456000" />
+      <workItem from="1699069380649" duration="5820000" />
     </task>
     <servers />
   </component>
@@ -344,7 +342,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>653</line>
+          <line>666</line>
           <option name="timeStamp" value="34" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -365,12 +363,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>946</line>
+          <line>959</line>
           <option name="timeStamp" value="233" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>632</line>
+          <line>645</line>
           <option name="timeStamp" value="316" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -485,7 +483,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html</url>
-          <line>203</line>
+          <line>207</line>
           <option name="timeStamp" value="317" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
