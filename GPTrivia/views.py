@@ -606,7 +606,7 @@ class GenerateImageView(View):
         try:
             # Call to DALL-E to generate an image based on the conversation
             dalle_response = openai.Image.create(
-                prompt=f"Draw an image of the following creature: Swooper, the swoop snake. You have wings. You're sssmooth-talking, and myssterious. Swooper's job is trivia round recommender. Swooper has just suggested the following round: {gpt_response} I want you to draw Swooper, and have his surroundings and clothing reflect the theme of the suggested round. Make sure the image is artistic and stylized, NOT photorealistic or computer-generated.",
+                prompt=f"Swooper, the swoop snake. He has wings. He's sssmooth-talking, and myssterious. Swooper's job is trivia round recommender. Swooper has just suggested the following round: {gpt_response} Draw Swooper, and have his surroundings and clothing reflect the theme of the suggested round. Make sure the image is artistic and stylized, NOT photorealistic or computer-generated. NO TEXT.",
                 # This assumes you want to generate an image based on the last text response from GPT-4
                 n=1,  # Number of images to generate
                 size="1024x1024",  # The size of the image
