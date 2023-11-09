@@ -600,7 +600,7 @@ class AutoGenView(View):
 
 class GenerateImageView(View):
     def post(self, request, *args, **kwargs):
-        gpt_response = request.POST.get('gpt_response')
+        gpt_response = request.POST.get('gpt_text')
         openai.api_key = os.getenv('OPENAI_API_KEY')
 
         try:
