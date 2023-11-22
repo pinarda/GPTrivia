@@ -934,6 +934,11 @@ const PlayerTable = () => {
         }));
     };
 
+    useEffect(() => {
+        console.log('selectedRounds changed', selectedRounds);
+        saveData();
+    }, [selectedRounds]);
+
     const handleCreatorChange = (roundTitle, newCreatorName) => {
       setRoundCreators(prevRoundCreators => ({
         ...prevRoundCreators,
@@ -1229,7 +1234,6 @@ const PlayerTable = () => {
                                     ...selectedRounds,
                                     [player]: event.target.value
                                 });
-                                saveData();
                             }} // Update the selected round for this player
                           >
                               <MenuItem value={"Select"}>- Select -</MenuItem>
