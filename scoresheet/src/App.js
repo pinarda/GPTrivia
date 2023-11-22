@@ -15,13 +15,11 @@ import {
 } from "@mui/material";
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
-import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import styled, { createGlobalStyle } from 'styled-components';
-import {hover} from "@testing-library/user-event/dist/hover";
 
 
     const playerColorMapping = {
@@ -450,7 +448,7 @@ const PlayerTable = () => {
             .catch((error) => {
                 console.error('Error:', error);
             });
-    }, []);
+    }, [csrfToken, url]);
 
     useEffect(() => {
       fetch(url + '/api/v1/trivia-rounds/', {
@@ -616,7 +614,7 @@ const PlayerTable = () => {
         .catch(function() {
             //setErrorMessage("Failed to fetch rounds");
         });
-    }, [selectedDate, defaultPlayers]);
+    }, [selectedDate, defaultPlayers, dates.length, tempTitles.length, url]);
 
     useEffect(() => {
         fetch(url + '/api/v1/presentations/', {
@@ -1172,7 +1170,7 @@ const PlayerTable = () => {
             <StyledButton variant="contained" color="secondary" onClick={() => handleAddColumn(selectedDate, rounds.length + 1)}>
               Add Round
             </StyledButton>
-            <StyledButton variant="contained" color="primary" onClick={saveData}>
+            <StyledButton variant="contained" color="primary" onClick={saveData} style={{ backgroundColor: isSaved ? '#1e7662' : '#810e19' }}>
               Save Scoresheet
             </StyledButton>
           </Box>
