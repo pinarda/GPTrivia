@@ -1223,12 +1223,12 @@ const PlayerTable = () => {
                               value={selectedRounds[player] || "Select"} // Access the selected round for this player
                               onChange={(event) => {
                                 // Update the selected round for this player
+                                                                                                // Set the saved status to false
+                                setIsSaved(false);
                                 setSelectedRounds({
                                     ...selectedRounds,
                                     [player]: event.target.value
                                 });
-                                                                // Set the saved status to false
-                                setIsSaved(false);
                                 saveData();
                             }} // Update the selected round for this player
                           >
