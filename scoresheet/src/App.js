@@ -665,6 +665,7 @@ const PlayerTable = () => {
 
                 setSelectedRounds(initialSelectedRoundsWithPrefix);
             } else {
+                console.log("No presentation found for date: ", selectedDate);
                 setSelectedRounds(playerNames.reduce((acc, curr) => ({...acc, [curr]: "Select"}), {}));
                 setPresID(0);
             }
@@ -672,7 +673,7 @@ const PlayerTable = () => {
         .catch(error => {
             console.error('Error fetching presentations:', error);
         });
-    }, [selectedDate, players]);
+    }, [selectedDate, players, url]);
 
     useEffect(() => {
       if (players.length > 0 && rounds.length > 0) {
@@ -709,7 +710,7 @@ const PlayerTable = () => {
         setSelectedDate(sortedDates[0]);
         setIsDatesInitialized(true);
       }
-    }, [dates, isDatesInitialized]);
+    }, [dates, isDatesInitialized, sortedDates]);
 
     const isSavedRef = useRef(isSaved);
 
@@ -766,6 +767,7 @@ const PlayerTable = () => {
 
 
     const handleRemovePlayer = (playerToRemove) => {
+        saveData();
       setPlayers(players.filter(player => player !== playerToRemove));
     };
 
@@ -856,6 +858,7 @@ const PlayerTable = () => {
     };
 
     const handleAddPlayer = () => {
+      saveData();
       if (newPlayerName.trim()) {
         const formattedName = `score_${newPlayerName.trim().toLowerCase()}`;
         if (!players.includes(formattedName)) {
@@ -1029,7 +1032,7 @@ const PlayerTable = () => {
             if(key.startsWith('score_')) {
                 // as long as scores[key][round.title] is not null, add it to the formattedData object
               formattedData[key] = scores[key][round.title] || null;
-              if (scores[key][round.title] == 0)
+              if (scores[key][round.title] === 0)
                 formattedData[key] = 0;
             }
         });
@@ -1221,14 +1224,13 @@ const PlayerTable = () => {
                               id="demo-simple-select"
                               value={selectedRounds[player] || "Select"} // Access the selected round for this player
                               onChange={(event) => {
-                                // Set the saved status to false
-                                setIsSaved(false);
-
                                 // Update the selected round for this player
                                 setSelectedRounds({
                                     ...selectedRounds,
                                     [player]: event.target.value
                                 });
+                                                                // Set the saved status to false
+                                setIsSaved(false);
                             }} // Update the selected round for this player
                           >
                               <MenuItem value={"Select"}>- Select -</MenuItem>
