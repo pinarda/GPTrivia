@@ -310,7 +310,7 @@
       <workItem from="1699500471504" duration="3828000" />
       <workItem from="1699582566782" duration="345000" />
       <workItem from="1700616402771" duration="1329000" />
-      <workItem from="1700618363467" duration="1161000" />
+      <workItem from="1700618363467" duration="2017000" />
     </task>
     <servers />
   </component>
@@ -467,12 +467,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
-          <line>1571</line>
+          <line>1570</line>
           <option name="timeStamp" value="230" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
-          <line>850</line>
+          <line>849</line>
           <option name="timeStamp" value="309" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">

@@ -767,7 +767,6 @@ const PlayerTable = () => {
 
 
     const handleRemovePlayer = (playerToRemove) => {
-        saveData();
       setPlayers(players.filter(player => player !== playerToRemove));
     };
 
@@ -858,7 +857,6 @@ const PlayerTable = () => {
     };
 
     const handleAddPlayer = () => {
-      saveData();
       if (newPlayerName.trim()) {
         const formattedName = `score_${newPlayerName.trim().toLowerCase()}`;
         if (!players.includes(formattedName)) {
@@ -1231,6 +1229,7 @@ const PlayerTable = () => {
                                 });
                                                                 // Set the saved status to false
                                 setIsSaved(false);
+                                saveData();
                             }} // Update the selected round for this player
                           >
                               <MenuItem value={"Select"}>- Select -</MenuItem>
