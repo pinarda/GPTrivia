@@ -311,7 +311,7 @@ import {hover} from "@testing-library/user-event/dist/hover";
 const PlayerTable = () => {
     const defaultPlayers = useMemo(() => {
       // The initial calculation of defaultPlayers goes here
-      return ["score_alex", "score_dan", "score_debi", "score_jenny", "score_megan", "score_ichigo", "score_chris"];
+      return ["score_alex", "score_dan", "score_debi", "score_jenny", "score_megan", "score_ichigo", "score_chris", "score_zach"];
     }, []);
 
     const [rounds, setRounds] = useState([]);
