@@ -73,9 +73,7 @@ playerColorMapping = {
             'Zach': '#A020F0',
             'Jenny': '#ffef00',
             'Debi': '#8551ff',
-            'Mom': '#8551ff',
             'Dan': '#0000FF',
-            'Dad': '#0000FF',
             'Chris': '#005427',
             'Drew': '#8c564b',
             'Jeff': '#333333',
@@ -117,7 +115,7 @@ class ShareView(View):
 def rounds_list(request):
     rounds = GPTriviaRound.objects.all()
     text_color = {}
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Dad", "Mom"]
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew"]
     for player in players:
         # grab the player's hex color from the playerColorMapping dictionary
         player_color = playerColorMapping[player]
@@ -345,12 +343,7 @@ def player_profile_dict(request, player_name):
 
     # creator name should be equal to the player name
     # unless the player is Dan or Debi, in which case call them Dad and Mom
-    if player_name == "Dan":
-        creator_name = "Dad"
-    elif player_name == "Debi":
-        creator_name = "Mom"
-    else:
-        creator_name = player_name
+    creator_name = player_name
 
     score_p = f"score_{player_name.lower()}"
 
@@ -440,7 +433,7 @@ def player_profile_dict(request, player_name):
     # save category of the round with the highest and lowest average score for the player
     max_avg = category_averages[0]['major_category']
     min_avg = category_averages[len(category_averages) - 1]['major_category']
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Dad", "Mom"]
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew"]
 
     # count the total number of rounds the player has a score for
     total_rounds = GPTriviaRound.objects.filter(**{f"{score_p}__isnull": False}).count()
@@ -648,7 +641,7 @@ class RoundMaker(View):
                 messages=conversation_history,
                 max_tokens=150
             )
-            print(response)
+            print(f"RESPONSE: {response}")
             gpt_response = response['choices'][0]['message']['content']
             conversation_history.append({"role": "assistant", "content": gpt_response})
             request.session['conversation_history'] = conversation_history
