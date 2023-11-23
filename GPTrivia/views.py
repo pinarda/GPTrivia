@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from .forms import GPTriviaRoundForm, ProfilePictureForm
 from .models import GPTriviaRound, MergedPresentation, Profile
 from django.db.models import Avg, F, FloatField, Case, When, Sum, Count
@@ -15,6 +15,7 @@ import os
 import random
 from autogen import AssistantAgent, UserProxyAgent
 import autogen
+from django.contrib.auth.models import User
 
 
 
@@ -577,7 +578,10 @@ def player_profile_dict(request, player_name):
 
     form = ProfilePictureForm()  # Create an instance of the form
 
+    profile_user = get_object_or_404(User, username=player_name)
+
     context = {
+        'profile_user': profile_user,
         'player_name': player_name,
         'created_rounds_cat': created_rounds_cat_list,
         'created_rounds': created_rounds,

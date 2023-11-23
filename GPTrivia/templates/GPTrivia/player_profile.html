@@ -16,7 +16,7 @@
     <div class="content-wrapper">
 
         <div>
-            <img id="profpic" src="{{ user.profile.profile_picture.url }}" alt="{{ user.username }}'s Profile Picture">
+            <img id="profpic" src="{{ profile_user.profile.profile_picture.url }}" alt="{{ player_name }}'s Profile Picture">
         </div>
         {% if user.is_authenticated and user.username == player_name %}
         <div>
