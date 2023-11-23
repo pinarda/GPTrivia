@@ -933,6 +933,8 @@ const PlayerTable = () => {
     };
 
     const handleCooperativeChange = (roundTitle, isChecked) => {
+        const confirmChange = confirmPastChange()
+        if (!confirmChange) return;
       setCooperativeStatus(prevState => ({
         ...prevState,
         [roundTitle]: isChecked,
@@ -1073,6 +1075,9 @@ const PlayerTable = () => {
     };
 
     const handleAddColumn = (date, number) => {
+        const confirmChange = confirmPastChange()
+        if (!confirmChange) return;
+
         fetch(url + `/create_round/${date}/${number}/`, {
             method: 'POST',
             headers: {
@@ -1101,9 +1106,11 @@ const PlayerTable = () => {
     }
 
     const handleRemoveColumn = (roundId) => {
+        const confirmChange = confirmPastChange()
+        if (!confirmChange) return;
         const confirmDelete = window.confirm("Are you sure you want to delete this round? This action cannot be undone.");
-
         if (!confirmDelete) return;
+
         fetch(url + `/delete_round/${roundId}/`, {
             method: 'DELETE',
             headers: {
