@@ -734,6 +734,9 @@ const PlayerTable = () => {
     }, []);
 
     const handleScoreChange = (event, player, roundTitle, round) => {
+        const confirmChange = confirmPastChange()
+        if (!confirmChange) return;
+
         const inputValue = event.target.innerText;
         let newScore;
         setIsSaved(false);
@@ -765,6 +768,9 @@ const PlayerTable = () => {
 
 
     const handleRemovePlayer = (playerToRemove) => {
+        const confirmChange = confirmPastChange()
+        if (!confirmChange) return;
+
       setPlayers(players.filter(player => player !== playerToRemove));
     };
 
@@ -877,6 +883,9 @@ const PlayerTable = () => {
     };
 
     const handleAddPlayer = () => {
+        const confirmChange = confirmPastChange()
+        if (!confirmChange) return;
+
       if (newPlayerName.trim()) {
         const formattedName = `score_${newPlayerName.trim().toLowerCase()}`;
         if (!players.includes(formattedName)) {
@@ -1248,7 +1257,7 @@ const PlayerTable = () => {
                               value={selectedRounds[player] || "Select"} // Access the selected round for this player
                               onChange={(event) => {
                                 // Update the selected round for this player
-                                                                                                // Set the saved status to false
+                                  if (!confirmPastChange()) return;                                        // Set the saved status to false
                                 setIsSaved(false);
                                 setSelectedRounds({
                                     ...selectedRounds,
