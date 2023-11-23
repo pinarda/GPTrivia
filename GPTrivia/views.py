@@ -597,9 +597,29 @@ class GenerateImageView(View):
         openai.api_key = os.getenv('OPENAI_API_KEY')
 
         try:
+            # Get the conversation history from the session
+            conversation_history = request.session.get('conversation_history', [])
+            # Append the user's message to the conversation history
+            conversation_history.append({"role": "user", "content": f"SWOOP I want you to condense this text by summarizing the theme of the round being suggested in this prompt in a few words and nothing else: {gpt_response}"})
+
+            try:
+                response = openai.ChatCompletion.create(
+                    # model="gpt-3.5-turbo",
+                    # model="gpt-4",
+                    model="gpt-4-1106-preview",
+                    messages=conversation_history,
+                    max_tokens=150
+                )
+                print(f"RESPONSE: {response}")
+                second_response = response['choices'][0]['message']['content']
+                print(f"SECOND RESPONSE: {second_response}")
+            except Exception as e:
+                second_response = str(e)
+                return JsonResponse({'dalle_image_url': None})
+
             # Call to DALL-E to generate an image based on the conversation
             dalle_response = openai.Image.create(
-                prompt=f"Swooper, the swoop snake. He has wings. He's sssmooth-talking, and myssterious. Swooper's job is trivia round recommender. Swooper has just suggested the following round: {gpt_response} Draw Swooper, and have his surroundings and clothing reflect the theme of the suggested round. Make sure the image is artistic and stylized, NOT photorealistic or computer-generated. NO TEXT.",
+                prompt=f"Swooper, a snake with wings. He's mysterious and sly. Draw Swooper, and have his surroundings and clothing reflect the theme of {second_response}. Make sure the image is artistic and stylized.",
                 # This assumes you want to generate an image based on the last text response from GPT-4
                 n=1,  # Number of images to generate
                 size="1024x1024",  # The size of the image
@@ -627,6 +647,7 @@ class RoundMaker(View):
     def post(self, request, *args, **kwargs):
         user_input = request.POST.get('user_input')
         openai.api_key = os.getenv('OPENAI_API_KEY')
+
 
         # Get the conversation history from the session
         conversation_history = request.session.get('conversation_history', [])
