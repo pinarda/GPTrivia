@@ -803,7 +803,23 @@ const PlayerTable = () => {
         }
     }
 
+    const confirmPastChange = () => {
+        let currentDateString = selectedDate;
+        let currentDate = new Date(currentDateString);
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth() + 1;
+        const day = today.getDate();
+        let confirmChange = true;
+        if (currentDate.getFullYear() != year || currentDate.getMonth() + 1 != month || currentDate.getDate() + 1 != day) {
+            confirmChange = window.confirm("Are you sure you want to edit the scoresheet for a previous date?");
+        }
+        return confirmChange;
+    }
+
     const handleRoundTitleChange = (index, newTitle) => {
+        const confirmChange = confirmPastChange()
+        if (!confirmChange) return;
 
       const oldTitle = rounds[index].title;
 
