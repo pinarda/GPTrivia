@@ -270,7 +270,7 @@
                     // Insert a newline before 'Answer' and remove 'TERMINATE'
                     var formattedResponse = data.autogen_response.replace(' Answer:', '\n \n Answer:').replace('TERMINATE', '');
                     // append string to formattedResponse
-                    mystring =  "\n \n Note: ChatGPT responses are not guaranteed to be correct. Please check this question and answer before using it in a round."
+                    mystring =  "\n \n Note: ChatGPT responses are not guaranteed to be correct. Please check the answer before using this question in a round."
                     formattedResponse = formattedResponse.concat(mystring);
 
                     typeWriter(formattedResponse, '#question-response', 0, 30);  // Display new response word by word
