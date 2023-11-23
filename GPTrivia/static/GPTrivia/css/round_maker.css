@@ -4,6 +4,13 @@ body {
   line-height: 1.6;
   background-color: #333;
   color:white;
+
+  background-image: url('background.png');
+  background-position: -200px 400px;  /* e.g., 'center top', '100px 200px' */
+  background-size: 700px 700px;  /* e.g., 'cover', 'contain', '100px 200px' */
+  background-repeat: no-repeat;
+  position: relative;
+  z-index: -1;
 }
 
 br {
