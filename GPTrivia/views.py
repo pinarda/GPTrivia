@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
-from .forms import GPTriviaRoundForm
-from .models import GPTriviaRound, MergedPresentation
+from .forms import GPTriviaRoundForm, ProfilePictureForm
+from .models import GPTriviaRound, MergedPresentation, Profile
 from django.db.models import Avg, F, FloatField, Case, When, Sum, Count
 from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
@@ -329,6 +329,19 @@ def player_analysis_legacy(request):
         'player_color_mapping': playerColorMapping,
     })
 
+
+def upload_profile_picture(request):
+    if request.method == 'POST':
+        # Get or create the profile instance
+        profile, created = Profile.objects.get_or_create(user=request.user)
+        form = ProfilePictureForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            form.save()
+            return redirect('player_profile', player_name=request.user.username)
+    else:
+        form = ProfilePictureForm(instance=request.user.profile)
+    return render(request, 'your_template.html', {'form': form})
+
 @login_required
 def player_profile_dict(request, player_name):
     # Ensure the player_name is in the correct format (e.g., title case)
@@ -562,6 +575,8 @@ def player_profile_dict(request, player_name):
     max_bias_avg_value = "{:.2f}".format(max_bias_avg_value)
     min_bias_avg_value = "{:.2f}".format(min_bias_avg_value)
 
+    form = ProfilePictureForm()  # Create an instance of the form
+
     context = {
         'player_name': player_name,
         'created_rounds_cat': created_rounds_cat_list,
@@ -578,7 +593,7 @@ def player_profile_dict(request, player_name):
         'max_cat_avg': max_creator_avg,
         'min_cat_avg': min_creator_avg,
         'created_rounds_count': created_rounds_count,
-
+        'form': form,
     }
 
     return context

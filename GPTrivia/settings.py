@@ -23,6 +23,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure-dnu^#ycvr7cm#x900=e2@whtrf7xj7#6--528a6tmm)-$5x$1k"
 
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 # DEBUG = False

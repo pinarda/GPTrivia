@@ -15,8 +15,22 @@
 
     <div class="content-wrapper">
 
+        <div>
+            <img id="profpic" src="{{ user.profile.profile_picture.url }}" alt="{{ user.username }}'s Profile Picture">
+        </div>
+        {% if user.is_authenticated and user.username == player_name %}
+        <div>
+            <form method="post" action="{% url 'upload_profile_picture' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form }}
+                <button class="expand-collapse-button" type="submit">Upload</button>
+            </form>
+        </div>
+
+    {% endif %}
+
         <h2>Creator Information:</h2>
-        <button class="expand-collapse-button" id="toggleTable" onclick="toggleCreatedRounds()">Round Categories</button>
+        <button class="expand-collapse-button" id="toggleTable" onclick="toggleCreatedRounds()">Created Round Category Counts</button>
         <button class="expand-collapse-button" id="roundsButton" onclick="toggleRounds()">Show/Hide Created Rounds</button>
 
         <div class="table-container">
@@ -83,8 +97,8 @@
             <p>Weakest Category: {{ min_avg }}</p>
             <p>Easiest Creator: <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a> </p>
             <p>Hardest Creator: <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a></p>
-            <p>Creator most biased toward player: <a href="{% url 'player_profile' player_name=max_bias_avg %}" class="player_name" data-player="{{ max_bias_avg }}">{{ max_bias_avg }}</a> ({{ max_bias_avg_value }}) </p>
-            <p>Creator most biased against player: <a href="{% url 'player_profile' player_name=min_bias_avg %}" class="player_name" data-player="{{ min_bias_avg }}">{{ min_bias_avg }}</a> ({{ min_bias_avg_value }}) </p>
+            <p>Most biased toward {{ player_name }}: <a href="{% url 'player_profile' player_name=max_bias_avg %}" class="player_name" data-player="{{ max_bias_avg }}">{{ max_bias_avg }}</a> ({{ max_bias_avg_value }}) </p>
+            <p>Most biased against {{ player_name }}: <a href="{% url 'player_profile' player_name=min_bias_avg %}" class="player_name" data-player="{{ min_bias_avg }}">{{ min_bias_avg }}</a> ({{ min_bias_avg_value }}) </p>
         </div>
 
     </div>

@@ -58,5 +58,6 @@ urlpatterns = [
     path('generate_idea/', GenerateIdeaView.as_view(), name='generate_round'),
     path('preview/', PreviewView.as_view(), name='preview'),
     path('share/', ShareView.as_view(), name='share'),
+    path('upload_profile_picture/', views.upload_profile_picture, name='upload_profile_picture'),
     # path('profilepic/', views.profilepic, name='profilepic'),
-] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

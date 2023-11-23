@@ -4,6 +4,10 @@ body {
   color:black;
 }
 
+#profpic{
+    width: 400px;
+}
+
 button {
     font-family: YoungSerif;
 }
@@ -23,7 +27,7 @@ a {
 .summary-stats {
     display: grid;
     grid-template-columns: 1fr 1fr; /* Two columns with equal width */
-    grid-gap: 0px; /* No gap between columns */
+    grid-gap: 0vw 3vw; /* No gap between columns */
 }
 
 .summary-stats h2 {
@@ -31,20 +35,23 @@ a {
     text-align: left; /* Center the header text */
 }
 
+form {
+    display: inline-grid;
+}
+
 .summary-stats p {
     margin: 5px 0; /* Reduced margin for p elements, adjust as needed */
 }
 
-.grid-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* Creates two columns */
-    gap: 0px; /* Adjust the gap between columns */
-}
 
 
 @media screen and (max-width: 850px) {
     td {
         font-size: small;
+    }
+
+    #profpic {
+        width: 60%;
     }
 
     .score-col {
@@ -54,6 +61,12 @@ a {
     .content-container {
       display: flex;
       min-height: calc(100vh - 66px - 10vw);
+    }
+}
+
+@media screen and (max-width: 600px) {
+    #profpic {
+        width: 100%;
     }
 }
 
