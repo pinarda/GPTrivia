@@ -20,6 +20,27 @@ a {
   min-height: calc(100vh - 197px);
 }
 
+.summary-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two columns with equal width */
+    grid-gap: 0px; /* No gap between columns */
+}
+
+.summary-stats h2 {
+    grid-column: 1 / -1; /* The header spans all columns */
+    text-align: left; /* Center the header text */
+}
+
+.summary-stats p {
+    margin: 5px 0; /* Reduced margin for p elements, adjust as needed */
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Creates two columns */
+    gap: 0px; /* Adjust the gap between columns */
+}
+
 
 @media screen and (max-width: 850px) {
     td {

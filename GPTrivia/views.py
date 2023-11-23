@@ -457,6 +457,7 @@ def player_profile_dict(request, player_name):
         if creator_avg['avg_score'] is not None:
             creator_avg['avg_score'] = creator_avg['avg_score'] - player_avg
 
+
     # save creator of the round with the highest and lowest average score for the player
     # but make sure the player isn't the creator of the round with the highest or lowest average score
     # max_creator_avg = creator_averages[0]['creator']
@@ -492,7 +493,69 @@ def player_profile_dict(request, player_name):
     # let's count the number of rounds that the player has created
     created_rounds_count = created_rounds.count()
 
+    # Initialize the final result dictionary
+    final_results = {}
 
+    for i in range(len(players)):
+        creator_username = players[i]
+        player_scores = {}
+
+        for py in players:
+            name = f"score_{py.lower()}"
+
+            # Calculate the average score for each player for the current creator
+            avg_score = GPTriviaRound.objects.filter(creator=creator_username).aggregate(
+                avg_score=Avg(
+                    Case(
+                        When(**{f"{name}__isnull": False}, then=F(name)),
+                        default=None,
+                        output_field=FloatField()
+                    )
+                )
+            )['avg_score']
+
+            player_scores[py] = avg_score
+
+        # Assign the player scores to the corresponding creator
+        final_results[creator_username] = player_scores
+
+    final_averages = {}
+
+    for creator, scores in final_results.items():
+        total_score = 0
+        count = 0
+
+        for player, avg_score in scores.items():
+            if avg_score is not None:  # Only include non-null averages
+                total_score += avg_score
+                count += 1
+
+        if count > 0:
+            final_averages[creator] = total_score / count
+        else:
+            final_averages[creator] = None  # or some default value, if no scores are available
+
+    # Subtract final average for each creator from their respective score in the list
+    biases = {}
+    for item in creator_averages:
+        creator = item['creator']
+        if creator in final_averages:
+            biases[creator] = item['avg_score'] - final_averages[creator]
+
+    # add the player_averages back to each entry in biases
+    for entry in biases:
+        biases[entry] = biases[entry] + player_avg
+
+    max_bias_avg = max(biases, key=biases.get)
+    min_bias_avg = min(biases, key=biases.get)
+
+    # get the numeric value of the max_bias_avg and min_bias_avg
+    max_bias_avg_value = biases[max_bias_avg]
+    min_bias_avg_value = biases[min_bias_avg]
+
+    # truncate the numeric value to 2 decimal places
+    max_bias_avg_value = "{:.2f}".format(max_bias_avg_value)
+    min_bias_avg_value = "{:.2f}".format(min_bias_avg_value)
 
     context = {
         'player_name': player_name,
@@ -502,10 +565,15 @@ def player_profile_dict(request, player_name):
         'text_color': text_color,
         'max_avg': max_avg,
         'min_avg': min_avg,
+        'max_bias_avg': max_bias_avg,
+        'min_bias_avg': min_bias_avg,
+        'max_bias_avg_value': max_bias_avg_value,
+        'min_bias_avg_value': min_bias_avg_value,
         'total_rounds': total_rounds,
         'max_cat_avg': max_creator_avg,
         'min_cat_avg': min_creator_avg,
         'created_rounds_count': created_rounds_count,
+
     }
 
     return context

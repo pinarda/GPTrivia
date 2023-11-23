@@ -1,6 +1,6 @@
 from django.test import TestCase, RequestFactory
 from GPTrivia.models import GPTriviaRound
-from GPTrivia.views import player_analysis
+from GPTrivia.views import player_analysis, player_profile
 from ..mail import create_presentation
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -8,6 +8,7 @@ from google.auth.transport.requests import Request
 import os
 import pickle
 import datetime
+from django.contrib.auth.models import User
 
 mail_file_directory = os.path.dirname(os.path.abspath(__file__))
 CLIENT_SECRET_FILE = '/Users/alex/client_secret.json'
@@ -19,6 +20,133 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.modify',
           'https://www.googleapis.com/auth/script.projects']
 
 class PlayerAnalysisViewTests(TestCase):
+    def test_profile_view(self):
+        sample_round = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Test Title",
+            major_category="Test Major Category",
+            minor_category1="Test Minor Category1",
+            minor_category2="Test Minor Category2",
+            date="2023-01-01",
+            round_number=1,
+            max_score=10,
+            score_alex=0,
+            score_ichigo=6,
+            score_megan=-1,
+            score_zach=8,
+            score_jenny=9,
+            score_debi=4,
+            score_dan=3,
+            score_chris=2,
+            score_drew=1,
+        )
+
+        sample_round2 = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Test Title2",
+            major_category="Test Major Category",
+            minor_category1="Test Minor Category1",
+            minor_category2="Test Minor Category2",
+            date="2023-01-01",
+            round_number=1,
+            max_score=10,
+            score_alex=7,
+            score_ichigo=10,
+            score_megan=10,
+            score_zach=8,
+            score_jenny=0,
+            score_debi=9,
+            score_dan=7,
+            score_chris=8,
+            score_drew=8,
+        )
+
+        sample_round3 = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Test Title3 ",
+            major_category="Test Major Category 2",
+            minor_category1="Test Minor Category1",
+            minor_category2="Test Minor Category2",
+            date="2023-01-01",
+            round_number=1,
+            max_score=1,
+            score_alex=3,
+            score_ichigo=2,
+            score_megan=0,
+            score_zach=2,
+            score_jenny=3,
+            score_debi=4,
+            score_dan=3,
+            score_chris=2,
+            score_drew=1,
+        )
+
+        sample_round = GPTriviaRound.objects.create(
+            creator="Jenny",
+            title="Test Title",
+            major_category="Test Major Category",
+            minor_category1="Test Minor Category1",
+            minor_category2="Test Minor Category2",
+            date="2023-01-01",
+            round_number=1,
+            max_score=10,
+            score_alex=1,
+            score_ichigo=6,
+            score_megan=-1,
+            score_zach=8,
+            score_jenny=9,
+            score_debi=4,
+            score_dan=3,
+            score_chris=2,
+            score_drew=1,
+        )
+
+        sample_round2 = GPTriviaRound.objects.create(
+            creator="Jenny",
+            title="Test Title2",
+            major_category="Test Major Category",
+            minor_category1="Test Minor Category1",
+            minor_category2="Test Minor Category2",
+            date="2023-01-01",
+            round_number=1,
+            max_score=10,
+            score_alex=2,
+            score_ichigo=10,
+            score_megan=10,
+            score_zach=8,
+            score_jenny=0,
+            score_debi=9,
+            score_dan=7,
+            score_chris=8,
+            score_drew=8,
+        )
+
+        sample_round3 = GPTriviaRound.objects.create(
+            creator="Jenny",
+            title="Test Title3 ",
+            major_category="Test Major Category 2",
+            minor_category1="Test Minor Category1",
+            minor_category2="Test Minor Category2",
+            date="2023-01-01",
+            round_number=1,
+            max_score=1,
+            score_alex=5,
+            score_ichigo=2,
+            score_megan=0,
+            score_zach=2,
+            score_jenny=3,
+            score_debi=4,
+            score_dan=3,
+            score_chris=2,
+            score_drew=1,
+        )
+
+        user = User.objects.create_user(username='Alex', password='Rapt0rpusia')
+        factory = RequestFactory()
+        request = factory.get('/player_profile/Alex/')
+        request.user = user
+        response = player_profile(request, "Alex")
+        self.assertEqual(response.status_code, 200)
     def test_creators_list_not_empty(self):
         # create a sample GPTriviaRound instance
         sample_round = GPTriviaRound.objects.create(

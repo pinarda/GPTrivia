@@ -81,9 +81,12 @@
             <p>Number of Rounds Created: {{ created_rounds_count }}</p>
             <p>Strongest Category: {{ max_avg }}</p>
             <p>Weakest Category: {{ min_avg }}</p>
-            <p>Favorite Creator: <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a> </p>
-            <p>Least Favorite Creator: <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a></p>
+            <p>Easiest Creator: <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a> </p>
+            <p>Hardest Creator: <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a></p>
+            <p>Creator most biased toward player: <a href="{% url 'player_profile' player_name=max_bias_avg %}" class="player_name" data-player="{{ max_bias_avg }}">{{ max_bias_avg }}</a> ({{ max_bias_avg_value }}) </p>
+            <p>Creator most biased against player: <a href="{% url 'player_profile' player_name=min_bias_avg %}" class="player_name" data-player="{{ min_bias_avg }}">{{ min_bias_avg }}</a> ({{ min_bias_avg_value }}) </p>
         </div>
+
     </div>
 
     {% if user.is_authenticated and user.username == player_name %}
