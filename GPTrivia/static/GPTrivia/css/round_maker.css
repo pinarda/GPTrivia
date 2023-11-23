@@ -42,6 +42,11 @@ div {
 #question-response {
     justify-content: left;
     text-align: left;
+    margin-top: 20px;
+}
+
+#question-form {
+    display: none;
 }
 
 .panel {

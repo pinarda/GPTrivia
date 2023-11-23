@@ -571,9 +571,14 @@ class AutoGenView(View):
             llm_config=llm_config,
             system_message="You provide creative ideas for ONE SINGLE trivia question based on a theme provided to you by the User_proxy. You also provide an answer to your question. You start the question with the word 'Question:' and the answer with the word 'Answer:'. You are careful to make sure that the selected trivia idea is creative and unusual, but not too niche of a topic for a general-audience trivia night."
         )
+        ap = autogen.AssistantAgent(
+            name="Analyzer",
+            system_message="You analyze the question provided by the QuestionMaster and check if the question is appropriate for a general-audience trivia night. If not, you request a new question from the QuestionMaster.",
+            llm_config=llm_config,
+        )
         cr = autogen.AssistantAgent(
             name="Critic",
-            system_message="You look through answers provided by the QuestionMaster after review by the Analyzer to check if the answer is wrong. If not correct, either request a new question or if possible, provide a corrected answer.",
+            system_message="You look through answers provided by the QuestionMaster after review by the Analyzer to check if the answer is wrong. If not correct, either request a new question or if possible, provide a corrected answer. You should be very particular about the correctness of the answer.",
             llm_config=llm_config,
         )
         final = autogen.AssistantAgent(
@@ -582,7 +587,7 @@ class AutoGenView(View):
             llm_config=llm_config,
             is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
         )
-        groupchat = autogen.GroupChat(agents=[qm, cr, final, user_proxy], messages=[], max_round= 10)
+        groupchat = autogen.GroupChat(agents=[qm, ap, cr, final, user_proxy], messages=[], max_round= 10)
         manager = autogen.GroupChatManager(groupchat=groupchat, llm_config=llm_config, is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"), system_message="Reply `TERMINATE` in the end when everything is done.")
 
         user_proxy.initiate_chat(manager, message=request.POST.get('user_input'))

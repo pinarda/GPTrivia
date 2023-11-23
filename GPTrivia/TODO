@@ -60,6 +60,7 @@ DONE - deleting a player from the scoresheet kills the jokers??? (maybe around l
 DONE - Check for dad/dan and debi/mom in the old scoresheets, this is leading to missing dad's scores for some rounds
 DONE - Add historical presentations to the presentations table (with joker info)
 DONE - add a console "are you sure" when editing a previous date
+DONE - fix swooper images by condensing the round prompt before feeding it into dalle
 
 
 TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
@@ -75,13 +76,10 @@ TODO - and update_merged_presentation appears to be erroring (fails after the ro
 TODO - add "link" input to scoresheet, to allow display and manual entry of link to a specific round if it was not added through the generate/update buttons
 TODO - single quotes in round titles breaks the JSON, see line 639 in App.js
 TODO - if joker and creator round match, fix the scoring (10/28/2022?ish)
-TODO - 5/12/2023, missing scores (check db in github)? Also 7/14/2023 (jenny has these).
-TODO - missing jokers for 10/21/2023, 11/17/2024
 
 High - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
 High - Try using autogen api - could give the players a single question/answer that is fact-checked and interesting (could benchmark GPT 3.5 v 4 v autogen?)
 High - add normalize option to the rounds list
-High - fix swooper images by condensing the round prompt before feeding it into dalle
 
 
 

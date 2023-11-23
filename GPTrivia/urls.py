@@ -28,7 +28,7 @@ from django.conf.urls.static import static
 from .views import CustomObtainAuthToken
 from django.forms.models import model_to_dict
 from django.views.decorators.csrf import csrf_exempt
-from .views import RoundMaker, GenerateIdeaView, PreviewView, ShareView, GenerateImageView
+from .views import RoundMaker, GenerateIdeaView, PreviewView, ShareView, GenerateImageView, AutoGenView
 
 
 
@@ -54,7 +54,7 @@ urlpatterns = [
     path('delete_round/<int:round_id>/', csrf_exempt(views.delete_round), name='delete_round'),
     path('round_maker/', RoundMaker.as_view(), name='round_maker'),
     path('generate_image/', GenerateImageView.as_view(), name='generate_image'),
-    # path('autogen/', AutoGenView.as_view(), name='autogen'),
+    path('autogen/', AutoGenView.as_view(), name='autogen'),
     path('generate_idea/', GenerateIdeaView.as_view(), name='generate_round'),
     path('preview/', PreviewView.as_view(), name='preview'),
     path('share/', ShareView.as_view(), name='share'),
