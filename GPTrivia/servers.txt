@@ -1,3 +1,8 @@
+Notes:
+
+Missing jokers for 10/21/2023, 11/17/2022, and scores (10/28/2023), 5/12/2023 missing scores (check db in github)? Also 7/14/2023 (jenny has these).
+
+
 How to start the server:
 
 In this directory:

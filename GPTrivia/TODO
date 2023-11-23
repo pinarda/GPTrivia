@@ -61,7 +61,9 @@ DONE - Check for dad/dan and debi/mom in the old scoresheets, this is leading to
 DONE - Add historical presentations to the presentations table (with joker info)
 DONE - add a console "are you sure" when editing a previous date
 DONE - fix swooper images by condensing the round prompt before feeding it into dalle
-
+DONE - Try using autogen api - could give the players a single question/answer that is fact-checked and interesting (could benchmark GPT 3.5 v 4 v autogen?)
+DONE - on server, python -m pip install Pillow"
+DONE - Customizable player profile (pic, about)
 
 TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
 TEST FIX - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be (Could be a timezone issue)
@@ -76,11 +78,10 @@ TODO - and update_merged_presentation appears to be erroring (fails after the ro
 TODO - add "link" input to scoresheet, to allow display and manual entry of link to a specific round if it was not added through the generate/update buttons
 TODO - single quotes in round titles breaks the JSON, see line 639 in App.js
 TODO - if joker and creator round match, fix the scoring (10/28/2022?ish)
+TODO - analysis page footer is messed up
 
 High - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
-High - Try using autogen api - could give the players a single question/answer that is fact-checked and interesting (could benchmark GPT 3.5 v 4 v autogen?)
 High - add normalize option to the rounds list
-
 
 
 MEDIUM (1-2 hrs)
@@ -89,13 +90,13 @@ TODO - If there is no text on the title slide, we need a way to fail silently an
 
 High - add sorting to the player round/rounds list page, also want to be able to see the lowest high score on a round.
 High - add a link to the rounds list page on the round category counts that filters by rounds that person has created with that category
-Medium - Customizable player profile (pic, about)
 Medium - General CSS tweaking, mainly for mobile view (scoresheet esp.)
 Low - Weird joker stuff like if you joker two different rounds (Zach, 9/1/2022)
 
 
 
 LARGE (2-8hrs)
+
 
 High - Add the prediction models back to the scoresheet (try joint conditioning on both player and category) (and the blog?)
 High - Be able to specify what position to put new rounds, instead of appending to end of presentation, add interface to select unused rounds from email (or old rounds?). Show the number of submitted rounds/who has submitted a round for the current week on the home page.
