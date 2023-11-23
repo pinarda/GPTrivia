@@ -543,8 +543,13 @@ def player_profile_dict(request, player_name):
             biases[creator] = item['avg_score'] - final_averages[creator]
 
     # add the player_averages back to each entry in biases
+    sumb = 0
     for entry in biases:
         biases[entry] = biases[entry] + player_avg
+        sumb += biases[entry]
+
+    for entry in biases:
+        biases[entry] = biases[entry] - (sumb / len(biases))
 
     max_bias_avg = max(biases, key=biases.get)
     min_bias_avg = min(biases, key=biases.get)
