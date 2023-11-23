@@ -10,7 +10,6 @@
       <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/token.pickle" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/token.pickle" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scoresheet/src/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/src/App.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -73,10 +72,10 @@
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet" />
+      <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet/build" />
       <recent name="$PROJECT_DIR$/static/img" />
       <recent name="$PROJECT_DIR$/static" />
-      <recent name="$PROJECT_DIR$/GPTrivia/static" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/GPTrivia/templates/GPTrivia" />
@@ -310,7 +309,7 @@
       <workItem from="1699500471504" duration="3828000" />
       <workItem from="1699582566782" duration="345000" />
       <workItem from="1700616402771" duration="1329000" />
-      <workItem from="1700618363467" duration="13546000" />
+      <workItem from="1700618363467" duration="15297000" />
     </task>
     <servers />
   </component>
@@ -467,13 +466,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
-          <line>1572</line>
+          <line>1578</line>
           <option name="timeStamp" value="230" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
-          <line>847</line>
-          <option name="timeStamp" value="309" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
@@ -489,6 +483,12 @@
           <url>file://$PROJECT_DIR$/GPTrivia/templates/base.html</url>
           <line>99</line>
           <option name="timeStamp" value="333" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
+          <line>776</line>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="338" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="django-line">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>

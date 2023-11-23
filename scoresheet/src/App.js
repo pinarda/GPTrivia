@@ -636,7 +636,7 @@ const PlayerTable = () => {
 
             if(selectedPresentation) {
                 const jokerRoundIndicesString = selectedPresentation.joker_round_indices;
-                const jokerRoundIndices = JSON.parse(jokerRoundIndicesString.replace(/'/g, "\""));
+                const jokerRoundIndices = JSON.parse(jokerRoundIndicesString.replace(/'/g, "\"").replace(/^'/, '"').replace(/'$/, '"'));
                 const ID = selectedPresentation.presentation_id;
 
                 setPresID(ID);
@@ -769,6 +769,11 @@ const PlayerTable = () => {
     };
 
     const handleChangeDate = (eventOrDate) => {
+        if (!isSaved) {
+            const confirmChange = window.confirm("Are you sure you want to change the date? You have unsaved changes.");
+            if (!confirmChange) return;
+        }
+
         if (eventOrDate instanceof Event) {
             setSelectedDate(eventOrDate.target.value);
             const filteredRounds = rounds.filter(round => round.date === eventOrDate.target.value);
@@ -799,6 +804,7 @@ const PlayerTable = () => {
     }
 
     const handleRoundTitleChange = (index, newTitle) => {
+
       const oldTitle = rounds[index].title;
 
       setIsSaved(false);
