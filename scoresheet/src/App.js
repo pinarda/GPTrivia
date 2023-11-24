@@ -363,7 +363,12 @@ const PlayerTable = () => {
                                                                                                 return round.creator === playerName;
                                                                                               }
                                                                                             })
-                                                                                        .map(round => medianScores[rounds.indexOf(round)])
+                                                                                        .map(round => {
+                                                                                            if (selectedRounds[a] != round.title) {
+                                                                                                return medianScores[rounds.indexOf(round)];
+                                                                                            }
+                                                                                            return 0;
+                                                                                        })
                                                                                         .reduce((acc, score) => acc + (score || 0), 0)
                                                                                       ) + (scores[a] && scores[a][selectedRounds[a]] ? scores[a][selectedRounds[a]] : 0);
       const totalScoreB = rounds.reduce((total, round) => total + (round[b] || 0), 0) + (
@@ -377,7 +382,12 @@ const PlayerTable = () => {
                                                                                                 return round.creator === playerName;
                                                                                               }
                                                                                             })
-                                                                                        .map(round => medianScores[rounds.indexOf(round)])
+                                                                                        .map(round => {
+                                                                                            if (selectedRounds[a] != round.title) {
+                                                                                                return medianScores[rounds.indexOf(round)];
+                                                                                            }
+                                                                                            return 0;
+                                                                                        })
                                                                                         .reduce((acc, score) => acc + (score || 0), 0)
                                                                                       ) + (scores[b] && scores[b][selectedRounds[b]] ? scores[b][selectedRounds[b]] : 0);
 
@@ -1330,7 +1340,12 @@ const PlayerTable = () => {
                             return round.creator === playerName;
                           }
                         })
-                        .map(round => medianScores[rounds.indexOf(round)])
+                        .map(round => {
+                            if (selectedRounds[player] != round.title) {
+                                return medianScores[rounds.indexOf(round)];
+                            }
+                            return 0;
+                        })
                         .reduce((acc, score) => acc + (score || 0), 0);
 
                       return (typeof total === 'number') ? parseFloat(total.toFixed(2)) : total;
@@ -1355,7 +1370,12 @@ const PlayerTable = () => {
                                 return round.creator === playerName;
                               }
                             })
-                            .map(round => medianScores[rounds.indexOf(round)])
+                            .map(round => {
+                                if (selectedRounds[player] != round.title) {
+                                    return medianScores[rounds.indexOf(round)];
+                                }
+                                return 0;
+                            })
                             .reduce((acc, score) => acc + (score || 0), 0);
 
                           const selectedRoundScore = scores[player] && scores[player][selectedRounds[player]] ? scores[player][selectedRounds[player]] : 0;

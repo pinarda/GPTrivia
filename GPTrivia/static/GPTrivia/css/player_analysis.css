@@ -35,6 +35,14 @@ body {
     justify-content: center;
 }
 
+.footer-container{
+    /*background-color: #b8475d;*/
+    /*background-color: #9d4edd;*/
+    background-color: #240046;
+    position: inherit;
+    font-family: YoungSerif;
+}
+
 #category-selector {
     width: 30%;
     display: inline-flex;
@@ -49,7 +57,7 @@ body {
 
 .footer-container{
     background-color: #f94144;
-    position: absolute;
+    position: inherit;
     font-family: YoungSerif;
 }
 

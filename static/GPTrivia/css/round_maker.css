@@ -5,7 +5,7 @@ body {
   background-color: #333;
   color:white;
 
-  background-image: url('background.png');
+  background-image: url('swoop.png');
   background-position: -200px 400px;  /* e.g., 'center top', '100px 200px' */
   background-size: 70vw 70vw;  /* e.g., 'cover', 'contain', '100px 200px' */
   background-repeat: no-repeat;
