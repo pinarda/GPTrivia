@@ -646,7 +646,8 @@ const PlayerTable = () => {
 
             if(selectedPresentation) {
                 const jokerRoundIndicesString = selectedPresentation.joker_round_indices;
-                const jokerRoundIndices = JSON.parse(jokerRoundIndicesString.replace(/'/g, "\"").replace(/^'/, '"').replace(/'$/, '"'));
+                const jokerRoundIndices = JSON.parse(jokerRoundIndicesString.replace(/:\s*'([^']*)'/g, ": \"$1\"")
+                                               .replace(/'\s*:/g, "\" :"));
                 const ID = selectedPresentation.presentation_id;
 
                 setPresID(ID);
