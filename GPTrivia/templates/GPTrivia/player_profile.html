@@ -14,78 +14,94 @@
     <h1><a href="{% url 'player_profile' player_name=player_name %}" class="player_name" data-player='{{ player_name }}'>{{ player_name }}</a>'s Profile</h1>
 
     <div class="content-wrapper">
+        <div class="profile-actions-container">
+            <div id="picdiv_mob">
+                <div>
+                    <img id="profpic_mob" src="{{ profile_user.profile.profile_picture.url }}" alt="{{ player_name }}'s Profile Picture">
+                </div>
+            </div>
 
-        <div>
-            <img id="profpic" src="{{ profile_user.profile.profile_picture.url }}" alt="{{ player_name }}'s Profile Picture">
+            <div id="roundbuttons">
+                <h2>Creator Information:</h2>
+                <button class="expand-collapse-button" id="toggleTable" onclick="toggleCreatedRounds()">Created Round Category Counts</button>
+                <button class="expand-collapse-button" id="roundsButton" onclick="toggleRounds()">Show/Hide Created Rounds</button>
+                {% if user.is_authenticated and user.username == player_name %}
+                <div>
+                    <form method="post" action="{% url 'upload_profile_picture' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {{ form }}
+                        <button class="expand-collapse-button" type="submit">Upload</button>
+                    </form>
+                </div>
+                {% endif %}
+                {% if user.is_authenticated and user.username == player_name %}
+                    <form action={% url 'password_change' %}>
+                        <button class="expand-collapse-button" id="passwordbtn">Change Password</button>
+                    </form>
+                {% endif %}
+            </div>
+
+            <div id="picdiv_reg">
+                <div>
+                    <img id="profpic_reg" src="{{ profile_user.profile.profile_picture.url }}" alt="{{ player_name }}'s Profile Picture">
+                </div>
+            </div>
+
         </div>
-        {% if user.is_authenticated and user.username == player_name %}
-        <div>
-            <form method="post" action="{% url 'upload_profile_picture' %}" enctype="multipart/form-data">
-                {% csrf_token %}
-                {{ form }}
-                <button class="expand-collapse-button" type="submit">Upload</button>
-            </form>
-        </div>
 
-    {% endif %}
-
-        <h2>Creator Information:</h2>
-        <button class="expand-collapse-button" id="toggleTable" onclick="toggleCreatedRounds()">Created Round Category Counts</button>
-        <button class="expand-collapse-button" id="roundsButton" onclick="toggleRounds()">Show/Hide Created Rounds</button>
-
-        <div class="table-container">
-            {% if created_rounds_cat %}
-                <table cellpadding="5" cellspacing="0" id="createdRoundsTable" style="display: none;">
-                    <thead>
-                        <tr>
-                            <th>Major Category</th>
-                            <th>Number of Rounds</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for round in created_rounds_cat %}
+                <div class="table-container">
+                {% if created_rounds_cat %}
+                    <table cellpadding="5" cellspacing="0" id="createdRoundsTable" style="display: none;">
+                        <thead>
                             <tr>
-                                <td>{{ round.major_category }}</td>
-                                <td>{{ round.num_rounds }}</td>
+                                <th>Major Category</th>
+                                <th>Number of Rounds</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p>No rounds created.</p>
-            {% endif %}
+                        </thead>
+                        <tbody>
+                            {% for round in created_rounds_cat %}
+                                <tr>
+                                    <td>{{ round.major_category }}</td>
+                                    <td>{{ round.num_rounds }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No rounds created.</p>
+                {% endif %}
 
-            {% if created_rounds %}
-                <table cellpadding="5" cellspacing="0" id="playerRoundsTable" style="display: none;">
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Date</th>
-                            <th>Category</th>
-                            <th class="score-col">Max Score</th>
-                            <th>Rd</th>
-                            <th>Coop</th>
-                            <th>Link</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for round in created_rounds %}
+                {% if created_rounds %}
+                    <table cellpadding="5" cellspacing="0" id="playerRoundsTable" style="display: none;">
+                        <thead>
                             <tr>
-                                <td>{{ round.title }}</td>
-                                <td>{{ round.date }}</td>
-                                <td>{{ round.major_category }}</td>
-                                <td class="score-col">{{ round.max_score }}</td>
-                                <td>{{ round.round_number }}</td>
-                                <td>{{ round.cooperative }}</td>
-                                <td><button class="slides-button" type="button" data-presentation-url={{ round.link }}>Slides</button></td>
+                                <th>Title</th>
+                                <th>Date</th>
+                                <th>Category</th>
+                                <th class="score-col">Max Score</th>
+                                <th>Rd</th>
+                                <th>Coop</th>
+                                <th>Link</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p>No rounds created.</p>
-            {% endif %}
-        </div>
+                        </thead>
+                        <tbody>
+                            {% for round in created_rounds %}
+                                <tr>
+                                    <td>{{ round.title }}</td>
+                                    <td>{{ round.date }}</td>
+                                    <td>{{ round.major_category }}</td>
+                                    <td class="score-col">{{ round.max_score }}</td>
+                                    <td>{{ round.round_number }}</td>
+                                    <td>{{ round.cooperative }}</td>
+                                    <td><button class="slides-button" type="button" data-presentation-url={{ round.link }}>Slides</button></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No rounds created.</p>
+                {% endif %}
+            </div>
 
 
 
@@ -103,11 +119,7 @@
 
     </div>
 
-    {% if user.is_authenticated and user.username == player_name %}
-        <form action={% url 'password_change' %}>
-            <button class="expand-collapse-button" id="passwordbtn">Change Password</button>
-        </form>
-    {% endif %}
+
 
 {#    {% if user.is_authenticated and user.username == player_name %}#}
 {#        <form action={% url 'profilepic' %}>#}
