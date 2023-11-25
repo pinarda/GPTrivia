@@ -1101,6 +1101,9 @@ def save_scores(request):
         except Exception as e:
             print(f"Error saving trivia_round: {e}")
 
+    # replace any single quotes with a tilde so that it doesn't mess up the json
+    joker_round_indices = {key.replace("'", "~~~~"): value for key, value in joker_round_indices.items()}
+
     # Update the joker_round_indices in the MergedPresentation
     if presentation_id:
         try:

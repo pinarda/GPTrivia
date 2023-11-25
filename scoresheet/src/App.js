@@ -645,9 +645,9 @@ const PlayerTable = () => {
             const selectedPresentation = json.find(presentation => convertDate(presentation.name) === selectedDate);
 
             if(selectedPresentation) {
-                // const jokerRoundIndicesString = selectedPresentation.joker_round_indices;
-                // const jokerRoundIndices = JSON.parse(jokerRoundIndicesString.replace(/'/g, "\"").replace(/^'/, '"').replace(/'$/, '"'));
-                const jokerRoundIndices = selectedPresentation.joker_round_indices;
+                const jokerRoundIndicesString = selectedPresentation.joker_round_indices;
+                const jokerRoundIndices = JSON.parse(jokerRoundIndicesString.replace(/'/g, "\"").replace(/^'/, '"').replace(/'$/, '"').replace(/~~~~/g, "'"));
+                // const jokerRoundIndices = selectedPresentation.joker_round_indices;
                 const ID = selectedPresentation.presentation_id;
 
                 setPresID(ID);
