@@ -383,7 +383,7 @@ const PlayerTable = () => {
                                                                                               }
                                                                                             })
                                                                                         .map(round => {
-                                                                                            if (selectedRounds[a] != round.title) {
+                                                                                            if (selectedRounds[b] != round.title) {
                                                                                                 return medianScores[rounds.indexOf(round)];
                                                                                             }
                                                                                             return 0;
