@@ -1106,6 +1106,8 @@ def save_scores(request):
         try:
             presentation = MergedPresentation.objects.get(presentation_id=presentation_id)
             presentation.joker_round_indices = joker_round_indices
+            print(f"joker_round_indices: {joker_round_indices}")
+            print(f"type of joker_round_indices: {type(joker_round_indices)}")
             presentation.creator_list = creator_list
             presentation.round_names = round_names
             presentation.save()
