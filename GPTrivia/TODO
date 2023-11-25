@@ -79,6 +79,7 @@ TRIVIAL (minutes)
 TODO - fix the URL for links to rounds in mail.py (create_presentation and updated_merged_presentation), want the permissions to be anyone with link (this error affects viewing the slides (403) and apparently updating presentations, which only works on Alex account?), and URL to be view, not edit
 TODO - and update_merged_presentation appears to be erroring (fails after the round is marked as read though), and not updating presentations or rounds table
 TODO - add "link" input to scoresheet, to allow display and manual entry of link to a specific round if it was not added through the generate/update buttons
+TODO - make sure changing round name isn't removing the categories or something...
 
 High - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
 High - add normalize option to the rounds list
