@@ -5,7 +5,7 @@ from django.db.models import Avg, F, FloatField, Case, When, Sum, Count
 from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
 from django.shortcuts import render
-from .mail import create_presentation, update_merged_presentation, copy_template, share_slides
+from .mail import create_presentation, update_merged_presentation, copy_template, share_slides, get_round_titles_and_links
 from datetime import datetime
 from django.core.exceptions import ObjectDoesNotExist
 from django.views.decorators.csrf import csrf_exempt
@@ -793,6 +793,8 @@ def home(request):
         latest_presentation = None
         presentation_url = None
 
+    (links, titles, creators) = get_round_titles_and_links(processed_senders=[])
+
     presentation_name = datetime.date.strftime(datetime.date.today(), '%-m.%d.%Y')
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -875,7 +877,7 @@ def home(request):
                 new_round.link = new_links[round_index]
                 new_round.save()
 
-    return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None"})
+    return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None", 'avail_links': links, 'avail_titles': titles, 'avail_creators': creators})
 
 @login_required
 def scoresheet(request):

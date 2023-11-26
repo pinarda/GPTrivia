@@ -834,8 +834,114 @@ def create_presentation():
 
     return new_presentation_id, creator_names, round_titles, copied_links
 
+def get_round_titles_and_links(processed_senders=[]):
+    credentials = None
+    # Check if the token.pickle file exists
+    if os.path.exists(token_file_path):
+        with open(token_file_path, 'rb') as token:
+            credentials = pickle.load(token)
+
+    # Check if the credentials have expired
+    if credentials.expired and credentials.refresh_token:
+        try:
+            # Refresh the credentials
+            credentials.refresh(Request())
+
+            # Save the refreshed credentials back to the 'token.pickle' file
+            with open(token_file_path, 'wb') as token:
+                pickle.dump(credentials, token)
+        except Exception as e:
+            print("Failed to refresh the token, getting new credentials")
+            credentials = build_credentials()
+            with open(token_file_path, 'wb') as token:
+                pickle.dump(credentials, token)
+
+    # If the credentials are not available or invalid, prompt the user to authenticate again.
+    if not credentials or not credentials.valid:
+        credentials = build_credentials()
+        with open(token_file_path, 'wb') as token:
+            pickle.dump(credentials, token)
+
+    http = httplib2.Http(timeout=300)
+    authorized_http = AuthorizedHttp(credentials, http=http)
+    script_service = build('script', 'v1', http=authorized_http)
+    slides_service = build('slides', 'v1', credentials=credentials)
+
+    print(processed_senders)
+    try:
+        new_senders = []
+        presentation_urls = []
+        round_titles = []
+
+        gmail_service = build('gmail', 'v1', credentials=credentials)
+        query = 'subject:"Presentation shared with you:.*" is:unread'
+        response = gmail_service.users().messages().list(userId='me', q=query).execute()
+
+        if 'messages' in response:
+            messages_with_date = []
+            for message in response['messages']:
+                msg_id = message['id']
+                msg = gmail_service.users().messages().get(userId='me', id=msg_id, format='metadata', metadataHeaders=['From', 'internalDate']).execute()
+                messages_with_date.append((msg, msg['internalDate']))
+
+            messages_with_date.sort(key=lambda x: x[1])
+
+            for msg, _ in messages_with_date:
+                msg_id = msg['id']
+                headers = msg['payload']['headers']
+                sender = [header['value'] for header in headers if header['name'] == 'From'][0]
+                sender = sender.split()[0]
+                sender = sender[1:]
+
+                new_senders.append(sender)
+                msg = gmail_service.users().messages().get(userId='me', id=msg_id, format='full').execute()
+                parts = msg['payload']['parts']
+
+                for part in parts:
+                    if part['mimeType'] == 'text/plain':
+                        data = part['body']['data']
+                        if data:
+                            msg_str = base64.urlsafe_b64decode(data.encode('ASCII'))
+                            url_pattern = r'(https?://docs\.google\.com/presentation/d/[^\\s]+)'
+                            url_match = re.search(url_pattern, msg_str.decode('utf-8'))
+
+                            if url_match:
+                                presentation_url = url_match.group(1)
+                                presentation_urls.append(presentation_url)
+
+                                # Extract round title
+                                shared_presentation_id = presentation_url.split('/')[-2]
+                                # request = {
+                                #     'function': FUNCTION_NAME,
+                                #     'parameters': [shared_presentation_id, merged_presentation_id],
+                                #     'devMode': True
+                                # }
+                                # response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
+                                shared_presentation = slides_service.presentations().get(presentationId=shared_presentation_id).execute()
+                                first_slide = shared_presentation['slides'][0]
+
+                                title_text = ""
+                                for element in first_slide['pageElements']:
+                                    if 'shape' in element and 'text' in element['shape']:
+                                        text = element['shape']['text']['textElements']
+                                        for text_element in text:
+                                            if 'textRun' in text_element and 'content' in text_element['textRun']:
+                                                title_text += text_element['textRun']['content']
+
+                                title_text = re.sub(r'\\s+', ' ', title_text).strip()
+                                round_titles.append(title_text)
+
+        print(presentation_urls, round_titles, new_senders)
+        return presentation_urls, round_titles, new_senders
+
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        return None, None, None
+
+
 if __name__ == '__main__':
-    create_presentation()
+    get_round_titles_and_links([])
+    # create_presentation()
     # questions_answers = {
     #     'Question1': 'What is the capital of France?',
     #     'Answer1': 'Paris',

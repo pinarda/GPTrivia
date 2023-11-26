@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_tags %}
 
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/home.css' %}">
@@ -18,6 +19,19 @@
         <button type="submit" name="action" value="generate">Generate Slides</button>
         <button type="submit" name="action" value="update">Update Slides</button>
       </form>
+
+        <form method="post" action="#">
+            {% csrf_token %}
+
+            {% for title, creator in avail_titles|zip:avail_creators %}
+            <div class="checkbox-item">
+                <input type="checkbox" id="{{ title }}" name="selected_titles" value="{{ title }}">
+                <label class="avail_text" for="{{ title }}">{{ title }} by {{ creator }}</label>
+            </div>
+            {% endfor %}
+
+            <button type="submit">Submit</button>
+        </form>
     </div>
 {% endblock %}
 
