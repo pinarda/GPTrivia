@@ -9,6 +9,7 @@ import httplib2
 from google_auth_httplib2 import AuthorizedHttp
 from googleapiclient.errors import HttpError
 import google.auth
+import pytz
 
 
 from google.oauth2 import service_account
@@ -47,7 +48,7 @@ APPS_SCRIPT_ID = '1MWXrSq2Uf5GkMsmMeOHowiU-nY21LxGom6VWJ9WaPg7hBQZqBgD_HS_K'
 
 mail_file_directory = os.path.dirname(os.path.abspath(__file__))
 token_file_path = os.path.join(mail_file_directory, 'token.pickle')
-
+pst = pytz.timezone('America/Los_Angeles')
 def list_subjects(credentials):
     try:
         service = build('gmail', 'v1', credentials=credentials)
@@ -67,7 +68,7 @@ def new_presentation(credentials):
     try:
         service = build('slides', 'v1', credentials=credentials)
         presentation_body = {
-            'title': datetime.date.strftime(datetime.date.today(), '%-m.%d.%Y')
+            'title': datetime.date.strftime(datetime.datetime.now(pst).date(), '%-m.%d.%Y')
         }
         presentation = service.presentations() \
             .create(body=presentation_body).execute()
@@ -694,7 +695,7 @@ def create_presentation():
                         break
 
     # Update the date text
-    date_text = datetime.datetime.now().strftime("%B %d, %Y")
+    date_text = datetime.datetime.now(pst).date().strftime("%B %d, %Y")
 
     delete_text_request = {
         'deleteText': {
@@ -1005,8 +1006,8 @@ def get_round_titles_and_links(processed_senders=[]):
 
 
 if __name__ == '__main__':
-    get_round_titles_and_links([])
-    # create_presentation()
+    # get_round_titles_and_links([])
+    create_presentation()
     # questions_answers = {
     #     'Question1': 'What is the capital of France?',
     #     'Answer1': 'Paris',
