@@ -112,7 +112,7 @@ def find_shared_presentations(credentials, processed_senders=[]):
                 sender = sender.split()[0]
                 sender = sender[1:]
 
-                if sender not in processed_senders:
+                if sender == "Alex" or sender not in processed_senders:
                     # print(f"1: Found new presentation from {sender}")
                     print("found new sender")
                     new_senders.append(sender)
@@ -259,7 +259,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators):
             'parameters': [shared_presentation_id, merged_presentation_id],
             'devMode': True
         }
-        response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
+        # response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
 
         shared_presentation = slides_service.presentations().get(presentationId=shared_presentation_id).execute()
         a_new_presentation = slides_service.presentations().get(presentationId=merged_presentation_id).execute()
@@ -300,8 +300,8 @@ def update_merged_presentation(merged_presentation_id, merged_creators):
     second_slide_elements = second_slide['pageElements']
 
     # Define placeholders for the rounds and creators
-    round_placeholders = ['ROUND1', 'ROUND2', 'ROUND3', 'ROUND4', 'ROUND5']
-    creator_placeholders = ['CREATOR1', 'CREATOR2', 'CREATOR3', 'CREATOR4', 'CREATOR5']
+    round_placeholders = ['ROUND1', 'ROUND2', 'ROUND3', 'ROUND4', 'ROUND5', 'ROUND6']
+    creator_placeholders = ['CREATOR1', 'CREATOR2', 'CREATOR3', 'CREATOR4', 'CREATOR5', 'CREATOR6']
     print(round_titles)
     print(creators)
     print(merged_creators)
@@ -330,6 +330,48 @@ def update_merged_presentation(merged_presentation_id, merged_creators):
                             round_end_index = round_start_index + len(round_placeholder)
                             delete_insert_requests = create_delete_insert_text_requests(
                                 element_id, round_start_index, round_end_index, new_text)
+
+                            if len(new_text) > 30:
+                                # Add a request to modify the font size; you can adjust the font size value as needed
+                                font_size_request = {
+                                    "updateTextStyle": {
+                                        "objectId": element_id,
+                                        "textRange": {
+                                            "type": "FIXED_RANGE",  # Explicitly specifying the range type
+                                            "startIndex": round_start_index,
+                                            "endIndex": round_start_index + len(new_text)
+                                        },
+                                        "style": {
+                                            "fontSize": {
+                                                "magnitude": 20,  # Change this to your desired font size
+                                                "unit": "PT"
+                                            }
+                                        },
+                                        "fields": "fontSize"
+                                    }
+                                }
+                                delete_insert_requests.append(font_size_request)
+                            elif len(new_text) > 40:
+                                # Add a request to modify the font size; you can adjust the font size value as needed
+                                font_size_request = {
+                                    "updateTextStyle": {
+                                        "objectId": element_id,
+                                        "textRange": {
+                                            "type": "FIXED_RANGE",  # Explicitly specifying the range type
+                                            "startIndex": round_start_index,
+                                            "endIndex": round_start_index + len(new_text)
+                                        },
+                                        "style": {
+                                            "fontSize": {
+                                                "magnitude": 16,  # Change this to your desired font size
+                                                "unit": "PT"
+                                            }
+                                        },
+                                        "fields": "fontSize"
+                                    }
+                                }
+                                delete_insert_requests.append(font_size_request)
+
                             slides_service.presentations().batchUpdate(
                                 presentationId=merged_presentation_id,
                                 body={'requests': delete_insert_requests}
@@ -766,7 +808,27 @@ def create_presentation():
                             delete_insert_requests = create_delete_insert_text_requests(
                                 element_id, round_start_index, round_end_index, new_text)
 
-                            if len(new_text) > 40:
+                            if len(new_text) > 30:
+                                # Add a request to modify the font size; you can adjust the font size value as needed
+                                font_size_request = {
+                                    "updateTextStyle": {
+                                        "objectId": element_id,
+                                        "textRange": {
+                                            "type": "FIXED_RANGE",  # Explicitly specifying the range type
+                                            "startIndex": round_start_index,
+                                            "endIndex": round_start_index + len(new_text)
+                                        },
+                                        "style": {
+                                            "fontSize": {
+                                                "magnitude": 20,  # Change this to your desired font size
+                                                "unit": "PT"
+                                            }
+                                        },
+                                        "fields": "fontSize"
+                                    }
+                                }
+                                delete_insert_requests.append(font_size_request)
+                            elif len(new_text) > 40:
                                 # Add a request to modify the font size; you can adjust the font size value as needed
                                 font_size_request = {
                                     "updateTextStyle": {
@@ -902,7 +964,10 @@ def get_round_titles_and_links(processed_senders=[]):
                         data = part['body']['data']
                         if data:
                             msg_str = base64.urlsafe_b64decode(data.encode('ASCII'))
-                            url_pattern = r'(https?://docs\.google\.com/presentation/d/[^\\s]+)'
+                            url_pattern = r'(https?://docs\.google\.com/presentation/d/[^\s]+)'
+                            # 'https://docs.google.com/presentation/d/1ECVqOMtgWEbzMOtzNLDQCRSSOA8BXbhRdJ_9yNWzgj0/edit?u'
+                            # url_pattern = r'(https?://docs\.google\.com/presentation/d/[\w-]+)'
+                            # 'https://docs.google.com/presentation/d/1ECVqOMtgWEbzMOtzNLDQCRSSOA8BXbhRdJ_9yNWzgj0'
                             url_match = re.search(url_pattern, msg_str.decode('utf-8'))
 
                             if url_match:

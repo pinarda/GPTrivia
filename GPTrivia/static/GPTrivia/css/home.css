@@ -7,7 +7,7 @@ body {
 
 .footer-container{
     background-color: #0073cc;
-    position: absolute;
+    position: inherit;
     font-family: YoungSerif;
 }
 
