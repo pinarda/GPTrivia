@@ -24,13 +24,14 @@ MAIL_NAME_MAP = {
     'Alex': 'Alex',
     'I': 'Ichigo',
     'Megan': 'Megan',
-    'Zach': 'Zach',
+    'zach': 'Zach',
     'Jenny': 'Jenny',
     'Debi': 'Debi',
     'Dan': 'Dan',
     'Chris': 'Chris',
     'Drew': 'Drew',
     'doodlwagon': "Jenny",
+    'Paige': "Paige",
 }
 
 
