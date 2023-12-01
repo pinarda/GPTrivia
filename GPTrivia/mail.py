@@ -113,7 +113,7 @@ def find_shared_presentations(credentials, processed_senders=[]):
                 sender = sender.split()[0]
                 sender = sender[1:]
 
-                if sender == "Alex" or sender not in processed_senders:
+                if sender == "Alex" or sender == "Hail" or sender not in processed_senders:
                     # print(f"1: Found new presentation from {sender}")
                     print("found new sender")
                     new_senders.append(sender)
@@ -272,12 +272,17 @@ def update_merged_presentation(merged_presentation_id, merged_creators):
 
         # Extract the title text from the first slide
         title_text = ""
+        flag=0
         for element in first_slide['pageElements']:
             if 'shape' in element and 'text' in element['shape']:
                 text = element['shape']['text']['textElements']
+                if flag:
+                    break
                 for text_element in text:
                     if 'textRun' in text_element and 'content' in text_element['textRun']:
+                        flag=1
                         title_text += text_element['textRun']['content']
+                        break
 
         # Clean up the title text by removing excess whitespace and line breaks
         title_text = re.sub(r'\s+', ' ', title_text).strip()
@@ -749,12 +754,19 @@ def create_presentation():
 
         # Extract the title text from the first slide
         title_text = ""
+        flag = 0
         for element in first_slide['pageElements']:
             if 'shape' in element and 'text' in element['shape']:
                 text = element['shape']['text']['textElements']
+                if flag:
+                    break
                 for text_element in text:
                     if 'textRun' in text_element and 'content' in text_element['textRun']:
+                        flag=1
                         title_text += text_element['textRun']['content']
+                        break
+
+
 
         # Clean up the title text by removing excess whitespace and line breaks
         title_text = re.sub(r'\s+', ' ', title_text).strip()
@@ -987,15 +999,23 @@ def get_round_titles_and_links(processed_senders=[]):
                                 first_slide = shared_presentation['slides'][0]
 
                                 title_text = ""
+                                flag=0
                                 for element in first_slide['pageElements']:
                                     if 'shape' in element and 'text' in element['shape']:
                                         text = element['shape']['text']['textElements']
+                                        if flag:
+                                            break
                                         for text_element in text:
                                             if 'textRun' in text_element and 'content' in text_element['textRun']:
+                                                flag=1
                                                 title_text += text_element['textRun']['content']
+                                                break
 
                                 title_text = re.sub(r'\\s+', ' ', title_text).strip()
                                 round_titles.append(title_text)
+
+        # replace the sender using mail name map with the current name as the key and the name we want to return as the value
+        new_senders = [MAIL_NAME_MAP[sender] for sender in new_senders]
 
         print(presentation_urls, round_titles, new_senders)
         return presentation_urls, round_titles, new_senders
