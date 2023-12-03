@@ -763,7 +763,7 @@ class IconView(View):
 
             # Call to DALL-E to generate an image based on the conversation
             dalle_response = openai.Image.create(
-                prompt=f"Can you draw me a very simple minimalist white line drawing of a {second_response} on a background of extremely dark grey (almost black) for use as a small icon?",
+                prompt=f"Can you draw me a very simple minimalist white line drawing of a {second_response} on a background of near-black for use as a small icon?",
                 # This assumes you want to generate an image based on the last text response from GPT-4
                 n=1,  # Number of images to generate
                 size="1024x1024",  # The size of the image

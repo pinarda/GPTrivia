@@ -555,8 +555,8 @@ def copy_template(template_id, copy_title, qas, icon_links):
                                     "transform": {
                                         "scaleX": 1,
                                         "scaleY": 1,
-                                        "translateX": 2320312,
-                                        "translateY": 1399032,
+                                        "translateX": 220312,
+                                        "translateY": 1384032,
                                         "unit": "EMU",
                                     },
                                 },
