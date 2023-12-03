@@ -449,7 +449,7 @@ def create_delete_insert_text_requests(element_id, start_index, end_index, new_t
 
     return [delete_text_request, insert_text_request]
 
-def copy_template(template_id, copy_title, qas):
+def copy_template(template_id, copy_title, qas, icon_links):
     credentials=None
     # Check if the token.pickle file exists
     if os.path.exists(token_file_path):
@@ -502,8 +502,14 @@ def copy_template(template_id, copy_title, qas):
             'devMode': True
         }
         response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
+        print(f"RESPONSE: {response}")
 
         remove_first_slide(credentials, new_presentation_id)
+
+        the_new_presentation = service.presentations().get(
+            presentationId=new_presentation_id
+        ).execute()
+        new_slides = the_new_presentation.get('slides')
 
         # update text on slides:
 
@@ -514,7 +520,7 @@ def copy_template(template_id, copy_title, qas):
                     text_content = shape['shape']['text']['textElements']
                     # Concatenate text elements to get full text
                     full_text = ''.join([elem.get('textRun', {}).get('content', '') for elem in text_content])
-                    # Check for placeholder text
+                     # Check for placeholder text
                     for qa_label, new_text in qas.items():
                         if qa_label in full_text:
                             # Step 4: Build update request
@@ -528,6 +534,36 @@ def copy_template(template_id, copy_title, qas):
                                     #'pageObjectIds': [page_id],  # Restrict to current page
                                 }
                             })
+
+        k=0
+        for slide in new_slides:
+            if k==0 or k==11:
+                k+=1
+                continue
+            if icon_links is not None:
+                if icon_links[f"Question{k%11}"] is not None:
+                    image_id = f"MyImage_{k}"
+                    emu4M = {"magnitude": 2743200, "unit": "EMU"}
+                    requests.append(
+                        {
+                            "createImage": {
+                                "objectId": image_id,
+                                "url": icon_links[f"Question{k%11}"],
+                                "elementProperties": {
+                                    "pageObjectId": slide["objectId"],
+                                    "size": {"height": emu4M, "width": emu4M},
+                                    "transform": {
+                                        "scaleX": 1,
+                                        "scaleY": 1,
+                                        "translateX": 2320312,
+                                        "translateY": 1399032,
+                                        "unit": "EMU",
+                                    },
+                                },
+                            }
+                        }
+                    )
+            k+=1
 
         replace_round_title_request = {
             'replaceAllText': {
@@ -543,10 +579,11 @@ def copy_template(template_id, copy_title, qas):
 
         # Step 5: Send update requests
         if requests:
-            service.presentations().batchUpdate(
+            response = service.presentations().batchUpdate(
                 presentationId=new_presentation_id,
                 body={'requests': requests}
             ).execute()
+            print(f"Final Response: {response}")
 
         drive_service = build('drive', 'v3', credentials=credentials)
         # Create the permission object
@@ -1029,11 +1066,38 @@ def get_round_titles_and_links(processed_senders=[]):
 
 if __name__ == '__main__':
     # get_round_titles_and_links([])
-    create_presentation()
-    # questions_answers = {
-    #     'Question1': 'What is the capital of France?',
-    #     'Answer1': 'Paris',
-    #     # ... and so on for each question and answer
-    # }
-    # copy_template('109EgKCocHzTtUF9hVJVKEfV0HzFjaBfpWPKXaLNsos0', 'test', questions_answers)
+    # create_presentation()
+    questions_answers = {
+        'Question1': "Pterodactyl, brontosaurus or trex?",
+        'Answer2': "Dinos",
+        'Question2': 'What is the capital of France?',
+        'Answer2': 'Paris',
+        'Question3': 'Who was Harry Houdini?',
+        'Answer3': 'A magician',
+        'Question4': 'Who was Harry Houdini?',
+        'Answer4': 'A magician',
+        'Question5': 'Who was Harry Houdini?',
+        'Answer5': 'A magician',
+        'Question6': 'Who was Harry Houdini?',
+        'Answer6': 'A magician',
+        'Question7': 'Who was Harry Houdini?',
+        'Answer7': 'A magician',
+        'Question8': 'Who was Harry Houdini?',
+        'Answer8': 'A magician',
+        'Question9': 'Who was Harry Houdini?',
+        'Answer9': 'A magician',
+        'Question310': 'Who was Harry Houdini?',
+        'Answer10': 'A magician',
+        # ... and so on for each question and answer
+    }
+    copy_template('1x8J9cEpFeMMYAJ_Inxw4Z_2-zYBwa5NMfOsN8pZKVHQ', 'test', questions_answers, {"Question1": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-22TlJ3O0EJC9AMJoee51xI0K/user-CLr6W6GiRSX9UXWCDXdyDC34/img-qUyE8YkaEu3il601ISOsqtkr.png?st=2023-12-02T21%3A55%3A49Z&se=2023-12-02T23%3A55%3A49Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-12-02T22%3A55%3A01Z&ske=2023-12-03T22%3A55%3A01Z&sks=b&skv=2021-08-06&sig=bJPLh7lOmznTcXc82ZCQ4c1Qcqle6c6WV93je0hmelc%3D",
+                                                                                              "Question2": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-22TlJ3O0EJC9AMJoee51xI0K/user-CLr6W6GiRSX9UXWCDXdyDC34/img-qUyE8YkaEu3il601ISOsqtkr.png?st=2023-12-02T21%3A55%3A49Z&se=2023-12-02T23%3A55%3A49Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-12-02T22%3A55%3A01Z&ske=2023-12-03T22%3A55%3A01Z&sks=b&skv=2021-08-06&sig=bJPLh7lOmznTcXc82ZCQ4c1Qcqle6c6WV93je0hmelc%3D",
+                                                                                              "Question3": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-22TlJ3O0EJC9AMJoee51xI0K/user-CLr6W6GiRSX9UXWCDXdyDC34/img-qUyE8YkaEu3il601ISOsqtkr.png?st=2023-12-02T21%3A55%3A49Z&se=2023-12-02T23%3A55%3A49Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-12-02T22%3A55%3A01Z&ske=2023-12-03T22%3A55%3A01Z&sks=b&skv=2021-08-06&sig=bJPLh7lOmznTcXc82ZCQ4c1Qcqle6c6WV93je0hmelc%3D",
+                                                                                              "Question4": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-22TlJ3O0EJC9AMJoee51xI0K/user-CLr6W6GiRSX9UXWCDXdyDC34/img-qUyE8YkaEu3il601ISOsqtkr.png?st=2023-12-02T21%3A55%3A49Z&se=2023-12-02T23%3A55%3A49Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-12-02T22%3A55%3A01Z&ske=2023-12-03T22%3A55%3A01Z&sks=b&skv=2021-08-06&sig=bJPLh7lOmznTcXc82ZCQ4c1Qcqle6c6WV93je0hmelc%3D",
+                                                                                              "Question5": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-22TlJ3O0EJC9AMJoee51xI0K/user-CLr6W6GiRSX9UXWCDXdyDC34/img-qUyE8YkaEu3il601ISOsqtkr.png?st=2023-12-02T21%3A55%3A49Z&se=2023-12-02T23%3A55%3A49Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-12-02T22%3A55%3A01Z&ske=2023-12-03T22%3A55%3A01Z&sks=b&skv=2021-08-06&sig=bJPLh7lOmznTcXc82ZCQ4c1Qcqle6c6WV93je0hmelc%3D",
+                                                                                              "Question6": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-22TlJ3O0EJC9AMJoee51xI0K/user-CLr6W6GiRSX9UXWCDXdyDC34/img-qUyE8YkaEu3il601ISOsqtkr.png?st=2023-12-02T21%3A55%3A49Z&se=2023-12-02T23%3A55%3A49Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-12-02T22%3A55%3A01Z&ske=2023-12-03T22%3A55%3A01Z&sks=b&skv=2021-08-06&sig=bJPLh7lOmznTcXc82ZCQ4c1Qcqle6c6WV93je0hmelc%3D",
+                                                                                              "Question7": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-22TlJ3O0EJC9AMJoee51xI0K/user-CLr6W6GiRSX9UXWCDXdyDC34/img-qUyE8YkaEu3il601ISOsqtkr.png?st=2023-12-02T21%3A55%3A49Z&se=2023-12-02T23%3A55%3A49Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-12-02T22%3A55%3A01Z&ske=2023-12-03T22%3A55%3A01Z&sks=b&skv=2021-08-06&sig=bJPLh7lOmznTcXc82ZCQ4c1Qcqle6c6WV93je0hmelc%3D",
+                                                                                              "Question8": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-22TlJ3O0EJC9AMJoee51xI0K/user-CLr6W6GiRSX9UXWCDXdyDC34/img-qUyE8YkaEu3il601ISOsqtkr.png?st=2023-12-02T21%3A55%3A49Z&se=2023-12-02T23%3A55%3A49Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-12-02T22%3A55%3A01Z&ske=2023-12-03T22%3A55%3A01Z&sks=b&skv=2021-08-06&sig=bJPLh7lOmznTcXc82ZCQ4c1Qcqle6c6WV93je0hmelc%3D",
+                                                                                              "Question9": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-22TlJ3O0EJC9AMJoee51xI0K/user-CLr6W6GiRSX9UXWCDXdyDC34/img-qUyE8YkaEu3il601ISOsqtkr.png?st=2023-12-02T21%3A55%3A49Z&se=2023-12-02T23%3A55%3A49Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-12-02T22%3A55%3A01Z&ske=2023-12-03T22%3A55%3A01Z&sks=b&skv=2021-08-06&sig=bJPLh7lOmznTcXc82ZCQ4c1Qcqle6c6WV93je0hmelc%3D",
+                                                                                              "Question10": None})
     # share_slides("1sZkp63495N6XRVWoe6_56fch-0nGZ2KF9YWWqgc_PdE")

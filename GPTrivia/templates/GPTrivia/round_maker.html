@@ -117,6 +117,12 @@
                 <td style="padding: 10px;">
                     <label for="question-{{ i }}">Question {{ i }}</label><br>
                     <input type="text" id="question-{{ i }}" name="questions"><br><br>
+{#                    <button type="submit" class="download-button" id="download-{{ i }}" data-question-id="question-{{ i }}">download icon</button>#}
+{#                    <div id="dalle-image-link2">#}
+                    <!-- The DALL-E image link will be inserted here -->
+
+{#                    </div>#}
+{#                    <img class="spinner" id="submit-spinner-icon-1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">#}
                     <label for="answer-{{ i }}">Answer {{ i }}</label><br>
                     <input type="text" id="answer-{{ i }}" name="answers"><br><br>
                 </td>
@@ -142,6 +148,9 @@
             <option value="theme2">Trivial Pursuit</option>
             <!-- ... other themes ... -->
         </select>
+
+        <label id="iconLabel" for="iconCheckbox" class="hidden">Generate Icons</label>
+        <input type="checkbox" id="iconCheckbox" name="iconCheckbox" class="hidden">
 
         <!-- Preview Button -->
         <button id="preview-button">Preview/Edit</button>
@@ -295,6 +304,39 @@
         });
     });
 
+    {#document.querySelectorAll('.download-button').forEach(button => {#}
+    {#    button.addEventListener('click', function() {#}
+    {#        var questionId = this.getAttribute('data-question-id');#}
+    {#        var questionText = document.getElementById(questionId).value;#}
+    {#        $('#submit-spinner-icon-1').show();  // Show spinner#}
+    {##}
+    {#        // AJAX call to Django view#}
+    {#        $.ajax({#}
+    {#            url: '/icon_view/', // Change to the URL of your Django view#}
+    {#            method: 'POST',#}
+    {#            data: {#}
+    {#                'question_text': questionText,#}
+    {#                'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()#}
+    {#            },#}
+    {#            success: function(data) {#}
+    {#                // If the server responds with an immediate task identifier or status#}
+    {#                var imageElement = $('<img>').attr('src', data.dalle_image_url).attr('alt', 'Generated Image').css({#}
+    {#                    'width': '80%', // Ensure the image is not larger than the container#}
+    {#                    'max-width': 500,#}
+    {#                    'height': 'auto',    // Maintain the aspect ratio of the image#}
+    {#                });#}
+    {#                $('#dalle-image-link2').html('').append(imageElement);#}
+    {#                $('#submit-spinner-icon-1').hide();  // Hide spinner#}
+    {#            },#}
+    {#            error: function(error) {#}
+    {#                // Handle errors here#}
+    {#                $('#submit-spinner1').hide();  // Hide spinner#}
+    {#                console.error('Error generating image:', error);#}
+    {#            }#}
+    {#        });#}
+    {#    });#}
+    {#});#}
+
     $(document).ready(function() {
         var presentationId = '109EgKCocHzTtUF9hVJVKEfV0HzFjaBfpWPKXaLNsos0';  // Initial value
 
@@ -339,13 +381,19 @@
 
         $('#theme-selector').on('change', function() {
             var selectedTheme = $(this).val();
-
+            console.log('Selected theme:', selectedTheme)
             switch (selectedTheme) {
                 case 'theme1':
                     presentationId = '109EgKCocHzTtUF9hVJVKEfV0HzFjaBfpWPKXaLNsos0';
+                    $('#iconCheckbox').addClass('hidden');
+                    $('#iconLabel').addClass('hidden');
+                    console.log('Hiding Checkbox'); // Debugging log
                     break;
                 case 'theme2':
                     presentationId = '1x8J9cEpFeMMYAJ_Inxw4Z_2-zYBwa5NMfOsN8pZKVHQ';
+                    $('#iconCheckbox').removeClass('hidden');
+                    $('#iconLabel').removeClass('hidden');
+                    console.log('Showing Checkbox'); // Debugging log
                     break;
                 // ... add cases for other themes as needed ...
                 default:
@@ -356,42 +404,87 @@
             console.log('Updated presentationId:', presentationId);
         });
 
+        function sendAjaxRequest(j, iurls) {
+            return new Promise((resolve, reject) => {
+                var questionId = 'question-' + j;
+
+                var questionText = document.getElementById(questionId).value;
+                console.log("Question text: ", questionText)
+
+                // AJAX call to Django view
+                $.ajax({
+                    url: '/icon_view/', // Change to the URL of your Django view
+                    method: 'POST',
+                    data: {
+                        'question_text': questionText,
+                        'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function(data) {
+                        iurls['Question' + j] = data.dalle_image_url
+                        console.log("success")
+                        resolve(); // Resolve the promise on successful AJAX completion
+                    },
+                    error: function(error) {
+                        console.error('Error generating image:', error);
+                        reject(error); // Reject the promise on error
+                    }
+                });
+            });
+        }
+
         $('#preview-button').on('click', function() {
             $('#preview-spinner').show();  // Show spinner
-            var roundTitle = $('#round-title').val();  // Assuming your round title input has id 'round-title'
-
-            // Initialize an empty qas dictionary
-            var qas = {};
-
-            // Loop through each question and answer, and add them to the qas dictionary
-            for (var i = 1; i <= 10; i++) {
-                var questionText = $('#question-' + i).val();
-                var answerText = $('#answer-' + i).val();
-                if (i == 10){
-                    qas['Question' + 0] = questionText;
-                    qas['Answer' + 0] = answerText;
-                } else {
-                    qas['Question' + i] = questionText;
-                    qas['Answer' + i] = answerText;
+            iurls = {}
+            var ajaxPromises = []; // Array to hold promises
+            console.log("Checkbox status: ", $('#iconCheckbox').is(':checked'))
+            if ($('#iconCheckbox').is(':checked')) {
+                for (let j = 1; j < 11; j++) {
+                    ajaxPromises.push(sendAjaxRequest(j, iurls));
                 }
             }
 
-            $.ajax({
-                url: '/preview/',  // URL to the Django view
-                method: 'POST',
-                data: {
-                    round_title: roundTitle,
-                    presentation_id: presentationId,
-                    qas: JSON.stringify(qas),
-                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
-                },
-                success: function(data) {
-                    $('#preview-spinner').hide();  // Hide spinner
-                    presentationId = data.new_id;  // Update the presentationId variable with the new id
-                    updateIframeSrc()
-                    $('#slides-preview').css('display', 'block');
-                    $('#submit-button').css('display', 'block');
+            // Wait for all AJAX requests to complete
+            Promise.all(ajaxPromises).then(function() {
+                console.log("All AJAX calls completed");
+                console.log("iurls: ", iurls)
+
+
+                var roundTitle = $('#round-title').val();  // Assuming your round title input has id 'round-title'
+
+                // Initialize an empty qas dictionary
+                var qas = {};
+
+                // Loop through each question and answer, and add them to the qas dictionary
+                for (var i = 1; i <= 10; i++) {
+                    var questionText = $('#question-' + i).val();
+                    var answerText = $('#answer-' + i).val();
+                    if (i == 10) {
+                        qas['Question' + 0] = questionText;
+                        qas['Answer' + 0] = answerText;
+                    } else {
+                        qas['Question' + i] = questionText;
+                        qas['Answer' + i] = answerText;
+                    }
                 }
+
+                $.ajax({
+                    url: '/preview/',  // URL to the Django view
+                    method: 'POST',
+                    data: {
+                        round_title: roundTitle,
+                        presentation_id: presentationId,
+                        qas: JSON.stringify(qas),
+                        icon_urls: JSON.stringify(iurls),
+                        csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function (data) {
+                        $('#preview-spinner').hide();  // Hide spinner
+                        presentationId = data.new_id;  // Update the presentationId variable with the new id
+                        updateIframeSrc()
+                        $('#slides-preview').css('display', 'block');
+                        $('#submit-button').css('display', 'block');
+                    }
+                });
             });
         });
     });

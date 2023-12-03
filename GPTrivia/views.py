@@ -101,8 +101,12 @@ class PreviewView(View):
         qas_json_string = request.POST.get('qas')
         # Convert the JSON string to a dictionary
         qas_dict = json.loads(qas_json_string)
-
-        new_id = copy_template(presentation_id, round_title, qas_dict)
+        icon_links = None
+        print(presentation_id)
+        if presentation_id == "1x8J9cEpFeMMYAJ_Inxw4Z_2-zYBwa5NMfOsN8pZKVHQ":
+            icon_links = json.loads(request.POST.get('icon_urls'))
+            print(f"ICON LINKS: {icon_links}")
+        new_id = copy_template(presentation_id, round_title, qas_dict, icon_links)
         print (qas_dict)
         return JsonResponse({'new_id': new_id})
 
@@ -730,6 +734,50 @@ class GenerateImageView(View):
             print(image_url)
 
         return JsonResponse({'dalle_image_url': image_url})
+
+class IconView(View):
+    def post(self, request, *args, **kwargs):
+        gpt_response = request.POST.get('question_text')
+        openai.api_key = os.getenv('OPENAI_API_KEY')
+
+        try:
+            # Get the conversation history from the session
+            conversation_history = request.session.get('conversation_history', [])
+            # Append the user's message to the conversation history
+            conversation_history.append({"role": "user", "content": f"SWOOP I want you to extract the theme of the question being suggested here in a few words and provide a representative element from that theme. For example, if the theme of the question was dinosaurs, you could response with the word \"pterodactyl\" and nothing else.: {gpt_response}"})
+
+            try:
+                response = openai.ChatCompletion.create(
+                    # model="gpt-3.5-turbo",
+                    # model="gpt-4",
+                    model="gpt-4-1106-preview",
+                    messages=conversation_history,
+                    max_tokens=150
+                )
+                print(f"RESPONSE: {response}")
+                second_response = response['choices'][0]['message']['content']
+                print(f"SECOND RESPONSE: {second_response}")
+            except Exception as e:
+                second_response = str(e)
+                return JsonResponse({'dalle_image_url': None})
+
+            # Call to DALL-E to generate an image based on the conversation
+            dalle_response = openai.Image.create(
+                prompt=f"Can you draw me a very simple minimalist white line drawing of a {second_response} on a background of extremely dark grey (almost black) for use as a small icon?",
+                # This assumes you want to generate an image based on the last text response from GPT-4
+                n=1,  # Number of images to generate
+                size="1024x1024",  # The size of the image
+                model='dall-e-3'
+            )
+            image_url = dalle_response['data'][0]['url']  # URL of the generated image
+            print(image_url)
+
+        except Exception as e:
+            image_url = None  # No image if there's an error
+            print(image_url)
+
+        return JsonResponse({'dalle_image_url': image_url})
+
 
 
 class RoundMaker(View):
