@@ -354,8 +354,9 @@
                 success: function(data) {
                     $('#submit-spinner2').hide();  // Hide spinner
                     var roundTitle = $('#round-title').val();  // Get the value of the round-title element
-                    var submissionMessage = 'Submitted ' + roundTitle + '!';  // Construct the submission message
+                    var submissionMessage = 'Submitted ' + roundTitle + '! \n Note: all changes made to the presentation above are saved automatically.';  // Construct the submission message
                     $('#submission-message').text(submissionMessage);  // Display the submission message
+                    $('#submit-button').hide();  // Hide the submit button
                 }
             });
         });
