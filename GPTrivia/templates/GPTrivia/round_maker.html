@@ -435,57 +435,65 @@
         $('#preview-button').on('click', function() {
             $('#preview-spinner').show();  // Show spinner
             iurls = {}
+            var requests = 10;
+            var halfRequests = requests / 2;
             var ajaxPromises = []; // Array to hold promises
             console.log("Checkbox status: ", $('#iconCheckbox').is(':checked'))
             if ($('#iconCheckbox').is(':checked')) {
-                for (let j = 1; j < 11; j++) {
+                for (let j = 1; j <= halfRequests; j++) {
                     ajaxPromises.push(sendAjaxRequest(j, iurls));
                 }
             }
 
-            // Wait for all AJAX requests to complete
-            Promise.all(ajaxPromises).then(function() {
-                console.log("All AJAX calls completed");
-                console.log("iurls: ", iurls)
-
-
-                var roundTitle = $('#round-title').val();  // Assuming your round title input has id 'round-title'
-
-                // Initialize an empty qas dictionary
-                var qas = {};
-
-                // Loop through each question and answer, and add them to the qas dictionary
-                for (var i = 1; i <= 10; i++) {
-                    var questionText = $('#question-' + i).val();
-                    var answerText = $('#answer-' + i).val();
-                    if (i == 10) {
-                        qas['Question' + 0] = questionText;
-                        qas['Answer' + 0] = answerText;
-                    } else {
-                        qas['Question' + i] = questionText;
-                        qas['Answer' + i] = answerText;
-                    }
+            setTimeout(function() {
+                for (let j = halfRequests + 1; j <= requests; j++) {
+                    ajaxPromises.push(sendAjaxRequest(j, iurls));
                 }
 
-                $.ajax({
-                    url: '/preview/',  // URL to the Django view
-                    method: 'POST',
-                    data: {
-                        round_title: roundTitle,
-                        presentation_id: presentationId,
-                        qas: JSON.stringify(qas),
-                        icon_urls: JSON.stringify(iurls),
-                        csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
-                    },
-                    success: function (data) {
-                        $('#preview-spinner').hide();  // Hide spinner
-                        presentationId = data.new_id;  // Update the presentationId variable with the new id
-                        updateIframeSrc()
-                        $('#slides-preview').css('display', 'block');
-                        $('#submit-button').css('display', 'block');
+                // Wait for all AJAX requests to complete
+                Promise.all(ajaxPromises).then(function() {
+                    console.log("All AJAX calls completed");
+                    console.log("iurls: ", iurls)
+
+
+                    var roundTitle = $('#round-title').val();  // Assuming your round title input has id 'round-title'
+
+                    // Initialize an empty qas dictionary
+                    var qas = {};
+
+                    // Loop through each question and answer, and add them to the qas dictionary
+                    for (var i = 1; i <= 10; i++) {
+                        var questionText = $('#question-' + i).val();
+                        var answerText = $('#answer-' + i).val();
+                        if (i == 10) {
+                            qas['Question' + 0] = questionText;
+                            qas['Answer' + 0] = answerText;
+                        } else {
+                            qas['Question' + i] = questionText;
+                            qas['Answer' + i] = answerText;
+                        }
                     }
+
+                    $.ajax({
+                        url: '/preview/',  // URL to the Django view
+                        method: 'POST',
+                        data: {
+                            round_title: roundTitle,
+                            presentation_id: presentationId,
+                            qas: JSON.stringify(qas),
+                            icon_urls: JSON.stringify(iurls),
+                            csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                        },
+                        success: function (data) {
+                            $('#preview-spinner').hide();  // Hide spinner
+                            presentationId = data.new_id;  // Update the presentationId variable with the new id
+                            updateIframeSrc()
+                            $('#slides-preview').css('display', 'block');
+                            $('#submit-button').css('display', 'block');
+                        }
+                    });
                 });
-            });
+            }, 60000); // 60000 milliseconds = 1 minute
         });
     });
 </script>
