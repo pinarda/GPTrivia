@@ -316,7 +316,7 @@
       <workItem from="1701586870912" duration="115000" />
       <workItem from="1701587405597" duration="1225000" />
       <workItem from="1701588758756" duration="338000" />
-      <workItem from="1701589224732" duration="7247000" />
+      <workItem from="1701589224732" duration="7892000" />
     </task>
     <servers />
   </component>
@@ -410,11 +410,6 @@
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
           <line>754</line>
           <option name="timeStamp" value="375" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>761</line>
-          <option name="timeStamp" value="380" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
