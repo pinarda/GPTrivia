@@ -748,7 +748,7 @@ class IconView(View):
             # actually, let's just start a new conversation history
             conversation_history = []
             # Append the user's message to the conversation history
-            conversation_history.append({"role": "user", "content": f"SWOOP I want you to extract the theme of the question being suggested here and provide a representative element from that theme. For example, if the theme of the question was dinosaurs, you could response with the word \"pterodactyl\" and nothing else.: {gpt_response}"})
+            conversation_history.append({"role": "user", "content": f"I want you to extract the theme of the following question and provide a representative object depicting that theme. For example, if the theme of the question was dinosaurs, you could response with the word \"pterodactyl\" and nothing else, or if the theme was travel, maybe respond with \"compass\": {gpt_response}"})
 
             try:
                 response = openai.ChatCompletion.create(
