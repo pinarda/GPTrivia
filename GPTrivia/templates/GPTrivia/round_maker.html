@@ -410,25 +410,28 @@
 
                 var questionText = document.getElementById(questionId).value;
                 console.log("Question text: ", questionText)
-
-                // AJAX call to Django view
-                $.ajax({
-                    url: '/icon_view/', // Change to the URL of your Django view
-                    method: 'POST',
-                    data: {
-                        'question_text': questionText,
-                        'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
-                    },
-                    success: function(data) {
-                        iurls['Question' + j] = data.dalle_image_url
-                        console.log("success")
-                        resolve(); // Resolve the promise on successful AJAX completion
-                    },
-                    error: function(error) {
-                        console.error('Error generating image:', error);
-                        reject(error); // Reject the promise on error
-                    }
-                });
+                if (questionText != "") {
+                    // AJAX call to Django view
+                    $.ajax({
+                        url: '/icon_view/', // Change to the URL of your Django view
+                        method: 'POST',
+                        data: {
+                            'question_text': questionText,
+                            'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+                        },
+                        success: function(data) {
+                            iurls['Question' + j] = data.dalle_image_url
+                            console.log("success")
+                            resolve(); // Resolve the promise on successful AJAX completion
+                        },
+                        error: function(error) {
+                            console.error('Error generating image:', error);
+                            reject(error); // Reject the promise on error
+                        }
+                    });
+                } else {
+                    resolve();
+                }
             });
         }
 

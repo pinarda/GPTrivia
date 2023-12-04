@@ -740,11 +740,15 @@ class IconView(View):
         gpt_response = request.POST.get('question_text')
         openai.api_key = os.getenv('OPENAI_API_KEY')
 
+
         try:
             # Get the conversation history from the session
-            conversation_history = request.session.get('conversation_history', [])
+
+            # conversation_history = request.session.get('conversation_history', [])
+            # actually, let's just start a new conversation history
+            conversation_history = []
             # Append the user's message to the conversation history
-            conversation_history.append({"role": "user", "content": f"SWOOP I want you to extract the theme of the question being suggested here in a few words and provide a representative element from that theme. For example, if the theme of the question was dinosaurs, you could response with the word \"pterodactyl\" and nothing else.: {gpt_response}"})
+            conversation_history.append({"role": "user", "content": f"SWOOP I want you to extract the theme of the question being suggested here and provide a representative element from that theme. For example, if the theme of the question was dinosaurs, you could response with the word \"pterodactyl\" and nothing else.: {gpt_response}"})
 
             try:
                 response = openai.ChatCompletion.create(
@@ -759,22 +763,26 @@ class IconView(View):
                 print(f"SECOND RESPONSE: {second_response}")
             except Exception as e:
                 second_response = str(e)
+                print(f"EXCEPTION: {second_response}")
                 return JsonResponse({'dalle_image_url': None})
 
             # Call to DALL-E to generate an image based on the conversation
             dalle_response = openai.Image.create(
-                prompt=f"Can you draw me a very simple minimalist white line drawing of a {second_response} on a background of near-black for use as a small icon?",
+                prompt=f"Draw me a very simple minimalist white line drawing on a background of near-black for use as a small icon with subject: {second_response}",
                 # This assumes you want to generate an image based on the last text response from GPT-4
                 n=1,  # Number of images to generate
                 size="1024x1024",  # The size of the image
                 model='dall-e-3'
             )
+            print(f"DALLE RESPONSE: {dalle_response}")
             image_url = dalle_response['data'][0]['url']  # URL of the generated image
-            print(image_url)
+            print(f"IMAGE_URL: {image_url}")
 
         except Exception as e:
             image_url = None  # No image if there's an error
-            print(image_url)
+            # print(f"EXCEPTION IMAGE_URL: {image_url}")
+            print(f"EXCEPTION: {e}")
+
 
         return JsonResponse({'dalle_image_url': image_url})
 
