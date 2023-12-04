@@ -748,7 +748,7 @@ class IconView(View):
             # actually, let's just start a new conversation history
             conversation_history = []
             # Append the user's message to the conversation history
-            conversation_history.append({"role": "user", "content": f"I want you to extract the theme of the following question and provide a representative object depicting that theme. For example, if the theme of the question was dinosaurs, you could response with the word \"pterodactyl\" and nothing else, or if the theme was travel, maybe respond with \"compass\": {gpt_response}"})
+            conversation_history.append({"role": "user", "content": f"I want you to provide key words (no more than two) that summarize the following question. For example, if the question was about dinosaurs, you could response with the word \"dinosaur\" and nothing else. Here's the question: {gpt_response}"})
 
             try:
                 response = openai.ChatCompletion.create(
@@ -768,7 +768,7 @@ class IconView(View):
 
             # Call to DALL-E to generate an image based on the conversation
             dalle_response = openai.Image.create(
-                prompt=f"Draw me a very simple minimalist white line drawing of a {second_response} on a background of near-black for use as a small icon.",
+                prompt=f"Draw me a very simple minimalist white line icon on a black background using the following key words: {second_response}",
                 # This assumes you want to generate an image based on the last text response from GPT-4
                 n=1,  # Number of images to generate
                 size="1024x1024",  # The size of the image
