@@ -734,6 +734,8 @@ const PlayerTable = () => {
         wsRef.current.onmessage = (event) => {
             const data = JSON.parse(event.data);
             console.log('WebSocket message received:', data.message)
+
+            console.log ('isLocalUpdate value at ', new Date().toLocaleTimeString(), ': ', isLocalUpdate);
             if (data.message && data.message.action === 'update' && !isLocalUpdate) {
                 console.log('Received update message')
                 setUpdateFlag(prev => prev + 1); // Increment the flag to trigger re-fetch
@@ -1070,6 +1072,7 @@ const PlayerTable = () => {
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
             console.log('Sending update message to WebSocket via React');
             isLocalUpdate = true;
+            console.log ('isLocalUpdate set to true at ', new Date().toLocaleTimeString());
             wsRef.current.send(JSON.stringify({type: 'scoresheet_message', message: {'action': 'update'}}));
             setTimeout(() => isLocalUpdate = false, 2000); // Reset flag after a short delay
         } else {
