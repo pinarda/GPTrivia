@@ -76,12 +76,19 @@ TEST - make sure everyone has permission to access the presentation - set genera
 TEST FIX - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be (Could be a timezone issue)
     NOTE: I changed the timeout setting for the workers in gunicorn.conf.py to 300, or 5 minutes
 
+SERVER - pip install channels
+SERVER - pip install channels-redis
+SERVER - pip install uvicorn
+SERVER - pip install uvicorn[standard]
+SERVER - brew install redis
+
 
 
 TRIVIAL (minutes)
 
 TODO - fix the URL for links to rounds in mail.py (create_presentation and updated_merged_presentation), want the permissions to be anyone with link (this error affects viewing the slides (403) and apparently updating presentations, which only works on Alex account?), and URL to be view, not edit
 TODO - add "link" input to scoresheet, to allow display and manual entry of link to a specific round if it was not added through the generate/update buttons
+TODO - remove any hardcoded passwords or api keys
 
 High - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
 High - add normalize option to the rounds list
@@ -89,8 +96,12 @@ High - add normalize option to the rounds list
 
 MEDIUM (1-2 hrs)
 
+TODO - fix the scoresheet to save on every change made.
+TODO - save_scores, delete round, create round need to broadcast changes via channels
+
 High - add sorting to the player round/rounds list page, also want to be able to see the lowest high score on a round.
 High - add a link to the rounds list page on the round category counts that filters by rounds that person has created with that category
+Medium - could redo mobile CSS for scoresheet to show all rounds for one player, then they could enter their scores for each round, and the button would switch the player.
 Medium - General CSS tweaking, mainly for mobile view (scoresheet esp.)
 Low - Weird stuff like if you joker two different rounds (Zach, 9/1/2022), or if a round has two different creators...
 

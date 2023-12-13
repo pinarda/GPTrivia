@@ -344,12 +344,15 @@ const PlayerTable = () => {
     const [presID, setPresID] = useState(0);
     const [tempTitles, setTempTitles] = useState([]);
     const [selectedColumnIndex, setSelectedColumnIndex] = useState(1);
+    const [updateFlag, setUpdateFlag] = useState(0); // Update flag
 
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
     // let url = "http://localhost:8000"
     let url = "https://hailsciencetrivia.com"
+
+    const wsRef = useRef(null);
 
     function sortPlayers(b, a) {
       const totalScoreA = rounds.reduce((total, round) => total + (round[a] || 0), 0) + (
@@ -597,30 +600,6 @@ const PlayerTable = () => {
           });
           setScores(initialScores);
         })
-        // fetch('http://localhost:8000/api/v1/presentations/', {
-        //     headers: {
-        //         'Authorization': `Token ${localStorage.getItem('token')}`,
-        //     },
-        // })
-        // .then(response => {
-        //   console.log('Initial response: ', response);
-        //   if (!response.ok) {
-        //     throw new Error("HTTP error " + response.status);
-        //   }
-        //   return response.json();
-        // })
-        // .then(json => {
-        //     const selectedPresentation = json.find(presentation => convertDate(presentation.name) === selectedDate);
-        //
-        //     if(selectedPresentation) {
-        //         const newJokerRounds = players.reduce((acc, player) => {
-        //             // remember to lower case the player name
-        //             acc[player] = selectedPresentation.joker_round_indices[player];
-        //             return acc;
-        //         }, {});
-        //         setSelectedRounds(newJokerRounds);
-        //     }
-        // })
         .catch(function() {
             //setErrorMessage("Failed to fetch rounds");
         });
@@ -682,7 +661,7 @@ const PlayerTable = () => {
         .catch(error => {
             console.error('Error fetching presentations:', error);
         });
-    }, [selectedDate, players, url]);
+    }, [selectedDate, players, url, updateFlag]);
 
     useEffect(() => {
       if (players.length > 0 && rounds.length > 0) {
@@ -741,6 +720,36 @@ const PlayerTable = () => {
         // Cleanup the event listener when the component unmounts
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, []);
+
+    useEffect(() => {
+        wsRef.current = new WebSocket('ws://hailsciencetrivia.com/ws/scoresheet/');
+
+        wsRef.current.onopen = () => {
+            console.log('Connected to the WebSocket');
+        };
+
+        wsRef.current.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            if (message && message.action === 'update') {
+                setUpdateFlag(prev => prev + 1); // Increment the flag to trigger re-fetch
+            }
+        };
+
+        wsRef.current.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
+        wsRef.current.onclose = () => {
+            console.log('Disconnected from the WebSocket');
+        };
+
+        // Cleanup function for WebSocket
+        return () => {
+            if (wsRef.current) {
+                wsRef.current.close();
+            }
         };
     }, []);
 
@@ -1053,6 +1062,12 @@ const PlayerTable = () => {
         .catch((error) => {
           console.error('Error:', error);
         });
+
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ action: 'update', message: {'action': 'update'}}));
+        } else {
+            console.log('WebSocket is not open. Current state:', wsRef.current.readyState);
+        }
 
         setIsSaved(true);
     };

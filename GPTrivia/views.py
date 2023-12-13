@@ -16,6 +16,8 @@ import random
 from autogen import AssistantAgent, UserProxyAgent
 import autogen
 from django.contrib.auth.models import User
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
 
 
@@ -60,7 +62,7 @@ config_list = autogen.config_list_from_json(
 config_list = [
     {
         'model': 'gpt-4',
-        'api_key': "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"
+        'api_key': os.getenv('OPENAI_API_KEY')
     }
 ]
 
@@ -1105,6 +1107,7 @@ def save_scores(request):
     presentation_id = data.get('presentation_id', None)
     round_names = data.get('round_names', [])
     creator_list = data.get('round_creators', [])
+    date_str = "2020-12-12"
 
     for round_data in rounds:
         # Get the round_data fields
@@ -1156,6 +1159,24 @@ def save_scores(request):
         try:
             print(trivia_round)
             trivia_round.save()
+
+            # After saving, send an update message to the channel layer
+            channel_layer = get_channel_layer()
+            group_name = 'scoresheet_updates'  # The name of the group you've set up in your consumer
+
+            # Prepare the data you want to send. Modify this based on your requirements
+            data_to_send = {
+                'type': 'scoresheet_message',  # The handler method in the consumer
+                'message': {
+                    'action': 'update'  # Replace with actual data
+                }
+            }
+
+            # Send the message to the group
+            async_to_sync(channel_layer.group_send)(
+                group_name,
+                data_to_send
+            )
         except Exception as e:
             print(f"Error saving trivia_round: {e}")
 

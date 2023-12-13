@@ -34,6 +34,9 @@ To run the server locally:
 python manage.py runserver
 
 
+How to start redis-server for websockets:
+redis-server
+
 
 For the scoresheet react app development:
 
