@@ -12,6 +12,10 @@ sudo nginx
 (config for nginx is in /usr/local/etc/nginx/nginx.conf)
 (logs for nginx: /usr/local/var/log/nginx)
 
+restart:
+
+sudo nginx -s stop && sudo nginx
+
 
 How to make sure the database is updated (in this directory):
 
@@ -24,6 +28,7 @@ Before deployment:
 
 python manage.py collectstatic
 switch debug to FALSE in settings.py
+make sure no api keys/passwords are in the commit
 switch url to hailsciencetrivia.com/ in scoresheet/src/App.js
 
 REMEMBER TO CAFFEINATE THE SERVER

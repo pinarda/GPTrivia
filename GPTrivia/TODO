@@ -71,16 +71,17 @@ NOT A PROBLEM (fixed regex) - If there is no text on the title slide, we need a 
 NOT A PROBLEM (fixed regex) - and update_merged_presentation appears to be erroring (fails after the round is marked as read though), and not updating presentations or rounds table
 DONE - fix font sizes, double adding new rounds to existing pres
 DONE - fix presentation date in mail.py currently is date + 1day
+DONE  - pip install channels
+DONE - pip install channels-redis
+DONE - pip install uvicorn
+DONE - pip install uvicorn[standard]
+DONE - brew install redis
 
 TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
 TEST FIX - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be (Could be a timezone issue)
     NOTE: I changed the timeout setting for the workers in gunicorn.conf.py to 300, or 5 minutes
 
-SERVER - pip install channels
-SERVER - pip install channels-redis
-SERVER - pip install uvicorn
-SERVER - pip install uvicorn[standard]
-SERVER - brew install redis
+
 
 
 

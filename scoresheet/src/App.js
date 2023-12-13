@@ -732,6 +732,7 @@ const PlayerTable = () => {
 
         wsRef.current.onmessage = (event) => {
             const message = JSON.parse(event.data);
+            console.log('WebSocket message received:', message)
             if (message && message.action === 'update') {
                 setUpdateFlag(prev => prev + 1); // Increment the flag to trigger re-fetch
             }
@@ -1064,6 +1065,7 @@ const PlayerTable = () => {
         });
 
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            console.log('Sending update message to WebSocket via React');
             wsRef.current.send(JSON.stringify({ action: 'update', message: {'action': 'update'}}));
         } else {
             console.log('WebSocket is not open. Current state:', wsRef.current.readyState);

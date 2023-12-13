@@ -1172,6 +1172,8 @@ def save_scores(request):
                 }
             }
 
+            print("sending message to group: " + str(group_name) + " with data: " + str(data_to_send))
+
             # Send the message to the group
             async_to_sync(channel_layer.group_send)(
                 group_name,

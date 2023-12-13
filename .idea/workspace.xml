@@ -331,7 +331,7 @@
       <workItem from="1701969933998" duration="3405000" />
       <workItem from="1702075713135" duration="894000" />
       <workItem from="1702324491793" duration="368000" />
-      <workItem from="1702433967392" duration="18345000" />
+      <workItem from="1702433967392" duration="22104000" />
     </task>
     <servers />
   </component>
@@ -431,6 +431,11 @@
           <line>754</line>
           <option name="timeStamp" value="381" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
+          <line>1166</line>
+          <option name="timeStamp" value="386" />
+        </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
           <line>429</line>
@@ -513,7 +518,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
-          <line>1646</line>
+          <line>1648</line>
           <option name="timeStamp" value="230" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
@@ -533,7 +538,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
-          <line>1042</line>
+          <line>1043</line>
           <option name="timeStamp" value="352" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
