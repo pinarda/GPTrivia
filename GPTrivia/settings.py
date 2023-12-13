@@ -60,16 +60,27 @@ SESSION_COOKIE_AGE = 60 * 60 * 24 * 365
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
-CORS_ORIGIN_ALLOW_ALL = False
+CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ORIGIN_WHITELIST = [
     'http://localhost:3000',  # Change to your React app's server address
     'http://127.0.0.1:8000',
+    'http://localhost:8000',
     'https://hailsciencetrivia.com',
     'https://www.hailsciencetrivia.com',
     'http://hailsciencetrivia.com',
     'http://www.hailsciencetrivia.com',
 ]
+
+# channels setup
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
 
 # Application definition
 
