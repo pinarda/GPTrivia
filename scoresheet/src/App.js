@@ -604,7 +604,7 @@ const PlayerTable = () => {
         .catch(function() {
             //setErrorMessage("Failed to fetch rounds");
         });
-    }, [selectedDate, defaultPlayers, dates.length, tempTitles.length, url]);
+    }, [selectedDate, defaultPlayers, dates.length, tempTitles.length, url, updateFlag]);
 
     useEffect(() => {
         fetch(url + '/api/v1/presentations/', {
