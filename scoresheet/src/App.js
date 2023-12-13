@@ -731,9 +731,9 @@ const PlayerTable = () => {
         };
 
         wsRef.current.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-            console.log('WebSocket message received:', message)
-            if (message && message.action === 'update') {
+            const data = JSON.parse(event.data);
+            console.log('WebSocket message received:', data.message)
+            if (data.message && data.message.action === 'update') {
                 console.log('Received update message')
                 setUpdateFlag(prev => prev + 1); // Increment the flag to trigger re-fetch
                 console.log('Update flag incremented to: ', updateFlag)
