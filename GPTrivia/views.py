@@ -1159,26 +1159,26 @@ def save_scores(request):
         try:
             print(trivia_round)
             trivia_round.save()
-
-            # After saving, send an update message to the channel layer
-            channel_layer = get_channel_layer()
-            group_name = 'scoresheet_updates'  # The name of the group you've set up in your consumer
-
-            # Prepare the data you want to send. Modify this based on your requirements
-            data_to_send = {
-                'type': 'scoresheet_message',  # The handler method in the consumer
-                'message': {
-                    'action': 'update'  # Replace with actual data
-                }
-            }
-
-            print("sending message to group: " + str(group_name) + " with data: " + str(data_to_send))
-
-            # Send the message to the group
-            async_to_sync(channel_layer.group_send)(
-                group_name,
-                data_to_send
-            )
+            #
+            # # After saving, send an update message to the channel layer
+            # channel_layer = get_channel_layer()
+            # group_name = 'scoresheet_updates'  # The name of the group you've set up in your consumer
+            #
+            # # Prepare the data you want to send. Modify this based on your requirements
+            # data_to_send = {
+            #     'type': 'scoresheet_message',  # The handler method in the consumer
+            #     'message': {
+            #         'action': 'update'  # Replace with actual data
+            #     }
+            # }
+            #
+            # print("sending message to group: " + str(group_name) + " with data: " + str(data_to_send))
+            #
+            # # Send the message to the group
+            # async_to_sync(channel_layer.group_send)(
+            #     group_name,
+            #     data_to_send
+            # )
         except Exception as e:
             print(f"Error saving trivia_round: {e}")
 
