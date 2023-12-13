@@ -724,7 +724,7 @@ const PlayerTable = () => {
     }, []);
 
     useEffect(() => {
-        wsRef.current = new WebSocket('ws://hailsciencetrivia.com/ws/scoresheet/');
+        wsRef.current = new WebSocket('wss://hailsciencetrivia.com/ws/scoresheet/');
 
         wsRef.current.onopen = () => {
             console.log('Connected to the WebSocket');
