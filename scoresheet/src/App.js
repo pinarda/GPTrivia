@@ -466,6 +466,7 @@ const PlayerTable = () => {
     }, [csrfToken, url]);
 
     useEffect(() => {
+        setPageLoadFlag(prevState => prevState - 1);
       fetch(url + '/api/v1/trivia-rounds/', {
             headers: {
                 'Authorization': `Token ${localStorage.getItem('token')}`,
@@ -497,7 +498,6 @@ const PlayerTable = () => {
 
             const uniquePlayers = [...new Set(allPlayers)];
             // reset page load flag
-            setPageLoadFlag(prevState => prevState - 1);
 
             setAllPlayers(uniquePlayers);
             setMajorCategories(uniqueMajorCategories);
@@ -611,6 +611,7 @@ const PlayerTable = () => {
     }, [selectedDate, defaultPlayers, dates.length, tempTitles.length, url, updateFlag]);
 
     useEffect(() => {
+        setPageLoadFlag(prevState => prevState - 1);
         fetch(url + '/api/v1/presentations/', {
             headers: {
                 'Authorization': `Token ${localStorage.getItem('token')}`,
@@ -624,7 +625,6 @@ const PlayerTable = () => {
           return response.json();
         })
         .then(json => {
-            setPageLoadFlag(prevState => prevState - 1);
             // strip the score_ prefix from the player names
             const playerNames = players.map(player => player.replace('score_', ''));
             const selectedPresentation = json.find(presentation => convertDate(presentation.name) === selectedDate);
@@ -797,6 +797,7 @@ const PlayerTable = () => {
                 [roundTitle]: newScore,
             },
         });
+        saveData();
     };
 
 
@@ -808,6 +809,8 @@ const PlayerTable = () => {
     };
 
     const handleChangeDate = (eventOrDate) => {
+
+        setPageLoadFlag(prevState => prevState - 1);
         if (!isSaved) {
             const confirmChange = window.confirm("Are you sure you want to change the date? You have unsaved changes.");
             if (!confirmChange) return;
@@ -840,6 +843,7 @@ const PlayerTable = () => {
             setTempTitles([]);
             setPresID(0);
         }
+        setPageLoadFlag(prevState => prevState + 1);
     }
 
     const confirmPastChange = () => {
