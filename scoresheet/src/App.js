@@ -346,7 +346,6 @@ const PlayerTable = () => {
     const [selectedColumnIndex, setSelectedColumnIndex] = useState(1);
     const [updateFlag, setUpdateFlag] = useState(0); // Update flag
     const isLocalUpdate = useRef(false);
-    const [pageLoadFlag, setPageLoadFlag] = useState(0); // Page load flag
 
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
@@ -466,7 +465,6 @@ const PlayerTable = () => {
     }, [csrfToken, url]);
 
     useEffect(() => {
-      setPageLoadFlag(prev => prev - 1);
       fetch(url + '/api/v1/trivia-rounds/', {
             headers: {
                 'Authorization': `Token ${localStorage.getItem('token')}`,
@@ -607,11 +605,9 @@ const PlayerTable = () => {
         .catch(function() {
             //setErrorMessage("Failed to fetch rounds");
         });
-      setPageLoadFlag(prev => prev + 1);
     }, [selectedDate, defaultPlayers, dates.length, tempTitles.length, url, updateFlag]);
 
     useEffect(() => {
-        setPageLoadFlag(prev => prev - 1);
         fetch(url + '/api/v1/presentations/', {
             headers: {
                 'Authorization': `Token ${localStorage.getItem('token')}`,
@@ -668,7 +664,6 @@ const PlayerTable = () => {
         .catch(error => {
             console.error('Error fetching presentations:', error);
         });
-        setPageLoadFlag(prev => prev + 1);
     }, [selectedDate, players, url, updateFlag]);
 
     useEffect(() => {
@@ -767,13 +762,11 @@ const PlayerTable = () => {
     }, []);
 
     const handleScoreChange = (event, player, roundTitle, round) => {
-        setPageLoadFlag(prevState => prevState - 1);
         const confirmChange = confirmPastChange()
         if (!confirmChange) return;
 
         const inputValue = event.target.innerText;
         let newScore;
-        setIsSaved(false);
 
         // Check if input is an empty string
         if (inputValue.trim() === '') {
@@ -798,7 +791,7 @@ const PlayerTable = () => {
                 [roundTitle]: newScore,
             },
         });
-        setPageLoadFlag(prevState => prevState + 1);
+        setIsSaved(false);
     };
 
 
@@ -811,7 +804,6 @@ const PlayerTable = () => {
 
     const handleChangeDate = (eventOrDate) => {
 
-        setPageLoadFlag(prevState => prevState - 1);
         if (!isSaved) {
             const confirmChange = window.confirm("Are you sure you want to change the date? You have unsaved changes.");
             if (!confirmChange) return;
@@ -844,7 +836,6 @@ const PlayerTable = () => {
             setTempTitles([]);
             setPresID(0);
         }
-        setPageLoadFlag(prevState => prevState + 1);
     }
 
     const confirmPastChange = () => {
@@ -867,7 +858,6 @@ const PlayerTable = () => {
 
       const oldTitle = rounds[index].title;
 
-      setIsSaved(false);
 
 
           setRounds((prevRounds) =>
@@ -918,6 +908,7 @@ const PlayerTable = () => {
               return newSelectedRounds;
           });
 
+      setIsSaved(false);
     };
 
     const handleAddPlayer = () => {
@@ -1004,11 +995,11 @@ const PlayerTable = () => {
     };
 
     useEffect(() => {
-        if (pageLoadFlag >= 0) {
+        if (!isSaved) {
             console.log('scoresheet changed, saving...');
             saveData();
         }
-    }, [selectedRounds, rounds, roundCreators, selectedMajorCategories, selectedMinor1Categories, selectedMinor2Categories, isReplay, maxScores, cooperativeStatus]);
+    }, [isSaved]);
 
 
     const handleCreatorChange = (roundTitle, newCreatorName) => {
@@ -1017,7 +1008,6 @@ const PlayerTable = () => {
         [roundTitle]: newCreatorName,
       }));
 
-      setIsSaved(false);
 
       setScores(prevScores => {
         const newScores = { ...prevScores };
@@ -1042,6 +1032,7 @@ const PlayerTable = () => {
             }
             return newRounds;
         });
+      setIsSaved(false);
     };
 
     const saveData = () => {
@@ -1329,11 +1320,12 @@ const PlayerTable = () => {
                               onChange={(event) => {
                                 // Update the selected round for this player
                                   if (!confirmPastChange()) return;                                        // Set the saved status to false
-                                setIsSaved(false);
+
                                 setSelectedRounds({
                                     ...selectedRounds,
                                     [player]: event.target.value
                                 });
+                                setIsSaved(false);
                             }} // Update the selected round for this player
                           >
                               <MenuItem value={"Select"}>- Select -</MenuItem>
