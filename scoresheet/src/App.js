@@ -992,9 +992,10 @@ const PlayerTable = () => {
     };
 
     useEffect(() => {
-        console.log('selectedRounds changed', selectedRounds);
+        console.log('scoresheet changed, saving...');
         saveData();
-    }, [selectedRounds]);
+    }, [selectedRounds, rounds, roundCreators, selectedMajorCategories, selectedMinor1Categories, selectedMinor2Categories, isReplay, maxScores, cooperativeStatus]);
+
 
     const handleCreatorChange = (roundTitle, newCreatorName) => {
       setRoundCreators(prevRoundCreators => ({
