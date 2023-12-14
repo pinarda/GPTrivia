@@ -767,6 +767,7 @@ const PlayerTable = () => {
     }, []);
 
     const handleScoreChange = (event, player, roundTitle, round) => {
+        setPageLoadFlag(prevState => prevState - 1);
         const confirmChange = confirmPastChange()
         if (!confirmChange) return;
 
@@ -797,6 +798,7 @@ const PlayerTable = () => {
                 [roundTitle]: newScore,
             },
         });
+        setPageLoadFlag(prevState => prevState + 1);
     };
 
 
