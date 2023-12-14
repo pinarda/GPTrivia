@@ -346,6 +346,7 @@ const PlayerTable = () => {
     const [selectedColumnIndex, setSelectedColumnIndex] = useState(1);
     const [updateFlag, setUpdateFlag] = useState(0); // Update flag
     const isLocalUpdate = useRef(false);
+    const [pageLoadFlag, setPageLoadFlag] = useState(0); // Page load flag
 
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
@@ -604,6 +605,7 @@ const PlayerTable = () => {
         .catch(function() {
             //setErrorMessage("Failed to fetch rounds");
         });
+      setPageLoadFlag(prev => prev + 1);
     }, [selectedDate, defaultPlayers, dates.length, tempTitles.length, url, updateFlag]);
 
     useEffect(() => {
@@ -662,6 +664,7 @@ const PlayerTable = () => {
         .catch(error => {
             console.error('Error fetching presentations:', error);
         });
+        setPageLoadFlag(prev => prev + 1);
     }, [selectedDate, players, url, updateFlag]);
 
     useEffect(() => {
@@ -992,8 +995,10 @@ const PlayerTable = () => {
     };
 
     useEffect(() => {
-        console.log('scoresheet changed, saving...');
-        saveData();
+        if (pageLoadFlag > 1) {
+            console.log('scoresheet changed, saving...');
+            saveData();
+        }
     }, [selectedRounds, rounds, roundCreators, selectedMajorCategories, selectedMinor1Categories, selectedMinor2Categories, isReplay, maxScores, cooperativeStatus]);
 
 
