@@ -731,6 +731,12 @@ const PlayerTable = () => {
 
         wsRef.current.onopen = () => {
             console.log('Connected to the WebSocket');
+            // Send a ping message every 30 seconds
+            setInterval(() => {
+                if (wsRef.current.readyState === WebSocket.OPEN) {
+                    wsRef.current.send(JSON.stringify({ type: 'ping' }));
+                }
+            }, 30000);
         };
 
         wsRef.current.onmessage = (event) => {
