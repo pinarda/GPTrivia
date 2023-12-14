@@ -1075,9 +1075,15 @@ const PlayerTable = () => {
           console.error('Error:', error);
         });
 
-
-
-
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            console.log('Sending update message to WebSocket via React');
+            isLocalUpdate.current = true;
+            console.log ('isLocalUpdate set to true at ', new Date().toLocaleTimeString());
+            wsRef.current.send(JSON.stringify({type: 'scoresheet_message', message: {'action': 'update'}}));
+            setTimeout(() => isLocalUpdate.current = false, 10000); // Reset flag after a short delay
+        } else {
+            console.log('WebSocket is not open. Current state:', wsRef.current.readyState);
+        }
         setIsSaved(true);
     };
 
