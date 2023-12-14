@@ -354,6 +354,7 @@ const PlayerTable = () => {
     let url = "https://hailsciencetrivia.com"
 
     const wsRef = useRef(null);
+    const isVisible = usePageVisibility();
 
     function sortPlayers(b, a) {
       const totalScoreA = rounds.reduce((total, round) => total + (round[a] || 0), 0) + (
@@ -709,6 +710,24 @@ const PlayerTable = () => {
        isSavedRef.current = isSaved;
     }, [isSaved]);
 
+    function usePageVisibility() {
+        const [isVisible, setIsVisible] = useState(!document.hidden);
+
+        useEffect(() => {
+            const handleVisibilityChange = () => {
+                setIsVisible(!document.hidden);
+            };
+
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+
+            return () => {
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+            };
+        }, []);
+
+        return isVisible;
+    }
+
     useEffect(() => {
         // if isSaved is true, skip
         const handleBeforeUnload = (e) => {
@@ -727,45 +746,52 @@ const PlayerTable = () => {
     }, []);
 
     useEffect(() => {
-        wsRef.current = new WebSocket('wss://hailsciencetrivia.com/ws/scoresheet/');
-
-        wsRef.current.onopen = () => {
-            console.log('Connected to the WebSocket');
-            // Send a ping message every 30 seconds
-            setInterval(() => {
-                if (wsRef.current.readyState === WebSocket.OPEN) {
-                    wsRef.current.send(JSON.stringify({ type: 'ping' }));
-                }
-            }, 30000);
-        };
-
-        wsRef.current.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            console.log('WebSocket message received:', data.message)
-
-            console.log ('isLocalUpdate value at ', new Date().toLocaleTimeString(), ': ', isLocalUpdate.current);
-            if (data.message && data.message.action === 'update' && !isLocalUpdate.current) {
-                console.log('Received update message')
+        if (isVisible) {
+            if ( wsRef.current.readyState === WebSocket.CLOSED ){
                 setUpdateFlag(prev => prev + 1); // Increment the flag to trigger re-fetch
-                console.log('Update flag incremented to: ', updateFlag)
             }
-        };
+            if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
+                wsRef.current = new WebSocket('wss://hailsciencetrivia.com/ws/scoresheet/');
 
-        wsRef.current.onerror = (error) => {
-            console.error('WebSocket error:', error);
-        };
+                wsRef.current.onopen = () => {
+                    console.log('Connected to the WebSocket');
+                    // Send a ping message every 30 seconds
+                    setInterval(() => {
+                        if (wsRef.current.readyState === WebSocket.OPEN) {
+                            wsRef.current.send(JSON.stringify({type: 'ping'}));
+                        }
+                    }, 30000);
+                };
 
-        wsRef.current.onclose = () => {
-            console.log('Disconnected from the WebSocket');
-        };
+                wsRef.current.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    console.log('WebSocket message received:', data.message)
 
-        // Cleanup function for WebSocket
-        return () => {
-            if (wsRef.current) {
-                wsRef.current.close();
+                    console.log('isLocalUpdate value at ', new Date().toLocaleTimeString(), ': ', isLocalUpdate.current);
+                    if (data.message && data.message.action === 'update' && !isLocalUpdate.current) {
+                        console.log('Received update message')
+                        setUpdateFlag(prev => prev + 1); // Increment the flag to trigger re-fetch
+                        console.log('Update flag incremented to: ', updateFlag)
+                    }
+                };
+
+                wsRef.current.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+
+                wsRef.current.onclose = () => {
+                    console.log('Disconnected from the WebSocket');
+                };
+
+                // Cleanup function for WebSocket
+                return () => {
+                    if (wsRef.current) {
+                        wsRef.current.close();
+                    }
+                };
             }
-        };
-    }, []);
+        }
+    }, [isVisible]);
 
     const handleScoreChange = (event, player, roundTitle, round) => {
         const confirmChange = confirmPastChange()
