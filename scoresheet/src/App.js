@@ -800,6 +800,7 @@ const PlayerTable = () => {
         if (!confirmChange) return;
 
       setPlayers(players.filter(player => player !== playerToRemove));
+      setIsSaved(false);
     };
 
     const handleChangeDate = (eventOrDate) => {
@@ -992,6 +993,7 @@ const PlayerTable = () => {
             ...prevScores,
             [roundTitle]: newMaxScore
         }));
+        setIsSaved(false);
     };
 
     useEffect(() => {
@@ -1451,11 +1453,11 @@ const PlayerTable = () => {
             <TableCell></TableCell> {/* Empty cell for the player column */}
             <TableCell></TableCell> {/* Empty cell for the joker column */}
               {rounds.map((round, index) => (
-                  <StyledTableCell key={index}>
+                  <StyledTableCell key={index} className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}>
                     <StyledFormControlLabel
                       control={
                         <Checkbox
-                            style={{transform: 'scale(1.5)'}}
+                          style={{transform: 'scale(1.5)'}}
                           checked={cooperativeStatus[round.title] || false}
                           onChange={(event) => handleCooperativeChange(round.title, event.target.checked)}
                         />
