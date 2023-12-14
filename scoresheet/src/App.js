@@ -747,7 +747,7 @@ const PlayerTable = () => {
 
     useEffect(() => {
         if (isVisible) {
-            if ( wsRef.current.readyState === WebSocket.CLOSED ){
+            if ( !wsRef.current || wsRef.current.readyState === WebSocket.CLOSED ){
                 setUpdateFlag(prev => prev + 1); // Increment the flag to trigger re-fetch
             }
             if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
