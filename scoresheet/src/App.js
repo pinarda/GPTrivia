@@ -346,7 +346,7 @@ const PlayerTable = () => {
     const [selectedColumnIndex, setSelectedColumnIndex] = useState(1);
     const [updateFlag, setUpdateFlag] = useState(0); // Update flag
     const isLocalUpdate = useRef(false);
-    const [pageLoadFlag, setPageLoadFlag] = useState(0); // Page load flag
+    const [pageLoadFlag, setPageLoadFlag] = useState(1); // Page load flag
 
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
@@ -466,7 +466,6 @@ const PlayerTable = () => {
     }, [csrfToken, url]);
 
     useEffect(() => {
-        setPageLoadFlag(prevState => prevState - 1);
       fetch(url + '/api/v1/trivia-rounds/', {
             headers: {
                 'Authorization': `Token ${localStorage.getItem('token')}`,
@@ -611,7 +610,6 @@ const PlayerTable = () => {
     }, [selectedDate, defaultPlayers, dates.length, tempTitles.length, url, updateFlag]);
 
     useEffect(() => {
-        setPageLoadFlag(prevState => prevState - 1);
         fetch(url + '/api/v1/presentations/', {
             headers: {
                 'Authorization': `Token ${localStorage.getItem('token')}`,
@@ -1003,7 +1001,7 @@ const PlayerTable = () => {
     };
 
     useEffect(() => {
-        if (pageLoadFlag > 1) {
+        if (pageLoadFlag > 2) {
             console.log('scoresheet changed, saving...');
             saveData();
         }
