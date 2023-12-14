@@ -496,6 +496,8 @@ const PlayerTable = () => {
             const finalUniqueMinor2Categories = [...uniqueMinor2CategoriesSet];
 
             const uniquePlayers = [...new Set(allPlayers)];
+            // reset page load flag
+            setPageLoadFlag(prevState => prevState - 1);
 
             setAllPlayers(uniquePlayers);
             setMajorCategories(uniqueMajorCategories);
@@ -622,9 +624,11 @@ const PlayerTable = () => {
           return response.json();
         })
         .then(json => {
+            setPageLoadFlag(prevState => prevState - 1);
             // strip the score_ prefix from the player names
             const playerNames = players.map(player => player.replace('score_', ''));
             const selectedPresentation = json.find(presentation => convertDate(presentation.name) === selectedDate);
+
 
             if(selectedPresentation) {
                 const jokerRoundIndicesString = selectedPresentation.joker_round_indices;
