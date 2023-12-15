@@ -1,0 +1,29 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # This step sets up known_hosts to avoid SSH host verification prompts
+      - name: Set up SSH known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan hailsciencetrivia.com >> ~/.ssh/known_hosts
+
+      # This step SSH into the server and executes the commands
+      - name: Deploy to Server
+        run: |
+          ssh -i ~/.ssh/deploy_key rawr@hailsciencetrivia.com << EOF
+            cd ~/git/GPTrivia
+            git pull
+            sudo nginx -s reload
+            nohup uvicorn GPTrivia.asgi:application --reload > uvicorn.log 2>&1 &
+          EOF
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}

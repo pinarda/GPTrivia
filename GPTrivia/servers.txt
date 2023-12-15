@@ -6,7 +6,14 @@ Missing jokers for 10/21/2023, 11/17/2022, and scores (10/28/2023), 5/12/2023 mi
 How to start the server:
 
 In this directory:
+
+THIS IS OUTDATED, USE UVICORN
 gunicorn GPTrivia.wsgi:application -c gunicorn.conf.py --access-logfile -
+
+uvicorn GPTrivia.asgi:application --reload
+FIGURE OUT WHAT THESE OPTIONS DO, ARE THEY USEFUL
+--port 8000 --workers 4 --proxy-headers --forwarded-allow-ips="*"
+
 then:
 sudo nginx
 (config for nginx is in /usr/local/etc/nginx/nginx.conf)
