@@ -25,7 +25,7 @@ jobs:
           ssh-keyscan hailsciencetrivia.com >> ~/.ssh/known_hosts
           ssh -i ~/.ssh/deploy_key rawr@hailsciencetrivia.com << EOF
             cd ~/git/GPTrivia
-            git pull
+            git pull --no-edit
             pkill -f 'uvicorn GPTrivia.asgi:application'
             nohup uvicorn GPTrivia.asgi:application --reload > uvicorn.log 2>&1 &
           EOF
