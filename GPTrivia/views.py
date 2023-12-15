@@ -50,16 +50,15 @@ from rest_framework.renderers import JSONRenderer
 from datetime import date
 from django.contrib.postgres.fields import JSONField  # Import this at the top of your file
 
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-config_list = autogen.config_list_from_json(
-    "OAI_CONFIG_LIST",
-    filter_dict={
-        "model": {
-            "gpt-4",
-        }
-    }
-)
+# config_list = autogen.config_list_from_json(
+#     "OAI_CONFIG_LIST",
+#     filter_dict={
+#         "model": {
+#             "gpt-4",
+#         }
+#     }
+# )
 
 config_list = [
     {
