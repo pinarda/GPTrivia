@@ -26,7 +26,6 @@ jobs:
           ssh -i ~/.ssh/deploy_key rawr@hailsciencetrivia.com << EOF
             cd ~/git/GPTrivia
             git pull
-            sudo nginx -s reload
             nohup uvicorn GPTrivia.asgi:application --reload > uvicorn.log 2>&1 &
           EOF
         env:
