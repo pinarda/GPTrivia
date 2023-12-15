@@ -35,8 +35,20 @@ jobs:
             git pull --no-edit
             echo "Stopping uvicorn..."
             pkill -f 'uvicorn GPTrivia.asgi:application'
-            echo "Starting uvicdorn..."
+            MAX_WAIT=10
+            while pgrep -f 'uvicorn GPTrivia.asgi:application' > /dev/null; do
+                if [ $MAX_WAIT -le 0 ]; then
+                    echo "Uvicorn did not stop in time. Proceeding with force kill."
+                    pkill -9 -f 'uvicorn GPTrivia.asgi:application'
+                    break
+                fi
+                echo "Waiting for Uvicorn to stop..."
+                sleep 1
+                ((MAX_WAIT--))
+            done
+            echo "Starting uvicorn..."
             nohup uvicorn GPTrivia.asgi:application --reload > uvicorn.log 2>&1 &
+            exit
           EOF
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
