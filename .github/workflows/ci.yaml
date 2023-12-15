@@ -26,6 +26,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key rawr@hailsciencetrivia.com << EOF
             cd ~/git/GPTrivia
             git pull
+            pkill -f 'uvicorn GPTrivia.asgi:application'
             nohup uvicorn GPTrivia.asgi:application --reload > uvicorn.log 2>&1 &
           EOF
         env:
