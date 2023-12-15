@@ -35,7 +35,7 @@ jobs:
             git pull --no-edit
             echo "Stopping uvicorn..."
             pkill -f 'uvicorn GPTrivia.asgi:application'
-            echo "Starting uvicorn..."
+            echo "Starting uvicdorn..."
             nohup uvicorn GPTrivia.asgi:application --reload > uvicorn.log 2>&1 &
           EOF
         env:
