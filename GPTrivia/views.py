@@ -9,7 +9,9 @@ from .mail import create_presentation, update_merged_presentation, copy_template
 from datetime import datetime
 from django.core.exceptions import ObjectDoesNotExist
 from django.views.decorators.csrf import csrf_exempt
-import openai
+from openai import OpenAI
+
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 from django.views import View
 import os
 import random
@@ -697,7 +699,6 @@ class AutoGenView(View):
 class GenerateImageView(View):
     def post(self, request, *args, **kwargs):
         gpt_response = request.POST.get('gpt_text')
-        openai.api_key = os.getenv('OPENAI_API_KEY')
 
         try:
             # Get the conversation history from the session
@@ -706,29 +707,25 @@ class GenerateImageView(View):
             conversation_history.append({"role": "user", "content": f"SWOOP I want you to condense this text by summarizing the theme of the round being suggested in this prompt in a few words and nothing else: {gpt_response}"})
 
             try:
-                response = openai.ChatCompletion.create(
-                    # model="gpt-3.5-turbo",
-                    # model="gpt-4",
-                    model="gpt-4-1106-preview",
-                    messages=conversation_history,
-                    max_tokens=150
-                )
+                response = client.chat.completions.create(# model="gpt-3.5-turbo",
+                # model="gpt-4",
+                model="gpt-4-1106-preview",
+                messages=conversation_history,
+                max_tokens=150)
                 print(f"RESPONSE: {response}")
-                second_response = response['choices'][0]['message']['content']
+                second_response = response.choices[0].message.content
                 print(f"SECOND RESPONSE: {second_response}")
             except Exception as e:
                 second_response = str(e)
                 return JsonResponse({'dalle_image_url': None})
 
             # Call to DALL-E to generate an image based on the conversation
-            dalle_response = openai.Image.create(
-                prompt=f"Swooper, a snake with wings. He's mysterious and sly. Draw Swooper, and have his surroundings and clothing reflect the theme of {second_response}. Make sure the image is artistic and stylized.",
-                # This assumes you want to generate an image based on the last text response from GPT-4
-                n=1,  # Number of images to generate
-                size="1024x1024",  # The size of the image
-                model='dall-e-3'
-            )
-            image_url = dalle_response['data'][0]['url']  # URL of the generated image
+            dalle_response = client.images.generate(prompt=f"Swooper, a snake with wings. He's mysterious and sly. Draw Swooper, and have his surroundings and clothing reflect the theme of {second_response}. Make sure the image is artistic and stylized.",
+            # This assumes you want to generate an image based on the last text response from GPT-4
+            n=1,  # Number of images to generate
+            size="1024x1024",  # The size of the image
+            model='dall-e-3')
+            image_url = dalle_response.data[0].url  # URL of the generated image
             print(image_url)
 
         except Exception as e:
@@ -740,7 +737,6 @@ class GenerateImageView(View):
 class IconView(View):
     def post(self, request, *args, **kwargs):
         gpt_response = request.POST.get('question_text')
-        openai.api_key = os.getenv('OPENAI_API_KEY')
 
 
         try:
@@ -753,15 +749,13 @@ class IconView(View):
             conversation_history.append({"role": "user", "content": f"I want you to provide key words (no more than two) that summarize the following question. For example, if the question was about dinosaurs, you could response with the word \"dinosaur\" and nothing else. Here's the question: {gpt_response}"})
 
             try:
-                response = openai.ChatCompletion.create(
-                    # model="gpt-3.5-turbo",
-                    # model="gpt-4",
-                    model="gpt-4-1106-preview",
-                    messages=conversation_history,
-                    max_tokens=150
-                )
+                response = client.chat.completions.create(# model="gpt-3.5-turbo",
+                # model="gpt-4",
+                model="gpt-4-1106-preview",
+                messages=conversation_history,
+                max_tokens=150)
                 print(f"RESPONSE: {response}")
-                second_response = response['choices'][0]['message']['content']
+                second_response = response.choices[0].message.content
                 print(f"SECOND RESPONSE: {second_response}")
             except Exception as e:
                 second_response = str(e)
@@ -769,15 +763,13 @@ class IconView(View):
                 return JsonResponse({'dalle_image_url': None})
 
             # Call to DALL-E to generate an image based on the conversation
-            dalle_response = openai.Image.create(
-                prompt=f"Draw me a very simple minimalist white line icon on a black background using the following key words: {second_response}",
-                # This assumes you want to generate an image based on the last text response from GPT-4
-                n=1,  # Number of images to generate
-                size="1024x1024",  # The size of the image
-                model='dall-e-3'
-            )
+            dalle_response = client.images.generate(prompt=f"Draw me a very simple minimalist white line icon on a black background using the following key words: {second_response}",
+            # This assumes you want to generate an image based on the last text response from GPT-4
+            n=1,  # Number of images to generate
+            size="1024x1024",  # The size of the image
+            model='dall-e-3')
             print(f"DALLE RESPONSE: {dalle_response}")
-            image_url = dalle_response['data'][0]['url']  # URL of the generated image
+            image_url = dalle_response.data[0].url  # URL of the generated image
             print(f"IMAGE_URL: {image_url}")
 
         except Exception as e:
@@ -801,7 +793,6 @@ class RoundMaker(View):
 
     def post(self, request, *args, **kwargs):
         user_input = request.POST.get('user_input')
-        openai.api_key = os.getenv('OPENAI_API_KEY')
 
 
         # Get the conversation history from the session
@@ -810,15 +801,13 @@ class RoundMaker(View):
         conversation_history.append({"role": "user", "content": user_input})
 
         try:
-            response = openai.ChatCompletion.create(
-                # model="gpt-3.5-turbo",
-                # model="gpt-4",
-                model = "gpt-4-1106-preview",
-                messages=conversation_history,
-                max_tokens=150
-            )
+            response = client.chat.completions.create(# model="gpt-3.5-turbo",
+            # model="gpt-4",
+            model = "gpt-4-1106-preview",
+            messages=conversation_history,
+            max_tokens=150)
             print(f"RESPONSE: {response}")
-            gpt_response = response['choices'][0]['message']['content']
+            gpt_response = response.choices[0].message.content
             conversation_history.append({"role": "assistant", "content": gpt_response})
             request.session['conversation_history'] = conversation_history
 

@@ -78,6 +78,7 @@ DONE - pip install uvicorn[standard]
 DONE - brew install redis
 DONE - changing scores and round details should not require button press
 DONE - max score/add player/delete player isn't syncing, coop checkbox not showing on mobile,
+DONE - try setting up github actions to trigger a build on push to main, and have it push to the server
 
 TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
 TEST FIX - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be (Could be a timezone issue)
@@ -102,7 +103,6 @@ High - add normalize option to the rounds list
 MEDIUM (1-2 hrs)
 
 TODO - change the way we detect sender for the scoresheet, timeout has serious flaws, use a sender ID instead.
-TODO - try setting up github actions to trigger a build on push to main, and have it push to the server
 SCORESHEET WISHLIST - style points, tiebreaker, notes?
 
 High - add sorting to the player round/rounds list page, also want to be able to see the lowest high score on a round.
