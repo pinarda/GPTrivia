@@ -20,6 +20,7 @@ jobs:
       # This step SSH into the server and executes the commands
       - name: Deploy to Server
         run: |
+          set -x
           echo "Creating ssh folder..."
           mkdir -p ~/.ssh
           echo "Adding deploy key..."
