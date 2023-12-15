@@ -24,9 +24,9 @@ jobs:
           echo "Adding deploy key..."
           echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key
           echo "Setting permissions..."
-          chmod 600 ~/.ssh/deploy_key
+          chmod 700 ~/.ssh/deploy_key
           echo "Adding server to known hosts..."
-          ssh-keyscan hailsciencetrivia.com >> ~/.ssh/known_hosts
+          /usr/bin/ssh-keyscan hailsciencetrivia.com >> ~/.ssh/known_hosts 2>&1
           echo "Deploying to server..."
           ssh -i ~/.ssh/deploy_key rawr@hailsciencetrivia.com << EOF
             echo "Changing directories..."
