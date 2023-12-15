@@ -24,9 +24,13 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan hailsciencetrivia.com >> ~/.ssh/known_hosts
           ssh -i ~/.ssh/deploy_key rawr@hailsciencetrivia.com << EOF
+            echo "Deploying to server..."
             cd ~/git/GPTrivia
+            echo "Pulling from GitHub..."
             git pull --no-edit
+            echo "Stopping uvicorn..."
             pkill -f 'uvicorn GPTrivia.asgi:application'
+            echo "Starting uvicorn..."
             nohup uvicorn GPTrivia.asgi:application --reload > uvicorn.log 2>&1 &
           EOF
         env:
