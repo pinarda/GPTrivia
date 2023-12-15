@@ -19,6 +19,10 @@ jobs:
       # This step SSH into the server and executes the commands
       - name: Deploy to Server
         run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan hailsciencetrivia.com >> ~/.ssh/known_hosts
           ssh -i ~/.ssh/deploy_key rawr@hailsciencetrivia.com << EOF
             cd ~/git/GPTrivia
             git pull
