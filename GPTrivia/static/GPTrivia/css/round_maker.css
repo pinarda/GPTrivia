@@ -5,10 +5,10 @@ body {
   background-color: #333;
   color:white;
 
-  background-image: url('swoop.png');
-  background-position: -200px 400px;  /* e.g., 'center top', '100px 200px' */
-  background-size: 70vw 70vw;  /* e.g., 'cover', 'contain', '100px 200px' */
-  background-repeat: no-repeat;
+  background-image: url('swoop.png'), url('facingleft.png');
+  background-position: -200px 400px, 700px 800px;  /* e.g., 'center top', '100px 200px' */
+  background-size: 70vw 70vw, 70vw 70vw;  /* e.g., 'cover', 'contain', '100px 200px' */
+  background-repeat: no-repeat, no-repeat;  /* e.g., 'repeat-x', 'repeat-y', 'no-repeat' */
   position: relative;
   z-index: -1;
 }
