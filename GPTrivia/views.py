@@ -11,7 +11,6 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.views.decorators.csrf import csrf_exempt
 from openai import OpenAI
 
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 from django.views import View
 import os
 import random
@@ -51,6 +50,7 @@ from rest_framework.renderers import JSONRenderer
 from datetime import date
 from django.contrib.postgres.fields import JSONField  # Import this at the top of your file
 
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 config_list = autogen.config_list_from_json(
     "OAI_CONFIG_LIST",
