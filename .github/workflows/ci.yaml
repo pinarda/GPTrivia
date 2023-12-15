@@ -29,6 +29,7 @@ jobs:
           /usr/bin/ssh-keyscan hailsciencetrivia.com >> ~/.ssh/known_hosts 2>&1
           echo "Deploying to server..."
           ssh -i ~/.ssh/deploy_key rawr@hailsciencetrivia.com << EOF
+            set -x
             echo "Changing directories..."
             cd ~/git/GPTrivia
             echo "Pulling from GitHub..."
@@ -37,7 +38,7 @@ jobs:
             pkill -f 'uvicorn GPTrivia.asgi:application'
             MAX_WAIT=10
             while pgrep -f 'uvicorn GPTrivia.asgi:application' > /dev/null; do
-                if [ $MAX_WAIT -le 0 ]; then
+                if [ "$MAX_WAIT" -le 0 ]; then
                     echo "Uvicorn did not stop in time. Proceeding with force kill."
                     pkill -9 -f 'uvicorn GPTrivia.asgi:application'
                     break
