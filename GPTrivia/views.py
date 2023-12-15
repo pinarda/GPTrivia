@@ -52,6 +52,8 @@ from django.contrib.postgres.fields import JSONField  # Import this at the top o
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
+breakme!
+
 config_list = autogen.config_list_from_json(
     "OAI_CONFIG_LIST",
     filter_dict={

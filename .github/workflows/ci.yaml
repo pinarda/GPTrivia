@@ -48,8 +48,7 @@ jobs:
                 ((MAX_WAIT--))
             done
             echo "Starting uvicorn..."
-            nohup uvicorn GPTrivia.asgi:application --reload > uvicorn.log 2>&1 &
-            exit
+            uvicorn GPTrivia.asgi:application --reload
           EOF
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
