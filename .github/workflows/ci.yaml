@@ -19,12 +19,17 @@ jobs:
       # This step SSH into the server and executes the commands
       - name: Deploy to Server
         run: |
+          echo "Creating ssh folder..."
           mkdir -p ~/.ssh
+          echo "Adding deploy key..."
           echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          echo "Setting permissions..."
           chmod 600 ~/.ssh/deploy_key
+          echo "Adding server to known hosts..."
           ssh-keyscan hailsciencetrivia.com >> ~/.ssh/known_hosts
+          echo "Deploying to server..."
           ssh -i ~/.ssh/deploy_key rawr@hailsciencetrivia.com << EOF
-            echo "Deploying to server..."
+            echo "Changing directories..."
             cd ~/git/GPTrivia
             echo "Pulling from GitHub..."
             git pull --no-edit
