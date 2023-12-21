@@ -191,6 +191,43 @@
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
+
+    // Saving data to local storage
+    function saveData() {
+        const textboxes = document.querySelectorAll('#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title');
+        textboxes.forEach(textbox => {
+            textbox.addEventListener('input', () => {
+                localStorage.setItem(textbox.id, textbox.value);
+            });
+        });
+    }
+
+    // Loading data from local storage
+    function loadData() {
+        const textboxes = document.querySelectorAll('#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title');
+        textboxes.forEach(textbox => {
+            const savedValue = localStorage.getItem(textbox.id);
+            if (savedValue) {
+                textbox.value = savedValue;
+            }
+        });
+    }
+
+    // Clear data from local storage on form submission
+    function clearData() {
+        const form = document.querySelector('submit-button');
+        form.addEventListener('submit', () => {
+            localStorage.clear();
+        });
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        loadData();
+        saveData();
+        clearData();
+    });
+
     function typeWriter(text, elem, i, interval) {
         if (i < text.length) {
             // If the current character is a newline, append a <br> tag, otherwise append the character

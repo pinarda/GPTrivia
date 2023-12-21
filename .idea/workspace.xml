@@ -5,22 +5,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/GPTrivia/consumers.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GPTrivia/routing.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/static/GPTrivia/css/output-onlinepngtools(1).png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/TODO" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/TODO" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/asgi.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/asgi.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/servers.txt" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/servers.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/home.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/home.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/player_analysis.css" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/player_analysis.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/token.pickle" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/token.pickle" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/views.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scoresheet/src/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/src/App.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/GPTrivia/css/home.css" beforeDir="false" afterPath="$PROJECT_DIR$/static/GPTrivia/css/home.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/GPTrivia/css/player_analysis.css" beforeDir="false" afterPath="$PROJECT_DIR$/static/GPTrivia/css/player_analysis.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dump.rdb" beforeDir="false" afterPath="$PROJECT_DIR$/dump.rdb" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -55,43 +48,43 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_ADD_EXTERNAL_FILES": "true",
-    "DefaultHtmlFileTemplate": "HTML File",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "/Users/alex/git/GPTrivia/GPTrivia/static/scoresheet",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
-    "ts.external.directory.path": "/Applications/PyCharm.app/Contents/plugins/javascript-impl/jsLanguageServicesImpl/external",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
+    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/alex/git/GPTrivia/GPTrivia/static/GPTrivia/css&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/Applications/PyCharm.app/Contents/plugins/javascript-impl/jsLanguageServicesImpl/external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "DatabaseDriversLRU": [
-      "sqlite"
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;sqlite&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css" />
       <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet" />
       <recent name="$PROJECT_DIR$" />
-      <recent name="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css" />
       <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet/build" />
       <recent name="$PROJECT_DIR$/static/img" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css" />
       <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/media" />
       <recent name="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css/media" />
-      <recent name="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css" />
       <recent name="$PROJECT_DIR$/GPTrivia/media" />
     </key>
   </component>
@@ -331,7 +324,9 @@
       <workItem from="1701969933998" duration="3405000" />
       <workItem from="1702075713135" duration="894000" />
       <workItem from="1702324491793" duration="368000" />
-      <workItem from="1702433967392" duration="44418000" />
+      <workItem from="1702433967392" duration="57674000" />
+      <workItem from="1702708963908" duration="476000" />
+      <workItem from="1702755127897" duration="4169000" />
     </task>
     <servers />
   </component>
@@ -357,17 +352,17 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>328</line>
+          <line>334</line>
           <option name="timeStamp" value="23" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>258</line>
+          <line>264</line>
           <option name="timeStamp" value="25" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>863</line>
+          <line>853</line>
           <option name="timeStamp" value="34" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -383,12 +378,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>655</line>
+          <line>661</line>
           <option name="timeStamp" value="337" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>349</line>
+          <line>355</line>
           <option name="timeStamp" value="351" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -408,33 +403,38 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>107</line>
+          <line>113</line>
           <option name="timeStamp" value="371" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>780</line>
+          <line>774</line>
           <option name="timeStamp" value="373" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>784</line>
+          <line>778</line>
           <option name="timeStamp" value="374" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>756</line>
+          <line>754</line>
           <option name="timeStamp" value="375" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>754</line>
+          <line>752</line>
           <option name="timeStamp" value="381" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
-          <line>1166</line>
+          <line>1156</line>
           <option name="timeStamp" value="386" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/GPTrivia/views.py</url>
+          <line>828</line>
+          <option name="timeStamp" value="388" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
@@ -543,22 +543,22 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html</url>
-          <line>420</line>
+          <line>457</line>
           <option name="timeStamp" value="377" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html</url>
-          <line>448</line>
+          <line>485</line>
           <option name="timeStamp" value="378" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html</url>
-          <line>460</line>
+          <line>497</line>
           <option name="timeStamp" value="379" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html</url>
-          <line>357</line>
+          <line>394</line>
           <option name="timeStamp" value="384" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="django-line">
