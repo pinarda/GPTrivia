@@ -192,34 +192,87 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
 
-    // Saving data to local storage
+    function isLocalStorageAvailable() {
+        try {
+            var test = 'test';
+            localStorage.setItem(test, test);
+            localStorage.removeItem(test);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function setCookie(name, value, days) {
+        var expires = "";
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    }
+
+    function getCookie(name) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    }
+
+    function clearCookie(name) {
+        setCookie(name, '', -1);
+    }
+
+    // Saving data to storage
     function saveData() {
         const textboxes = document.querySelectorAll('#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title');
         textboxes.forEach(textbox => {
             textbox.addEventListener('input', () => {
-                localStorage.setItem(textbox.id, textbox.value);
+                if (isLocalStorageAvailable()) {
+                    localStorage.setItem(textbox.id, textbox.value);
+                } else {
+                    setCookie(textbox.id, textbox.value, 7);
+                }
             });
         });
     }
 
-    // Loading data from local storage
+    // Loading data from storage
     function loadData() {
         const textboxes = document.querySelectorAll('#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title');
         textboxes.forEach(textbox => {
-            const savedValue = localStorage.getItem(textbox.id);
+            let savedValue;
+            if (isLocalStorageAvailable()) {
+                savedValue = localStorage.getItem(textbox.id);
+            } else {
+                savedValue = getCookie(textbox.id);
+            }
             if (savedValue) {
                 textbox.value = savedValue;
             }
         });
     }
 
-    // Clear data from local storage on form submission
+    // Clear data from storage on form submission
     function clearData() {
-        const form = document.querySelector('submit-button');
+        const form = document.querySelector('#submit-button');
         form.addEventListener('submit', () => {
-            localStorage.clear();
+            if (isLocalStorageAvailable()) {
+                localStorage.clear();
+            } else {
+                // Clear each cookie individually
+                document.querySelectorAll('#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title').forEach(textbox => {
+                    clearCookie(textbox.id);
+                });
+            }
         });
     }
+
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
