@@ -1,3 +1,26 @@
+remote access to server:
+
+
+Sleep desktop:
+
+rundll32.exe powrprof.dll,SetSuspendState 0,1,0
+
+Wake desktop:
+ssh rawr@hailsciencetrivia.com
+wakeonlan -p 7 A8:A1:59:4C:00:4E
+
+Ssh into Mac:
+ssh rawr@hailsciencetrivia.com
+
+Ssh into desktop:
+ssh -p 23 pinar@hailsciencetrivia.com
+
+Remote Desktop:
+DESKTOP-SIIUD1K
+67.165.238.242
+
+
+
 Notes:
 
 Missing jokers for 10/21/2023, 11/17/2022, and scores (10/28/2023), 5/12/2023 missing scores (check db in github)? Also 7/14/2023 (jenny has these).
