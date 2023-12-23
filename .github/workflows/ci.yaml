@@ -35,8 +35,14 @@ jobs:
             set -x
             echo "Changing directories..."
             cd ~/git/GPTrivia
+            git checkout main
+            git add db.sqlite3
+            git commit -m "Update database"
+            git push
+            git stash
             echo "Pulling from GitHub..."
             git pull --no-edit
+            git stash pop
             echo "Stopping uvicorn..."
             pkill -f 'uvicorn GPTrivia.asgi:application'
             MAX_WAIT=10
@@ -50,6 +56,7 @@ jobs:
                 sleep 1
                 ((MAX_WAIT--))
             done
+            kill $(lsof -i :8000 -t)
             echo "Starting uvicorn..."
             nohup uvicorn GPTrivia.asgi:application --reload > uvicorn.log 2>&1 &
             echo "Done!"
