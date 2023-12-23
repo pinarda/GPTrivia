@@ -206,6 +206,7 @@
             storage.removeItem(testKey);
 
             // Check if the value was properly set and retrieved
+            console.log("Local Storage available:", testValue === 'testValue')
             return testValue === 'testValue';
         } catch (e) {
             // Log the error for troubleshooting
