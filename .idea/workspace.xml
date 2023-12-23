@@ -5,9 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/static/GPTrivia/css/output-onlinepngtools(1).png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/TODO" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/TODO" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/servers.txt" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/servers.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/token.pickle" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/token.pickle" afterDir="false" />
@@ -326,7 +326,8 @@
       <workItem from="1702324491793" duration="368000" />
       <workItem from="1702433967392" duration="57674000" />
       <workItem from="1702708963908" duration="476000" />
-      <workItem from="1702755127897" duration="4169000" />
+      <workItem from="1702755127897" duration="14473000" />
+      <workItem from="1703314130688" duration="887000" />
     </task>
     <servers />
   </component>
@@ -543,22 +544,22 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html</url>
-          <line>457</line>
+          <line>524</line>
           <option name="timeStamp" value="377" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html</url>
-          <line>485</line>
+          <line>552</line>
           <option name="timeStamp" value="378" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html</url>
-          <line>497</line>
+          <line>564</line>
           <option name="timeStamp" value="379" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html</url>
-          <line>394</line>
+          <line>461</line>
           <option name="timeStamp" value="384" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="django-line">

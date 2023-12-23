@@ -194,14 +194,28 @@
 
     function isLocalStorageAvailable() {
         try {
-            var test = 'test';
-            localStorage.setItem(test, test);
-            localStorage.removeItem(test);
-            return true;
+            // Test key for storage
+            const testKey = 'testLocalStorage';
+            const storage = window.localStorage;
+
+            // Try setting an item
+            storage.setItem(testKey, 'testValue');
+            // Try getting the item
+            const testValue = storage.getItem(testKey);
+            // Try removing the item
+            storage.removeItem(testKey);
+
+            // Check if the value was properly set and retrieved
+            return testValue === 'testValue';
         } catch (e) {
+            // Log the error for troubleshooting
+            console.error("Local Storage not available:", e);
+
+            // Return false indicating local storage is not available
             return false;
         }
     }
+
 
     function setCookie(name, value, days) {
         var expires = "";
