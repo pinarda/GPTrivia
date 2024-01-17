@@ -85,13 +85,13 @@ playerColorMapping = {
             'Jeff': '#333333',
             'Paige': '#333333',
             'Dillon': '#333333',
-            'Tom': '#333333',
+            'Tom': '#8c564b',
             'Unknown': '#333333',
         };
 
 players = [
     'score_alex', 'score_ichigo', 'score_megan', 'score_zach', 'score_jenny', 'score_debi',
-    'score_dan', 'score_chris', 'score_drew']
+    'score_dan', 'score_chris', 'score_drew', 'score_tom']
 
 class CustomPasswordChangeView(auth_views.PasswordChangeView):
     template_name = 'registration/password_change.html'
@@ -126,7 +126,7 @@ class ShareView(View):
 def rounds_list(request):
     rounds = GPTriviaRound.objects.all()
     text_color = {}
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew"]
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom"]
     for player in players:
         # grab the player's hex color from the playerColorMapping dictionary
         player_color = playerColorMapping[player]
@@ -148,11 +148,11 @@ def rounds_list(request):
 def player_analysis(request):
     queryset_rounds = GPTriviaRound.objects.all()
 
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew"]
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom"]
 
     # a dicitonary that maps the player name to the string score_playername
     player_name_mapping = {"Alex": "score_alex", "Ichigo": "score_ichigo", "Megan": "score_megan", "Zach": "score_zach",
-                            "Jenny": "score_jenny", "Debi": "score_debi", "Dan": "score_dan", "Chris": "score_chris", "Drew": "score_drew"}
+                            "Jenny": "score_jenny", "Debi": "score_debi", "Dan": "score_dan", "Chris": "score_chris", "Drew": "score_drew", "Tom": "score_tom"}
 
 
     creators = set()
@@ -182,6 +182,7 @@ def player_analysis(request):
         'score_dan': round.score_dan if round.score_dan is not None else '',
         'score_chris': round.score_chris if round.score_chris is not None else '',
         'score_drew': round.score_drew if round.score_drew is not None else '',
+        'score_tom': round.score_tom if round.score_tom is not None else '',
         'replay': str(round.replay).lower(),
         'cooperative': str(round.cooperative).lower(),
     } for round in queryset_rounds]
@@ -457,7 +458,7 @@ def player_profile_dict(request, player_name):
     # save category of the round with the highest and lowest average score for the player
     max_avg = category_averages[0]['major_category']
     min_avg = category_averages[len(category_averages) - 1]['major_category']
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew"]
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom"]
 
     # count the total number of rounds the player has a score for
     total_rounds = GPTriviaRound.objects.filter(**{f"{score_p}__isnull": False}).count()
@@ -879,6 +880,7 @@ def home(request):
                 new_round.score_dan = 0
                 new_round.score_chris = 0
                 new_round.score_drew = 0
+                new_round.score_tom = 0
                 new_round.replay = 0
                 new_round.cooperative = 0
                 new_round.link = round_links[round_index]
@@ -921,6 +923,7 @@ def home(request):
                 new_round.score_dan = 0
                 new_round.score_chris = 0
                 new_round.score_drew = 0
+                new_round.score_tom = 0
                 new_round.replay = 0
                 new_round.cooperative = 0
                 new_round.link = new_links[round_index]
@@ -930,7 +933,7 @@ def home(request):
 
 @login_required
 def scoresheet(request):
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew"]
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom"]
     # for the round titles, we will query the database for the MergePresentation object with the latest id
     # and get the round_names attribute
     try:
@@ -1142,6 +1145,7 @@ def save_scores(request):
         trivia_round.score_dan = round_data.get('score_dan')
         trivia_round.score_chris = round_data.get('score_chris')
         trivia_round.score_drew = round_data.get('score_drew')
+        trivia_round.score_tom = round_data.get('score_tom')
         trivia_round.replay = round_data.get('replay', False)
         trivia_round.cooperative = round_data.get('cooperative', False)
 
