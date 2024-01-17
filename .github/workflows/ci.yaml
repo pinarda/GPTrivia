@@ -58,7 +58,6 @@ jobs:
             done
             kill $(lsof -i :8000 -t)
             echo "Starting uvicorn..."
-            cd ~/git/GPTrivia
             nohup uvicorn GPTrivia.asgi:application --reload > uvicorn.log 2>&1 &
             echo "Done!"
           EOF
