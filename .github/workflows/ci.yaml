@@ -31,7 +31,7 @@ jobs:
           /usr/bin/ssh-keyscan hailsciencetrivia.com >> ~/.ssh/known_hosts 2>&1
           echo "Deploying to server..."
           ssh -i ~/.ssh/deploy_key rawr@hailsciencetrivia.com << EOF
-            export OPENAI_API_KEY="${{ env.OPENAI_API_KEY }}"
+            source ~/.bashrc
             set -x
             echo "Changing directories..."
             cd ~/git/GPTrivia

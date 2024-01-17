@@ -565,7 +565,10 @@ def player_profile_dict(request, player_name):
     for item in creator_averages:
         creator = item['creator']
         if creator in final_averages:
-            biases[creator] = item['avg_score'] - final_averages[creator]
+            if final_averages[creator] is not None and item['avg_score'] is not None:
+                biases[creator] = item['avg_score'] - final_averages[creator]
+            else:
+                biases[creator] = 0
 
     # add the player_averages back to each entry in biases
     sumb = 0
