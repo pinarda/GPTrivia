@@ -5,69 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/GPTrivia/migrations/0004_gptriviaround_score_tom.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/1b79ab79-7505-4816-a196-fda144a2bab4.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/1b79ab79-7505-4816-a196-fda144a2bab4.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/a5e61a60-7626-4480-94ae-9dfd7077ab3d.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/a5e61a60-7626-4480-94ae-9dfd7077ab3d.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/e2666952-f55c-4010-88fa-0799f91d9940.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/e2666952-f55c-4010-88fa-0799f91d9940.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.github/workflows/ci_old.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.github/workflows/ci.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/ci.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/TODO" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/TODO" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/servers.txt" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/servers.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/token.pickle" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/token.pickle" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/views.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scoresheet/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scoresheet/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scoresheet/src/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/src/App.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.0089262c.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.03be6f56.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.04caeacd.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.07b3303b.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.09a4036d.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.10bb2872.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.15713d70.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.1861c997.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.1cf28e3c.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.1e547d3a.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.1e9bb751.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.1ec84bbc.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.40366275.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.4588e9b5.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.460814e0.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.574df4f2.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.599c6d78.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.63224ba1.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.65262381.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.6aa19106.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.6aa705bd.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.748ed78f.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.8149297b.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.95e0b61f.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.9f33f36e.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.a955635f.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.aeb7955a.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.b143a6c1.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.b1e9f3a5.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.b321a4d9.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.b489ae47.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.b4db4a65.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.b63e945e.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.b962aeed.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.bbc8c03c.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.beaf6435.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.c25d3352.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.c2985a6f.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.c592c7ce.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.c662ab3b.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.c858f9bc.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.cdb4f4ea.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.d8631cf0.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/scoresheet/build/static/js/main.dcba58ae.js" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -112,9 +55,9 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "WebServerToolWindowFactoryState": "false",
-    "django.template.preview.state": "SHOW_EDITOR_AND_PREVIEW",
+    "django.template.preview.state": "SHOW_EDITOR",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/alex/git/GPTrivia/GPTrivia/static/scoresheet",
+    "last_opened_file_path": "/Users/alex/git/GPTrivia/.github/workflows",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -132,11 +75,11 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/.github/workflows" />
       <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet" />
       <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet/build/static/js" />
       <recent name="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css" />
       <recent name="$PROJECT_DIR$" />
-      <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet/build" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/GPTrivia/static/GPTrivia/css" />
@@ -411,7 +354,7 @@
       <workItem from="1705028669698" duration="528000" />
       <workItem from="1705029636203" duration="315000" />
       <workItem from="1705081678326" duration="557000" />
-      <workItem from="1705386795095" duration="2775000" />
+      <workItem from="1705386795095" duration="5777000" />
     </task>
     <servers />
   </component>
