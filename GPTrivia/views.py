@@ -85,6 +85,7 @@ playerColorMapping = {
             'Jeff': '#333333',
             'Paige': '#333333',
             'Dillon': '#333333',
+            'Tom': '#333333',
             'Unknown': '#333333',
         };
 

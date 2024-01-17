@@ -50,6 +50,7 @@ class GPTriviaRound(models.Model):
     score_jeff = models.FloatField(null=True)
     score_dillon = models.FloatField(null=True)
     score_paige = models.FloatField(null=True)
+    score_tom = models.FloatField(null=True)
     replay = models.BooleanField(default=False)
     cooperative = models.BooleanField(default=False)
     notes = models.TextField(blank=True)

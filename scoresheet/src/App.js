@@ -37,6 +37,7 @@ import styled, { createGlobalStyle } from 'styled-components';
         'score_jeff': '#333333',
         'score_paige': '#333333',
         'score_dillon': '#333333',
+        'score_tom': '#333333',
         'unknown': '#333333',
     };
 
@@ -309,7 +310,7 @@ import styled, { createGlobalStyle } from 'styled-components';
 const PlayerTable = () => {
     const defaultPlayers = useMemo(() => {
       // The initial calculation of defaultPlayers goes here
-      return ["score_alex", "score_dan", "score_debi", "score_jenny", "score_megan", "score_ichigo", "score_chris", "score_zach"];
+      return ["score_alex", "score_dan", "score_debi", "score_jenny", "score_megan", "score_ichigo", "score_chris", "score_zach", "score_tom", "score_drew"];
     }, []);
 
     const [rounds, setRounds] = useState([]);
@@ -856,18 +857,23 @@ const PlayerTable = () => {
             let currentDateString = selectedDate;
             let currentDate = new Date(currentDateString);
             const today = new Date();
-            const year = today.getFullYear();
-            const month = today.getMonth() + 1;
-            const day = today.getDate();
-            if (currentDate.getFullYear() === year && currentDate.getMonth() + 1 === month && currentDate.getDate() + 1 === day) {
+            const dateString = today.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+
+            // Splitting the dateString into year, month, and day
+            const parts = dateString.split('/');
+            const year = parts[2];
+            const month = parts[0].padStart(2, '0'); // Ensuring two digits
+            const day = parts[1].padStart(2, '0');   // Ensuring two digits
+
+            const todayStr = `${year}-${month}-${day}`;
+
+            if (currentDate.getFullYear() === parseInt(year) && currentDate.getMonth() + 1 === parseInt(month) && currentDate.getDate() === parseInt(day)) {
                 return;
             }
-            // remember to pad the month and day with leading zeros (they must be converted to strings first)
-            const todayStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
             setDates(prevDates => [...prevDates, todayStr]);
-            setSelectedDate(todayStr);
-            setTempTitles([]);
-            setPresID(0);
+                setSelectedDate(todayStr);
+                setTempTitles([]);
+                setPresID(0);
         }
     }
 
@@ -1580,6 +1586,7 @@ const PlayerTable = () => {
                           value = {roundCreators[round.title] || ''}
                             onChange={(e) => handleCreatorChange(round.title, e.target.value)}
                         >
+                            <MenuItem value="">Unknown</MenuItem> {/* Added "None" option */}
                             {allPlayers.map((player, index) => (
                                 <MenuItem key={index} value={player}>
                                     {player}

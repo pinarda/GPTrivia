@@ -46,6 +46,9 @@ restart:
 
 sudo nginx -s stop && sudo nginx
 
+To access the crontab for ssl certificate renewal:
+sudo crontab -e
+
 
 How to make sure the database is updated (in this directory):
 
