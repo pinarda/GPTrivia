@@ -80,6 +80,8 @@ DONE - changing scores and round details should not require button press
 DONE - max score/add player/delete player isn't syncing, coop checkbox not showing on mobile,
 DONE - try setting up github actions to trigger a build on push to main, and have it push to the server
 DONE - certificate stuff/cronjob
+DONE - GRAB THE LATEST DB FROM THE SERVER AND RUN MAKE MIGRATIONS AND MIGRATE (and rebuild scoresheet)
+DONE - For some reason the confirm button for editing a previous date is happening on newly created roundse
 
 TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
 TEST FIX - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be (Could be a timezone issue)
@@ -98,11 +100,9 @@ TODO - lost dec scores on server after websockets commit
 TODO - no, actually when we delete a round (say round 2), the names get shifted over, so if we have R1, R2, R3 and delete R2, our round names now correspond to R1 and R2, but it should be R1 and R3
 
 TODO - Opening hailsciencetrivia in a new window comes up with a permission denied error for a newly created presentation
-TODO - For some reason the confirm button for editing a previous date is happening on newly created roundse
 TODO - seems like we're still losing jokers sometimes - 1/6 is missing (or not displaying) them
 TODO - add an option for no creator or other to the select dropdown
 
-TODO - GRAB THE LATEST DB FROM THE SERVER AND RUN MAKE MIGRATIONS AND MIGRATE (and rebuild scoresheet)
 
 High - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
 High - add normalize option to the rounds list
@@ -111,7 +111,7 @@ High - add normalize option to the rounds list
 MEDIUM (1-2 hrs)
 
 TODO - add players, host/scorekeeper colummns to the database
-TODO - Refreshing page causes added players and missing players to disappear (and so also screws up creator scores)
+TODO - Refreshing page causes added players and missing players to disappear (and so also screws up creator scores maybe?)
 TODO - change the way we detect sender for the scoresheet, timeout has serious flaws, use a sender ID instead.
 TODO - change the today button so we can choose any date and start a new scoresheet for that date if one does not exist, otherwise go to the existing scoresheet for that date
 

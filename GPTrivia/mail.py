@@ -32,6 +32,7 @@ MAIL_NAME_MAP = {
     'Drew': 'Drew',
     'doodlwagon': "Jenny",
     'Paige': "Paige",
+    'Tom': "Tom",
     'Hail': "Swooper"
 }
 
