@@ -630,7 +630,11 @@ const PlayerTable = () => {
 
             if(selectedPresentation) {
                 const jokerRoundIndicesString = selectedPresentation.joker_round_indices;
-                const jokerRoundIndices = JSON.parse(jokerRoundIndicesString.replace(/'/g, "\"").replace(/^'/, '"').replace(/'$/, '"').replace(/~~~~/g, "'"));
+                if (jokerRoundIndicesString !== null) {
+                    var jokerRoundIndices = JSON.parse(jokerRoundIndicesString.replace(/'/g, "\"").replace(/^'/, '"').replace(/'$/, '"').replace(/~~~~/g, "'"));
+                } else {
+                    var jokerRoundIndices = {};
+                }
                 // const jokerRoundIndices = selectedPresentation.joker_round_indices;
                 const ID = selectedPresentation.presentation_id;
 
@@ -860,10 +864,10 @@ const PlayerTable = () => {
             const dateString = today.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
 
             // Splitting the dateString into year, month, and day
-            const parts = dateString.split('/');
-            const year = parts[2];
-            const month = parts[0].padStart(2, '0'); // Ensuring two digits
-            const day = parts[1].padStart(2, '0');   // Ensuring two digits
+            const parts = dateString.split('-');
+            const year = parts[0];
+            const month = parts[1].padStart(2, '0'); // Ensuring two digits
+            const day = parts[2].padStart(2, '0');   // Ensuring two digits
 
             const todayStr = `${year}-${month}-${day}`;
 
