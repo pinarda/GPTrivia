@@ -12,6 +12,8 @@ import {
     InputLabel,
     TextField,
     Input,
+     createTheme,
+    ThemeProvider
 } from "@mui/material";
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
@@ -57,6 +59,35 @@ import { parseISO, format } from 'date-fns';
         background-color: ${props => darkenBackground(playerColorMapping[props.player] || '#000')};// Darken the background color on hover
       }
     `;
+
+    const DateTheme = createTheme({
+      components: {
+        // Name of the component
+        MuiDatePicker: {
+          styleOverrides: {
+            // Name of the slot
+            root: {
+              // Some CSS
+              backgroundColor: '#333',
+            },
+          },
+        },
+        MuiPickersDay: {
+          styleOverrides: {
+            root: {
+              '&.Mui-selected': {
+                backgroundColor: '#1976d2',
+                color: '#fff',
+                '&:hover': {
+                  backgroundColor: '#115293',
+                },
+              },
+            },
+          },
+        },
+        // Other component overrides if needed
+      },
+    });
 
     function playerTextColor(hexColor) {
 
@@ -1304,63 +1335,57 @@ const PlayerTable = () => {
             {/*</StyledFormControl>*/}
 
             <StyledFormControl>
-                <LocalizationProvider dateAdapter={AdapterDateFns}>
-                    <StyledButton variant="contained" color="secondary" onClick={() => setOpenDatePicker(true)}>
-                        Calendar
-                    </StyledButton>
-                    <DatePicker
-                    open={openDatePicker}
-                    value={selectedDate ? parseISO(selectedDate) : null}
-                      onChange={(newValue) => {
-                        const formattedDate = format(newValue, 'yyyy-MM-dd');
-                        // Create a synthetic event with the new date in event.target.value
-                        const syntheticEvent = { target: { value: formattedDate } };
+                <ThemeProvider theme={DateTheme}>
+                    <LocalizationProvider dateAdapter={AdapterDateFns}>
+                        <StyledButton variant="contained" color="secondary" onClick={() => setOpenDatePicker(true)}>
+                            Calendar
+                        </StyledButton>
+                        <DatePicker
+                        open={openDatePicker}
+                        value={selectedDate ? parseISO(selectedDate) : null}
+                          onChange={(newValue) => {
+                            const formattedDate = format(newValue, 'yyyy-MM-dd');
+                            // Create a synthetic event with the new date in event.target.value
+                            const syntheticEvent = { target: { value: formattedDate } };
 
-                        handleChangeDate(syntheticEvent); // Pass the synthetic event to handleChangeDate
-                        setOpenDatePicker(false); // Close the DatePicker after selection
-                      }}
-                    onClose={() => setOpenDatePicker(false)}
-                    renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          sx={{
-                            '& .MuiInputBase-root': {
-                              backgroundColor: '#333', // Change this to your desired background color for the input field
-                            },
-                            // You can add more styles if needed
+                            handleChangeDate(syntheticEvent); // Pass the synthetic event to handleChangeDate
+                            setOpenDatePicker(false); // Close the DatePicker after selection
+                          }}
+                        onClose={() => setOpenDatePicker(false)}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              InputProps={{
+                                ...params.InputProps,
+                                style: { backgroundColor: '#333' } // Apply background color directly
+                              }}
+                            />
+                          )}
+                          renderDay={(day, sortedDates, pickersDayProps) => {
+                            const dateString = format(day, 'yyyy-MM-dd');
+                            const isSelected = sortedDates.includes(dateString);
+                            // log the sortedDates and the dateString to see if they match
+                            console.log('sortedDates:', sortedDates);
+                            console.log('dateString:', dateString);
+
+                            return (
+                              <PickersDay
+                                {...pickersDayProps}
+                                sx={{
+                                  ...(isSelected && {
+                                    backgroundColor: 'lightblue', // This is the highlight color for selected dates
+                                    color: 'white',
+                                    '&:hover, &:focus': {
+                                      backgroundColor: 'darkblue', // Color when the day is hovered or focused
+                                    },
+                                  }),
+                                }}
+                              />
+                            );
                           }}
                         />
-                      )}
-                      sx={{
-                        '& .MuiPickersDay-root': {
-                          color: 'white', // Changes the color of the date numbers
-                        },
-                        '& .MuiPaper-root': {
-                          backgroundColor: '#333', // Changes the background color of the calendar
-                        },
-                      }}
-                    renderDay={(day, selectedDates, pickersDayProps) => {
-                      const dateString = format(day, 'yyyy-MM-dd');
-                      const isSelected = sortedDates.includes(dateString);
-
-                      return (
-                        <PickersDay
-                          {...pickersDayProps}
-                          disableMargin
-                          sx={{
-                            ...(isSelected && {
-                              backgroundColor: '#1976d2',
-                              color: '#fff',
-                              '&:hover, &:focus': {
-                                backgroundColor: '#115293',
-                              },
-                            }),
-                          }}
-                        />
-                      );
-                    }}
-                    />
-                </LocalizationProvider>
+                    </LocalizationProvider>
+                </ThemeProvider>
             </StyledFormControl>
 
             <StyledTextField
