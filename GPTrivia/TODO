@@ -102,11 +102,12 @@ TODO - no, actually when we delete a round (say round 2), the names get shifted 
 TODO - Opening hailsciencetrivia in a new window comes up with a permission denied error for a newly created presentation
 TODO - seems like we're still losing jokers sometimes - 1/6 is missing (or not displaying) them
 TODO - add an option for no creator or other to the select dropdown
+TODO - Handle new senders to the mail.py (line 1058, new_senders = [MAIL_NAME_MAP[sender] for sender in new_senders])
 
 
 High - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
 High - add normalize option to the rounds list
-
+Medium - Add a way to set coop and creator in SWOOP
 
 MEDIUM (1-2 hrs)
 

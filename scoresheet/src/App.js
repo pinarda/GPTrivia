@@ -860,10 +860,14 @@ const PlayerTable = () => {
             // if the currently selected date is already today, don't do anything
             let currentDateString = selectedDate;
             let currentDate = new Date(currentDateString);
+            // log the date string
+            console.log('currentDateString:', currentDateString);
             const today = new Date();
             const dateString = today.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
 
             // Splitting the dateString into year, month, and day
+            // log the date string
+            console.log('dateString:', dateString);
             const parts = dateString.split('-');
             const year = parts[0];
             const month = parts[1].padStart(2, '0'); // Ensuring two digits
