@@ -893,7 +893,7 @@ const PlayerTable = () => {
         const month = today.getMonth() + 1;
         const day = today.getDate();
         let confirmChange = true;
-        if (currentDate.getFullYear() != year || currentDate.getMonth() + 1 != month || currentDate.getDate() + 1 != day) {
+        if (currentDate.getFullYear() != year || currentDate.getMonth() + 1 != month || currentDate.getDate() != day) {
             confirmChange = window.confirm("Are you sure you want to edit the scoresheet for a previous date?");
         }
         return confirmChange;
