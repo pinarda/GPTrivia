@@ -851,7 +851,7 @@ const PlayerTable = () => {
             if (!confirmChange) return;
         }
 
-        if (eventOrDate instanceof Event) {
+        if (eventOrDate instanceof Event || eventOrDate.target.value !== selectedDate) {
             setSelectedDate(eventOrDate.target.value);
             const filteredRounds = rounds.filter(round => round.date === eventOrDate.target.value);
             setRounds(filteredRounds);
