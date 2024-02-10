@@ -1256,20 +1256,6 @@ const PlayerTable = () => {
         }
     };
 
-    // Assuming handleChangeDate originally expected an event object
-    const handleDateChangeForDatePicker = (newValue) => {
-      // Create a synthetic event object to mimic the structure expected by handleChangeDate
-      const event = {
-        target: {
-          value: format(newValue, 'yyyy-MM-dd'), // Format the Date object to a string
-        },
-      };
-      handleChangeDate(event); // Call handleChangeDate with the synthetic event
-    };
-
-
-
-
 
 
   return (
@@ -1301,26 +1287,31 @@ const PlayerTable = () => {
                 </StyledButton>
             </StyledFormControl>
 
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <StyledButton variant="contained" color="secondary" onClick={() => setOpenDatePicker(true)}>
-                    Calendar
-                </StyledButton>
-                <DatePicker
-                open={openDatePicker}
-                value={selectedDate ? parseISO(selectedDate) : null}
-                onChange={(newValue) => {
-                  setSelectedDate(format(newValue, 'yyyy-MM-dd'));
-                  setOpenDatePicker(false); // Close the DatePicker after selection
-                    handleDateChangeForDatePicker(newValue); // Use the wrapper function
-                }}
-                onClose={() => setOpenDatePicker(false)}
-                renderInput={({ inputRef, inputProps, InputProps }) => (
-                  <div ref={inputRef} {...inputProps}>
-                    {InputProps?.endAdornment}
-                  </div>
-                )}
-              />
-            </LocalizationProvider>
+            <StyledFormControl>
+                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <StyledButton variant="contained" color="secondary" onClick={() => setOpenDatePicker(true)}>
+                        Calendar
+                    </StyledButton>
+                    <DatePicker
+                    open={openDatePicker}
+                    value={selectedDate ? parseISO(selectedDate) : null}
+                      onChange={(newValue) => {
+                        const formattedDate = format(newValue, 'yyyy-MM-dd');
+                        // Create a synthetic event with the new date in event.target.value
+                        const syntheticEvent = { target: { value: formattedDate } };
+
+                        handleChangeDate(syntheticEvent); // Pass the synthetic event to handleChangeDate
+                        setOpenDatePicker(false); // Close the DatePicker after selection
+                      }}
+                    onClose={() => setOpenDatePicker(false)}
+                    renderInput={({ inputRef, inputProps, InputProps }) => (
+                      <div ref={inputRef} {...inputProps}>
+                        {InputProps?.endAdornment}
+                      </div>
+                    )}
+                  />
+                </LocalizationProvider>
+            </StyledFormControl>
 
             <StyledTextField
               value={newPlayerName}
