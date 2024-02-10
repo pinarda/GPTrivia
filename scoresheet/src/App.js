@@ -20,7 +20,7 @@ import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import styled, { createGlobalStyle } from 'styled-components';
-import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { DatePicker, LocalizationProvider, PickersDay } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { parseISO, format } from 'date-fns';
 
@@ -1320,11 +1320,17 @@ const PlayerTable = () => {
                         setOpenDatePicker(false); // Close the DatePicker after selection
                       }}
                     onClose={() => setOpenDatePicker(false)}
-                    renderInput={({ inputRef, inputProps, InputProps }) => (
-                        <div ref={inputRef} {...inputProps} style={{backgroundColor: '#333'}}>
-                            {InputProps?.endAdornment}
-                        </div>
-                    )}
+                    renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          sx={{
+                            '& .MuiInputBase-root': {
+                              backgroundColor: '#333', // Change this to your desired background color for the input field
+                            },
+                            // You can add more styles if needed
+                          }}
+                        />
+                      )}
                       sx={{
                         '& .MuiPickersDay-root': {
                           color: 'white', // Changes the color of the date numbers
@@ -1333,6 +1339,26 @@ const PlayerTable = () => {
                           backgroundColor: '#333', // Changes the background color of the calendar
                         },
                       }}
+                    renderDay={(day, selectedDates, pickersDayProps) => {
+                      const dateString = format(day, 'yyyy-MM-dd');
+                      const isSelected = sortedDates.includes(dateString);
+
+                      return (
+                        <PickersDay
+                          {...pickersDayProps}
+                          disableMargin
+                          sx={{
+                            ...(isSelected && {
+                              backgroundColor: '#1976d2',
+                              color: '#fff',
+                              '&:hover, &:focus': {
+                                backgroundColor: '#115293',
+                              },
+                            }),
+                          }}
+                        />
+                      );
+                    }}
                     />
                 </LocalizationProvider>
             </StyledFormControl>
