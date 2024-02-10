@@ -20,7 +20,9 @@ import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import styled, { createGlobalStyle } from 'styled-components';
-
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { parseISO, format } from 'date-fns';
 
     const playerColorMapping = {
         'score_alex': '#D2042D',
@@ -347,6 +349,8 @@ const PlayerTable = () => {
     const [selectedColumnIndex, setSelectedColumnIndex] = useState(1);
     const [updateFlag, setUpdateFlag] = useState(0); // Update flag
     const isLocalUpdate = useRef(false);
+    const [openDatePicker, setOpenDatePicker] = useState(false);
+
 
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
@@ -1284,6 +1288,25 @@ const PlayerTable = () => {
                 <StyledButton variant="contained" color="secondary" onClick={() => handleChangeDate()}>
                     Today
                 </StyledButton>
+                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <StyledButton variant="contained" color="secondary" onClick={() => setOpenDatePicker(true)}>
+                        Calendar
+                    </StyledButton>
+                    <DatePicker
+                    open={openDatePicker}
+                    value={selectedDate ? parseISO(selectedDate) : null}
+                    onChange={(newValue) => {
+                      setSelectedDate(format(newValue, 'yyyy-MM-dd'));
+                      setOpenDatePicker(false); // Close the DatePicker after selection
+                    }}
+                    onClose={() => setOpenDatePicker(false)}
+                    renderInput={({ inputRef, inputProps, InputProps }) => (
+                      <div ref={inputRef} {...inputProps}>
+                        {InputProps?.endAdornment}
+                      </div>
+                    )}
+                  />
+                </LocalizationProvider>
             </StyledFormControl>
 
             <StyledTextField

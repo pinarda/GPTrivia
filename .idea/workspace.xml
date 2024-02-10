@@ -6,10 +6,12 @@
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/TODO" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/TODO" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GPTrivia/token.pickle" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/token.pickle" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scoresheet/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scoresheet/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scoresheet/src/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/src/App.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -358,7 +360,7 @@
       <workItem from="1705553988587" duration="5167000" />
       <workItem from="1705603928194" duration="1853000" />
       <workItem from="1705628476027" duration="2814000" />
-      <workItem from="1707094647915" duration="9681000" />
+      <workItem from="1707094647915" duration="13095000" />
     </task>
     <servers />
   </component>
@@ -555,17 +557,17 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
-          <line>1739</line>
+          <line>1762</line>
           <option name="timeStamp" value="230" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
-          <line>136</line>
+          <line>138</line>
           <option name="timeStamp" value="310" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
-          <line>233</line>
+          <line>235</line>
           <option name="timeStamp" value="311" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
@@ -575,7 +577,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
-          <line>1110</line>
+          <line>1114</line>
           <option name="timeStamp" value="352" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
@@ -597,6 +599,12 @@
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/round_maker.html</url>
           <line>462</line>
           <option name="timeStamp" value="384" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scoresheet/src/App.js</url>
+          <line>846</line>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="390" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="django-line">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet.html</url>
