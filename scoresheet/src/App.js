@@ -1289,19 +1289,19 @@ const PlayerTable = () => {
           flexDirection={isSmallScreen ? 'column' : 'row'}
           padding={isSmallScreen ? '0.4rem' : '0.2rem'}
           marginLeft={isSmallScreen ? '0.4rem' : '0.2rem'}>
-            <StyledFormControl>
-              <Select
-                value={selectedDate}
-                onChange={(event) => handleChangeDate(event)}
-              >
-                {sortedDates.map((date, index) => (
-                  <MenuItem key={index} value={date}>{date}</MenuItem>
-                ))}
-              </Select>
-                <StyledButton variant="contained" color="secondary" onClick={() => handleChangeDate()}>
-                    Today
-                </StyledButton>
-            </StyledFormControl>
+            {/*<StyledFormControl>*/}
+            {/*  <Select*/}
+            {/*    value={selectedDate}*/}
+            {/*    onChange={(event) => handleChangeDate(event)}*/}
+            {/*  >*/}
+            {/*    {sortedDates.map((date, index) => (*/}
+            {/*      <MenuItem key={index} value={date}>{date}</MenuItem>*/}
+            {/*    ))}*/}
+            {/*  </Select>*/}
+            {/*    <StyledButton variant="contained" color="secondary" onClick={() => handleChangeDate()}>*/}
+            {/*        Today*/}
+            {/*    </StyledButton>*/}
+            {/*</StyledFormControl>*/}
 
             <StyledFormControl>
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -1321,11 +1321,19 @@ const PlayerTable = () => {
                       }}
                     onClose={() => setOpenDatePicker(false)}
                     renderInput={({ inputRef, inputProps, InputProps }) => (
-                      <div ref={inputRef} {...inputProps}>
-                        {InputProps?.endAdornment}
-                      </div>
+                        <div ref={inputRef} {...inputProps} style={{backgroundColor: '#333'}}>
+                            {InputProps?.endAdornment}
+                        </div>
                     )}
-                  />
+                      sx={{
+                        '& .MuiPickersDay-root': {
+                          color: 'white', // Changes the color of the date numbers
+                        },
+                        '& .MuiPaper-root': {
+                          backgroundColor: '#333', // Changes the background color of the calendar
+                        },
+                      }}
+                    />
                 </LocalizationProvider>
             </StyledFormControl>
 
