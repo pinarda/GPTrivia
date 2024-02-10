@@ -888,12 +888,20 @@ const PlayerTable = () => {
     const confirmPastChange = () => {
         let currentDateString = selectedDate;
         let currentDate = new Date(currentDateString);
+
         const today = new Date();
-        const year = today.getFullYear();
-        const month = today.getMonth() + 1;
-        const day = today.getDate();
+        const dateString = today.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+        const parts = dateString.split('-');
+
+        const year = parts[0];
+        const month = parts[1].padStart(2, '0'); // Ensuring two digits
+        const day = parts[2].padStart(2, '0');   // Ensuring two digits
+
         let confirmChange = true;
-        if (currentDate.getFullYear() != year || currentDate.getMonth() + 1 != month || currentDate.getDate() != day) {
+        //log the current date and today
+        console.log('currentDate:', currentDate);
+        console.log('selectedDate:', selectedDate);
+        if (currentDate.getFullYear() !== parseInt(year) || currentDate.getMonth() + 1 !== parseInt(month) || currentDate.getDate() !== parseInt(day)) {
             confirmChange = window.confirm("Are you sure you want to edit the scoresheet for a previous date?");
         }
         return confirmChange;
