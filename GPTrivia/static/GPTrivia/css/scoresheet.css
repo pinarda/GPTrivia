@@ -11,6 +11,18 @@ body {
     background-color: #1e7662;
 }
 
+input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 20px;
+    border: none;
+    border-bottom: 1px solid #ccc;
+    background-color: #333;
+    margin-bottom: 20px;
+    transition: 0.3s;
+    padding-top: 16px; /* Increase or decrease this value to adjust spacing */
+}
+
 .footer-container{
     background-color: #1e7662;
     position: inherit;
