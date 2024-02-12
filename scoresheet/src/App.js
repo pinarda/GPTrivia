@@ -348,6 +348,7 @@ const PlayerTable = () => {
     const [isSaved, setIsSaved] = useState(true);
     const [presID, setPresID] = useState(0);
     const [tempTitles, setTempTitles] = useState([]);
+    const [tempLinks, setTempLinks] = useState([]);
     const [selectedColumnIndex, setSelectedColumnIndex] = useState(1);
     const [updateFlag, setUpdateFlag] = useState(0); // Update flag
     const isLocalUpdate = useRef(false);
@@ -419,8 +420,10 @@ const PlayerTable = () => {
           return '1rem'; // Smaller font size for text length between 10 and 20
         } else if (textLength.length < 27) {
           return '0.9rem'; // Smaller font size for text length between 10 and 20
-        } else {
+        } else if (textLength.length < 80) {
           return '0.8rem'; // Even smaller font size for text length 20 and above
+        } else {
+            return '0.6rem'; // Even smaller font size for text length 20 and above
         }
       };
 
@@ -528,6 +531,15 @@ const PlayerTable = () => {
                 setTempTitles(initialTempTitles);
             }
 
+            // set tempLinks if it hasn't been set yet
+            if (tempLinks.length === 0) {
+                let initialTempLinks = [];
+                json.forEach(round => {
+                    initialTempLinks.push(round.link);
+                });
+                setTempLinks(initialTempLinks);
+            }
+
 
           let initialCooperativeStatus = {};
             json.forEach(round => {
@@ -613,7 +625,7 @@ const PlayerTable = () => {
         .catch(function() {
             //setErrorMessage("Failed to fetch rounds");
         });
-    }, [selectedDate, defaultPlayers, dates.length, tempTitles.length, url, updateFlag]);
+    }, [selectedDate, defaultPlayers, dates.length, tempTitles.length, tempLinks.length, url, updateFlag]);
 
     useEffect(() => {
         fetch(url + '/api/v1/presentations/', {
@@ -868,6 +880,7 @@ const PlayerTable = () => {
                 // setDates(prevDates => [...prevDates, eventOrDate.target.value]);
                 setSelectedDate(eventOrDate.target.value);
                 setTempTitles([]);
+                setTempLinks([]);
                 setPresID(0);
                 return;
             }
@@ -880,6 +893,12 @@ const PlayerTable = () => {
                 initialTempTitles.push(round.title);
             });
             setTempTitles(initialTempTitles);
+
+            let initialTempLinks = [];
+            filteredRounds.forEach(round => {
+                initialTempLinks.push(round.link);
+            });
+            setTempLinks(initialTempLinks);
         }
 
         // else {
@@ -1041,6 +1060,20 @@ const PlayerTable = () => {
         }));
       setIsSaved(false);
     };
+
+    const handleLinkChange = (index, newLink) => {
+        // const confirmChange = confirmPastChange()
+        // if (!confirmChange) return;
+          setRounds((prevRounds) =>
+              prevRounds.map((round, roundIndex) => {
+                  if (roundIndex === index) {
+                      return {...round, link: newLink};
+                  }
+                  return round;
+              })
+          );
+        setIsSaved(false);
+    }
 
     const handleCooperativeChange = (roundTitle, isChecked) => {
         const confirmChange = confirmPastChange()
@@ -1214,6 +1247,7 @@ const PlayerTable = () => {
             console.log('New Round Created:', data);
             setRounds(prevRounds => [...prevRounds, data]);
             setTempTitles(prevTitles => [...prevTitles, data.title]);
+            setTempLinks(prevLinks => [...prevLinks, data.link]);
         })
         .catch((error) => {
             console.error('Error:', error);
@@ -1235,6 +1269,14 @@ const PlayerTable = () => {
             const newTitles = [...prevTitles];
             newTitles[index] = newTitle;
             return newTitles;
+        });
+    }
+
+    const handleTempLinkChange = (index, newLink) => {
+        setTempLinks(prevLinks => {
+            const newLinks = [...prevLinks];
+            newLinks[index] = newLink;
+            return newLinks;
         });
     }
 
@@ -1780,6 +1822,32 @@ const PlayerTable = () => {
             <TableCell></TableCell> {/* Empty cell for the player column */}
             <TableCell></TableCell> {/* Empty cell for the joker column */}
             {rounds.map((round, index) => (
+              <StyledTableCell key={index} className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}>
+                <StyledTextField
+                    value={tempLinks[index]} // set the default value to round.title
+                    onChange={(e) => {handleTempLinkChange(index, e.target.value)}} // update the temp title on change
+                    onBlur={(e) => {
+                        handleLinkChange(index, e.target.value); // update the global state on blur
+                    }}
+                    fullWidth
+                    multiline
+                    rowsMax={3}
+                    // use getFontSIze to set the font size based on the length of the title
+                    inputProps={{ style: { fontSize: getFontSize(round.link) } }}
+                />
+            </StyledTableCell>
+            ))}
+            <TableCell></TableCell> {/* Empty cell for the player column */}
+            <TableCell></TableCell> {/* Empty cell for the joker column */}
+            <TableCell></TableCell> {/* Empty cell for the player column */}
+            <TableCell></TableCell> {/* Empty cell for the joker column */}
+        </StyledTableRow>
+        )}
+        {isBottomRowVisible && (
+        <StyledTableRow>
+            <TableCell></TableCell> {/* Empty cell for the player column */}
+            <TableCell></TableCell> {/* Empty cell for the joker column */}
+            {rounds.map((round, index) => (
                 <StyledTableCell key={index} className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}>
                     <StyledButton variant="contained" color="secondary" onClick={() => handleRemoveColumn(round.id)}>
                         Delete
@@ -1801,17 +1869,11 @@ const PlayerTable = () => {
 
 // CustomDay component
 function CustomDay(props) {
-    console.log('CustomDay props:', props)
 
     const { day, outsideCurrentMonth, sortedDates, ...other } = props;
-    console.log('CustomDay day:', day)
-    console.log('CustomDay outsideCurrentMonth:', outsideCurrentMonth)
-    console.log('CustomDay sortedDates:', sortedDates)
     const dateString = day.format('YYYY-MM-DD');
     // also make sure the date is not outside the current month
     const isSelected = sortedDates.includes(dateString) && !outsideCurrentMonth;
-
-    console.log('CustomDay isSelected:', isSelected)
 
   return (
     <Badge

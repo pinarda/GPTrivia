@@ -1157,6 +1157,7 @@ def save_scores(request):
         trivia_round.score_tom = round_data.get('score_tom')
         trivia_round.replay = round_data.get('replay', False)
         trivia_round.cooperative = round_data.get('cooperative', False)
+        trivia_round.link = round_data.get('link')
 
         # Save the instance to the database
         # first, log the trivia_round to the console
