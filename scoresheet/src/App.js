@@ -1808,8 +1808,8 @@ function CustomDay(props) {
     console.log('CustomDay outsideCurrentMonth:', outsideCurrentMonth)
     console.log('CustomDay sortedDates:', sortedDates)
     const dateString = day.format('YYYY-MM-DD');
-    const isSelected = sortedDates.includes(dateString);
-
+    // also make sure the date is not outside the current month
+    const isSelected = sortedDates.includes(dateString) && !outsideCurrentMonth;
 
     console.log('CustomDay isSelected:', isSelected)
 
