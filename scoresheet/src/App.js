@@ -12,8 +12,6 @@ import {
     InputLabel,
     TextField,
     Input,
-     createTheme,
-    ThemeProvider
 } from "@mui/material";
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
@@ -22,9 +20,11 @@ import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import styled, { createGlobalStyle } from 'styled-components';
-import { DatePicker, LocalizationProvider, PickersDay } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { parseISO, format } from 'date-fns';
+import { DatePicker, LocalizationProvider, PickersDay} from '@mui/x-date-pickers';
+import { AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
+import { parseISO } from 'date-fns';
+import dayjs from 'dayjs';
+import Badge from '@mui/material/Badge';
 
     const playerColorMapping = {
         'score_alex': '#D2042D',
@@ -59,35 +59,6 @@ import { parseISO, format } from 'date-fns';
         background-color: ${props => darkenBackground(playerColorMapping[props.player] || '#000')};// Darken the background color on hover
       }
     `;
-
-    const DateTheme = createTheme({
-      components: {
-        // Name of the component
-        MuiDatePicker: {
-          styleOverrides: {
-            // Name of the slot
-            root: {
-              // Some CSS
-              backgroundColor: '#333',
-            },
-          },
-        },
-        MuiPickersDay: {
-          styleOverrides: {
-            root: {
-              '&.Mui-selected': {
-                backgroundColor: '#1976d2',
-                color: '#fff',
-                '&:hover': {
-                  backgroundColor: '#115293',
-                },
-              },
-            },
-          },
-        },
-        // Other component overrides if needed
-      },
-    });
 
     function playerTextColor(hexColor) {
 
@@ -405,7 +376,7 @@ const PlayerTable = () => {
                                                                                               }
                                                                                             })
                                                                                         .map(round => {
-                                                                                            if (selectedRounds[a] != round.title) {
+                                                                                            if (selectedRounds[a] !== round.title) {
                                                                                                 return medianScores[rounds.indexOf(round)];
                                                                                             }
                                                                                             return 0;
@@ -424,7 +395,7 @@ const PlayerTable = () => {
                                                                                               }
                                                                                             })
                                                                                         .map(round => {
-                                                                                            if (selectedRounds[b] != round.title) {
+                                                                                            if (selectedRounds[b] !== round.title) {
                                                                                                 return medianScores[rounds.indexOf(round)];
                                                                                             }
                                                                                             return 0;
@@ -738,6 +709,8 @@ const PlayerTable = () => {
     }, [players, rounds, roundCreators]);
 
     useEffect(() => {
+        console.log('sortedDates:', sortedDates);
+
       if (dates.length > 0 && !isDatesInitialized) {
         setSelectedDate(sortedDates[0]);
         setIsDatesInitialized(true);
@@ -876,6 +849,8 @@ const PlayerTable = () => {
     };
 
     const handleChangeDate = (eventOrDate) => {
+
+        // console.log('sortedDates:', sortedDates);
 
         if (!isSaved) {
             const confirmChange = window.confirm("Are you sure you want to change the date? You have unsaved changes.");
@@ -1335,58 +1310,42 @@ const PlayerTable = () => {
             {/*</StyledFormControl>*/}
 
             <StyledFormControl>
-                <ThemeProvider theme={DateTheme}>
-                    <LocalizationProvider dateAdapter={AdapterDateFns}>
-                        <StyledButton variant="contained" color="secondary" onClick={() => setOpenDatePicker(true)}>
-                            Calendar
-                        </StyledButton>
-                        <DatePicker
-                        open={openDatePicker}
-                        value={selectedDate ? parseISO(selectedDate) : null}
-                          onChange={(newValue) => {
-                            const formattedDate = format(newValue, 'yyyy-MM-dd');
-                            // Create a synthetic event with the new date in event.target.value
-                            const syntheticEvent = { target: { value: formattedDate } };
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <StyledButton variant="contained" color="secondary" onClick={() => setOpenDatePicker(true)}>
+                        Calendar
+                    </StyledButton>
+                    <DatePicker
+                    open={openDatePicker}
+                    value={selectedDate ? dayjs(selectedDate) : null}
+                      onChange={(newValue) => {
+                         const formattedDate = dayjs(newValue).format('YYYY-MM-DD');                        // Create a synthetic event with the new date in event.target.value
+                        const syntheticEvent = { target: { value: formattedDate } };
 
-                            handleChangeDate(syntheticEvent); // Pass the synthetic event to handleChangeDate
-                            setOpenDatePicker(false); // Close the DatePicker after selection
-                          }}
-                        onClose={() => setOpenDatePicker(false)}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              InputProps={{
-                                ...params.InputProps,
-                                style: { backgroundColor: '#333' } // Apply background color directly
-                              }}
-                            />
-                          )}
-                          renderDay={(day, sortedDates, pickersDayProps) => {
-                            const dateString = format(day, 'yyyy-MM-dd');
-                            const isSelected = sortedDates.includes(dateString);
-                            // log the sortedDates and the dateString to see if they match
-                            console.log('sortedDates:', sortedDates);
-                            console.log('dateString:', dateString);
-
-                            return (
-                              <PickersDay
-                                {...pickersDayProps}
-                                sx={{
-                                  ...(isSelected && {
-                                    backgroundColor: 'lightblue', // This is the highlight color for selected dates
-                                    color: 'white',
-                                    '&:hover, &:focus': {
-                                      backgroundColor: 'darkblue', // Color when the day is hovered or focused
-                                    },
-                                  }),
-                                }}
-                              />
-                            );
-                          }}
-                        />
-                    </LocalizationProvider>
-                </ThemeProvider>
+                        handleChangeDate(syntheticEvent); // Pass the synthetic event to handleChangeDate
+                        setOpenDatePicker(false); // Close the DatePicker after selection
+                      }}
+                    onClose={() => setOpenDatePicker(false)}
+                      // renderInput={(params) => (
+                      //   <TextField
+                      //     {...params}
+                      //     InputProps={{
+                      //       ...params.InputProps,
+                      //       style: { backgroundColor: '#333' } // Apply background color directly
+                      //     }}
+                      //   />
+                      // )}
+                    slots={{
+                        day: CustomDay,
+                    }}
+                    slotProps={{
+                      day: {
+                        sortedDates,
+                      },
+                    }}
+                    />
+                </LocalizationProvider>
             </StyledFormControl>
+
 
             <StyledTextField
               value={newPlayerName}
@@ -1551,7 +1510,7 @@ const PlayerTable = () => {
                           }
                         })
                         .map(round => {
-                            if (selectedRounds[player] != round.title) {
+                            if (selectedRounds[player] !== round.title) {
                                 return medianScores[rounds.indexOf(round)];
                             }
                             return 0;
@@ -1581,7 +1540,7 @@ const PlayerTable = () => {
                               }
                             })
                             .map(round => {
-                                if (selectedRounds[player] != round.title) {
+                                if (selectedRounds[player] !== round.title) {
                                     return medianScores[rounds.indexOf(round)];
                                 }
                                 return 0;
@@ -1839,5 +1798,30 @@ const PlayerTable = () => {
     </>
   );
 };
+
+// CustomDay component
+function CustomDay(props) {
+    console.log('CustomDay props:', props)
+
+    const { day, outsideCurrentMonth, sortedDates, ...other } = props;
+    console.log('CustomDay day:', day)
+    console.log('CustomDay outsideCurrentMonth:', outsideCurrentMonth)
+    console.log('CustomDay sortedDates:', sortedDates)
+    const dateString = day.format('YYYY-MM-DD');
+    const isSelected = sortedDates.includes(dateString);
+
+
+    console.log('CustomDay isSelected:', isSelected)
+
+  return (
+    <Badge
+      key={props.day.toString()}
+      overlap="circular"
+      badgeContent={isSelected ? '⬤' : undefined}
+    >
+      <PickersDay {...other} outsideCurrentMonth={outsideCurrentMonth} day={day} />
+    </Badge>
+  );
+}
 
 export default PlayerTable;
