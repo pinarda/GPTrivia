@@ -865,6 +865,12 @@ def home(request):
                 presentation_id=new_presentation_id,
                 creator_list=creators,
                 round_names=round_titles,
+                player_list=[],
+                host="Unknown",
+                scorekeeper="Unknown",
+                style_points={},
+                notes={},
+                tiebreak_winner=None,
             )
             print (new_presentation_id, creators, round_titles)
             presentation_url = f"https://docs.google.com/presentation/d/{new_presentation_id}/embed"
@@ -1111,6 +1117,12 @@ def save_scores(request):
     round_names = data.get('round_names', [])
     creator_list = data.get('round_creators', [])
     date_str = "2020-12-12"
+    player_list = data.get('player_list', [])
+    host = data.get('host', "")
+    scorekeeper = data.get('scorekeeper', "")
+    style_points = data.get('style_points', {})
+    notes = data.get('notes', {})
+    tiebreak_winner = data.get('tiebreak_winner', "")
 
     for round_data in rounds:
         # Get the round_data fields
@@ -1217,6 +1229,12 @@ def save_scores(request):
                     creator_list=creator_list,
                     round_names=round_names,
                     joker_round_indices=joker_round_indices,
+                    player_list=player_list,
+                    host = host,
+                    scorekeeper=scorekeeper,
+                    style_points=style_points,
+                    notes=notes,
+                    tiebreak_winner=tiebreak_winner,
                 )
             except Exception as e:
                 print(f"Error creating MergedPresentation object: {e}")
@@ -1230,6 +1248,12 @@ def save_scores(request):
                 creator_list=creator_list,
                 round_names=round_names,
                 joker_round_indices=joker_round_indices,
+                player_list=player_list,
+                host=host,
+                scorekeeper=scorekeeper,
+                style_points=style_points,
+                notes=notes,
+                tiebreak_winner=tiebreak_winner,
             )
         except Exception as e:
             print(f"Error creating MergedPresentation object: {e}")

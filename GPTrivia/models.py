@@ -66,6 +66,12 @@ class MergedPresentation(models.Model):
     round_names = jsonfield.JSONField(default=list)
     creator_list = jsonfield.JSONField(default=list)
     joker_round_indices = jsonfield.JSONField(null=True, blank=True)
+    player_list = jsonfield.JSONField(default=list)
+    host = models.CharField(max_length=100, default='Unknown')
+    scorekeeper = models.CharField(max_length=100, default='Unknown')
+    style_points = jsonfield.JSONField(default=list, blank=True)
+    notes = models.TextField(blank=True)
+    tiebreak_winner = models.CharField(max_length=100, blank=True)
 
 
     def __str__(self):

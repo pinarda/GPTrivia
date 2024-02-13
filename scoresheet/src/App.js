@@ -354,7 +354,6 @@ const PlayerTable = () => {
     const isLocalUpdate = useRef(false);
     const [openDatePicker, setOpenDatePicker] = useState(false);
 
-
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -599,15 +598,14 @@ const PlayerTable = () => {
             setRoundCreators(roundCreators);
 
           // start by setting the playerNames to the default players
-          let playerNames = [...defaultPlayers];
-          for (let round of json) {
-            for (let key of Object.keys(round)) {
-              if (key.startsWith('score_') && round[key] !== 0 && round[key] !== null) {
-                playerNames.push(key);
-              }
+            let playerNames = [...defaultPlayers];
+            for (let round of json) {
+                for (let key of Object.keys(round)) {
+                    if (key.startsWith('score_') && round[key] !== 0 && round[key] !== null) {
+                        playerNames.push(key);
+                    }
+                }
             }
-          }
-
 
           // Get unique player names
           playerNames = [...new Set(playerNames)];
@@ -642,9 +640,30 @@ const PlayerTable = () => {
         })
         .then(json => {
             // strip the score_ prefix from the player names
-            const playerNames = players.map(player => player.replace('score_', ''));
-            const selectedPresentation = json.find(presentation => convertDate(presentation.name) === selectedDate);
+            // const playerNames = players.map(player => player.replace('score_', ''));
+            const selectedPresentation = json.find(presentation => convertDate(presentation.name) === selectedDate)
+            const playerList = selectedPresentation.player_list;
 
+            // start by setting the playerNames to the default players
+
+            let playerNames = [];
+            if (playerList) {
+                playerNames = [...playerList];
+            }
+            else {
+                playerNames = [...defaultPlayers];
+                for (let round of json) {
+                    for (let key of Object.keys(round)) {
+                        if (key.startsWith('score_') && round[key] !== 0 && round[key] !== null) {
+                            playerNames.push(key);
+                        }
+                    }
+                }
+            }
+
+          // Get unique player names
+          playerNames = [...new Set(playerNames)];
+          setPlayers(playerNames);
 
             if(selectedPresentation) {
                 const jokerRoundIndicesString = selectedPresentation.joker_round_indices;
@@ -689,6 +708,7 @@ const PlayerTable = () => {
             console.error('Error fetching presentations:', error);
         });
     }, [selectedDate, players, url, updateFlag]);
+
 
     useEffect(() => {
       if (players.length > 0 && rounds.length > 0) {
@@ -1173,6 +1193,7 @@ const PlayerTable = () => {
             presentation_id: presID,  // Add appropriate data here
             round_names: roundNames,
             round_creators: roundCreators,
+            player_list: players,
         };
 
         fetch(url + '/save_scores/', {
