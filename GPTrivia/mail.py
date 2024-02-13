@@ -1055,7 +1055,8 @@ def get_round_titles_and_links(processed_senders=[]):
                                 round_titles.append(title_text)
 
         # replace the sender using mail name map with the current name as the key and the name we want to return as the value
-        new_senders = [MAIL_NAME_MAP[sender] for sender in new_senders]
+        # unless the sender is not in the mail name map, then we just return "Unknown"
+        new_senders = [MAIL_NAME_MAP[sender] if sender in MAIL_NAME_MAP else "Unknown" for sender in new_senders]
 
         print(presentation_urls, round_titles, new_senders)
         return presentation_urls, round_titles, new_senders

@@ -85,6 +85,10 @@ DONE - For some reason the confirm button for editing a previous date is happeni
 DONE - change the today button so we can choose any date and start a new scoresheet for that date if one does not exist, otherwise go to the existing scoresheet for that date
 DONE - Opening hailsciencetrivia in a new window comes up with a permission denied error for a newly created presentation
 DONE - add an option for no creator or other to the select dropdown
+DONE - add "link" input to scoresheet, to allow display and manual entry of link to a specific round if it was not added through the generate/update buttons
+DONE - actually when we delete a round (say round 2), the names get shifted over, so if we have R1, R2, R3 and delete R2, our round names now correspond to R1 and R2, but it should be R1 and R3
+DONE - Handle new senders to the mail.py (line 1058, new_senders = [MAIL_NAME_MAP[sender] for sender in new_senders])
+DONE - seems like we're still losing jokers sometimes - 1/6 is missing (or not displaying) them
 
 TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
 TEST FIX - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be (Could be a timezone issue)
@@ -93,33 +97,27 @@ TEST FIX - Figure out why the production site's generate button is timing out (i
 
 TRIVIAL (minutes)
 
-TODO - fix the URL for links to rounds in mail.py (create_presentation and updated_merged_presentation), want the permissions to be anyone with link (this error affects viewing the slides (403) and apparently updating presentations, which only works on Alex account?), and URL to be view, not edit
-TODO - add "link" input to scoresheet, to allow display and manual entry of link to a specific round if it was not added through the generate/update buttons
+TODO - fix the URL for links to rounds in mail.py (create_presentation and updated_merged_presentation), want the permissions to be anyone with link (this error affects viewing the slides (403) and apparently updating presentations, which only works on Alex account?), and URL to be view, not edit (for profile, but not for round list)
 TODO - remove any hardcoded passwords or api keys
 TODO - lost dec scores on server after websockets commit
-TODO - no, actually when we delete a round (say round 2), the names get shifted over, so if we have R1, R2, R3 and delete R2, our round names now correspond to R1 and R2, but it should be R1 and R3
 
-TODO - seems like we're still losing jokers sometimes - 1/6 is missing (or not displaying) them
-TODO - Handle new senders to the mail.py (line 1058, new_senders = [MAIL_NAME_MAP[sender] for sender in new_senders])
-
-
-High - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
 High - add normalize option to the rounds list
 Medium - Add a way to set coop and creator in SWOOP
 
 MEDIUM (1-2 hrs)
 
+TODO - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
 TODO - add players, host/scorekeeper colummns to the database
 TODO - Refreshing page causes added players and missing players to disappear (and so also screws up creator scores maybe?)
 TODO - change the way we detect sender for the scoresheet, timeout has serious flaws, use a sender ID instead.
 
-SCORESHEET WISHLIST - style points, tiebreaker, notes?
+SCORESHEET WISHLIST - style points, tiebreaker, notes, icon next to name showing a mini version of the user's profile pic?
 
 High - add sorting to the player round/rounds list page, also want to be able to see the lowest high score on a round.
 High - add a link to the rounds list page on the round category counts that filters by rounds that person has created with that category
 Medium - could redo mobile CSS for scoresheet to show all rounds for one player, then they could enter their scores for each round, and the button would switch the player.
 Medium - General CSS tweaking, mainly for mobile view (scoresheet esp.) (in particular, maybe sync the visible players using channels)
-Low - Weird stuff like if you joker two different rounds (Zach, 9/1/2022), or if a round has two different creators...
+Medium - Weird stuff like if you joker two different rounds (Zach, 9/1/2022), or if a round has two different creators...
 
 
 

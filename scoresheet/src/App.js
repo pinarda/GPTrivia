@@ -1304,6 +1304,10 @@ const PlayerTable = () => {
         .then(data => {
             console.log('Success:', data);
             setRounds(prevRounds => prevRounds.filter(round => round.id !== roundId));
+            // get the index of the round to remove
+            const index = rounds.findIndex(round => round.id === roundId);
+            // remove the title from tempTitles at the same index
+            setTempTitles(prevTitles => prevTitles.filter((title, titleIndex) => titleIndex !== index));
         })
         .catch((error) => {
           console.error('Error:', error);
