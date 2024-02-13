@@ -648,6 +648,7 @@ const PlayerTable = () => {
 
             let playerNames = [];
             if (playerList) {
+                console.log('playerList:', playerList);
                 playerNames = [...playerList];
             }
             else {

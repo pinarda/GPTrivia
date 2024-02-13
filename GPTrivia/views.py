@@ -865,7 +865,7 @@ def home(request):
                 presentation_id=new_presentation_id,
                 creator_list=creators,
                 round_names=round_titles,
-                player_list=[],
+                player_list={},
                 host="Unknown",
                 scorekeeper="Unknown",
                 style_points={},
@@ -1117,7 +1117,7 @@ def save_scores(request):
     round_names = data.get('round_names', [])
     creator_list = data.get('round_creators', [])
     date_str = "2020-12-12"
-    player_list = data.get('player_list', [])
+    player_list = data.get('player_list', {})
     host = data.get('host', "")
     scorekeeper = data.get('scorekeeper', "")
     style_points = data.get('style_points', {})
