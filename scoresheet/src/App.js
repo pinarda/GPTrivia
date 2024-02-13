@@ -640,27 +640,27 @@ const PlayerTable = () => {
         })
         .then(json => {
             // strip the score_ prefix from the player names
-            // const playerNames = players.map(player => player.replace('score_', ''));
+            const playerNames = players.map(player => player.replace('score_', ''));
             const selectedPresentation = json.find(presentation => convertDate(presentation.name) === selectedDate)
             const playerList = selectedPresentation.player_list;
 
             // start by setting the playerNames to the default players
 
-            let playerNames = [];
-            if (playerList) {
-                console.log('playerList:', playerList);
-                playerNames = [...playerList];
-            }
-            else {
-                playerNames = [...defaultPlayers];
-                for (let round of json) {
-                    for (let key of Object.keys(round)) {
-                        if (key.startsWith('score_') && round[key] !== 0 && round[key] !== null) {
-                            playerNames.push(key);
-                        }
-                    }
-                }
-            }
+            // let playerNames = [];
+            // if (playerList) {
+            //     console.log('playerList:', playerList);
+            //     playerNames = [...playerList];
+            // }
+            // else {
+            //     playerNames = [...defaultPlayers];
+            //     for (let round of json) {
+            //         for (let key of Object.keys(round)) {
+            //             if (key.startsWith('score_') && round[key] !== 0 && round[key] !== null) {
+            //                 playerNames.push(key);
+            //             }
+            //         }
+            //     }
+            // }
 
           // Get unique player names
           playerNames = [...new Set(playerNames)];
