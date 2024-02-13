@@ -946,7 +946,7 @@ const PlayerTable = () => {
         //log the current date and today
         console.log('currentDate:', currentDate);
         console.log('selectedDate:', selectedDate);
-        if (currentDate.getFullYear() !== parseInt(year) || currentDate.getMonth() + 1 !== parseInt(month) || currentDate.getDate() !== parseInt(day)) {
+        if (currentDate.getFullYear() !== parseInt(year) || currentDate.getMonth() + 1 !== parseInt(month) || currentDate.getDate() + 1 !== parseInt(day)) {
             confirmChange = window.confirm("Are you sure you want to edit the scoresheet for a previous date?");
         }
         return confirmChange;
