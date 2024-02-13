@@ -1117,12 +1117,17 @@ def save_scores(request):
     round_names = data.get('round_names', [])
     creator_list = data.get('round_creators', [])
     date_str = "2020-12-12"
-    player_list = data.get('player_list', {})
+    player_list = data.get('player_list', [])
     host = data.get('host', "")
     scorekeeper = data.get('scorekeeper', "")
     style_points = data.get('style_points', {})
     notes = data.get('notes', {})
     tiebreak_winner = data.get('tiebreak_winner', "")
+
+    all_player_list = {"Alex":0, "Ichigo":0, "Megan":0, "Zach":0, "Jenny":0, "Debi":0, "Dan":0, "Chris":0, "Drew":0, "Tom":0, "Jeff":0, "Paige":0, "Dillon":0}
+    # player_list is a string array of the players, so we need to convert it to a dictionary, use 0if the player is not in the list
+    for player in player_list:
+        all_player_list[player] = 1
 
     for round_data in rounds:
         # Get the round_data fields
@@ -1229,7 +1234,7 @@ def save_scores(request):
                     creator_list=creator_list,
                     round_names=round_names,
                     joker_round_indices=joker_round_indices,
-                    player_list=player_list,
+                    player_list=all_player_list,
                     host = host,
                     scorekeeper=scorekeeper,
                     style_points=style_points,
@@ -1248,7 +1253,7 @@ def save_scores(request):
                 creator_list=creator_list,
                 round_names=round_names,
                 joker_round_indices=joker_round_indices,
-                player_list=player_list,
+                player_list=all_player_list,
                 host=host,
                 scorekeeper=scorekeeper,
                 style_points=style_points,
