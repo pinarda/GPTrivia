@@ -663,8 +663,8 @@ const PlayerTable = () => {
             // }
 
           // Get unique player names
-          playerNames = [...new Set(playerNames)];
-          setPlayers(playerNames);
+          // playerNames = [...new Set(playerNames)];
+          // setPlayers(playerNames);
 
             if(selectedPresentation) {
                 const jokerRoundIndicesString = selectedPresentation.joker_round_indices;
