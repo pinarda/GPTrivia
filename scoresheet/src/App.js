@@ -642,7 +642,7 @@ const PlayerTable = () => {
             // strip the score_ prefix from the player names
             const playerNames = players.map(player => player.replace('score_', ''));
             const selectedPresentation = json.find(presentation => convertDate(presentation.name) === selectedDate)
-            const playerList = selectedPresentation.player_list;
+            // const playerList = selectedPresentation.player_list;
 
             // start by setting the playerNames to the default players
 
