@@ -1124,10 +1124,10 @@ def save_scores(request):
     notes = data.get('notes', {})
     tiebreak_winner = data.get('tiebreak_winner', "")
 
-    all_player_list = {"Alex":0, "Ichigo":0, "Megan":0, "Zach":0, "Jenny":0, "Debi":0, "Dan":0, "Chris":0, "Drew":0, "Tom":0, "Jeff":0, "Paige":0, "Dillon":0}
+    all_player_list = {}
     # player_list is a string array of the players, so we need to convert it to a dictionary, use 0if the player is not in the list
     for player in player_list:
-        all_player_list[player] = 1
+        all_player_list[player] = player
 
     for round_data in rounds:
         # Get the round_data fields
