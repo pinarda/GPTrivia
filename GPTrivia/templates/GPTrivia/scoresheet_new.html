@@ -19,11 +19,27 @@
 
     {% csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token }}">
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
 {% endblock %}
 
 {% block content %}
 
     <div id="react-scoresheet"></div>
 
-    <script src="{% static 'scoresheet/build/static/js/main.3d628e7d.js' %}"></script>
+    <script src="{% static 'scoresheet/build/static/js/main.651f3f05.js' %}"></script>
+    <button id="animate-btn">Animate</button>
+
+    <script>
+        document.getElementById('animate-btn').addEventListener('click', function() {
+            anime({
+                targets: '#react-scoresheet',
+                translateX: 250,
+                rotate: '1turn',
+                backgroundColor: '#00FF00',
+                duration: 2000,
+                easing: 'easeInOutQuad'
+            });
+        });
+    </script>
+
 {% endblock %}

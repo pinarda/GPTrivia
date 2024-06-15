@@ -10,7 +10,9 @@ from datetime import datetime
 from django.core.exceptions import ObjectDoesNotExist
 from django.views.decorators.csrf import csrf_exempt
 from openai import OpenAI
-
+from sklearn.decomposition import PCA
+import pandas as pd
+import numpy as np
 from django.views import View
 import os
 import random
@@ -19,10 +21,7 @@ import autogen
 from django.contrib.auth.models import User
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-
-
-
-
+from scipy.stats import pearsonr
 
 import numpy as np
 from django.contrib.auth.forms import UserCreationForm
@@ -75,23 +74,24 @@ gmail_key = '8f35edc691b918094035b22807266a1e468bf5f0'
 playerColorMapping = {
             'Alex': '#D2042D',
             'Ichigo': '#ff7f0e',
-            'Megan': '#8e4585',
-            'Zach': '#A020F0',
+            'Megan': '#673147',
+            'Zach': '#702963',
             'Jenny': '#ffef00',
-            'Debi': '#8551ff',
-            'Dan': '#0000FF',
+            'Debi': '#4f49a6',
+            'Dan': '#560000',
             'Chris': '#005427',
             'Drew': '#8c564b',
-            'Jeff': '#333333',
-            'Paige': '#333333',
-            'Dillon': '#333333',
-            'Tom': '#8c564b',
+            'Jeff': '#66FF66',
+            'Paige': '#FF6666',
+            'Dillon': '#0000FF',
+            'Tom': '#000042',
             'Unknown': '#333333',
         };
 
 players = [
     'score_alex', 'score_ichigo', 'score_megan', 'score_zach', 'score_jenny', 'score_debi',
-    'score_dan', 'score_chris', 'score_drew', 'score_tom']
+    'score_dan', 'score_chris', 'score_drew', 'score_tom', 'score_paige']
+
 
 class CustomPasswordChangeView(auth_views.PasswordChangeView):
     template_name = 'registration/password_change.html'
@@ -126,7 +126,7 @@ class ShareView(View):
 def rounds_list(request):
     rounds = GPTriviaRound.objects.all()
     text_color = {}
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom"]
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom", "Paige"]
     for player in players:
         # grab the player's hex color from the playerColorMapping dictionary
         player_color = playerColorMapping[player]
@@ -143,16 +143,15 @@ def rounds_list(request):
 
     return render(request, 'GPTrivia/rounds_list.html', context)
 
-
 @login_required
 def player_analysis(request):
     queryset_rounds = GPTriviaRound.objects.all()
 
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom"]
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom", "Paige"]
 
     # a dicitonary that maps the player name to the string score_playername
     player_name_mapping = {"Alex": "score_alex", "Ichigo": "score_ichigo", "Megan": "score_megan", "Zach": "score_zach",
-                            "Jenny": "score_jenny", "Debi": "score_debi", "Dan": "score_dan", "Chris": "score_chris", "Drew": "score_drew", "Tom": "score_tom"}
+                            "Jenny": "score_jenny", "Debi": "score_debi", "Dan": "score_dan", "Chris": "score_chris", "Drew": "score_drew", "Tom": "score_tom", "Paige": "score_paige"}
 
 
     creators = set()
@@ -187,6 +186,12 @@ def player_analysis(request):
         'cooperative': str(round.cooperative).lower(),
     } for round in queryset_rounds]
 
+    # set the player text mapping
+    # for each player, grab the player's hex color from the playerColorMapping dictionary
+    # convert the hex color to a measure of brightness
+    # if the brightness is less than 384, use white text, otherwise use black text
+    player_text_mapping = {player: 'white' if int(playerColorMapping[player][1:3], 16) + int(playerColorMapping[player][3:5], 16) + int(playerColorMapping[player][5:7], 16) < 480 else 'black' for player in players}
+
     context = {
         'rounds': rounds,
         'playerColorMapping': playerColorMapping,
@@ -194,9 +199,10 @@ def player_analysis(request):
         'categories': list(categories),
         'players': players,
         "mapping": player_name_mapping,
+        "player_text_mapping": player_text_mapping,
     }
 
-    return render(request, 'GPTrivia/player_analysis.html', context)
+    return render(request, 'GPTrivia/player_analysis_new.html', context)
 
 
 
@@ -458,7 +464,7 @@ def player_profile_dict(request, player_name):
     # save category of the round with the highest and lowest average score for the player
     max_avg = category_averages[0]['major_category']
     min_avg = category_averages[len(category_averages) - 1]['major_category']
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom"]
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom", "Paige"]
 
     # count the total number of rounds the player has a score for
     total_rounds = GPTriviaRound.objects.filter(**{f"{score_p}__isnull": False}).count()
@@ -948,7 +954,7 @@ def home(request):
 
 @login_required
 def scoresheet(request):
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom"]
+    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom", "Paige"]
     # for the round titles, we will query the database for the MergePresentation object with the latest id
     # and get the round_names attribute
     try:

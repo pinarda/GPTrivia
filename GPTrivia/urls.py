@@ -29,6 +29,7 @@ from .views import CustomObtainAuthToken
 from django.forms.models import model_to_dict
 from django.views.decorators.csrf import csrf_exempt
 from .views import RoundMaker, GenerateIdeaView, PreviewView, ShareView, GenerateImageView, AutoGenView, IconView
+from .analysis import PlayerAnalysisPlot
 
 
 
@@ -60,5 +61,9 @@ urlpatterns = [
     path('preview/', PreviewView.as_view(), name='preview'),
     path('share/', ShareView.as_view(), name='share'),
     path('upload_profile_picture/', views.upload_profile_picture, name='upload_profile_picture'),
+    # path('compute-pca/', views.compute_pca, name='compute_pca'),
+    # path('compute-correlation-matrix/', views.compute_correlation_matrix, name='compute_correlation_matrix'),
+    # path('compute-3d-surface-data/', views.compute_3d_surface_data, name='compute_3d_surface_data'),
+    path('player_analysis_plot/', PlayerAnalysisPlot.as_view(), name='player_analysis_plot'),
     # path('profilepic/', views.profilepic, name='profilepic'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

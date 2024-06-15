@@ -1,3 +1,6 @@
+import os
+os.environ['OPENAI_API_KEY'] = 'sk-'
+
 from django.test import TestCase, RequestFactory
 from GPTrivia.models import GPTriviaRound
 from GPTrivia.views import player_analysis, player_profile
@@ -5,10 +8,10 @@ from ..mail import create_presentation
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
-import os
 import pickle
 import datetime
 from django.contrib.auth.models import User
+from openai import OpenAI
 
 mail_file_directory = os.path.dirname(os.path.abspath(__file__))
 CLIENT_SECRET_FILE = '/Users/alex/client_secret.json'
@@ -19,8 +22,11 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.modify',
           'https://www.googleapis.com/auth/script.scriptapp',
           'https://www.googleapis.com/auth/script.projects']
 
-class PlayerAnalysisViewTests(TestCase):
-    def test_profile_view(self):
+from django.urls import reverse
+
+class PlayerAnalysisPlotTests(TestCase):
+
+    def setUp(self):
         sample_round = GPTriviaRound.objects.create(
             creator="Megan",
             title="Test Title",
@@ -141,6 +147,87 @@ class PlayerAnalysisViewTests(TestCase):
             score_drew=1,
         )
 
+    def test_bar_data(self):
+        rounds = GPTriviaRound.objects.all()
+        response = self.client.get(reverse('player_analysis_plot'), {
+            'rounds': rounds,
+            'chart_type': 'bar',
+            'creator': 'Jenny'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('mean_values', response.json())
+
+    def test_violin_data(self):
+        rounds = GPTriviaRound.objects.all()
+        response = self.client.get(reverse('player_analysis_plot'), {
+            'rounds': rounds,
+            'chart_type': 'violin',
+            'creator': 'Jenny'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('mean_values', response.json())
+
+    def test_category(self):
+        rounds = GPTriviaRound.objects.all()
+        response = self.client.get(reverse('player_analysis_plot'), {
+            'rounds': rounds,
+            'chart_type': 'violin',
+            'category': 'Test Major Category'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('mean_values', response.json())
+
+    def test_pca(self):
+        rounds = GPTriviaRound.objects.all()
+        response = self.client.get(reverse('player_analysis_plot'), {
+            'rounds': rounds,
+            'chart_type': 'pca',
+            'creator': 'Jenny'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('mean_values', response.json())
+
+    def test_correlation_matrix(self):
+        rounds = GPTriviaRound.objects.all()
+        response = self.client.get(reverse('player_analysis_plot'), {
+            'rounds': rounds,
+            'chart_type': 'corr',
+            'creator': 'Jenny'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('mean_values', response.json())
+
+    def test_cat_bar_data(self):
+        rounds = GPTriviaRound.objects.all()
+        response = self.client.get(reverse('player_analysis_plot'), {
+            'rounds': rounds,
+            'chart_type': 'category_bar',
+            'creator': 'Jenny'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('mean_values', response.json())
+
+    def test_creator_bar_data(self):
+        rounds = GPTriviaRound.objects.all()
+        response = self.client.get(reverse('player_analysis_plot'), {
+            'rounds': rounds,
+            'chart_type': 'creator_bar',
+            'category': 'Test Major Category'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('mean_values', response.json())
+
+    def test_player_bar_data(self):
+        rounds = GPTriviaRound.objects.all()
+        response = self.client.get(reverse('player_analysis_plot'), {
+            'rounds': rounds,
+            'chart_type': 'player_bar',
+            'player': 'Megan'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('mean_values', response.json())
+class PlayerAnalysisViewTests(TestCase):
+    def test_profile_view(self):
         user = User.objects.create_user(username='Alex', password='Rapt0rpusia')
         factory = RequestFactory()
         request = factory.get('/player_profile/Alex/')

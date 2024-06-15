@@ -7,599 +7,1595 @@
 {% endblock %}
 
 {% block content %}
-<select name="creators" id="creator-selector">
-    <option value="" selected>-- Select a creator --</option>
-    {% for creator in creators %}
-    <option value="{{ creator }}">{{ creator }}</option>
-    {% endfor %}
-</select>
+<h1 class="page-header">Trivia Analysis</h1>
+<div class="select-wrapper">
+    <div class="select-container">
+        <label for="creator-selector" class="select-label">Creator</label>
+        <select name="creators" id="creator-selector" class="select-dropdown">
+            <option value="" selected>-- Select a creator --</option>
+            {% for creator in creators %}
+            <option value="{{ creator }}">{{ creator }}</option>
+            {% endfor %}
+        </select>
+    </div>
 
-<select name="categories" id="category-selector">
-    <option value="" selected>-- Select a category --</option>
-    {% for category in categories %}
-    <option value="{{ category }}">{{ category }}</option>
-    {% endfor %}
-</select>
+    <div class="select-container">
+        <label for="category-selector" class="select-label">Category</label>
+        <select name="categories" id="category-selector" class="select-dropdown">
+            <option value="" selected>-- Select a category --</option>
+            {% for category in categories %}
+            <option value="{{ category }}">{{ category }}</option>
+            {% endfor %}
+        </select>
+    </div>
 
-<select name="players" id="player-selector" style="display: none">
-    <option value="" selected>-- Select a player --</option>
-    {% for player in players %}
-    <option value="{{ player }}">{{ player }}</option>
-    {% endfor %}
-</select>
+    <div class="select-container">
+        <label for="player-selector" class="select-label">Player</label>
+        <select name="players" id="player-selector" class="select-dropdown">
+            <option value="" selected>-- Select a player --</option>
+            {% for player in players %}
+            <option value="{{ player }}">{{ player }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
 
-<div id="bar-chart"></div>
-<div id="violin-chart" style="width:100%; height:500px;"></div>
+<div id="bar-space" style="width:100%; height:500px;"></div>
+<div id="violin-space" style="width:100%; height:500px; display: inline-block"></div>
+<div id="plots-container">
+    <div id="CorrMatrix"></div>
+    <div id="PMatrix"></div>
+</div>
+<div id="plot-container" style="position: relative; width: 100%; height: 100%;">
+    <div id="CreatorMatrix" style="width:100%; height:90%;"></div>
+    <div id="plot-checkbox" style="position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 1000;">
+        <label for="showValuesCheckbox">Difficulty Adjustment</label>
+        <input type="checkbox" id="showValuesCheckbox">
+    </div>
+</div>
+<div id="PCAplot" style="width:100%; height:1000px;"></div>
+<div id="catBar" style="width:100%; height:500px;"></div>
+<div id="creatorBar" style="width:100%; height:500px;"></div>
+<div id="player-bar-space" style="width:100%; height:500px;"></div>
+<div id="player-violin-space" style="width:100%; height:500px;"></div>
+<div id="player-cat-bar-space" style="width:100%; height:500px;"></div>
+<div id="creator-violin-space" style="width:100%; height:500px;"></div>
+<div id="time-series-creator" style="width:100%; height:500px;"></div>
+<div id="trivia-night-streak" style="width:100%; height:500px;"></div>
+<div id="joker_percentage"></div>
+<button class="expand-collapse-button" id="roundsButton" onclick="toggleRounds()">Show/Hide Rounds Table</button>
+<div id="column-checkboxes" style="width:100%; display: none";>
+<!-- Checkboxes will be dynamically generated here -->
+</div>
+
+<div id="rounds-table"></div>
+
+
+{#<div id="violin-chart" style="width:100%; height:500px;"></div>#}
 {#<div id="histPlot" style="width:100%; height:500px;"></div>#}
-
-<button id="loadPlot">Load PCA Plot</button>
-<div id="PCAplot"></div>
-<div id="extreme-titles"></div>
-<button id="loadCorrMatrix">Load Correlation Matrix</button>
-<div id="corrMatrixPlot"></div>
-<div id="significanceMatrixPlot"></div>
-<button id="loadSurfacePlot">Load 3D Surface Plot</button>
-<div id="surfacePlot"></div>
+{##}
+{#<button id="loadPlot">Load PCA Plot</button>#}
+{#<div id="PCAplot"></div>#}
+{#<div id="extreme-titles"></div>#}
+{#<button id="loadCorrMatrix">Load Correlation Matrix</button>#}
+{#<div id="corrMatrixPlot"></div>#}
+{#<div id="significanceMatrixPlot"></div>#}
+{#<button id="loadSurfacePlot">Load 3D Surface Plot</button>#}
+{#<div id="surfacePlot"></div>#}
 
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
 
     let playerColorMapping = {{ playerColorMapping|safe }};
     let players = {{ players|safe }};
     let rounds = {{ rounds|safe }};
     let mapping = {{ mapping|safe }};
+    let playerTextMapping = {{ player_text_mapping|safe }};
 
-    document.getElementById('loadSurfacePlot').addEventListener('click', function() {
-        fetch('/compute-3d-surface-data/')
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
+    // Initialize with default values
+    let playerName = "";
+    let textColor = "";
 
-                const trace = {
-                    x: data.x,
-                    y: data.y,
-                    z: data.z,
-                    type: 'surface'
-                };
-
-                const layout = {
-                    title: '3D Surface Plot of Average Scores by Major Category',
-                    scene: {
-                        xaxis: {title: 'Score Columns'},
-                        yaxis: {title: 'Major Categories'},
-                        zaxis: {title: 'Average Score'}
-                    },
-                    plot_bgcolor:'rgba(0,0,0,0)',
-                    paper_bgcolor:'rgba(0,0,0,0)',
-                    font: {
-                        color: "#ffffff",
-                        font_family: "YoungSerif"
-                    },
-                };
-
-                Plotly.newPlot('surfacePlot', [trace], layout);
-            });
+    document.getElementById('player-selector').addEventListener('change', function () {
+        playerName = this.value;
+        textColor = playerTextMapping[playerName];
+        setButtonColors();
     });
 
-    document.getElementById('loadCorrMatrix').addEventListener('click', function() {
-        fetch('/compute-correlation-matrix/')
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
+    let plotFlags = {
+        bar: false,
+        violin: false,
+        corrMatrix: false,
+        creatorMatrix: false,
+        pMatrix: false,
+        pca: false,
+        catBar: false,
+        creatorBar: false,
+        playerBar: false,
+        playerViolin: false,
+        playerCatBar: false,
+        creatorViolin: false,
+        timeSeriesCreator: false,
+        roundsTable: false,
+        triviaNightStreak: false,
+        jokerPercentage: false
+    };
 
-                const correlationMatrix = data.correlation_matrix;
-                const pValuesMatrix = data.p_values_matrix;
-                const columns = data.columns;
-
-                const z = columns.map(col => columns.map(row => correlationMatrix[col][row]));
-                const zSignif = columns.map(col => columns.map(row => pValuesMatrix[col][row]));
-
-
-                const trace = {
-                    z: z,
-                    x: columns,
-                    y: columns,
-                    type: 'heatmap',
-                    colorscale: [
-                        ['0.0', 'red'],
-                        ['0.5', 'white'],
-                        ['1.0', 'green']
-                    ],
-                    zmin: -1,
-                    zmax: 1
-                };
-
-                const layout = {
-                    title: 'Correlation Matrix',
-                    xaxis: {
-                        side: 'top'
-                    },
-                    yaxis: {
-                        autorange: 'reversed'
-                    }
-                };
-
-                Plotly.newPlot('corrMatrixPlot', [trace], layout);
-
-                // Significance matrix plot (p-values)
-                const traceSignif = {
-                    z: zSignif,
-                    x: columns,
-                    y: columns,
-                    type: 'heatmap',
-                    colorscale: [
-                        ['0.0', 'green'],
-                        ['0.05', 'yellow'],
-                        ['1.0', 'red']
-                    ],
-                    zmin: 0,
-                    zmax: 1
-                };
-
-                const layoutSignif = {
-                    title: 'Significance Matrix (p-values)',
-                    xaxis: {
-                        side: 'top'
-                    },
-                    yaxis: {
-                        autorange: 'reversed'
-                    }
-                };
-
-                Plotly.newPlot('significanceMatrixPlot', [traceSignif], layoutSignif);
-            });
-    });
-
-    document.getElementById('loadPlot').addEventListener('click', function() {
-        fetch('/compute-pca/')
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
-
-                const trace = {
-                    x: data.loadings.PC1,
-                    y: data.loadings.PC2,
-                    z: data.loadings.PC3,
-                    mode: 'markers+text',
-                    type: 'scatter3d',
-                    text: data.loadings.variables,
-                    textposition: 'top center',
-                    marker: { size: 12 }
-                };
-
-                const layout = {
-                    title: 'PCA Result',
-                    scene: {
-                        xaxis: {title: 'PC1'},
-                        yaxis: {title: 'PC2'},
-                        zaxis: {title: 'PC3'}
-                    },
-                    showlegend: false,
-                    plot_bgcolor:'rgba(0,0,0,0)',
-                    paper_bgcolor:'rgba(0,0,0,0)',
-                    font: {
-                        color: "#ffffff",
-                        font_family: "YoungSerif"
-                    },
-                };
-
-                Plotly.newPlot('PCAplot', [trace], layout);
-
-                let extremeHtml = '<h3>Extreme Titles</h3>';
-                extremeHtml += '<h4>PC1</h4><ul>';
-                data.extreme_titles.PC1.forEach(title => {
-                    extremeHtml += `<li>${title}</li>`;
-                });
-                extremeHtml += '</ul><h4>PC2</h4><ul>';
-                data.extreme_titles.PC2.forEach(title => {
-                    extremeHtml += `<li>${title}</li>`;
-                });
-                extremeHtml += '</ul><h4>PC3</h4><ul>';
-                data.extreme_titles.PC3.forEach(title => {
-                    extremeHtml += `<li>${title}</li>`;
-                });
-                extremeHtml += '</ul>';
-                document.getElementById('extreme-titles').innerHTML = extremeHtml;
-
-            });
-    });
-
-    function updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer) {
-        if (!selectedCreator && !selectedCategory && !selectedPlayer) {
-            // Handle the default case (e.g., display a message or a default chart state)
-            return;
-        }
-
-        // Implement different behaviors based on the combination of non-default values
-        // Filter the rounds according to the selectedCreator, selectedCategory, and selectedPlayer
-        // Calculate the scores to be displayed
-        // Create and update the plot using Plotly.js according to the calculated scores
-        if (selectedCreator && !selectedCategory && !selectedPlayer) {
-            updateCreatorCategory(selectedCreator, "", "");
-        } else if (!selectedCreator && selectedCategory && !selectedPlayer) {
-            updateCreatorCategory("", selectedCategory, "");
-        } else if (!selectedCreator && !selectedCategory && selectedPlayer) {
-            updateCreatorCategory("", "", selectedPlayer);
-        } else if (selectedCreator && selectedCategory && !selectedPlayer) {
-            updateCreatorCategory(selectedCreator, selectedCategory, "");
-        } else if (selectedCreator && !selectedCategory && selectedPlayer) {
-            updateCreatorAndPlayer(selectedCreator, selectedPlayer);
-        } else if (!selectedCreator && selectedCategory && selectedPlayer) {
-            updateCategoryAndPlayer(selectedCategory, selectedPlayer);
-        } else if (selectedCreator && selectedCategory && selectedPlayer) {
-            updateCreatorCategoryAndPlayer(selectedCreator, selectedCategory, selectedPlayer);
+    function toggleRounds() {
+        const roundsTable = document.getElementById('rounds-table');
+        if (roundsTable.style.display === "none") {
+            roundsTable.style.display = "block";
+            // also show the checkboxes
+            const columnCheckboxes = document.getElementById('column-checkboxes');
+            columnCheckboxes.style.display = 'block';
+        } else {
+            roundsTable.style.display = "none";
+            // also hide the checkboxes
+            const columnCheckboxes = document.getElementById('column-checkboxes');
+            columnCheckboxes.style.display = 'none';
         }
     }
 
+    function setButtonColors() {
+        const roundsButton = document.getElementById("roundsButton");
+        const expandCollapseButtons = document.getElementsByClassName("expand-collapse-button");
 
-    function updateCreatorCategory(selectedCreator, selectedCategory, selectedPlayer) {
-        if (!selectedCreator && !selectedCategory && !selectedPlayer) {
-            // Handle the default case (e.g., display a message or a default chart state)
-            return;
-        }
-
-        // Filter rounds by the selected creator
-        if (selectedCreator) {
-            myrounds = rounds.filter((round) => round.creator === selectedCreator);
+        if (!playerName) {
+            roundsButton.style.backgroundColor = "#f94144";
+            roundsButton.style.color = "white";
+            for (let i = 0; i < expandCollapseButtons.length; i++) {
+                expandCollapseButtons[i].style.backgroundColor = "#f94144";
+                expandCollapseButtons[i].style.color = "white";
+                addHoverEffect(expandCollapseButtons[i], "#f94144");
+                // add rounded corners
+                expandCollapseButtons[i].style.borderRadius = "4px";
+            }
         } else {
-            myrounds = rounds;
+            const playerColor = playerColorMapping[playerName];
+            for (let i = 0; i < expandCollapseButtons.length; i++) {
+                expandCollapseButtons[i].style.backgroundColor = playerColor;
+                expandCollapseButtons[i].style.color = textColor;
+                addHoverEffect(expandCollapseButtons[i], playerColor);
+            }
+
+            const slidesButtons = document.getElementsByClassName("slides-button");
+            for (let i = 0; i < slidesButtons.length; i++) {
+                slidesButtons[i].style.backgroundColor = playerColor;
+                slidesButtons[i].style.color = textColor;
+                slidesButtons[i].style.border = "none";
+                slidesButtons[i].addEventListener("mouseover", function() {
+                    slidesButtons[i].style.backgroundColor = darkenColor(playerColor);
+                });
+
+                slidesButtons[i].addEventListener("mouseout", function() {
+                    slidesButtons[i].style.backgroundColor = playerColor;
+                });
+            }
         }
-        if (selectedCategory) {
-            myrounds = myrounds.filter((round) => round.major_category === selectedCategory);
-        }
-        if (selectedPlayer) {
-            myrounds = myrounds.filter((round) => round[mapping[selectedPlayer]] !== "");
+    }
+
+    function addHoverEffect(button, color) {
+        button.addEventListener('mouseover', function() {
+            button.style.backgroundColor = darkenColor(color);
+        });
+
+        button.addEventListener('mouseout', function() {
+            button.style.backgroundColor = color;
+        });
+    }
+
+    function darkenColor(hexColor) {
+        if (hexColor.startsWith('#')) {
+            hexColor = hexColor.slice(1);
         }
 
-        // now we need to decide what we are iterating over to get the data for the bar chart
-        if (selectedPlayer){
-            mylist = players
+        const rgb = hexColor.match(/.{1,2}/g).map((color) => parseInt(color, 16));
+
+        const darkenedRgb = rgb.map((color) => {
+            const darkenedValue = Math.round(color * 0.85);
+            return Math.max(0, Math.min(255, darkenedValue));
+        });
+
+        const darkenedHex = darkenedRgb.map((color) => color.toString(16).padStart(2, '0')).join('');
+        return `#${darkenedHex}`;
+    }
+
+    window.onload = setButtonColors;
+
+    const buttons = document.querySelectorAll(".expand-collapse-button");
+    buttons.forEach(button => {
+        const playerColor = playerColorMapping[playerName];
+
+        button.addEventListener('mouseover', () => {
+            button.style.backgroundColor = darkenColor(playerColorMapping[playerName]);
+        });
+
+        button.addEventListener('mouseout', () => {
+            button.style.backgroundColor = playerColorMapping[playerName];
+        });
+    });
+
+
+    function hideDiv(divId) {
+        document.getElementById(divId).style.display = 'none';
+    }
+
+    function showDiv(divId) {
+        document.getElementById(divId).style.display = 'block';
+    }
+
+    function checkAndHideDivs() {
+        if (!plotFlags.bar) hideDiv('bar-space');
+        if (!plotFlags.violin) hideDiv('violin-space');
+        if (!plotFlags.corrMatrix) hideDiv('CorrMatrix');
+        if (!plotFlags.creatorMatrix) hideDiv('CreatorMatrix');
+        if (!plotFlags.pMatrix) hideDiv('PMatrix');
+        if (!plotFlags.pca) hideDiv('PCAplot');
+        if (!plotFlags.catBar) hideDiv('catBar');
+        if (!plotFlags.creatorBar) hideDiv('creatorBar');
+        if (!plotFlags.playerBar) hideDiv('player-bar-space');
+        if (!plotFlags.playerViolin) hideDiv('player-violin-space');
+        if (!plotFlags.creatorViolin) hideDiv('creator-violin-space');
+        if (!plotFlags.playerCatBar) hideDiv('player-cat-bar-space');
+        if (!plotFlags.timeSeriesCreator) hideDiv('time-series-creator');
+        if (!plotFlags.roundsTable) hideDiv('rounds-table');
+        if (!plotFlags.triviaNightStreak) hideDiv('trivia-night-streak');
+        if (!plotFlags.jokerPercentage) hideDiv('joker_percentage');
+    }
+
+    function updatePlotByFilters(creator, category, player) {
+        /// clear all the plots
+        $('#bar-space').empty();
+        $('#violin-space').empty();
+        $('#CorrMatrix').empty();
+        $('#CreatorMatrix').empty();
+        $('#PMatrix').empty();
+        $('#PCAplot').empty();
+        $('#catBar').empty();
+        $('#creatorBar').empty();
+        $('#player-bar-space').empty();
+        $('#player-violin-space').empty();
+        $('#player-cat-bar-space').empty();
+        $('#creator-violin-space').empty();
+        $('#time-series-creator').empty();
+        $('#rounds-table').empty();
+        $('#trivia-night-streak').empty();
+        $('#joker_percentage').empty();
+
+        // set all flags to false
+        plotFlags.bar = false;
+        plotFlags.violin = false;
+        plotFlags.corrMatrix = false;
+        plotFlags.creatorMatrix = false;
+        plotFlags.pMatrix = false;
+        plotFlags.pca = false;
+        plotFlags.catBar = false;
+        plotFlags.creatorBar = false;
+        plotFlags.playerBar = false;
+        plotFlags.playerViolin = false;
+        plotFlags.playerCatBar = false;
+        plotFlags.creatorViolin = false;
+        plotFlags.timeSeriesCreator = false;
+        plotFlags.roundsTable = false;
+        plotFlags.triviaNightStreak = false;
+        plotFlags.jokerPercentage = false;
+
+        if (player === '') {
+            plotFlags.bar = true;
+            showDiv('bar-space')
+            $.ajax({
+                url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
+                data: {
+                    creator: creator,
+                    category: category,
+                    player: player,
+                    chart_type: 'bar'  // Specify chart type or make it dynamic
+                },
+                success: function(data) {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    renderBar(data);
+                },
+                error: function(error) {
+                    console.error('Error loading data:', error);
+                }
+            });
+            plotFlags.violin = true;
+            showDiv('violin-space')
+            // now do the violin plot
+            $.ajax({
+                url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
+                data: {
+                    creator: creator,
+                    category: category,
+                    player: player,
+                    chart_type: 'violin'  // Specify chart type or make it dynamic
+                },
+                success: function(data) {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    renderViolin(data);
+                },
+                error: function(error) {
+                    console.error('Error loading data:', error);
+                }
+            });
+            plotFlags.pca = true;
+            showDiv('PCAplot')
+            $.ajax({
+                url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
+                data: {
+                    creator: creator,
+                    category: category,
+                    player: player,
+                    chart_type: 'pca'  // Specify chart type or make it dynamic
+                },
+                success: function(data) {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    renderPCA(data);
+                },
+                error: function(error) {
+                    console.error('Error loading data:', error);
+                }
+            });
+            plotFlags.corrMatrix = true;
+            showDiv('CorrMatrix')
+            plotFlags.pMatrix = true;
+            showDiv('PMatrix')
+            $.ajax({
+                url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
+                data: {
+                    creator: creator,
+                    category: category,
+                    player: player,
+                    chart_type: 'corr'  // Specify chart type or make it dynamic
+                },
+                success: function(data) {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    renderCorrMatrix(data);
+                    renderPMatrix(data);
+                },
+                error: function(error) {
+                    console.error('Error loading data:', error);
+                }
+            });
+            if (creator === '') {
+                plotFlags.creatorMatrix = true;
+                showDiv('CreatorMatrix')
+                $.ajax({
+                    url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name                method: 'GET',
+                    data: {
+                        creator: creator,
+                        category: category,
+                        player: player,
+                        dadj: false,
+                        chart_type: 'bias_chart'  // Specify chart type or make it dynamic
+                    },
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        renderCreatorMatrix(data);
+                    },
+                    error: function(error) {
+                        console.error('Error loading data:', error);
+                    }
+                });
+            }
+            // if category is not selected, create a surface plot
+            if (category === '') {
+                plotFlags.catBar = true;
+                showDiv('catBar')
+                $.ajax({
+                    url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name                method: 'GET',
+                    data: {
+                        creator: creator,
+                        category: category,
+                        player: player,
+                        chart_type: 'category_bar'  // Specify chart type or make it dynamic
+                    },
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        renderCatBar(data);
+                    },
+                    error: function(error) {
+                        console.error('Error loading data:', error);
+                    }
+                });
+            }
+            if (creator === '') {
+                plotFlags.creatorBar = true;
+                showDiv('creatorBar')
+                $.ajax({
+                    url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name                method: 'GET',
+                    data: {
+                        creator: creator,
+                        category: category,
+                        player: player,
+                        chart_type: 'creator_bar'  // Specify chart type or make it dynamic
+                    },
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        renderCreatorBar(data);
+                    },
+                    error: function(error) {
+                        console.error('Error loading data:', error);
+                    }
+                });
+            }
+            if (creator === '' && category === '') {
+                plotFlags.triviaNightStreak = true;
+                showDiv('trivia-night-streak')
+                $.ajax({
+                    url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name                method: 'GET',
+                    data: {
+                        creator: creator,
+                        category: category,
+                        player: player,
+                        chart_type: 'trivia_night_streak'  // Specify chart type or make it dynamic
+                    },
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        renderTriviaNightStreak(data);
+                    },
+                    error: function(error) {
+                        console.error('Error loading data:', error);
+                    }
+                });
+                plotFlags.jokerPercentage = true;
+                showDiv('joker_percentage')
+                $.ajax({
+                    url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name                method: 'GET',
+                    data: {
+                        creator: creator,
+                        category: category,
+                        player: player,
+                        chart_type: 'joker_percentage'  // Specify chart type or make it dynamic
+                    },
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        renderJokerPercentage(data);
+                    },
+                    error: function(error) {
+                        console.error('Error loading data:', error);
+                    }
+                });
+            }
         }
         else {
-            mylist = players.filter((player) => player !== selectedCreator);
-        }
-
-        // Calculate the average scores for each player
-        let averages = {};
-        for (const item of mylist) {
-            let totalScore = 0;
-            let count = 0;
-            //////// NEEDS TO CHANGE BASED ON WHETHER WE ARE ITERATING OVER PLAYERS, CATEGORIES, OR CREATORS
-            for (let round of myrounds) {
-                if (!selectedPlayer) {
-                    if (round[mapping[item]] !== "") {
-                        totalScore += round[mapping[item]]
-                        count++;
+            plotFlags.playerBar = true;
+            showDiv('player-bar-space')
+            $.ajax({
+                url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
+                data: {
+                    creator: creator,
+                    category: category,
+                    player: player,
+                    chart_type: 'player_bar'  // Specify chart type or make it dynamic
+                },
+                success: function(data) {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
                     }
-                } else {
-                    if (round["creator"] === item || round["creator"] === "Mom" || round["creator"] === "Dad") {
-                        totalScore += round[mapping[selectedPlayer]]
-                        count++;
-                    }
+                    renderPlayerBar(data);
+                },
+                error: function(error) {
+                    console.error('Error loading data:', error);
                 }
-            }
-            let averageScore = count ? totalScore / count : 0;
-            averages[item] = averageScore;
-            ////////
-            if (myrounds.length === 0) {
-                averages[item] = 0;
-            }
+            });
+            plotFlags.playerViolin = true;
+            showDiv('player-violin-space')
+            $.ajax({
+                url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
+                data: {
+                    creator: creator,
+                    category: category,
+                    player: player,
+                    chart_type: 'player_violin'  // Specify chart type or make it dynamic
+                },
+                success: function(data) {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    renderPlayerViolin(data);
+                },
+                error: function(error) {
+                    console.error('Error loading data:', error);
+                }
+            });
+            plotFlags.creatorViolin = true;
+            showDiv('creator-violin-space')
+            $.ajax({
+                url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
+                data: {
+                    creator: creator,
+                    category: category,
+                    player: player,
+                    chart_type: 'creator_violin'  // Specify chart type or make it dynamic
+                },
+                success: function(data) {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    renderCreatorViolin(data);
+                },
+                error: function(error) {
+                    console.error('Error loading data:', error);
+                }
+            });
+            plotFlags.playerCatBar = true;
+            showDiv('player-cat-bar-space')
+            $.ajax({
+                url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
+                data: {
+                    creator: creator,
+                    category: category,
+                    player: player,
+                    chart_type: 'player_cat_bar'  // Specify chart type or make it dynamic
+                },
+                success: function(data) {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    renderPlayerCatBar(data);
+                },
+                error: function(error) {
+                    console.error('Error loading data:', error);
+                }
+            });
+            plotFlags.timeSeriesCreator = true;
+            showDiv('time-series-creator')
+            $.ajax({
+                url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
+                data: {
+                    creator: creator,
+                    category: category,
+                    player: player,
+                    chart_type: 'time_series_creator'  // Specify chart type or make it dynamic
+                },
+                success: function(data) {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    renderTimeSeriesCreator(data);
+                },
+                error: function(error) {
+                    console.error('Error loading data:', error);
+                }
+            });
         }
+        {#plotFlags.roundsTable = true;#}
+        showDiv('rounds-table')
+        $.ajax({
+            url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
+            data: {
+                creator: creator,
+                category: category,
+                player: player,
+                chart_type: 'rounds_table'  // Specify chart type or make it dynamic
+            },
+            success: function(data) {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                // Call the generateColumnCheckboxes function to create checkboxes
+                generateColumnCheckboxes(data);
+                renderRoundsTable(data);
+            },
+            error: function(error) {
+                console.error('Error loading data:', error);
+            }
+        });
+        checkAndHideDivs();
+    }
 
 
-        // subtract the player's average score for the creator from the player's average score for all rounds
-        if (!selectedPlayer) {
-            averagesDiff = {};
-            for (const item of mylist) {
-                let totalScore = 0;
-                let count = 0;
-                for (let round of rounds) {
-                    if (!selectedPlayer) {
-                        if (round[mapping[item]] !== "") {
-                            totalScore += round[mapping[item]];
-                            count++;
-                        }
+
+    let currentTablePage = 0;
+    const entriesPerPage = 15;
+
+    function generateColumnCheckboxes(data) {
+        const columnCheckboxesDiv = document.getElementById('column-checkboxes');
+        columnCheckboxesDiv.innerHTML = ''; // Clear previous checkboxes
+
+        data.columns.forEach(column => {
+            const label = document.createElement('label');
+            label.className = 'inline-checkbox'; // Add inline class
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            if (column === 'link') {
+                checkbox.checked = true; // Initially check the link column
+            } else if (column === 'mean_score') {
+                checkbox.checked = true; // Initially check the mean score column
+            } else if (column === 'date') {
+                checkbox.checked = true; // Initially check the creator column
+            } else if (column === "title") {
+                checkbox.checked = true; // Initially check the creator column
+            } else if (column === "player_score") {
+                checkbox.checked = true; // Initially check the creator column
+            } else if (column === "difficulty_score") {
+                checkbox.checked = true; // Initially check the creator column
+            } else {
+                checkbox.checked = false; // Initially check all columns
+            }
+            checkbox.value = column;
+            checkbox.addEventListener('change', function() {
+                renderRoundsTable(data);
+            });
+            // if the text is MAX SCORE, replace with POSSIBLE SCORE
+            if (column === "max_score") {
+                column = "possible_score";
+            } else if (column === "major_category") {
+                column = "category";
+            }
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(column.replace('_', ' ').toUpperCase()));
+
+            columnCheckboxesDiv.appendChild(label);
+        });
+    }
+
+    function getVisibleColumns() {
+        const checkboxes = document.querySelectorAll('#column-checkboxes input[type="checkbox"]');
+        return Array.from(checkboxes).filter(checkbox => checkbox.checked).map(checkbox => checkbox.value);
+    }
+
+    function renderRoundsTable(data) {
+        const roundsTableDiv = document.getElementById('rounds-table');
+
+        // Clear any existing content in the div
+        roundsTableDiv.innerHTML = '';
+
+        // Create the table element
+        const table = document.createElement('table');
+        table.className = 'table-class'; // Add any class you want for styling
+
+        // Create the table header
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+
+        const visibleColumns = getVisibleColumns();
+
+        visibleColumns.forEach(column => {
+            const th = document.createElement('th');
+            th.textContent = column.replace('_', ' ').toUpperCase(); // Adjust the header text as needed
+            // if the text is MAX SCORE, replace with POSSIBLE SCORE
+            if (th.textContent === "MAX SCORE") {
+                th.textContent = "POSSIBLE SCORE";
+            } else if (th.textContent === "MAJOR CATEGORY") {
+                th.textContent = "CATEGORY";
+            }
+            headerRow.appendChild(th);
+            if (column === 'title') { // Replace 'your_column_name' with the actual column name
+                th.classList.add('max-width-column');
+            }
+        });
+
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Create the table body
+        const tbody = document.createElement('tbody');
+        table.appendChild(tbody);
+        roundsTableDiv.appendChild(table);
+
+        // Function to render the table rows based on the current page
+        function renderTableRows(page) {
+            tbody.innerHTML = ''; // Clear previous rows
+
+            const start = page * entriesPerPage;
+            const end = Math.min(start + entriesPerPage, data.rounds.length);
+            const rowsToRender = data.rounds.slice(start, end);
+
+            rowsToRender.forEach(row => {
+                const tr = document.createElement('tr');
+
+                visibleColumns.forEach(column => {
+                    const td = document.createElement('td');
+                    if (column === 'link') {
+                        // Create a button for the link
+                        const button = document.createElement('button');
+                        button.className = 'slides-button';
+                        button.type = 'button';
+                        button.dataset.presentationUrl = row[column];
+                        button.textContent = 'Slides';
+
+                        // Apply styling based on creator color
+                        const creator = row['creator'];  // Assuming there's a 'creator' field
+                        const color = playerColorMapping[creator] || '#333333';
+                        button.style.backgroundColor = color;
+
+                        {#button.style.color = '#FFFFFF';#}
+                        button.style.color = playerTextMapping[creator];
+                        button.style.border = 'none';
+
+                        // Add hover effect to darken the button
+                        button.addEventListener('mouseover', function() {
+                            button.style.backgroundColor = darkenColor(color);
+                        });
+
+                        button.addEventListener('mouseout', function() {
+                            button.style.backgroundColor = color;
+                        });
+
+                        td.appendChild(button);
+                    } else if (column === 'mean_score' || column === 'player_score' || column === 'difficulty_score') {
+                        // Format the mean score to show only two decimal places
+                        td.textContent = row[column] !== undefined ? row[column].toFixed(2) : '';
                     } else {
-                        if (round[mapping[selectedPlayer]] !== ""  || round["creator"] === "Mom" || round["creator"] === "Dad") {
-                            totalScore += round[mapping[selectedPlayer]];
-                            count++;
-                        }
+                        td.textContent = row[column] !== undefined ? row[column] : ''; // Ensure valid text content
                     }
-                }
-                let averageScore = count ? totalScore / count : 0;
-                averagesDiff[item] = averages[item] - averageScore;
-                if (myrounds.length === 0) {
-                    averagesDiff[item] = 0;
-                }
-            }
-        } else {
-            // Calculate the overall average
-            let totalSum = 0;
-            let totalCount = 0;
-            for (const item of mylist) {
-                totalSum += averages[item];
-                totalCount++;
-            }
-            let overallAverage = totalSum / totalCount;
-
-            // Subtract the overall average from each item's average
-            averagesDiff = {};
-            for (const item of mylist) {
-                averagesDiff[item] = averages[item] - overallAverage;
-            }
-        }
-
-        // remove the creator from the playerAveragesDiff
-        if (selectedCreator) {
-            delete averagesDiff[selectedCreator];
-        }
-        if (selectedPlayer) {
-            delete averagesDiff[selectedPlayer];
-        }
-        // if the selected creator is mom, delete Debis from the playerAveragesDiff
-        if (selectedCreator === "Mom") {
-            delete averagesDiff["Debi"];
-        }
-        if (selectedPlayer === "Mom") {
-            delete averagesDiff["Debi"];
-        }
-        // if the selected creator is Dad, delete Dan from the playerAveragesDiff
-        if (selectedCreator === "Dad") {
-            delete averagesDiff["Dan"];
-        }
-        if (selectedPlayer === "Dad") {
-            delete averagesDiff["Dan"];
-        }
-
-        //sort the playerAveragesDiff
-        averagesDiff = Object.fromEntries(
-            Object.entries(averagesDiff).sort(([,a],[,b]) => b-a)
-        );
-
-        // Create trace data for the bar chart
-        let traceData = [
-            {
-                x: Object.keys(averagesDiff),
-                y: Object.values(averagesDiff),
-                type: 'bar',
-                marker: {
-                    color: Object.keys(averagesDiff).map((player) => playerColorMapping[player]),
-                },
-                plot_bgcolor:'rgba(0,0,0,0)',
-                paper_bgcolor:'rgba(0,0,0,0)',
-                font: {
-                    color: "#ffffff",
-                    font_family: "YoungSerif"
-                },
-            },
-        ];
-
-        // Create or update the chart using Plotly.js
-        stg = selectedCreator ? selectedCreator : "All Creators";
-        stg += selectedCategory ? ` ${selectedCategory}` : "";
-        xax = selectedPlayer ? "Creator" : "Player";
-
-        let layout = {
-            title: `Average Scores for ${stg} Rounds`,
-            xaxis: {
-                title: xax,
-                color: "#ffffff",
-            },
-            yaxis: {
-                title: 'Average Score Difference',
-                color: "#ffffff",
-            },
-            plot_bgcolor:'rgba(0,0,0,0)',
-            paper_bgcolor:'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-            },
-
-        };
-
-        Plotly.newPlot('bar-chart', traceData, layout, {displayModeBar: false});
-        // also add a violin plot, using the data from the columns of the rounds table
-        // for all creatorRounds, for each player, get the score for that round
-        // for each player, create a list of scores
-        // create a violin plot using the list of scores for each player
-
-
-        let violinData = [];
-
-        for (const playerName of players) {
-            if (playerName === selectedCreator) {
-                continue;
-            }
-            if (selectedCreator === "Mom" && playerName === "Debi") {
-                continue;
-            }
-            if (selectedCreator === "Dad" && playerName === "Dan") {
-                continue;
-            }
-            let scores = [];
-            for (let round of myrounds) {
-                if (!selectedPlayer) {
-                    if (round[mapping[playerName]] !== "") {
-                        scores.push(round[mapping[playerName]]);
+                    if (column === 'title') { // Replace 'your_column_name' with the actual column name
+                        td.classList.add('max-width-column');
                     }
-                } else {
-                    if (round[mapping[selectedPlayer]] !== ""  || round["creator"] === "Mom" || round["creator"] === "Dad") {
-                        scores.push(round[mapping[selectedPlayer]]);
-                    }
-                }
-            }
-            violinData.push({
-                y: scores,
-                type: 'violin',
-                name: playerName,
-                box: {
-                    visible: true
-                },
-                meanline: {
-                    visible: true,
-                    color: "black",
-                },
-                line: {
-                    color: playerColorMapping[playerName]
-                },
-                plot_bgcolor:'rgba(0,0,0,0)',
-                paper_bgcolor:'rgba(0,0,0,0)',
-                font: {
-                    color: "#ffffff",
-                },
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            });
+
+            // Add event listener for buttons
+            document.querySelectorAll('.slides-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const presentationUrl = this.dataset.presentationUrl;
+                    window.open(presentationUrl, '_blank'); // Open the link in a new tab
+                });
             });
         }
 
-        // again, subtract the player's average score for the creator from the player's average score for all rounds
-// subtract the player's average score for the creator from the player's average score for all rounds
-        {#if (!selectedPlayer) {#}
-        {#    averagesDiff = {};#}
-        {#    for (const item of mylist) {#}
-        {#        let totalScore = 0;#}
-        {#        let count = 0;#}
-        {#        for (let round of rounds) {#}
-        {#            if (!selectedPlayer) {#}
-        {#                if (round[mapping[item]] !== "") {#}
-        {#                    totalScore += round[mapping[item]];#}
-        {#                    count++;#}
-        {#                }#}
-        {#            } else {#}
-        {#                if (round[mapping[selectedPlayer]] !== ""  || round["creator"] === "Mom" || round["creator"] === "Dad") {#}
-        {#                    totalScore += round[mapping[selectedPlayer]];#}
-        {#                    count++;#}
-        {#                }#}
-        {#            }#}
-        {#        }#}
-        {#        let averageScore = count ? totalScore / count : 0;#}
-        {#        averagesDiff[item] = averages[item] - averageScore;#}
-        {#        if (myrounds.length === 0) {#}
-        {#            averagesDiff[item] = 0;#}
-        {#        }#}
-        {#    }#}
-        {#} else {#}
-        {#    // Calculate the overall average#}
-        {#    let totalSum = 0;#}
-        {#    let totalCount = 0;#}
-        {#    for (const item of mylist) {#}
-        {#        totalSum += averages[item];#}
-        {#        totalCount++;#}
-        {#    }#}
-        {#    let overallAverage = totalSum / totalCount;#}
-        {##}
-        {#    // Subtract the overall average from each item's average#}
-        {#    averagesDiff = {};#}
-        {#    for (const item of mylist) {#}
-        {#        averagesDiff[item] = averages[item] - overallAverage;#}
-        {#    }#}
-        {#}#}
+    // Initial render
+    renderTableRows(currentTablePage);
 
+    // Create a container for the buttons and text
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.textAlign = 'center';
+    buttonContainer.style.marginTop = '10px';
 
-        for (let i = 0; i < violinData.length; i++) {
-            let totalScore = 0;
-            let count = 0;
-            for (let round of myrounds) {
-                if (round[mapping[violinData[i].name]] !== "") {
-                    totalScore += round[mapping[violinData[i].name]];
-                    count++;
-                }
-            }
-            let averageScore = count ? totalScore / count : 0;
-
-            violinData[i].y = violinData[i].y.map((score) => averageScore - score);
-            if (myrounds.length === 0) {
-                violinData[i].y = [0];
-            }
+    // Add the Previous Page button
+    const prevPageButton = document.createElement('button');
+    prevPageButton.className = 'expand-collapse-button';
+    prevPageButton.textContent = 'Previous Page';
+    prevPageButton.style.color = '#ffffff';
+    // rounded corners
+    prevPageButton.style.borderRadius = "4px";
+    //check the playercolor mapping, if it is not empty, set the background color to the player color
+        // and if it is, set the background color to '#f94144'
+    if (playerColorMapping[playerName]) {
+        prevPageButton.style.background = playerColorMapping[playerName];
+    } else {
+        prevPageButton.style.background = '#f94144';
+    }
+    prevPageButton.style.fontFamily = 'YoungSerif';
+    // also make sure they darkenColor when hovered
+    prevPageButton.addEventListener('mouseover', function() {
+        if (playerColorMapping[playerName]) {
+            prevPageButton.style.backgroundColor = darkenColor(playerColorMapping[playerName]);
+        } else {
+            prevPageButton.style.backgroundColor = darkenColor('#f94144');
+        }
+    });
+    prevPageButton.addEventListener('mouseout', function() {
+        if (playerColorMapping[playerName]) {
+            prevPageButton.style.backgroundColor = playerColorMapping[playerName];
+        } else {
+            prevPageButton.style.backgroundColor = '#f94144';
+        }
+    });
+    prevPageButton.addEventListener('click', function() {
+        if (currentTablePage > 0) {
+            currentTablePage--;
+            renderTableRows(currentTablePage);
+            nextPageButton.disabled = false; // Enable the Next Page button if not on the last page
         }
 
-        // and sort the violinData
-        violinData.sort((a, b) => b.y.reduce((a, b) => a + b, 0) / b.y.length - a.y.reduce((a, b) => a + b, 0) / a.y.length);
+        // Disable the button if we're on the first page
+        if (currentTablePage === 0) {
+            prevPageButton.disabled = true;
+        }
+        updateDisplayedResults();
+    });
+    buttonContainer.appendChild(prevPageButton);
 
-        stg = selectedCreator ? selectedCreator : "All Creators";
-        stg += selectedCategory ? ` ${selectedCategory}` : "";
-        xax = selectedPlayer ? "Creator" : "Player";
+    // Add the Next Page button
+    const nextPageButton = document.createElement('button');
+    nextPageButton.className = 'expand-collapse-button';
+    nextPageButton.textContent = 'Next Page';
+    nextPageButton.style.color = '#ffffff';
+    // rounded corners
+    nextPageButton.style.borderRadius = "4px";
+    //check the playercolor mapping, if it is not empty, set the background color to the player color
+        // and if it is, set the background color to '#f94144'
+    if (playerColorMapping[playerName]) {
+        nextPageButton.style.background = playerColorMapping[playerName];
+    } else {
+        nextPageButton.style.background = '#f94144';
+    }
+    nextPageButton.style.fontFamily = 'YoungSerif';
+    // also make sure they darkenColor when hovered
+    nextPageButton.addEventListener('mouseover', function() {
+        if (playerColorMapping[playerName]) {
+            nextPageButton.style.backgroundColor = darkenColor(playerColorMapping[playerName]);
+        } else {
+            nextPageButton.style.backgroundColor = darkenColor('#f94144');
+        }
+    });
+    nextPageButton.addEventListener('mouseout', function() {
+        if (playerColorMapping[playerName]) {
+            nextPageButton.style.backgroundColor = playerColorMapping[playerName];
+        } else {
+            nextPageButton.style.backgroundColor = '#f94144';
+        }
+    });
+    nextPageButton.addEventListener('click', function() {
+        currentTablePage++;
+        renderTableRows(currentTablePage);
 
-        let violinLayout = {
-            title: `Scores for ${stg}'s Rounds`,
-            xaxis: {
-                title: xax,
-                color: "#ffffff",
-            },
-            yaxis: {
-                title: 'Score Difference Compared to Average',
-                color: "#ffffff",
-            },
+        // Disable the button if we've shown all entries
+        if ((currentTablePage + 1) * entriesPerPage >= data.rounds.length) {
+            nextPageButton.disabled = true;
+        }
+
+        // Enable the Previous Page button if not on the first page
+        if (currentTablePage > 0) {
+            prevPageButton.disabled = false;
+        }
+        updateDisplayedResults();
+    });
+    buttonContainer.appendChild(nextPageButton);
+
+    // Add the container below the table
+    roundsTableDiv.appendChild(buttonContainer);
+
+    // Disable the Previous Page button initially
+    prevPageButton.disabled = true;
+
+    // Disable the Next Page button if there are fewer entries than entriesPerPage
+    if (data.rounds.length <= entriesPerPage) {
+        nextPageButton.disabled = true;
+    }
+
+    // Add text to indicate displayed results
+    const displayedResultsText = document.createElement('div');
+    displayedResultsText.style.textAlign = 'center';
+    displayedResultsText.style.marginTop = '10px';
+    buttonContainer.appendChild(displayedResultsText);
+
+    // Function to update the displayed results text
+    function updateDisplayedResults() {
+        const start = currentTablePage * entriesPerPage + 1;
+        const end = Math.min((currentTablePage + 1) * entriesPerPage, data.rounds.length);
+        displayedResultsText.textContent = `Displaying results ${start}-${end} of ${data.rounds.length}`;
+    }
+
+    // Initial call to set the text
+    updateDisplayedResults();
+
+        // Disable the Previous Page button initially
+        prevPageButton.disabled = true;
+
+        // Disable the Next Page button if there are fewer entries than entriesPerPage
+        if (data.rounds.length <= entriesPerPage) {
+            nextPageButton.disabled = true;
+        }
+    }
+
+    function renderChart1(data) {
+        // Clear existing chart
+        $('#bar-space').empty();
+
+        // Render the new chart
+        const trace = {
+            x: data.x,
+            y: data.y,
+            z: data.z,
+            type: 'surface'  // Update this as per the chart type
+        };
+
+        const layout = {
+            title: data.title,
+            scene: {
+                xaxis: { title: data.xaxis },
+                yaxis: { title: data.yaxis },
+                zaxis: { title: data.zaxis }
+            }
+        };
+
+        Plotly.newPlot('bar-space', [trace], layout);  // Update the ID for different charts
+    }
+
+    function renderPlayerBar(data) {
+        const trace = {
+            x: data.categories,
+            y: data.mean_values,
+            type: 'bar',
+            marker: {
+                color: data.colors
+            }
+        };
+
+        const layout = {
+            title: data.title,
+            xaxis: { title: data.xaxis },
+            yaxis: { title: data.yaxis },
             plot_bgcolor:'rgba(0,0,0,0)',
             paper_bgcolor:'rgba(0,0,0,0)',
             font: {
                 color: "#ffffff",
+                family: "YoungSerif"
             },
         };
 
-        Plotly.newPlot('violin-chart', violinData, violinLayout, {displayModeBar: false});
-
-
-       // Combine the data and remove NaNs
-        {#const scoreMegan = myrounds.map(round => round.score_megan).filter(score => score !== null && score !== "");#}
-        {#const scoreJenny = myrounds.map(round => round.score_jenny).filter(score => score !== null && score !== "");#}
-        {#const scoreDebi = myrounds.map(round => round.score_debi).filter(score => score !== null && score !== "");#}
-        {#const scoreDan = myrounds.map(round => round.score_dan).filter(score => score !== null && score !== "");#}
-        {#const scoreAlex = myrounds.map(round => round.score_alex).filter(score => score !== null && score !== "");#}
-        {#const scoreChris = myrounds.map(round => round.score_chris).filter(score => score !== null && score !== "");#}
-        {#const scoreDrew = myrounds.map(round => round.score_drew).filter(score => score !== null && score !== "");#}
-        {#const scoreZach = myrounds.map(round => round.score_zach).filter(score => score !== null && score !== "");#}
-        {#const scoreIchigo = myrounds.map(round => round.score_ichigo).filter(score => score !== null && score !== "");#}
-        {#const scoreJeff = myrounds.map(round => round.score_jeff).filter(score => score !== null && score !== "");#}
-        {#const scoreDillon = myrounds.map(round => round.score_dillon).filter(score => score !== null && score !== "");#}
-        {#const scorePaige = myrounds.map(round => round.score_paige).filter(score => score !== null && score !== "");#}
-        {#const scoreTom = myrounds.map(round => round.score_tom).filter(score => score !== null && score !== "");#}
-        {##}
-        {#const combinedScores = [...scoreMegan, ...scoreJenny, ...scoreDebi, ...scoreDan, ...scoreAlex, ...scoreChris, ...scoreDrew, ...scoreZach, ...scoreIchigo, ...scoreJeff, ...scoreDillon, ...scorePaige, ...scoreTom].filter(score => score !== null);#}
-        {##}
-        {#// Create the histogram trace#}
-        {#const histogramTrace = {#}
-        {#    x: combinedScores,#}
-        {#    type: 'histogram',#}
-        {#    histnorm: 'probability density',  // Normalize the histogram#}
-        {#    name: 'Histogram',#}
-        {#    autobinx: false,#}
-        {#    xbins: {#}
-        {#        start: Math.min(...combinedScores),#}
-        {#        end: Math.max(...combinedScores),#}
-        {#        size: (Math.max(...combinedScores) - Math.min(...combinedScores)) / 20  // Number of bins#}
-        {#    }#}
-        {#};#}
-        {##}
-        {#// Create the data array#}
-        {#const data = [histogramTrace];#}
-        {##}
-        {#// Define the layout#}
-        {#const histLayout = {#}
-        {#    title: 'Distribution of Scores',#}
-        {#    xaxis: {#}
-        {#        title: 'Scores'#}
-        {#    },#}
-        {#    yaxis: {#}
-        {#        title: 'Density'#}
-        {#    },#}
-        {#    plot_bgcolor:'rgba(0,0,0,0)',#}
-        {#    paper_bgcolor:'rgba(0,0,0,0)',#}
-        {#};#}
-        {##}
-        {#// Plot the chart#}
-        {#Plotly.newPlot('histPlot', data, histLayout, {displayModeBar: false});#}
+        Plotly.newPlot('player-bar-space', [trace], layout);
     }
+
+    function renderPlayerCatBar(data) {
+        const trace = {
+            x: data.categories,
+            y: data.mean_values,
+            type: 'bar',
+            marker: {
+                color: data.colors
+            }
+        };
+
+        const layout = {
+            title: data.title,
+            xaxis: { title: data.xaxis },
+            yaxis: { title: data.yaxis },
+            plot_bgcolor:'rgba(0,0,0,0)',
+            paper_bgcolor:'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            },
+        };
+
+        Plotly.newPlot('player-cat-bar-space', [trace], layout);
+    }
+
+    function brightenColor(color, percent) {
+        const num = parseInt(color.slice(1), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) + amt;
+        const G = (num >> 8 & 0x00FF) + amt;
+        const B = (num & 0x0000FF) + amt;
+        return `#${(
+            0x1000000 +
+            (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+            (B < 255 ? B < 1 ? 0 : B : 255)
+        ).toString(16).slice(1).toUpperCase()}`;
+    }
+
+    function calculateBrightness(color) {
+        const num = parseInt(color.slice(1), 16);
+        const R = (num >> 16) & 0xFF;
+        const G = (num >> 8) & 0xFF;
+        const B = num & 0xFF;
+        // Calculate luminance
+        return 0.299 * R + 0.587 * G + 0.114 * B;
+    }
+
+    function renderTimeSeriesCreator(data) {
+        let lineColor = data.colors;
+        const brightnessThreshold = 55; // Set your threshold here
+        const currentBrightness = calculateBrightness(lineColor);
+
+        if (currentBrightness < brightnessThreshold) {
+            lineColor = brightenColor(lineColor, 20); // Increase brightness by 20%
+        }
+
+        const dateToDetails = {};
+        data.dates.forEach((date, index) => {
+            if (!dateToDetails[date]) {
+                dateToDetails[date] = [];
+            }
+            dateToDetails[date].push({
+                title: data.titles[index],
+                creator: data.creators[index],
+                score: data.adjusted_scores[index]
+            });
+        });
+
+        // Create hover text by concatenating titles, creators, and scores for the same date
+        const hoverText = data.dates.map(date => {
+            const details = dateToDetails[date].map(detail =>
+                `${detail.title} (Creator: ${detail.creator}, Score: ${detail.score.toFixed(2)})`
+            );
+            return details.join('<br>');
+        });
+
+        {#const hoverText = data.titles.map((title, index) => {#}
+        {#    return `${title} (${data.creators[index]})<br>Adjusted Score: (${data.adjusted_scores[index].toFixed(2)})`;#}
+        {#});#}
+
+        const trace = {
+            x: data.dates,
+            y: data.mean_values,
+            mode: 'lines',
+            type: 'scatter',
+            text: hoverText,  // Add titles for hover text
+            hoverinfo: 'text+x+y',  // Customize hover info
+            line: {color: lineColor, width: 4}
+        };
+
+        const layout = {
+            title: data.title,
+            xaxis: {
+                title: data.xaxis,
+                type: 'category',
+                gridcolor: 'rgba(255, 255, 255, 0.2)', // Make gridlines
+                tickangle: -45,
+                {#automargin: true // Adjust the margin automatically#}
+            },
+            yaxis: {
+                title: data.yaxis,
+                gridcolor: 'rgba(255, 255, 255, 0.2)' // Make gridlines
+            },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            }
+        };
+
+        Plotly.newPlot('time-series-creator', [trace], layout);
+    }
+
+
+    function renderBar(data) {
+        const trace = {
+            x: data.players,
+            y: data.mean_values,
+            type: 'bar',
+            marker: {
+                color: data.colors
+            }
+        };
+
+        const layout = {
+            title: data.title,
+            xaxis: { title: data.xaxis },
+            yaxis: { title: data.yaxis },
+            plot_bgcolor:'rgba(0,0,0,0)',
+            paper_bgcolor:'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            },
+        };
+
+        Plotly.newPlot('bar-space', [trace], layout);
+    }
+
+    function renderViolin(data) {
+        const traces = data.data.map(playerData => ({
+            type: 'violin',
+            x: Array(playerData.scores.length).fill(playerData.player),
+            y: playerData.scores,
+            name: playerData.player,
+            box: {
+                visible: true
+            },
+            points: 'all',
+            pointpos: -1.8,
+            jitter: 0.5,
+            marker: {
+                color: playerData.color
+            },
+            text: playerData.hover_texts,
+            hoverinfo: 'text'
+        }));
+
+        const layout = {
+            title: data.title,
+            xaxis: {
+                title: {
+                    text: data.xaxis,
+                    font: {
+                        size: 14,
+                        color: '#ffffff'
+                    }
+                },
+                type: 'category',
+                gridcolor: 'rgba(255, 255, 255, 0.2)', // Make gridlines translucent
+                tickangle: -45,
+                automargin: true // Adjust the margin automatically
+            },
+            yaxis: {
+                title: data.yaxis,
+                gridcolor: 'rgba(255, 255, 255, 0.2)' // Make gridlines translucent
+            },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            }
+        };
+
+        Plotly.newPlot('violin-space', traces, layout);
+    }
+
+    function renderPCA(data) {
+        // Trace for the principal component scores
+        {#const scoresTrace = {#}
+        {#    x: data.PC1,#}
+        {#    y: data.PC2,#}
+        {#    z: data.PC3,#}
+        {#    type: 'scatter3d',#}
+        {#    mode: 'markers',#}
+        {#    marker: {#}
+        {#        size: 5,#}
+        {#        color: data.PC1, // You can use any data for color scaling, e.g., data.PC1#}
+        {#        colorscale: 'Viridis',#}
+        {#        opacity: 0.8#}
+        {#    },#}
+        {#    name: 'Scores'#}
+        {#};#}
+
+        // Traces for the loadings
+        const trace = {
+            x: data.loadings.PC1,
+            y: data.loadings.PC2,
+            z: data.loadings.PC3,
+            mode: 'markers+text',
+            type: 'scatter3d',
+            text: data.loadings.variables,
+            textposition: 'top center',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif",
+                size: 6
+            },
+            marker: {
+                size: 12,
+                color: data.colors, // Use the same colors array or a separate one if needed
+                colorscale: 'Viridis',
+                opacity: 1
+        }};
+
+        const layout = {
+            title: data.title,
+            scene: {
+                xaxis: { title: 'PC1' },
+                yaxis: { title: 'PC2' },
+                zaxis: { title: 'PC3' }
+            },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            },
+            showlegend: false // Disable the legend if needed
+        };
+
+        const config = {
+            displayModeBar: false, // Hides the mode bar
+            scrollZoom: false, // Disables scrolling to zoom
+            responsive: true // Makes the plot responsive
+        };
+
+        Plotly.newPlot('PCAplot', [trace], layout, config);
+    }
+
+    function renderCorrMatrix(data) {
+        const trace = {
+            z: Object.values(data.correlation_matrix).map(row => Object.values(row)),            x: data.columns,
+            y: data.columns,
+            type: 'heatmap',
+            zmin: -0.4,  // Set the minimum value for the color scale
+            zmax: 0.4,   // Set the maximum value for the color scale
+            colorscale: [
+                [0, 'rgb(165,0,38)'],
+                [0.5, 'rgb(255,255,255)'],
+                [1, 'rgb(0,104,55)']
+            ],
+            colorbar: {
+                title: 'Correlation',
+                titleside: 'left',
+            },
+        };
+
+        const layout = {
+            title: data.title_corr,
+            xaxis: {
+                title: 'Player',
+                tickangle: -45
+            },
+            yaxis: {
+                title: 'Player',
+                automargin: true
+            },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            }
+        };
+
+        Plotly.newPlot('CorrMatrix', [trace], layout);
+    }
+
+    document.getElementById('showValuesCheckbox').addEventListener('change', function() {
+        const dadjValue = this.checked;  // Get the checkbox state
+
+        // Get values from the select dropdowns
+        const creator = document.getElementById('creator-selector').value;
+        const category = document.getElementById('category-selector').value;
+        const player = document.getElementById('player-selector').value;
+
+        plotFlags.creatorMatrix = true;
+        showDiv('CreatorMatrix');
+
+        $.ajax({
+            url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name
+            method: 'GET',
+            data: {
+                creator: creator,
+                category: category,
+                player: player,
+                dadj: dadjValue,  // Pass the checkbox state
+                chart_type: 'bias_chart'  // Specify chart type or make it dynamic
+            },
+            success: function(data) {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                renderCreatorMatrix(data);
+            },
+            error: function(error) {
+                console.error('Error loading data:', error);
+            }
+        });
+    });
+
+
+    function renderCreatorMatrix(data) {
+        const creators = Object.keys(data.correlation_matrix);  // Extract creator names (keys of the correlation_matrix object)
+        const players = data.columns;  // Extract player names (columns from the JSON response)
+            // Create the z matrix for heatmap values
+        const z = players.map(player => {
+            return creators.map(creator => {
+                const val = data.correlation_matrix[creator][player];
+                return (typeof val === 'number') ? val : 0;  // Ensure the value is a number
+            });
+        });
+
+        const trace = {
+            z: z,
+            x: data.columns,
+            y: data.columns,
+            type: 'heatmap',
+            zmin: -1.5,  // Set the minimum value for the color scale
+            zmax: 1.5,   // Set the maximum value for the color scale
+            colorscale: [
+                [0, 'rgb(165,0,38)'],
+                [0.5, 'rgb(255,255,255)'],
+                [1, 'rgb(0,104,55)']
+            ],
+            colorbar: {
+                title: 'Points',
+                titleside: 'left',
+            },
+        };
+
+        const layout = {
+            title: data.title_corr,
+            xaxis: {
+                title: 'Player',
+                tickangle: -45
+            },
+            yaxis: {
+                title: 'Creator',
+                automargin: true
+            },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            }
+        };
+
+        Plotly.newPlot('CreatorMatrix', [trace], layout);
+    }
+
+    function renderPMatrix(data) {
+        const trace = {
+            z: Object.values(data.p_values_matrix).map(row => Object.values(row)),            x: data.columns,
+            y: data.columns,
+            type: 'heatmap',
+            zmin: 0,  // Set the minimum value for the color scale
+            zmax: 1,   // Set the maximum value for the color scale
+            colorscale: [
+                [0, 'rgb(255,255,255)'],
+                [0.01, 'rgb(255,255,255)'],
+                [0.0105, 'rgb(255,0,0)'],
+                [1, 'rgb(0,0, 0)']
+            ],
+            colorbar: {
+                title: 'p',
+                titleside: 'left',
+            },
+        };
+
+        const layout = {
+            title: data.title_p_values,
+            xaxis: {
+                title: 'Player',
+                tickangle: -45
+            },
+            yaxis: {
+                title: 'Player',
+                automargin: true
+            },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            }
+        };
+
+        Plotly.newPlot('PMatrix', [trace], layout);
+        Plotly.Plots.resize(plotDivs);
+    }
+
+    function renderPlayerViolin(data) {
+        const traces = data.categories.map((category, index) => ({
+            type: 'violin',
+            x: Array(data.plot_data[index].length).fill(category),
+            y: data.plot_data[index],
+            name: category,
+            box: {
+                visible: true
+            },
+            points: 'all',
+            pointpos: -1.8,
+            jitter: 0.5,
+            marker: {
+                color: data.colors[index]
+            },
+            text: data.hover_texts[index],
+            hoverinfo: 'text'
+        }));
+
+        const layout = {
+            title: data.title,
+            xaxis: { title: data.xaxis },
+            yaxis: { title: data.yaxis },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            },
+            showlegend: false
+        };
+
+        Plotly.newPlot('player-violin-space', traces, layout);
+    }
+
+    function renderCreatorViolin(data) {
+        const traces = data.categories.map((category, index) => ({
+            type: 'violin',
+            x: Array(data.plot_data[index].length).fill(category),
+            y: data.plot_data[index],
+            name: category,
+            box: {
+                visible: true
+            },
+            points: 'all',
+            pointpos: -1.8,
+            jitter: 0.5,
+            marker: {
+                color: data.colors[index]
+            },
+            text: data.hover_texts[index],
+            hoverinfo: 'text'
+        }));
+
+        const layout = {
+            title: data.title,
+            xaxis: { title: data.xaxis },
+            yaxis: { title: data.yaxis },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            },
+            showlegend: false
+        };
+
+        Plotly.newPlot('creator-violin-space', traces, layout);
+    }
+
+    function renderCatBar(data) {
+        const trace = {
+            x: data.categories,
+            y: data.mean_values,
+            type: 'bar',
+        };
+
+        const layout = {
+            title: data.title,
+            xaxis: { title: data.xaxis },
+            yaxis: { title: data.yaxis },
+            plot_bgcolor:'rgba(0,0,0,0)',
+            paper_bgcolor:'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            },
+        };
+
+        Plotly.newPlot('catBar', [trace], layout);
+    }
+
+
+    function renderCreatorBar(data) {
+        const trace = {
+            x: data.categories,
+            y: data.mean_values,
+            type: 'bar',
+            marker: {
+                color: data.colors
+            }
+        };
+
+        const layout = {
+            title: data.title,
+            xaxis: { title: data.xaxis },
+            yaxis: { title: data.yaxis },
+            plot_bgcolor:'rgba(0,0,0,0)',
+            paper_bgcolor:'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            },
+        };
+
+        // change the styling of creator bar
+        Plotly.newPlot('creatorBar', [trace], layout);
+    }
+
+    function renderTriviaNightStreak(data) {
+        const trace = {
+            x: data.dates,
+            y: data.streaks,
+            type: 'scatter',
+            mode: 'lines+markers',
+            marker: {
+                color: 'rgba(64, 224, 208, 1)',  // Bright turquoise for markers
+                size: 8
+            },
+            line: {
+                color: 'rgba(255, 127, 80, 1)',  // Coral color for line
+                width: 2
+            }
+        };
+
+        const layout = {
+            title: data.title,
+            xaxis: {
+                title: 'Date'
+            },
+            yaxis: {
+                title: 'Current Streak'
+            },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            }
+        };
+
+        const config = {
+            scrollZoom: false, // Disable scroll to zoom
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['zoom2d', 'pan2d', 'select2d', 'lasso2d'], // Remove some interactivity buttons
+            displaylogo: false // Remove Plotly logo
+        };
+
+        Plotly.newPlot('trivia-night-streak', [trace], layout, config);
+    }
+
+function renderJokerPercentage(data) {
+    const table = document.createElement('table');
+    table.className = 'joker-analysis-fraction-table';
+    const caption = table.createCaption();
+    caption.textContent = 'Fraction of Correct Jokers';
+
+    // Create header row with player names
+    const headerRow = table.insertRow();
+    headerRow.insertCell().textContent = 'Player';
+    Object.keys(data).forEach(player => {
+        const headerCell = headerRow.insertCell();
+        headerCell.textContent = player;
+    });
+
+    // Compute min and max values
+    const fractions = Object.values(data).filter(f => f !== null);
+    const minFraction = Math.min(...fractions);
+    const maxFraction = Math.max(...fractions);
+
+    // Create row with fractions
+    const fractionRow = table.insertRow();
+    fractionRow.insertCell().textContent = 'Fraction';
+    Object.values(data).forEach(fraction => {
+        const fractionCell = fractionRow.insertCell();
+        fractionCell.textContent = fraction !== null ? fraction.toFixed(2) : 'N/A';
+        fractionCell.style.backgroundColor = getGradientColor(fraction, minFraction, maxFraction);
+    });
+
+
+        document.getElementById('joker_percentage').appendChild(table);
+    }
+
+    // Helper function to get the gradient color based on the fraction value
+    function getGradientColor(value, min, max) {
+        if (value === null) return 'lightgray';
+
+        const red = [165, 0, 38];
+        const green = [0, 104, 55];
+
+        const interpolateColor = (color1, color2, factor) => {
+            if (arguments.length < 3) factor = 0.5;
+            const result = color1.slice();
+            for (let i = 0; i < 3; i++) {
+                result[i] = Math.round(result[i] + factor * (color2[i] - color1[i]));
+            }
+            return result;
+        };
+
+        // Scale the value to [0, 1]
+        const factor = (value - min) / (max - min);
+        const color = interpolateColor(red, green, factor);
+        return `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+    }
+
+
 
     // Initialize the plot with some default value if needed
     updatePlotByFilters('', '', '');
@@ -626,12 +1622,39 @@
         updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer);
     });
 
+
     window.onresize = function() {
-        var plotDivs = document.getElementById('bar-chart');
+        var plotDivs = document.getElementById('bar-space');
         Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('violin-chart');
+        plotDivs = document.getElementById('violin-space');
         Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('histPlot');
+        plotDivs = document.getElementById('CorrMatrix');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('CreatorMatrix');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('PCAplot');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('catBar');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('creatorBar');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('PMatrix');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('player-bar-space');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('player-violin-space');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('player-cat-bar-space');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('creator-violin-space');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('time-series-creator');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('rounds-table');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('trivia-night-streak');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('joker_percentage');
         Plotly.Plots.resize(plotDivs);
     };
 </script>

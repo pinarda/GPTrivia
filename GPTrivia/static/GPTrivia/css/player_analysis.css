@@ -3,10 +3,62 @@ body {
   line-height: 1.6;
   background-color: #333;
   color:white;
-background-image: linear-gradient(62deg, #3a3d40 0%, #181719 100%);
+    background-image: linear-gradient(62deg, #3a3d40 0%, #181719 100%);
 }
 
+#roundsButton {
+    font-family: YoungSerif;
+}
 
+.select-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-right: 10px; /* Adjust spacing between dropdowns */
+    text-align: center; /* Center the text within the container */
+}
+
+.select-dropdown {
+    border: none;
+    color: white;
+    padding: 10px 24px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    transition-duration: 0.4s;
+    background-color: #f94144; /* Set your desired background color */
+    font-family: YoungSerif; /* Set your desired font family */
+    border-radius: 4px; /* Optional: Add border radius for rounded corners */
+}
+
+.select-label {
+    color: white;
+    font-family: YoungSerif;
+    margin-bottom: 5px;
+}
+
+.select-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.select-dropdown option {
+    color: black; /* Option text color */
+    background-color: white; /* Option background color */
+}
+
+.select-dropdown:focus {
+    outline: none;
+    box-shadow: 0 0 10px #f94144; /* Add a shadow to indicate focus */
+}
+
+.select-dropdown:hover {
+    background-color: #e63946; /* Darken the background color on hover */
+}
 
 #bar-chart{
     display: flex;
@@ -31,23 +83,43 @@ background-image: linear-gradient(62deg, #3a3d40 0%, #181719 100%);
 }
 
 #creator-selector {
-    width: 30%;
     display: inline-flex;
     justify-content: center;
 }
 
-.footer-container{
-    /*background-color: #b8475d;*/
-    /*background-color: #9d4edd;*/
-    background-color: #240046;
-    position: inherit;
-    font-family: YoungSerif;
+.page-header {
+    text-align: center;
+    margin: 10px 0; /* Optional: Add some margin for spacing */
+    padding: 0;
 }
+
+.page-subheader {
+    text-align: center;
+    margin: 10px 0; /* Optional: Add some margin for spacing */
+    padding: 0;
+}
+
+/*.footer-container{*/
+/*    !*background-color: #b8475d;*!*/
+/*    !*background-color: #9d4edd;*!*/
+/*    background-color: #240046;*/
+/*    position: inherit;*/
+/*    font-family: YoungSerif;*/
+/*}*/
 
 #category-selector {
-    width: 30%;
     display: inline-flex;
     justify-content: center;
+}
+
+#column-checkboxes {
+    text-align: center;
+    margin: 10px 0; /* Optional: Add some margin for spacing */
+}
+
+.inline-checkbox {
+    display: inline-block;
+    margin-right: 10px;
 }
 
 /*https://coolors.co/palette/72bad5-0e4c6d-03324e-01263d-ef4043-be1e2d-c43240*/
@@ -60,6 +132,50 @@ background-image: linear-gradient(62deg, #3a3d40 0%, #181719 100%);
     background-color: #f94144;
     position: inherit;
     font-family: YoungSerif;
+}
+
+#plots-container {
+    display: flex;
+    flex-direction: row; /* Ensure the flex direction is row */
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: nowrap; /* Prevent wrapping */
+}
+#CorrMatrix, #PMatrix {
+    width: 49%; /* Set width to ensure they stay inline */
+    height: 500px;
+}
+
+#joker_percentage {
+    padding-bottom: 30px;
+    padding-top: 15px;
+}
+
+.table-class {
+    width: 100%;
+    text-align: center;
+}
+
+.table-class th, .table-class td {
+    text-align: center;
+}
+
+.table-class th {
+    text-align: center;
+    border-bottom: 2px solid white; /* Add a white line under the header */
+    padding: 8px; /* Optional: Add some padding for better spacing */
+}
+
+.table-class .max-width-column {
+    max-width: 300px; /* Set your desired max width */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.table-class .max-width-column:hover {
+    white-space: normal; /* Allows text to wrap on hover */
 }
 
 .red{

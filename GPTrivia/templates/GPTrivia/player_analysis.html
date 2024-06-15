@@ -30,6 +30,16 @@
 
 <div id="bar-chart"></div>
 <div id="violin-chart" style="width:100%; height:500px;"></div>
+{#<div id="histPlot" style="width:100%; height:500px;"></div>#}
+
+<button id="loadPlot">Load PCA Plot</button>
+<div id="PCAplot"></div>
+<div id="extreme-titles"></div>
+<button id="loadCorrMatrix">Load Correlation Matrix</button>
+<div id="corrMatrixPlot"></div>
+<div id="significanceMatrixPlot"></div>
+<button id="loadSurfacePlot">Load 3D Surface Plot</button>
+<div id="surfacePlot"></div>
 
 {% endblock %}
 
@@ -41,6 +51,170 @@
     let players = {{ players|safe }};
     let rounds = {{ rounds|safe }};
     let mapping = {{ mapping|safe }};
+
+    document.getElementById('loadSurfacePlot').addEventListener('click', function() {
+        fetch('/compute-3d-surface-data/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                const trace = {
+                    x: data.x,
+                    y: data.y,
+                    z: data.z,
+                    type: 'surface'
+                };
+
+                const layout = {
+                    title: '3D Surface Plot of Average Scores by Major Category',
+                    scene: {
+                        xaxis: {title: 'Score Columns'},
+                        yaxis: {title: 'Major Categories'},
+                        zaxis: {title: 'Average Score'}
+                    },
+                    plot_bgcolor:'rgba(0,0,0,0)',
+                    paper_bgcolor:'rgba(0,0,0,0)',
+                    font: {
+                        color: "#ffffff",
+                        font_family: "YoungSerif"
+                    },
+                };
+
+                Plotly.newPlot('surfacePlot', [trace], layout);
+            });
+    });
+
+    document.getElementById('loadCorrMatrix').addEventListener('click', function() {
+        fetch('/compute-correlation-matrix/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                const correlationMatrix = data.correlation_matrix;
+                const pValuesMatrix = data.p_values_matrix;
+                const columns = data.columns;
+
+                const z = columns.map(col => columns.map(row => correlationMatrix[col][row]));
+                const zSignif = columns.map(col => columns.map(row => pValuesMatrix[col][row]));
+
+
+                const trace = {
+                    z: z,
+                    x: columns,
+                    y: columns,
+                    type: 'heatmap',
+                    colorscale: [
+                        ['0.0', 'red'],
+                        ['0.5', 'white'],
+                        ['1.0', 'green']
+                    ],
+                    zmin: -1,
+                    zmax: 1
+                };
+
+                const layout = {
+                    title: 'Correlation Matrix',
+                    xaxis: {
+                        side: 'top'
+                    },
+                    yaxis: {
+                        autorange: 'reversed'
+                    }
+                };
+
+                Plotly.newPlot('corrMatrixPlot', [trace], layout);
+
+                // Significance matrix plot (p-values)
+                const traceSignif = {
+                    z: zSignif,
+                    x: columns,
+                    y: columns,
+                    type: 'heatmap',
+                    colorscale: [
+                        ['0.0', 'green'],
+                        ['0.05', 'yellow'],
+                        ['1.0', 'red']
+                    ],
+                    zmin: 0,
+                    zmax: 1
+                };
+
+                const layoutSignif = {
+                    title: 'Significance Matrix (p-values)',
+                    xaxis: {
+                        side: 'top'
+                    },
+                    yaxis: {
+                        autorange: 'reversed'
+                    }
+                };
+
+                Plotly.newPlot('significanceMatrixPlot', [traceSignif], layoutSignif);
+            });
+    });
+
+    document.getElementById('loadPlot').addEventListener('click', function() {
+        fetch('/compute-pca/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                const trace = {
+                    x: data.loadings.PC1,
+                    y: data.loadings.PC2,
+                    z: data.loadings.PC3,
+                    mode: 'markers+text',
+                    type: 'scatter3d',
+                    text: data.loadings.variables,
+                    textposition: 'top center',
+                    marker: { size: 12 }
+                };
+
+                const layout = {
+                    title: 'PCA Result',
+                    scene: {
+                        xaxis: {title: 'PC1'},
+                        yaxis: {title: 'PC2'},
+                        zaxis: {title: 'PC3'}
+                    },
+                    showlegend: false,
+                    plot_bgcolor:'rgba(0,0,0,0)',
+                    paper_bgcolor:'rgba(0,0,0,0)',
+                    font: {
+                        color: "#ffffff",
+                        font_family: "YoungSerif"
+                    },
+                };
+
+                Plotly.newPlot('PCAplot', [trace], layout);
+
+                let extremeHtml = '<h3>Extreme Titles</h3>';
+                extremeHtml += '<h4>PC1</h4><ul>';
+                data.extreme_titles.PC1.forEach(title => {
+                    extremeHtml += `<li>${title}</li>`;
+                });
+                extremeHtml += '</ul><h4>PC2</h4><ul>';
+                data.extreme_titles.PC2.forEach(title => {
+                    extremeHtml += `<li>${title}</li>`;
+                });
+                extremeHtml += '</ul><h4>PC3</h4><ul>';
+                data.extreme_titles.PC3.forEach(title => {
+                    extremeHtml += `<li>${title}</li>`;
+                });
+                extremeHtml += '</ul>';
+                document.getElementById('extreme-titles').innerHTML = extremeHtml;
+
+            });
+    });
 
     function updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer) {
         if (!selectedCreator && !selectedCategory && !selectedPlayer) {
@@ -255,7 +429,7 @@
                 continue;
             }
             let scores = [];
-            for (let round of rounds) {
+            for (let round of myrounds) {
                 if (!selectedPlayer) {
                     if (round[mapping[playerName]] !== "") {
                         scores.push(round[mapping[playerName]]);
@@ -374,6 +548,57 @@
         };
 
         Plotly.newPlot('violin-chart', violinData, violinLayout, {displayModeBar: false});
+
+
+       // Combine the data and remove NaNs
+        {#const scoreMegan = myrounds.map(round => round.score_megan).filter(score => score !== null && score !== "");#}
+        {#const scoreJenny = myrounds.map(round => round.score_jenny).filter(score => score !== null && score !== "");#}
+        {#const scoreDebi = myrounds.map(round => round.score_debi).filter(score => score !== null && score !== "");#}
+        {#const scoreDan = myrounds.map(round => round.score_dan).filter(score => score !== null && score !== "");#}
+        {#const scoreAlex = myrounds.map(round => round.score_alex).filter(score => score !== null && score !== "");#}
+        {#const scoreChris = myrounds.map(round => round.score_chris).filter(score => score !== null && score !== "");#}
+        {#const scoreDrew = myrounds.map(round => round.score_drew).filter(score => score !== null && score !== "");#}
+        {#const scoreZach = myrounds.map(round => round.score_zach).filter(score => score !== null && score !== "");#}
+        {#const scoreIchigo = myrounds.map(round => round.score_ichigo).filter(score => score !== null && score !== "");#}
+        {#const scoreJeff = myrounds.map(round => round.score_jeff).filter(score => score !== null && score !== "");#}
+        {#const scoreDillon = myrounds.map(round => round.score_dillon).filter(score => score !== null && score !== "");#}
+        {#const scorePaige = myrounds.map(round => round.score_paige).filter(score => score !== null && score !== "");#}
+        {#const scoreTom = myrounds.map(round => round.score_tom).filter(score => score !== null && score !== "");#}
+        {##}
+        {#const combinedScores = [...scoreMegan, ...scoreJenny, ...scoreDebi, ...scoreDan, ...scoreAlex, ...scoreChris, ...scoreDrew, ...scoreZach, ...scoreIchigo, ...scoreJeff, ...scoreDillon, ...scorePaige, ...scoreTom].filter(score => score !== null);#}
+        {##}
+        {#// Create the histogram trace#}
+        {#const histogramTrace = {#}
+        {#    x: combinedScores,#}
+        {#    type: 'histogram',#}
+        {#    histnorm: 'probability density',  // Normalize the histogram#}
+        {#    name: 'Histogram',#}
+        {#    autobinx: false,#}
+        {#    xbins: {#}
+        {#        start: Math.min(...combinedScores),#}
+        {#        end: Math.max(...combinedScores),#}
+        {#        size: (Math.max(...combinedScores) - Math.min(...combinedScores)) / 20  // Number of bins#}
+        {#    }#}
+        {#};#}
+        {##}
+        {#// Create the data array#}
+        {#const data = [histogramTrace];#}
+        {##}
+        {#// Define the layout#}
+        {#const histLayout = {#}
+        {#    title: 'Distribution of Scores',#}
+        {#    xaxis: {#}
+        {#        title: 'Scores'#}
+        {#    },#}
+        {#    yaxis: {#}
+        {#        title: 'Density'#}
+        {#    },#}
+        {#    plot_bgcolor:'rgba(0,0,0,0)',#}
+        {#    paper_bgcolor:'rgba(0,0,0,0)',#}
+        {#};#}
+        {##}
+        {#// Plot the chart#}
+        {#Plotly.newPlot('histPlot', data, histLayout, {displayModeBar: false});#}
     }
 
     // Initialize the plot with some default value if needed
@@ -405,6 +630,8 @@
         var plotDivs = document.getElementById('bar-chart');
         Plotly.Plots.resize(plotDivs);
         plotDivs = document.getElementById('violin-chart');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('histPlot');
         Plotly.Plots.resize(plotDivs);
     };
 </script>
