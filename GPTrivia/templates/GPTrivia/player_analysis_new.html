@@ -1,0 +1,638 @@
+{% extends 'base.html' %}
+{% load GPTrivia_extras %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}">
+{% endblock %}
+
+{% block content %}
+<select name="creators" id="creator-selector">
+    <option value="" selected>-- Select a creator --</option>
+    {% for creator in creators %}
+    <option value="{{ creator }}">{{ creator }}</option>
+    {% endfor %}
+</select>
+
+<select name="categories" id="category-selector">
+    <option value="" selected>-- Select a category --</option>
+    {% for category in categories %}
+    <option value="{{ category }}">{{ category }}</option>
+    {% endfor %}
+</select>
+
+<select name="players" id="player-selector" style="display: none">
+    <option value="" selected>-- Select a player --</option>
+    {% for player in players %}
+    <option value="{{ player }}">{{ player }}</option>
+    {% endfor %}
+</select>
+
+<div id="bar-chart"></div>
+<div id="violin-chart" style="width:100%; height:500px;"></div>
+{#<div id="histPlot" style="width:100%; height:500px;"></div>#}
+
+<button id="loadPlot">Load PCA Plot</button>
+<div id="PCAplot"></div>
+<div id="extreme-titles"></div>
+<button id="loadCorrMatrix">Load Correlation Matrix</button>
+<div id="corrMatrixPlot"></div>
+<div id="significanceMatrixPlot"></div>
+<button id="loadSurfacePlot">Load 3D Surface Plot</button>
+<div id="surfacePlot"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script>
+
+    let playerColorMapping = {{ playerColorMapping|safe }};
+    let players = {{ players|safe }};
+    let rounds = {{ rounds|safe }};
+    let mapping = {{ mapping|safe }};
+
+    document.getElementById('loadSurfacePlot').addEventListener('click', function() {
+        fetch('/compute-3d-surface-data/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                const trace = {
+                    x: data.x,
+                    y: data.y,
+                    z: data.z,
+                    type: 'surface'
+                };
+
+                const layout = {
+                    title: '3D Surface Plot of Average Scores by Major Category',
+                    scene: {
+                        xaxis: {title: 'Score Columns'},
+                        yaxis: {title: 'Major Categories'},
+                        zaxis: {title: 'Average Score'}
+                    },
+                    plot_bgcolor:'rgba(0,0,0,0)',
+                    paper_bgcolor:'rgba(0,0,0,0)',
+                    font: {
+                        color: "#ffffff",
+                        font_family: "YoungSerif"
+                    },
+                };
+
+                Plotly.newPlot('surfacePlot', [trace], layout);
+            });
+    });
+
+    document.getElementById('loadCorrMatrix').addEventListener('click', function() {
+        fetch('/compute-correlation-matrix/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                const correlationMatrix = data.correlation_matrix;
+                const pValuesMatrix = data.p_values_matrix;
+                const columns = data.columns;
+
+                const z = columns.map(col => columns.map(row => correlationMatrix[col][row]));
+                const zSignif = columns.map(col => columns.map(row => pValuesMatrix[col][row]));
+
+
+                const trace = {
+                    z: z,
+                    x: columns,
+                    y: columns,
+                    type: 'heatmap',
+                    colorscale: [
+                        ['0.0', 'red'],
+                        ['0.5', 'white'],
+                        ['1.0', 'green']
+                    ],
+                    zmin: -1,
+                    zmax: 1
+                };
+
+                const layout = {
+                    title: 'Correlation Matrix',
+                    xaxis: {
+                        side: 'top'
+                    },
+                    yaxis: {
+                        autorange: 'reversed'
+                    }
+                };
+
+                Plotly.newPlot('corrMatrixPlot', [trace], layout);
+
+                // Significance matrix plot (p-values)
+                const traceSignif = {
+                    z: zSignif,
+                    x: columns,
+                    y: columns,
+                    type: 'heatmap',
+                    colorscale: [
+                        ['0.0', 'green'],
+                        ['0.05', 'yellow'],
+                        ['1.0', 'red']
+                    ],
+                    zmin: 0,
+                    zmax: 1
+                };
+
+                const layoutSignif = {
+                    title: 'Significance Matrix (p-values)',
+                    xaxis: {
+                        side: 'top'
+                    },
+                    yaxis: {
+                        autorange: 'reversed'
+                    }
+                };
+
+                Plotly.newPlot('significanceMatrixPlot', [traceSignif], layoutSignif);
+            });
+    });
+
+    document.getElementById('loadPlot').addEventListener('click', function() {
+        fetch('/compute-pca/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                const trace = {
+                    x: data.loadings.PC1,
+                    y: data.loadings.PC2,
+                    z: data.loadings.PC3,
+                    mode: 'markers+text',
+                    type: 'scatter3d',
+                    text: data.loadings.variables,
+                    textposition: 'top center',
+                    marker: { size: 12 }
+                };
+
+                const layout = {
+                    title: 'PCA Result',
+                    scene: {
+                        xaxis: {title: 'PC1'},
+                        yaxis: {title: 'PC2'},
+                        zaxis: {title: 'PC3'}
+                    },
+                    showlegend: false,
+                    plot_bgcolor:'rgba(0,0,0,0)',
+                    paper_bgcolor:'rgba(0,0,0,0)',
+                    font: {
+                        color: "#ffffff",
+                        font_family: "YoungSerif"
+                    },
+                };
+
+                Plotly.newPlot('PCAplot', [trace], layout);
+
+                let extremeHtml = '<h3>Extreme Titles</h3>';
+                extremeHtml += '<h4>PC1</h4><ul>';
+                data.extreme_titles.PC1.forEach(title => {
+                    extremeHtml += `<li>${title}</li>`;
+                });
+                extremeHtml += '</ul><h4>PC2</h4><ul>';
+                data.extreme_titles.PC2.forEach(title => {
+                    extremeHtml += `<li>${title}</li>`;
+                });
+                extremeHtml += '</ul><h4>PC3</h4><ul>';
+                data.extreme_titles.PC3.forEach(title => {
+                    extremeHtml += `<li>${title}</li>`;
+                });
+                extremeHtml += '</ul>';
+                document.getElementById('extreme-titles').innerHTML = extremeHtml;
+
+            });
+    });
+
+    function updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer) {
+        if (!selectedCreator && !selectedCategory && !selectedPlayer) {
+            // Handle the default case (e.g., display a message or a default chart state)
+            return;
+        }
+
+        // Implement different behaviors based on the combination of non-default values
+        // Filter the rounds according to the selectedCreator, selectedCategory, and selectedPlayer
+        // Calculate the scores to be displayed
+        // Create and update the plot using Plotly.js according to the calculated scores
+        if (selectedCreator && !selectedCategory && !selectedPlayer) {
+            updateCreatorCategory(selectedCreator, "", "");
+        } else if (!selectedCreator && selectedCategory && !selectedPlayer) {
+            updateCreatorCategory("", selectedCategory, "");
+        } else if (!selectedCreator && !selectedCategory && selectedPlayer) {
+            updateCreatorCategory("", "", selectedPlayer);
+        } else if (selectedCreator && selectedCategory && !selectedPlayer) {
+            updateCreatorCategory(selectedCreator, selectedCategory, "");
+        } else if (selectedCreator && !selectedCategory && selectedPlayer) {
+            updateCreatorAndPlayer(selectedCreator, selectedPlayer);
+        } else if (!selectedCreator && selectedCategory && selectedPlayer) {
+            updateCategoryAndPlayer(selectedCategory, selectedPlayer);
+        } else if (selectedCreator && selectedCategory && selectedPlayer) {
+            updateCreatorCategoryAndPlayer(selectedCreator, selectedCategory, selectedPlayer);
+        }
+    }
+
+
+    function updateCreatorCategory(selectedCreator, selectedCategory, selectedPlayer) {
+        if (!selectedCreator && !selectedCategory && !selectedPlayer) {
+            // Handle the default case (e.g., display a message or a default chart state)
+            return;
+        }
+
+        // Filter rounds by the selected creator
+        if (selectedCreator) {
+            myrounds = rounds.filter((round) => round.creator === selectedCreator);
+        } else {
+            myrounds = rounds;
+        }
+        if (selectedCategory) {
+            myrounds = myrounds.filter((round) => round.major_category === selectedCategory);
+        }
+        if (selectedPlayer) {
+            myrounds = myrounds.filter((round) => round[mapping[selectedPlayer]] !== "");
+        }
+
+        // now we need to decide what we are iterating over to get the data for the bar chart
+        if (selectedPlayer){
+            mylist = players
+        }
+        else {
+            mylist = players.filter((player) => player !== selectedCreator);
+        }
+
+        // Calculate the average scores for each player
+        let averages = {};
+        for (const item of mylist) {
+            let totalScore = 0;
+            let count = 0;
+            //////// NEEDS TO CHANGE BASED ON WHETHER WE ARE ITERATING OVER PLAYERS, CATEGORIES, OR CREATORS
+            for (let round of myrounds) {
+                if (!selectedPlayer) {
+                    if (round[mapping[item]] !== "") {
+                        totalScore += round[mapping[item]]
+                        count++;
+                    }
+                } else {
+                    if (round["creator"] === item || round["creator"] === "Mom" || round["creator"] === "Dad") {
+                        totalScore += round[mapping[selectedPlayer]]
+                        count++;
+                    }
+                }
+            }
+            let averageScore = count ? totalScore / count : 0;
+            averages[item] = averageScore;
+            ////////
+            if (myrounds.length === 0) {
+                averages[item] = 0;
+            }
+        }
+
+
+        // subtract the player's average score for the creator from the player's average score for all rounds
+        if (!selectedPlayer) {
+            averagesDiff = {};
+            for (const item of mylist) {
+                let totalScore = 0;
+                let count = 0;
+                for (let round of rounds) {
+                    if (!selectedPlayer) {
+                        if (round[mapping[item]] !== "") {
+                            totalScore += round[mapping[item]];
+                            count++;
+                        }
+                    } else {
+                        if (round[mapping[selectedPlayer]] !== ""  || round["creator"] === "Mom" || round["creator"] === "Dad") {
+                            totalScore += round[mapping[selectedPlayer]];
+                            count++;
+                        }
+                    }
+                }
+                let averageScore = count ? totalScore / count : 0;
+                averagesDiff[item] = averages[item] - averageScore;
+                if (myrounds.length === 0) {
+                    averagesDiff[item] = 0;
+                }
+            }
+        } else {
+            // Calculate the overall average
+            let totalSum = 0;
+            let totalCount = 0;
+            for (const item of mylist) {
+                totalSum += averages[item];
+                totalCount++;
+            }
+            let overallAverage = totalSum / totalCount;
+
+            // Subtract the overall average from each item's average
+            averagesDiff = {};
+            for (const item of mylist) {
+                averagesDiff[item] = averages[item] - overallAverage;
+            }
+        }
+
+        // remove the creator from the playerAveragesDiff
+        if (selectedCreator) {
+            delete averagesDiff[selectedCreator];
+        }
+        if (selectedPlayer) {
+            delete averagesDiff[selectedPlayer];
+        }
+        // if the selected creator is mom, delete Debis from the playerAveragesDiff
+        if (selectedCreator === "Mom") {
+            delete averagesDiff["Debi"];
+        }
+        if (selectedPlayer === "Mom") {
+            delete averagesDiff["Debi"];
+        }
+        // if the selected creator is Dad, delete Dan from the playerAveragesDiff
+        if (selectedCreator === "Dad") {
+            delete averagesDiff["Dan"];
+        }
+        if (selectedPlayer === "Dad") {
+            delete averagesDiff["Dan"];
+        }
+
+        //sort the playerAveragesDiff
+        averagesDiff = Object.fromEntries(
+            Object.entries(averagesDiff).sort(([,a],[,b]) => b-a)
+        );
+
+        // Create trace data for the bar chart
+        let traceData = [
+            {
+                x: Object.keys(averagesDiff),
+                y: Object.values(averagesDiff),
+                type: 'bar',
+                marker: {
+                    color: Object.keys(averagesDiff).map((player) => playerColorMapping[player]),
+                },
+                plot_bgcolor:'rgba(0,0,0,0)',
+                paper_bgcolor:'rgba(0,0,0,0)',
+                font: {
+                    color: "#ffffff",
+                    font_family: "YoungSerif"
+                },
+            },
+        ];
+
+        // Create or update the chart using Plotly.js
+        stg = selectedCreator ? selectedCreator : "All Creators";
+        stg += selectedCategory ? ` ${selectedCategory}` : "";
+        xax = selectedPlayer ? "Creator" : "Player";
+
+        let layout = {
+            title: `Average Scores for ${stg} Rounds`,
+            xaxis: {
+                title: xax,
+                color: "#ffffff",
+            },
+            yaxis: {
+                title: 'Average Score Difference',
+                color: "#ffffff",
+            },
+            plot_bgcolor:'rgba(0,0,0,0)',
+            paper_bgcolor:'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+            },
+
+        };
+
+        Plotly.newPlot('bar-chart', traceData, layout, {displayModeBar: false});
+        // also add a violin plot, using the data from the columns of the rounds table
+        // for all creatorRounds, for each player, get the score for that round
+        // for each player, create a list of scores
+        // create a violin plot using the list of scores for each player
+
+
+        let violinData = [];
+
+        for (const playerName of players) {
+            if (playerName === selectedCreator) {
+                continue;
+            }
+            if (selectedCreator === "Mom" && playerName === "Debi") {
+                continue;
+            }
+            if (selectedCreator === "Dad" && playerName === "Dan") {
+                continue;
+            }
+            let scores = [];
+            for (let round of myrounds) {
+                if (!selectedPlayer) {
+                    if (round[mapping[playerName]] !== "") {
+                        scores.push(round[mapping[playerName]]);
+                    }
+                } else {
+                    if (round[mapping[selectedPlayer]] !== ""  || round["creator"] === "Mom" || round["creator"] === "Dad") {
+                        scores.push(round[mapping[selectedPlayer]]);
+                    }
+                }
+            }
+            violinData.push({
+                y: scores,
+                type: 'violin',
+                name: playerName,
+                box: {
+                    visible: true
+                },
+                meanline: {
+                    visible: true,
+                    color: "black",
+                },
+                line: {
+                    color: playerColorMapping[playerName]
+                },
+                plot_bgcolor:'rgba(0,0,0,0)',
+                paper_bgcolor:'rgba(0,0,0,0)',
+                font: {
+                    color: "#ffffff",
+                },
+            });
+        }
+
+        // again, subtract the player's average score for the creator from the player's average score for all rounds
+// subtract the player's average score for the creator from the player's average score for all rounds
+        {#if (!selectedPlayer) {#}
+        {#    averagesDiff = {};#}
+        {#    for (const item of mylist) {#}
+        {#        let totalScore = 0;#}
+        {#        let count = 0;#}
+        {#        for (let round of rounds) {#}
+        {#            if (!selectedPlayer) {#}
+        {#                if (round[mapping[item]] !== "") {#}
+        {#                    totalScore += round[mapping[item]];#}
+        {#                    count++;#}
+        {#                }#}
+        {#            } else {#}
+        {#                if (round[mapping[selectedPlayer]] !== ""  || round["creator"] === "Mom" || round["creator"] === "Dad") {#}
+        {#                    totalScore += round[mapping[selectedPlayer]];#}
+        {#                    count++;#}
+        {#                }#}
+        {#            }#}
+        {#        }#}
+        {#        let averageScore = count ? totalScore / count : 0;#}
+        {#        averagesDiff[item] = averages[item] - averageScore;#}
+        {#        if (myrounds.length === 0) {#}
+        {#            averagesDiff[item] = 0;#}
+        {#        }#}
+        {#    }#}
+        {#} else {#}
+        {#    // Calculate the overall average#}
+        {#    let totalSum = 0;#}
+        {#    let totalCount = 0;#}
+        {#    for (const item of mylist) {#}
+        {#        totalSum += averages[item];#}
+        {#        totalCount++;#}
+        {#    }#}
+        {#    let overallAverage = totalSum / totalCount;#}
+        {##}
+        {#    // Subtract the overall average from each item's average#}
+        {#    averagesDiff = {};#}
+        {#    for (const item of mylist) {#}
+        {#        averagesDiff[item] = averages[item] - overallAverage;#}
+        {#    }#}
+        {#}#}
+
+
+        for (let i = 0; i < violinData.length; i++) {
+            let totalScore = 0;
+            let count = 0;
+            for (let round of myrounds) {
+                if (round[mapping[violinData[i].name]] !== "") {
+                    totalScore += round[mapping[violinData[i].name]];
+                    count++;
+                }
+            }
+            let averageScore = count ? totalScore / count : 0;
+
+            violinData[i].y = violinData[i].y.map((score) => averageScore - score);
+            if (myrounds.length === 0) {
+                violinData[i].y = [0];
+            }
+        }
+
+        // and sort the violinData
+        violinData.sort((a, b) => b.y.reduce((a, b) => a + b, 0) / b.y.length - a.y.reduce((a, b) => a + b, 0) / a.y.length);
+
+        stg = selectedCreator ? selectedCreator : "All Creators";
+        stg += selectedCategory ? ` ${selectedCategory}` : "";
+        xax = selectedPlayer ? "Creator" : "Player";
+
+        let violinLayout = {
+            title: `Scores for ${stg}'s Rounds`,
+            xaxis: {
+                title: xax,
+                color: "#ffffff",
+            },
+            yaxis: {
+                title: 'Score Difference Compared to Average',
+                color: "#ffffff",
+            },
+            plot_bgcolor:'rgba(0,0,0,0)',
+            paper_bgcolor:'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+            },
+        };
+
+        Plotly.newPlot('violin-chart', violinData, violinLayout, {displayModeBar: false});
+
+
+       // Combine the data and remove NaNs
+        {#const scoreMegan = myrounds.map(round => round.score_megan).filter(score => score !== null && score !== "");#}
+        {#const scoreJenny = myrounds.map(round => round.score_jenny).filter(score => score !== null && score !== "");#}
+        {#const scoreDebi = myrounds.map(round => round.score_debi).filter(score => score !== null && score !== "");#}
+        {#const scoreDan = myrounds.map(round => round.score_dan).filter(score => score !== null && score !== "");#}
+        {#const scoreAlex = myrounds.map(round => round.score_alex).filter(score => score !== null && score !== "");#}
+        {#const scoreChris = myrounds.map(round => round.score_chris).filter(score => score !== null && score !== "");#}
+        {#const scoreDrew = myrounds.map(round => round.score_drew).filter(score => score !== null && score !== "");#}
+        {#const scoreZach = myrounds.map(round => round.score_zach).filter(score => score !== null && score !== "");#}
+        {#const scoreIchigo = myrounds.map(round => round.score_ichigo).filter(score => score !== null && score !== "");#}
+        {#const scoreJeff = myrounds.map(round => round.score_jeff).filter(score => score !== null && score !== "");#}
+        {#const scoreDillon = myrounds.map(round => round.score_dillon).filter(score => score !== null && score !== "");#}
+        {#const scorePaige = myrounds.map(round => round.score_paige).filter(score => score !== null && score !== "");#}
+        {#const scoreTom = myrounds.map(round => round.score_tom).filter(score => score !== null && score !== "");#}
+        {##}
+        {#const combinedScores = [...scoreMegan, ...scoreJenny, ...scoreDebi, ...scoreDan, ...scoreAlex, ...scoreChris, ...scoreDrew, ...scoreZach, ...scoreIchigo, ...scoreJeff, ...scoreDillon, ...scorePaige, ...scoreTom].filter(score => score !== null);#}
+        {##}
+        {#// Create the histogram trace#}
+        {#const histogramTrace = {#}
+        {#    x: combinedScores,#}
+        {#    type: 'histogram',#}
+        {#    histnorm: 'probability density',  // Normalize the histogram#}
+        {#    name: 'Histogram',#}
+        {#    autobinx: false,#}
+        {#    xbins: {#}
+        {#        start: Math.min(...combinedScores),#}
+        {#        end: Math.max(...combinedScores),#}
+        {#        size: (Math.max(...combinedScores) - Math.min(...combinedScores)) / 20  // Number of bins#}
+        {#    }#}
+        {#};#}
+        {##}
+        {#// Create the data array#}
+        {#const data = [histogramTrace];#}
+        {##}
+        {#// Define the layout#}
+        {#const histLayout = {#}
+        {#    title: 'Distribution of Scores',#}
+        {#    xaxis: {#}
+        {#        title: 'Scores'#}
+        {#    },#}
+        {#    yaxis: {#}
+        {#        title: 'Density'#}
+        {#    },#}
+        {#    plot_bgcolor:'rgba(0,0,0,0)',#}
+        {#    paper_bgcolor:'rgba(0,0,0,0)',#}
+        {#};#}
+        {##}
+        {#// Plot the chart#}
+        {#Plotly.newPlot('histPlot', data, histLayout, {displayModeBar: false});#}
+    }
+
+    // Initialize the plot with some default value if needed
+    updatePlotByFilters('', '', '');
+
+    // Update event listeners
+    document.getElementById('creator-selector').addEventListener('change', function () {
+        const selectedCreator = this.value;
+        const selectedCategory = document.getElementById('category-selector').value;
+        const selectedPlayer = document.getElementById('player-selector').value;
+        updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer);
+    });
+
+    document.getElementById('category-selector').addEventListener('change', function () {
+        const selectedCreator = document.getElementById('creator-selector').value;
+        const selectedCategory = this.value;
+        const selectedPlayer = document.getElementById('player-selector').value;
+        updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer);
+    });
+
+    document.getElementById('player-selector').addEventListener('change', function () {
+        const selectedCreator = document.getElementById('creator-selector').value;
+        const selectedCategory = document.getElementById('category-selector').value;
+        const selectedPlayer = this.value;
+        updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer);
+    });
+
+    window.onresize = function() {
+        var plotDivs = document.getElementById('bar-chart');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('violin-chart');
+        Plotly.Plots.resize(plotDivs);
+        plotDivs = document.getElementById('histPlot');
+        Plotly.Plots.resize(plotDivs);
+    };
+</script>
+{% endblock %}
