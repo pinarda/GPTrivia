@@ -21,41 +21,11 @@
 
 
 
-<style>
-
-    .input-row {
-        min-height: 50px;  /* Adjust as needed */
-    }
-
-    .accordion {
-        background-color: #eee;
-        color: #444;
-        cursor: pointer;
-        padding: 18px;
-        width: 100%;
-        border: none;
-        text-align: left;
-        outline: none;
-        font-size: 15px;
-        transition: 0.4s;
-        font-family: YoungSerif;
-    }
-
-    .active, .accordion:hover {
-        background-color: #ccc;
-    }
-
-    .panel {
-        padding: 0 18px;
-        display: none;
-        overflow: hidden;
-    }
-</style>
 
 <!-- Accordion menu -->
     <div>Out of time? No ideas for your round? Try the S.W.O.O.P.<br>(Speedy Way of Obtaining Presentations)!
 </div> <br>
-<button class="accordion">Generate Ideas with Swooper</button>
+<button class="accordion" id="acc1">Generate Ideas with Swooper</button>
 <div class="panel">
     <br>
     <form method="post" id="chat-form">
@@ -99,7 +69,7 @@
 
 <!-- ... your other HTML ... -->
 
-<button class="accordion">Enter Your Questions</button>
+<button class="accordion" id="acc2">Enter Your Questions</button>
 <div class="panel">
     <table style="width: 100%;">
         <!-- First Row -->
@@ -137,7 +107,7 @@
 <!-- ... your other HTML ... -->
 
 
-<button class="accordion">Preview, Edit & Submit</button>
+<button class="accordion" id="acc3">Preview, Edit & Submit</button>
 <div class="panel">
     <!-- Theme Selector -->
     NOTE: Editing rounds is not available on phones.
