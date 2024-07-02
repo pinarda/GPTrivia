@@ -145,6 +145,7 @@
         Select a theme:
         <select id="theme-selector">
             <option value="theme1">Minimal</option>
+            <option value="theme3">Plain</option>
             <option value="theme2">Trivial Pursuit</option>
             <!-- ... other themes ... -->
         </select>
@@ -501,6 +502,11 @@
                     $('#iconLabel').removeClass('hidden');
                     console.log('Showing Checkbox'); // Debugging log
                     break;
+                case 'theme3':
+                    presentationId = '1ZFahoyu0FSUx84IldZjcfTVMKTOzfRevArv9K3KPkmw';
+                    $('#iconCheckbox').addClass('hidden');
+                    $('#iconLabel').addClass('hidden');
+                    console.log('Hiding Checkbox'); // Debugging log
                 // ... add cases for other themes as needed ...
                 default:
                     console.error('Unknown theme selected:', selectedTheme);

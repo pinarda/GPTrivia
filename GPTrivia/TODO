@@ -89,6 +89,12 @@ DONE - add "link" input to scoresheet, to allow display and manual entry of link
 DONE - actually when we delete a round (say round 2), the names get shifted over, so if we have R1, R2, R3 and delete R2, our round names now correspond to R1 and R2, but it should be R1 and R3
 DONE - Handle new senders to the mail.py (line 1058, new_senders = [MAIL_NAME_MAP[sender] for sender in new_senders])
 DONE - seems like we're still losing jokers sometimes - 1/6 is missing (or not displaying) them
+DONE - Refreshing page causes added players and missing players to disappear (and so also screws up creator scores maybe?)
+DONE - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
+DONE - Previous date warning still coming up if it's just past midnight
+DONE - why are dad and tom's Xs slightly smaller? ITS AN ILLUSION?!?!?
+DONE - fix the bug crashing the create presentation button (something to do with the new database fields)
+DONE - fix the URL for links to rounds in mail.py (create_presentation and updated_merged_presentation), want the permissions to be anyone with link (this error affects viewing the slides (403) and apparently updating presentations, which only works on Alex account?), and URL to be view, not edit (for profile, but not for round list)
 
 TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
 TEST FIX - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be (Could be a timezone issue)
@@ -97,19 +103,20 @@ TEST FIX - Figure out why the production site's generate button is timing out (i
 
 TRIVIAL (minutes)
 
-TODO - fix the URL for links to rounds in mail.py (create_presentation and updated_merged_presentation), want the permissions to be anyone with link (this error affects viewing the slides (403) and apparently updating presentations, which only works on Alex account?), and URL to be view, not edit (for profile, but not for round list)
 TODO - remove any hardcoded passwords or api keys
 TODO - lost dec scores on server after websockets commit
+TODO - add some swoop templates
+TODO - fix links to slides, presentation IDs in db
 
 High - add normalize option to the rounds list
 Medium - Add a way to set coop and creator in SWOOP
 
 MEDIUM (1-2 hrs)
 
-TODO - it's possible to end up with multiple presentations for the same day by repeatedly adding and deleting a single round from the scoresheet (screws up jokers)
 TODO - add players, host/scorekeeper colummns to the database
-TODO - Refreshing page causes added players and missing players to disappear (and so also screws up creator scores maybe?)
 TODO - change the way we detect sender for the scoresheet, timeout has serious flaws, use a sender ID instead.
+
+TODO - get the reverse proxy back up and get hailsciencetrivia.com working again
 
 SCORESHEET WISHLIST - style points, tiebreaker, notes, icon next to name showing a mini version of the user's profile pic?
 
@@ -117,20 +124,20 @@ High - add sorting to the player round/rounds list page, also want to be able to
 High - add a link to the rounds list page on the round category counts that filters by rounds that person has created with that category
 Medium - could redo mobile CSS for scoresheet to show all rounds for one player, then they could enter their scores for each round, and the button would switch the player.
 Medium - General CSS tweaking, mainly for mobile view (scoresheet esp.) (in particular, maybe sync the visible players using channels)
-Medium - Weird stuff like if you joker two different rounds (Zach, 9/1/2022), or if a round has two different creators...
-
+Medium - Weird stuff like if you joker two different rounds (Zach, 9/1/2022), or "Mario Party" random joker, or if a round has two different creators...
+Medium - Let the user change their color in their profile page
 
 
 LARGE (2-8hrs)
 
+TODO - Be able to specify what position to put new rounds, instead of appending to end of presentation, add interface to select unused rounds from email (or old rounds?). Show the number of submitted rounds/who has submitted a round for the current week on the home page, ability to edit round and creator names before building presentation.
+TODO - Finish the stats for the analysis page ("Player" options) / possibly add the player specific stuff to the profile pages. NORMALIZE SCORES before computing stats
+TODO - Add the prediction models back to the scoresheet (try joint conditioning on both player and category) (and the blog?)
 
-High - Add the prediction models back to the scoresheet (try joint conditioning on both player and category) (and the blog?)
-High - Be able to specify what position to put new rounds, instead of appending to end of presentation, add interface to select unused rounds from email (or old rounds?). Show the number of submitted rounds/who has submitted a round for the current week on the home page.
-High - Finish the stats for the analysis page ("Player" options) / possibly add the player specific stuff to the profile pages. NORMALIZE SCORES before computing stats
-Medium - If we add a new player on the scoresheet, we need to modify the GPTriviaround model to accept additional players and save their scores too.
+High - If we add a new player on the scoresheet, we need to modify the GPTriviaround model to accept additional players and save their scores too.
+Medium - Add SWOOP picture/music round functionality
 Medium - add a creator name input to SWOOP, somehow pass that to create presentation functionality (one option - save the round in the database as it is submitted, not after presentation is created)
 Medium - Add an option to view a previous week's presentation on the home page.
-
 
 
 HUGE (>8 hrs)

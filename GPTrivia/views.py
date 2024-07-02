@@ -19,6 +19,7 @@ import random
 from autogen import AssistantAgent, UserProxyAgent
 import autogen
 from django.contrib.auth.models import User
+import subprocess
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from scipy.stats import pearsonr
@@ -74,10 +75,10 @@ gmail_key = '8f35edc691b918094035b22807266a1e468bf5f0'
 playerColorMapping = {
             'Alex': '#D2042D',
             'Ichigo': '#ff7f0e',
-            'Megan': '#673147',
-            'Zach': '#702963',
+            'Megan': '#8e4585',
+            'Zach': '#A020F0',
             'Jenny': '#ffef00',
-            'Debi': '#4f49a6',
+            'Debi': '#8551ff',
             'Dan': '#560000',
             'Chris': '#005427',
             'Drew': '#8c564b',
@@ -876,7 +877,7 @@ def home(request):
                 scorekeeper="Unknown",
                 style_points={},
                 notes={},
-                tiebreak_winner=None,
+                tiebreak_winner="",
             )
             print (new_presentation_id, creators, round_titles)
             presentation_url = f"https://docs.google.com/presentation/d/{new_presentation_id}/embed"
@@ -1023,6 +1024,7 @@ def scoresheet(request):
             'presentation_id': "",
         }
 
+
     return render(request, 'GPTrivia/scoresheet.html', context)
 
 
@@ -1135,6 +1137,8 @@ def save_scores(request):
     for player in player_list:
         all_player_list[player] = player
 
+    script_should_run = False  # Flag to indicate if the script should run
+
     for round_data in rounds:
         # Get the round_data fields
         creator = round_data.get('creator')
@@ -1156,9 +1160,16 @@ def save_scores(request):
             # trivia_round = GPTriviaRound.objects.get(creator=creator, title=title, date=newdate)
             # New idea, just use the round id
             trivia_round = GPTriviaRound.objects.get(id=round_data.get('id'))
+            old_link = trivia_round.link  # Get the existing link from the database
         except ObjectDoesNotExist:
             # If it does not exist, create a new instance
             trivia_round = GPTriviaRound()
+            old_link = None  # No existing link if the round is new
+
+        new_link = round_data.get('link')
+        if old_link != new_link:
+            script_should_run = True  # Set the flag if the link was modified
+
         # Assign the round_data fields to the GPTriviaRound instance
         trivia_round.creator = creator
         trivia_round.title = title
@@ -1178,6 +1189,9 @@ def save_scores(request):
         trivia_round.score_chris = round_data.get('score_chris')
         trivia_round.score_drew = round_data.get('score_drew')
         trivia_round.score_tom = round_data.get('score_tom')
+        trivia_round.score_jeff = round_data.get('score_jeff')
+        trivia_round.score_paige = round_data.get('score_paige')
+        trivia_round.score_dillon = round_data.get('score_dillon')
         trivia_round.replay = round_data.get('replay', False)
         trivia_round.cooperative = round_data.get('cooperative', False)
         trivia_round.link = round_data.get('link')
@@ -1187,6 +1201,13 @@ def save_scores(request):
         try:
             print(trivia_round)
             trivia_round.save()
+
+            # Run the update_links.py script only if the link field was modified
+            if script_should_run:
+                try:
+                    subprocess.run(['python', './modify_links.py'], check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"Error running update_links.py script: {e}")
             #
             # # After saving, send an update message to the channel layer
             # channel_layer = get_channel_layer()
@@ -1221,6 +1242,7 @@ def save_scores(request):
             print(f"joker_round_indices: {joker_round_indices}")
             print(f"type of joker_round_indices: {type(joker_round_indices)}")
             presentation.creator_list = creator_list
+            presentation.player_list = all_player_list
             presentation.round_names = round_names
             presentation.save()
         except ObjectDoesNotExist:
@@ -1230,6 +1252,7 @@ def save_scores(request):
             presentation = MergedPresentation.objects.get(name=datetime.datetime.strptime(date_str, '%Y-%m-%d').date().strftime("%m.%d.%Y"))
             presentation.joker_round_indices = joker_round_indices
             presentation.creator_list = creator_list
+            presentation.player_list = all_player_list
             presentation.round_names = round_names
             presentation.save()
         except ObjectDoesNotExist:

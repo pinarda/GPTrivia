@@ -590,7 +590,7 @@ def copy_template(template_id, copy_title, qas, icon_links):
         # Create the permission object
         permission = {
             'type': 'anyone',
-            'role': 'reader'
+            'role': 'writer'
         }
 
         # Update permissions

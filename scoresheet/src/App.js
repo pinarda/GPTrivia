@@ -33,14 +33,14 @@ import Badge from '@mui/material/Badge';
         'score_jenny': '#ffef00',
         'score_debi': '#8551ff',
         'score_mom': '#8551ff',
-        'score_dan': '#0000FF',
-        'score_dad': '#0000FF',
+        'score_dan': '#560000',
+        'score_dad': '#560000',
         'score_chris': '#005427',
         'score_drew': '#8c564b',
-        'score_jeff': '#333333',
-        'score_paige': '#333333',
-        'score_dillon': '#333333',
-        'score_tom': '#333333',
+        'score_jeff': '#66FF66',
+        'score_paige': '#FF6666',
+        'score_dillon': '#0000FF',
+        'score_tom': '#000042',
         'unknown': '#333333',
     };
 
@@ -73,7 +73,7 @@ import Badge from '@mui/material/Badge';
 
       // Calculate the brightness
       const brightness = r + g + b;
-      if(brightness < 480) {
+      if(brightness < 450) {
             return 'white'
         }
         return 'black'
@@ -313,7 +313,7 @@ import Badge from '@mui/material/Badge';
 const PlayerTable = () => {
     const defaultPlayers = useMemo(() => {
       // The initial calculation of defaultPlayers goes here
-      return ["score_alex", "score_dan", "score_debi", "score_jenny", "score_megan", "score_ichigo", "score_chris", "score_zach", "score_tom", "score_drew"];
+      return ["score_alex", "score_dan", "score_debi", "score_jenny", "score_megan", "score_ichigo", "score_chris", "score_zach", "score_tom", "score_paige", "score_drew", "score_dillon", "score_jeff"];
     }, []);
 
     const [rounds, setRounds] = useState([]);
@@ -350,14 +350,15 @@ const PlayerTable = () => {
     const [tempLinks, setTempLinks] = useState([]);
     const [selectedColumnIndex, setSelectedColumnIndex] = useState(1);
     const [updateFlag, setUpdateFlag] = useState(0); // Update flag
+    const [prevUpdateFlag, setPrevUpdateFlag] = useState(0); // Previous update flag
     const isLocalUpdate = useRef(false);
     const [openDatePicker, setOpenDatePicker] = useState(false);
 
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
-    // let url = "http://localhost:8000"
-    let url = "https://hailsciencetrivia.com"
+    let url = "http://localhost:8000"
+    // let url = "https://hailsciencetrivia.com"
 
     const wsRef = useRef(null);
     const isVisible = usePageVisibility();
@@ -521,7 +522,7 @@ const PlayerTable = () => {
           setRounds(json);
 
           // set tempTitles if it hasn't been set yet
-            if (tempTitles.length === 0) {
+            if (tempTitles.length === 0 || prevUpdateFlag !== updateFlag) {
                 let initialTempTitles = [];
                 json.forEach(round => {
                     initialTempTitles.push(round.title);
@@ -530,13 +531,15 @@ const PlayerTable = () => {
             }
 
             // set tempLinks if it hasn't been set yet
-            if (tempLinks.length === 0) {
+            if (tempLinks.length === 0 || prevUpdateFlag !== updateFlag) {
                 let initialTempLinks = [];
                 json.forEach(round => {
                     initialTempLinks.push(round.link);
                 });
                 setTempLinks(initialTempLinks);
             }
+
+            setPrevUpdateFlag(updateFlag);
 
 
           let initialCooperativeStatus = {};
@@ -608,7 +611,7 @@ const PlayerTable = () => {
 
           // Get unique player names
           playerNames = [...new Set(playerNames)];
-          setPlayers(playerNames);
+          // setPlayers(playerNames);
 
           const initialScores = {};
           playerNames.forEach(player => {
@@ -639,7 +642,6 @@ const PlayerTable = () => {
         })
         .then(json => {
             // strip the score_ prefix from the player names
-            const playerNames = players.map(player => player.replace('score_', ''));
             const selectedPresentation = json.find(presentation => convertDate(presentation.name) === selectedDate)
             // const playerList = selectedPresentation.player_list;
 
@@ -664,6 +666,31 @@ const PlayerTable = () => {
           // Get unique player names
           // playerNames = [...new Set(playerNames)];
           // setPlayers(playerNames);
+            // get all the playernames via selectedPresentation.player_list
+            // the format of the player_list is ["score_alex": "score_alex", "score_dan":"score_day", ...]
+            // so we need to extract the keys from the object i.e. "Alex", "Dan", etc.
+            // start by converting player_list from a string to an object
+
+            let playerNames = [];
+
+            let plist = null;
+            if(selectedPresentation) {
+                plist = selectedPresentation.player_list;
+            }
+            // if there is no player list, or if the player dict is empty, set the player names to the default players
+            if (!plist || plist === "{}") {
+                setPlayers(defaultPlayers);
+                // set the player names to the default players
+                playerNames = defaultPlayers.map(player => player.replace('score_', ''));
+            } else {
+                const jsonString = plist.replace(/'/g, '"');
+                const dictionary = JSON.parse(jsonString);
+
+                const newPlayers = Object.keys(dictionary);
+                setPlayers(newPlayers);
+                playerNames = newPlayers.map(player => player.replace('score_', ''));
+            }
+
 
             if(selectedPresentation) {
                 const jokerRoundIndicesString = selectedPresentation.joker_round_indices;
@@ -707,7 +734,7 @@ const PlayerTable = () => {
         .catch(error => {
             console.error('Error fetching presentations:', error);
         });
-    }, [selectedDate, players, url, updateFlag]);
+    }, [selectedDate, url, updateFlag]);
 
 
     useEffect(() => {
@@ -796,7 +823,9 @@ const PlayerTable = () => {
                 setUpdateFlag(prev => prev + 1); // Increment the flag to trigger re-fetch
             }
             if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
-                wsRef.current = new WebSocket('wss://hailsciencetrivia.com/ws/scoresheet/');
+                // wsRef.current = new WebSocket('wss://hailsciencetrivia.com/ws/scoresheet/');
+                // replace the above line usinug the url variable
+                wsRef.current = new WebSocket('ws://localhost:8000/ws/scoresheet/');
 
                 wsRef.current.onopen = () => {
                     console.log('Connected to the WebSocket');
@@ -955,7 +984,7 @@ const PlayerTable = () => {
         let currentDate = new Date(currentDateString);
 
         const today = new Date();
-        const dateString = today.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+        const dateString = today.toLocaleDateString('en-CA', { timeZone: 'America/Denver' });
         const parts = dateString.split('-');
 
         const year = parts[0];
@@ -968,9 +997,11 @@ const PlayerTable = () => {
         console.log('selectedDate:', selectedDate);
         console.log('today:', today);
         console.log('dateString:', dateString);
-        if (currentDate.getFullYear() !== parseInt(year) || currentDate.getMonth() + 1 !== parseInt(month) || currentDate.getDate() + 1 !== parseInt(day)) {
-            confirmChange = window.confirm("Are you sure you want to edit the scoresheet for a previous date?");
-        }
+        // if (currentDate.getFullYear() !== parseInt(year) || currentDate.getMonth() + 1 !== parseInt(month) || currentDate.getDate() + 1 !== parseInt(day)) {
+        //     confirmChange = window.confirm("Are you sure you want to edit the scoresheet for a previous date?");
+        // }
+        // just set to true for now
+        confirmChange = true;
         return confirmChange;
     }
 

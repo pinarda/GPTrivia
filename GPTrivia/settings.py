@@ -30,7 +30,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 # DEBUG = False
 
 ALLOWED_HOSTS = ['hailsciencetrivia.com', 'www.hailsciencetrivia.com', '192.168.0.178', '127.0.0.1', "localhost", "192.168.0.100", "67.165.238.242"]
@@ -98,7 +98,10 @@ INSTALLED_APPS = [
     "rest_framework",
     'rest_framework.authtoken',
     'corsheaders',
+    'channels',
 ]
+
+ASGI_APPLICATION = "GPTrivia.asgi.application"
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
@@ -124,6 +127,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development
 
 ROOT_URLCONF = "GPTrivia.urls"
 
