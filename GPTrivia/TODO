@@ -95,6 +95,8 @@ DONE - Previous date warning still coming up if it's just past midnight
 DONE - why are dad and tom's Xs slightly smaller? ITS AN ILLUSION?!?!?
 DONE - fix the bug crashing the create presentation button (something to do with the new database fields)
 DONE - fix the URL for links to rounds in mail.py (create_presentation and updated_merged_presentation), want the permissions to be anyone with link (this error affects viewing the slides (403) and apparently updating presentations, which only works on Alex account?), and URL to be view, not edit (for profile, but not for round list)
+DONE - lost dec scores on server after websockets commit/also the 6 weeks Feb-Mar 2024 (cannot fix - lost harddrive)
+DONE - get the reverse proxy back up and get hailsciencetrivia.com working again
 
 TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
 TEST FIX - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be (Could be a timezone issue)
@@ -104,9 +106,11 @@ TEST FIX - Figure out why the production site's generate button is timing out (i
 TRIVIAL (minutes)
 
 TODO - remove any hardcoded passwords or api keys
-TODO - lost dec scores on server after websockets commit
 TODO - add some swoop templates
 TODO - fix links to slides, presentation IDs in db
+TODO - websockets not working on server
+TODO - Jokers are not loading for many rounds
+TODO - last two scoresheets in june 2024 are on wrong date
 
 High - add normalize option to the rounds list
 Medium - Add a way to set coop and creator in SWOOP
@@ -116,7 +120,6 @@ MEDIUM (1-2 hrs)
 TODO - add players, host/scorekeeper colummns to the database
 TODO - change the way we detect sender for the scoresheet, timeout has serious flaws, use a sender ID instead.
 
-TODO - get the reverse proxy back up and get hailsciencetrivia.com working again
 
 SCORESHEET WISHLIST - style points, tiebreaker, notes, icon next to name showing a mini version of the user's profile pic?
 
