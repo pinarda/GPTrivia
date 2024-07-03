@@ -32,7 +32,7 @@ class PlayerAnalysisPlot(View):
         misc = request.GET.get('misc', '')
         chart_type = request.GET.get('chart_type', '')
         dadj = request.GET.get('dadj', '')
-        queryset_rounds = GPTriviaRound.objects.all()
+        queryset_rounds_1 = GPTriviaRound.objects.all()
         # remove any rounds where all the scores are nan
         score_fields = [
             'score_alex', 'score_ichigo', 'score_megan', 'score_zach', 'score_jenny',
@@ -42,7 +42,7 @@ class PlayerAnalysisPlot(View):
         score_filter = Q()
         for field in score_fields:
             score_filter |= ~Q(**{field: None})
-        queryset_rounds = queryset_rounds.filter(score_filter)
+        queryset_rounds = queryset_rounds_1.filter(score_filter)
 
         filtered_rounds = self.filter_data(queryset_rounds, creator, category, player, misc)
         # for each round, scale the scores to be out of 10 by dividing by the max score
@@ -84,7 +84,7 @@ class PlayerAnalysisPlot(View):
         if chart_type == 'bias_chart':
             return self.get_bias_chart_data(filtered_rounds, queryset_rounds, creator, category, player, misc, dadj)
         if chart_type == 'trivia_night_streak':
-            return self.trivia_night_streak(filtered_rounds, queryset_rounds, creator, category, player, misc)
+            return self.trivia_night_streak(filtered_rounds, queryset_rounds_1, creator, category, player, misc)
         if chart_type == 'joker_percentage':
             return self.joker_percentage(filtered_rounds, queryset_rounds, creator, category, player, misc)
         else:
@@ -769,7 +769,7 @@ class PlayerAnalysisPlot(View):
 
     def trivia_night_streak(self, rounds, unfiltered_rounds, creator, category, player, misc):
         # Create a DataFrame from the queryset
-        df = pd.DataFrame(list(rounds.values()))
+        df = pd.DataFrame(list(unfiltered_rounds.values()))
 
         if df.empty:
             return JsonResponse({'error': 'No rounds found'}, status=400)

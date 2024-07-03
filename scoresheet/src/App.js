@@ -73,7 +73,7 @@ import Badge from '@mui/material/Badge';
 
       // Calculate the brightness
       const brightness = (0.7 * r) + g + (0.3 * b);
-      if(brightness < 350) {
+      if(brightness < 300) {
             return 'white'
         }
         return 'black'

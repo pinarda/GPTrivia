@@ -99,6 +99,7 @@ DONE - lost dec scores on server after websockets commit/also the 6 weeks Feb-Ma
 DONE - get the reverse proxy back up and get hailsciencetrivia.com working again
 DONE - last two scoresheets in june 2024 are on wrong date
 DONE - fix links to slides, presentation IDs in db
+DONE - Jokers are not loading for many rounds
 
 TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
 TEST FIX - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be (Could be a timezone issue)
@@ -110,7 +111,6 @@ TRIVIAL (minutes)
 TODO - remove any hardcoded passwords or api keys
 TODO - add some swoop templates
 TODO - websockets not working on server
-TODO - Jokers are not loading for many rounds
 
 High - add normalize option to the rounds list
 Medium - Add a way to set coop and creator in SWOOP
