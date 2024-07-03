@@ -360,7 +360,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators):
                                     }
                                 }
                                 delete_insert_requests.append(font_size_request)
-                            elif len(new_text) > 40:
+                             elif len(new_text) > 40:
                                 # Add a request to modify the font size; you can adjust the font size value as needed
                                 font_size_request = {
                                     "updateTextStyle": {

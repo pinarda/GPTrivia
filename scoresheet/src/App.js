@@ -72,8 +72,8 @@ import Badge from '@mui/material/Badge';
       const b = parseInt(hexColor.substr(4, 2), 16);
 
       // Calculate the brightness
-      const brightness = r + g + b;
-      if(brightness < 450) {
+      const brightness = (0.7 * r) + g + (0.3 * b);
+      if(brightness < 350) {
             return 'white'
         }
         return 'black'
