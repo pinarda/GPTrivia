@@ -357,8 +357,8 @@ const PlayerTable = () => {
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
-    let url = "http://localhost:8000"
-    // let url = "https://hailsciencetrivia.com"
+    // let url = "http://localhost:8000"
+    let url = "https://hailsciencetrivia.com"
 
     const wsRef = useRef(null);
     const isVisible = usePageVisibility();
@@ -823,9 +823,9 @@ const PlayerTable = () => {
                 setUpdateFlag(prev => prev + 1); // Increment the flag to trigger re-fetch
             }
             if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
-                // wsRef.current = new WebSocket('wss://hailsciencetrivia.com/ws/scoresheet/');
+                wsRef.current = new WebSocket('wss://hailsciencetrivia.com/ws/scoresheet/');
                 // replace the above line usinug the url variable
-                wsRef.current = new WebSocket('ws://localhost:8000/ws/scoresheet/');
+                // wsRef.current = new WebSocket('ws://localhost:8000/ws/scoresheet/');
 
                 wsRef.current.onopen = () => {
                     console.log('Connected to the WebSocket');

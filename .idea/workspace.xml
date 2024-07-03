@@ -5,10 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87b9a7b5-e33e-4562-ade4-a40e20df30e3" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/favicon-32x32.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/GPTrivia/css/round_maker.css" beforeDir="false" afterPath="$PROJECT_DIR$/static/GPTrivia/css/round_maker.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/static/scoresheet/build/static/js/main.353017d6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" beforeDir="false" afterPath="$PROJECT_DIR$/GPTrivia/templates/GPTrivia/scoresheet_new.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scoresheet/src/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/scoresheet/src/App.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,7 +72,7 @@
     "WebServerToolWindowFactoryState": "false",
     "django.template.preview.state": "SHOW_EDITOR",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/alex/git/GPTrivia",
+    "last_opened_file_path": "/Users/alex/git/GPTrivia/GPTrivia/static/scoresheet",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -90,10 +90,10 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet" />
       <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/static" />
       <recent name="$PROJECT_DIR$/static/img" />
-      <recent name="$PROJECT_DIR$/GPTrivia/static/scoresheet" />
       <recent name="$PROJECT_DIR$/GPTrivia/static/img" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
@@ -402,7 +402,7 @@
       <workItem from="1715901221857" duration="154628000" />
       <workItem from="1718475772730" duration="15725000" />
       <workItem from="1718662108457" duration="312000" />
-      <workItem from="1718662430225" duration="44085000" />
+      <workItem from="1718662430225" duration="47332000" />
     </task>
     <servers />
   </component>
@@ -589,7 +589,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/GPTrivia/templates/base.html</url>
-          <line>99</line>
+          <line>101</line>
           <option name="timeStamp" value="333" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
