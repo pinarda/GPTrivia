@@ -134,7 +134,7 @@ def rounds_list(request):
         # convert the hex color to a measure of brightness
         brightness = (0.7 * int(player_color[1:3], 16)) + int(player_color[3:5], 16) + (0.3 * int(player_color[5:7], 16))
         # if the brightness is less than 384, use white text, otherwise use black text
-        if brightness < 10:
+        if brightness < 400:
             text_color[player] = 'white'
         else:
             text_color[player] = 'black'
@@ -429,7 +429,7 @@ def player_profile_dict(request, player_name):
     # convert the hex color to a measure of brightness
     brightness = (0.5 * int(player_color[1:3], 16)) + int(player_color[3:5], 16) + (0.25 * int(player_color[5:7], 16))
     # if the brightness is less than 384, use white text, otherwise use black text
-    if brightness < 10:
+    if brightness < 400:
         text_color = 'white'
     else:
         text_color = 'black'
