@@ -30,16 +30,22 @@
     <button id="animate-btn">Animate</button>
 
     <script>
-        document.getElementById('animate-btn').addEventListener('click', function() {
-            anime({
-                targets: '#react-scoresheet',
-                translateX: 0,
-                rotate: '1turn',
-                backgroundColor: '#00FF00',
-                duration: 2000,
-                easing: 'easeInOutQuad'
-            });
+    document.getElementById('animate-btn').addEventListener('click', function() {
+        // Reset the target element state before animating
+        var target = document.getElementById('react-scoresheet');
+        target.style.transform = 'none'; // Reset transform
+        target.style.backgroundColor = '#FF0000'; // Reset background color to initial
+
+        // Run the animation
+        anime({
+            targets: '#react-scoresheet',
+            translateX: 0,
+            rotate: '1turn',
+            backgroundColor: '#00FF00',
+            duration: 2000,
+            easing: 'easeInOutQuad'
         });
+    });
     </script>
 
 {% endblock %}
