@@ -30,10 +30,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-# DEBUG = False
+# DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['hailsciencetrivia.com', 'www.hailsciencetrivia.com', '192.168.0.178', '127.0.0.1', "localhost", "192.168.0.100", "67.165.238.242", "24.128.76.57"]
+ALLOWED_HOSTS = ['hailsciencetrivia.com', 'www.hailsciencetrivia.com', '192.168.0.178', '127.0.0.1', "localhost", "192.168.0.100", "67.165.238.242", "24.128.76.57", "35.89.236.168"]
 
 LOGGING = {
     'version': 1,
@@ -128,6 +128,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development
 
 ROOT_URLCONF = "GPTrivia.urls"
@@ -161,6 +162,7 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
 
 
 # Password validation
