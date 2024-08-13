@@ -30,10 +30,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-# DEBUG = False
+# DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['hailsciencetrivia.com', 'www.hailsciencetrivia.com', '192.168.0.178', '127.0.0.1', "localhost", "192.168.0.100", "67.165.238.242", "24.128.76.57", "35.89.236.168"]
+ALLOWED_HOSTS = ['hailsciencetrivia.com', 'www.hailsciencetrivia.com', '192.168.0.178', '127.0.0.1', "localhost", "192.168.0.100", "67.165.238.242", "24.128.76.57", "35.89.236.168", "52.42.119.83"]
 
 LOGGING = {
     'version': 1,
@@ -109,6 +109,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'corsheaders',
     'channels',
+    'debug_toolbar',
 ]
 
 ASGI_APPLICATION = "GPTrivia.asgi.application"
@@ -136,6 +137,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
 

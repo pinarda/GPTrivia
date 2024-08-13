@@ -136,7 +136,7 @@ body {
 
 #plots-container {
     display: flex;
-    flex-direction: row; /* Ensure the flex direction is row */
+    flex-direction: column; /* Ensure the flex direction is row */
     justify-content: space-between;
     align-items: center;
     gap: 10px;
