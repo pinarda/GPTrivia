@@ -45,6 +45,7 @@ LOGGING = {
             'filename': 'debug.log',
         },
         'console': {
+            'level': 'DEBUG',
             'class': 'logging.StreamHandler',
         },
     },
@@ -54,8 +55,15 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': True,
         },
+        'django_db_backends': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
     },
 }
+
+
 
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'home'
