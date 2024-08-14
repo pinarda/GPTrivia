@@ -140,7 +140,10 @@ MIDDLEWARE = [
     'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
-CSRF_TRUSTED_ORIGINS = ['https://hailsciencetrivia.com']
+CSRF_TRUSTED_ORIGINS = ['https://hailsciencetrivia.com',
+                        'https://www.hailsciencetrivia.com',
+                        'http://hailsciencetrivia.com',
+                        'http://www.hailsciencetrivia.com',]
 
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development
 
