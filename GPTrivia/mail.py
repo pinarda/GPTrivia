@@ -139,6 +139,7 @@ def find_shared_presentations(credentials, processed_senders=[]):
                         if url_match:
                             # print(f"3: Found presentation URL: {url_match.group(1)}")
                             presentation_url = url_match.group(1)
+                            presentation_url = convert_shared_presentation(presentation_url, credentials)
                             presentation_urls.append(presentation_url)
                         mark_as_read(gmail_service, msg_id)
 
