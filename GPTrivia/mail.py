@@ -381,6 +381,26 @@ def update_merged_presentation(merged_presentation_id, merged_creators):
                                     }
                                 }
                                 delete_insert_requests.append(font_size_request)
+                            elif len(new_text) > 70:
+                                # Add a request to modify the font size; you can adjust the font size value as needed
+                                font_size_request = {
+                                    "updateTextStyle": {
+                                        "objectId": element_id,
+                                        "textRange": {
+                                            "type": "FIXED_RANGE",  # Explicitly specifying the range type
+                                            "startIndex": round_start_index,
+                                            "endIndex": round_start_index + len(new_text)
+                                        },
+                                        "style": {
+                                            "fontSize": {
+                                                "magnitude": 10,  # Change this to your desired font size
+                                                "unit": "PT"
+                                            }
+                                        },
+                                        "fields": "fontSize"
+                                    }
+                                }
+                                delete_insert_requests.append(font_size_request)
 
                             slides_service.presentations().batchUpdate(
                                 presentationId=merged_presentation_id,
