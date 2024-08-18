@@ -949,6 +949,37 @@ def create_presentation():
 
     return new_presentation_id, creator_names, round_titles, copied_links
 
+def convert_shared_presentation(presentation_url, credentials):
+    try:
+        # Extract the file ID from the presentation URL
+        file_id = presentation_url.split('/')[-2]
+
+        # Initialize the Drive service
+        drive_service = build('drive', 'v3', credentials=credentials)
+
+        # Get file metadata
+        file_metadata = drive_service.files().get(fileId=file_id, fields='mimeType').execute()
+        mime_type = file_metadata.get('mimeType')
+
+        # Check if the file is not already a Google Slides presentation
+        if mime_type != 'application/vnd.google-apps.presentation':
+            # Convert to Google Slides format
+            converted_file = drive_service.files().copy(
+                fileId=file_id,
+                body={'mimeType': 'application/vnd.google-apps.presentation'}
+            ).execute()
+
+            # Return the new Google Slides URL
+            new_presentation_url = f"https://docs.google.com/presentation/d/{converted_file['id']}/edit"
+            return new_presentation_url
+
+        # If it's already a Google Slides presentation, return the original URL
+        return presentation_url
+
+    except HttpError as error:
+        print(f'An error occurred: {error}')
+        return None
+
 def get_round_titles_and_links(processed_senders=[]):
     credentials = None
     # Check if the token.pickle file exists
@@ -1025,6 +1056,7 @@ def get_round_titles_and_links(processed_senders=[]):
 
                             if url_match:
                                 presentation_url = url_match.group(1)
+                                presentation_url = convert_shared_presentation(presentation_url, credentials)
                                 presentation_urls.append(presentation_url)
 
                                 # Extract round title
