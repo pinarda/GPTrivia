@@ -11,3 +11,10 @@ def get_range(value):
 @register.filter(name='zip')
 def zip_lists(a, b):
     return zip(a, b)
+
+@register.filter
+def index(sequence, position):
+    try:
+        return sequence[position]
+    except IndexError:
+        return ''

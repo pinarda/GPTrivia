@@ -4,34 +4,71 @@
 
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/home.css' %}">
+  <style>
+    .round-selection-table {
+        display: table;
+        width: 100%;
+        max-height: 400px; /* Adjust this height as needed */
+        overflow-y: auto;
+        border-collapse: collapse;
+    }
+
+    .round-selection-table-header, .round-selection-table-row {
+        display: table-row;
+    }
+
+    .round-selection-table-cell {
+        display: table-cell;
+        padding: 10px;
+        border: 1px solid #ddd;
+        text-align: left;
+    }
+
+    .round-selection-table-header {
+        background-color: #f2f2f2;
+        font-weight: bold;
+    }
+
+    .round-order-input {
+        width: 50px;
+        text-align: center;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
     <div class="container">
       {% if presentation_url %}
-{#        <h3>{{ pres_name }}</h3>#}
         <iframe src="{{ presentation_url }}" width="90%" height="auto" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
       {% endif %}
-
 
       <form method="post">
         {% csrf_token %}
         <button type="submit" name="action" value="generate">Generate Slides</button>
         <button type="submit" name="action" value="update">Update Slides</button>
-      </form>
 
-        <form method="post" action="#">
-            {% csrf_token %}
-
-            {% for title, creator in avail_titles|zip:avail_creators %}
-            <div class="checkbox-item">
-{#                <input type="checkbox" id="{{ title }}" name="selected_titles" value="{{ title }}">#}
-                <label class="avail_text" for="{{ title }}">{{ title }} by {{ creator }}</label>
+        <div class="round-selection-table">
+            <div class="round-selection-table-header">
+                <div class="round-selection-table-cell">Order</div>
+                <div class="round-selection-table-cell">Round Title</div>
+                <div class="round-selection-table-cell">Creator</div>
+            </div>
+            {% for title in avail_titles %}
+            <div class="round-selection-table-row">
+                <div class="round-selection-table-cell">
+                    <input type="number" id="round_order_{{ forloop.counter0 }}" name="round_order_{{ forloop.counter0 }}" min="1" max="6" step="1" placeholder="Order" class="round-order-input">
+                </div>
+                <div class="round-selection-table-cell">
+                    {{ title }}
+                    <input type="hidden" name="round_title_{{ forloop.counter0 }}" value="{{ title }}">
+                </div>
+                <div class="round-selection-table-cell">
+                    {{ avail_creators|index:forloop.counter0 }}
+                    <input type="hidden" name="round_creator_{{ forloop.counter0 }}" value="{{ avail_creators|index:forloop.counter0 }}">
+                </div>
             </div>
             {% endfor %}
-
-{#            <button type="submit">Submit</button>#}
-        </form>
+        </div>
+      </form>
     </div>
 {% endblock %}
-
