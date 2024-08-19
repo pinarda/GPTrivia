@@ -11,6 +11,7 @@
         max-height: 400px; /* Adjust this height as needed */
         overflow-y: auto;
         border-collapse: collapse;
+        border: 1px solid #0073cc;
     }
 
     .round-selection-table-header, .round-selection-table-row {
@@ -20,21 +21,33 @@
     .round-selection-table-cell {
         display: table-cell;
         padding: 10px;
-        border: 1px solid #ddd;
+        border: 1px solid #0073cc;
         text-align: left;
+        background-color: #0073cc;
+        color: white;
     }
 
     .round-selection-table-header {
-        background-color: #f2f2f2;
+        background-color: #0073cc;
         font-weight: bold;
     }
 
     .round-order-input {
         width: 50px;
         text-align: center;
+        background-color: #0073cc;
+        color: white;
+        border: 1px solid #0073cc;
+        padding: 5px;
+    }
+
+    .round-order-input::placeholder {
+        color: white;
+        opacity: 0.7;
     }
   </style>
 {% endblock %}
+
 
 {% block content %}
     <div class="container">
