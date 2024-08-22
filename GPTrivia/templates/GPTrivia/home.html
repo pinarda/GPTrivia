@@ -6,15 +6,19 @@
   <link rel="stylesheet" href="{% static 'GPTrivia/css/home.css' %}">
   <style>
 
-  .table-container {
+.table-container {
     display: flex;
     justify-content: center; /* Horizontally centers the table */
     align-items: center; /* Vertically centers the table */
-    padding: 20px; /* Optional: adds padding around the table */
+    padding: 20px;
+    width: 100%; /* Ensure the container takes full width */
 }
+
 .round-selection-table {
     display: table;
-    width: auto; /* Change to auto to only take up as much space as needed */
+    width: 60%; /* Make the table take up the full width of its container */
+    max-width: 800px; /* Max width the table can grow to */
+    min-width: 200px; /* Ensure the table doesn't shrink too much */
     max-height: 400px;
     overflow-y: auto;
     border-collapse: collapse;
@@ -33,15 +37,28 @@
     vertical-align: middle;
     color: white;
     position: relative;
-    white-space: nowrap; /* Ensure content doesn't wrap, so columns take only the needed width */
 }
 
+/* Ensure the round title column text wraps */
+.round-selection-table-cell.wrap-text {
+    text-align: left; /* Align text to the left for better readability */
+    white-space: normal; /* Allow text to wrap within the cell */
+    word-wrap: break-word; /* Break long words if necessary to avoid overflow */
+}
+
+/* Adjust header styles */
 .round-selection-table-header {
     background-color: #0073cc;
     font-weight: bold;
     color: white;
 }
 
+/* Specific adjustments for smaller screens */
+@media (max-width: 600px) {
+    .round-selection-table {
+        width: 90%; /* Ensure the table takes up all available space on small screens */
+    }
+}
 
 .order-box {
     width: 25px;
@@ -58,8 +75,8 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    line-height: 1; /* Ensure line height does not add extra space */
-    padding-top: 1px; /* Adjust padding to fine-tune vertical alignment */
+    line-height: 1;
+    padding-top: 1px;
 }
 
 .order-box.selected {
@@ -73,13 +90,13 @@
 {% endblock %}
 
 {% block content %}
-    
+
   <form method="post">
     <div class="container">
       {% if presentation_url %}
         <iframe src="{{ presentation_url }}" width="90%" height="auto" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
       {% endif %}
-    
+
       <div class="table-container">
         <div class="round-selection-table">
             <div class="round-selection-table-header">
@@ -105,7 +122,7 @@
             {% endfor %}
         </div>
         </div>
-    
+
     {% csrf_token %}
     <button type="submit" name="action" value="generate">Generate Slides</button>
     <button type="submit" name="action" value="update">Update Slides</button>
