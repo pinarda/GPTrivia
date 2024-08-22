@@ -23,31 +23,32 @@
         padding: 10px;
         border: 1px solid #0073cc;
         text-align: left;
-        background-color: #0073cc;
-        color: white;
     }
 
     .round-selection-table-header {
         background-color: #0073cc;
         font-weight: bold;
+        color: white;
     }
 
-    .round-order-input {
-        width: 50px;
+    .order-box {
+        width: 25px; /* Smaller width */
+        height: 25px; /* Smaller height */
+        border: 2px solid #0073cc;
+        background-color: white;
+        color: #0073cc;
         text-align: center;
+        line-height: 40px; /* Adjusted for smaller height */
+        font-size: 20px; /* Slightly smaller font */
+        cursor: pointer;
+    }
+
+    .order-box.selected {
         background-color: #0073cc;
         color: white;
-        border: 1px solid #0073cc;
-        padding: 5px;
-    }
-
-    .round-order-input::placeholder {
-        color: white;
-        opacity: 0.7;
     }
   </style>
 {% endblock %}
-
 
 {% block content %}
     <div class="container">
@@ -69,7 +70,8 @@
             {% for title in avail_titles %}
             <div class="round-selection-table-row">
                 <div class="round-selection-table-cell">
-                    <input type="number" id="round_order_{{ forloop.counter0 }}" name="round_order_{{ forloop.counter0 }}" min="1" max="6" step="1" placeholder="Order" class="round-order-input">
+                    <div id="order_box_{{ forloop.counter0 }}" class="order-box" onclick="toggleOrder(this, {{ forloop.counter0 }})"></div>
+                    <input type="hidden" name="round_order_{{ forloop.counter0 }}" id="round_order_{{ forloop.counter0 }}" value="">
                 </div>
                 <div class="round-selection-table-cell">
                     {{ title }}
@@ -84,4 +86,76 @@
         </div>
       </form>
     </div>
+
+    <script>
+        let currentOrder = 1;
+        const selectedOrders = {};
+
+        function toggleOrder(element, index) {
+            const input = document.getElementById(`round_order_${index}`);
+
+            if (element.classList.contains('selected')) {
+                // If the box is already selected, remove the selection
+                const order = parseInt(element.innerText);
+                delete selectedOrders[order];
+                element.classList.remove('selected');
+                element.innerText = '';
+                input.value = '';
+
+                // Reassign order numbers
+                reassignOrderNumbers();
+            } else {
+                // Assign the lowest unused order number
+                const lowestUnusedOrder = findLowestUnusedOrder();
+                element.innerText = lowestUnusedOrder;
+                selectedOrders[lowestUnusedOrder] = index;
+                element.classList.add('selected');
+                input.value = lowestUnusedOrder;
+            }
+        }
+
+    function findLowestUnusedOrder() {
+        let lowestUnusedOrder = 1;
+        console.log("Selected Orders:", selectedOrders); // Log the current state of selectedOrders
+        while (lowestUnusedOrder in selectedOrders) {
+            console.log(`Order ${lowestUnusedOrder} is in use.`); // Log when an order number is found in selectedOrders
+            lowestUnusedOrder++;
+        }
+        console.log(`Returning the lowest unused order: ${lowestUnusedOrder}`); // Log the result
+        return lowestUnusedOrder;
+    }
+
+
+    function reassignOrderNumbers() {
+        // Sort the selected orders by their current order number
+        const sortedOrders = Object.keys(selectedOrders).sort((a, b) => a - b);
+    
+        // Create a new object to store the updated orders
+        const newSelectedOrders = {};
+        let newOrder = 1;
+    
+        sortedOrders.forEach(order => {
+            const index = selectedOrders[order];
+            const element = document.getElementById(`order_box_${index}`);
+            const input = document.getElementById(`round_order_${index}`);
+    
+            // Update the UI
+            element.innerText = newOrder;
+            input.value = newOrder;
+    
+            // Store the new order in the temporary object
+            newSelectedOrders[newOrder] = index;
+    
+            newOrder++;
+        });
+    
+        // Replace the old selectedOrders object with the updated one
+        Object.keys(selectedOrders).forEach(order => delete selectedOrders[order]);
+        Object.assign(selectedOrders, newSelectedOrders);
+    
+        // Update currentOrder to the next available number
+        currentOrder = newOrder;
+    }
+
+    </script>
 {% endblock %}
