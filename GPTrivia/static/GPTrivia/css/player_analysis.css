@@ -179,7 +179,7 @@ body {
 }
 
 @media (max-width: 800px) {
-    #select-wrapper {
+    .select-wrapper {
         flex-direction: column; /* Change to column layout on smaller screens */
     }
     #CorrMatrix, #PMatrix {
