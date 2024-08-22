@@ -5,48 +5,70 @@
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/home.css' %}">
   <style>
-    .round-selection-table {
-        display: table;
-        width: 100%;
-        max-height: 400px; /* Adjust this height as needed */
-        overflow-y: auto;
-        border-collapse: collapse;
-        border: 1px solid #0073cc;
-    }
 
-    .round-selection-table-header, .round-selection-table-row {
-        display: table-row;
-    }
+  .table-container {
+    display: flex;
+    justify-content: center; /* Horizontally centers the table */
+    align-items: center; /* Vertically centers the table */
+    padding: 20px; /* Optional: adds padding around the table */
+}
+.round-selection-table {
+    display: table;
+    width: auto; /* Change to auto to only take up as much space as needed */
+    max-height: 400px;
+    overflow-y: auto;
+    border-collapse: collapse;
+    border: 1px solid #0073cc;
+}
 
-    .round-selection-table-cell {
-        display: table-cell;
-        padding: 10px;
-        border: 1px solid #0073cc;
-        text-align: left;
-    }
+.round-selection-table-header, .round-selection-table-row {
+    display: table-row;
+}
 
-    .round-selection-table-header {
-        background-color: #0073cc;
-        font-weight: bold;
-        color: white;
-    }
+.round-selection-table-cell {
+    display: table-cell;
+    padding: 10px;
+    border: 1px solid #0073cc;
+    text-align: center;
+    vertical-align: middle;
+    color: white;
+    position: relative;
+    white-space: nowrap; /* Ensure content doesn't wrap, so columns take only the needed width */
+}
 
-    .order-box {
-        width: 25px; /* Smaller width */
-        height: 25px; /* Smaller height */
-        border: 2px solid #0073cc;
-        background-color: white;
-        color: #0073cc;
-        text-align: center;
-        line-height: 40px; /* Adjusted for smaller height */
-        font-size: 20px; /* Slightly smaller font */
-        cursor: pointer;
-    }
+.round-selection-table-header {
+    background-color: #0073cc;
+    font-weight: bold;
+    color: white;
+}
 
-    .order-box.selected {
-        background-color: #0073cc;
-        color: white;
-    }
+
+.order-box {
+    width: 25px;
+    height: 25px;
+    border: 2px solid #0073cc;
+    background-color: white;
+    color: #0073cc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    cursor: pointer;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    line-height: 1; /* Ensure line height does not add extra space */
+    padding-top: 1px; /* Adjust padding to fine-tune vertical alignment */
+}
+
+.order-box.selected {
+    background-color: #0073cc;
+    color: white;
+}
+
+
+
   </style>
 {% endblock %}
 
@@ -61,6 +83,7 @@
         <button type="submit" name="action" value="generate">Generate Slides</button>
         <button type="submit" name="action" value="update">Update Slides</button>
 
+      <div class="table-container">
         <div class="round-selection-table">
             <div class="round-selection-table-header">
                 <div class="round-selection-table-cell">Order</div>
@@ -83,6 +106,7 @@
                 </div>
             </div>
             {% endfor %}
+        </div>
         </div>
       </form>
     </div>
@@ -129,30 +153,30 @@
     function reassignOrderNumbers() {
         // Sort the selected orders by their current order number
         const sortedOrders = Object.keys(selectedOrders).sort((a, b) => a - b);
-    
+
         // Create a new object to store the updated orders
         const newSelectedOrders = {};
         let newOrder = 1;
-    
+
         sortedOrders.forEach(order => {
             const index = selectedOrders[order];
             const element = document.getElementById(`order_box_${index}`);
             const input = document.getElementById(`round_order_${index}`);
-    
+
             // Update the UI
             element.innerText = newOrder;
             input.value = newOrder;
-    
+
             // Store the new order in the temporary object
             newSelectedOrders[newOrder] = index;
-    
+
             newOrder++;
         });
-    
+
         // Replace the old selectedOrders object with the updated one
         Object.keys(selectedOrders).forEach(order => delete selectedOrders[order]);
         Object.assign(selectedOrders, newSelectedOrders);
-    
+
         // Update currentOrder to the next available number
         currentOrder = newOrder;
     }
