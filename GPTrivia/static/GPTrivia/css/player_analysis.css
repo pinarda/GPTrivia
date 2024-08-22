@@ -207,13 +207,3 @@ body {
 .purple {
     color: #72bad5;
 }
-
-
-@media (max-width: 800px) {
-    .select-wrapper {
-        flex-direction: column; /* Change to column layout on smaller screens */
-    }
-    #CorrMatrix, #PMatrix {
-        width: 100%; /* Set width to 100% for full width */
-    }
-}

@@ -4,6 +4,17 @@
 
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}">
+
+    <style>
+    @media (max-width: 800px) {
+        .select-wrapper {
+            flex-direction: column; /* Change to column layout on smaller screens */
+        }
+        #CorrMatrix, #PMatrix {
+            width: 100%; /* Set width to 100% for full width */
+        }
+    }
+    </style>
 {% endblock %}
 
 {% block content %}
