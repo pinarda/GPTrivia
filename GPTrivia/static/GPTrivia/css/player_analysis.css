@@ -178,8 +178,8 @@ body {
     white-space: normal; /* Allows text to wrap on hover */
 }
 
-@media (max-width: 768px) {
-    #plots-container {
+@media (max-width: 800px) {
+    #select-wrapper {
         flex-direction: column; /* Change to column layout on smaller screens */
     }
     #CorrMatrix, #PMatrix {
