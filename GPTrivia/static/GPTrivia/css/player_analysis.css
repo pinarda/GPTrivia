@@ -178,14 +178,6 @@ body {
     white-space: normal; /* Allows text to wrap on hover */
 }
 
-@media (max-width: 800px) {
-    .select-wrapper {
-        flex-direction: column; /* Change to column layout on smaller screens */
-    }
-    #CorrMatrix, #PMatrix {
-        width: 100%; /* Set width to 100% for full width */
-    }
-}
 
 .red{
         color: rgba(255, 243, 245, 0.7);
@@ -214,4 +206,14 @@ body {
 
 .purple {
     color: #72bad5;
+}
+
+
+@media (max-width: 800px) {
+    .select-wrapper {
+        flex-direction: column; /* Change to column layout on smaller screens */
+    }
+    #CorrMatrix, #PMatrix {
+        width: 100%; /* Set width to 100% for full width */
+    }
 }
