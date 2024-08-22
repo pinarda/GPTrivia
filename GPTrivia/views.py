@@ -869,7 +869,39 @@ def home(request):
         action = request.POST.get('action')
 
         if action == 'generate':
-            new_presentation_id, creators, round_titles, round_links = create_presentation()
+
+            round_order = {}
+            for i in range(len(titles)):
+                order = request.POST.get(f'round_order_{i}')
+                if order:
+                    round_order[int(order)] = {
+                        'title': request.POST.get(f'round_title_{i}'),
+                        'creator': request.POST.get(f'round_creator_{i}'),
+                        'link': links[i],
+                    }
+
+            # Sort rounds by order
+            ordered_rounds = [round_order[key] for key in sorted(round_order.keys())]
+
+            # Extract ordered titles, creators, and links
+            ordered_titles = [round['title'] for round in ordered_rounds]
+            ordered_creators = [round['creator'] for round in ordered_rounds]
+            ordered_links = [round['link'] for round in ordered_rounds]
+
+            # Pass the ordered data to create_presentation
+            new_presentation_id = create_presentation(
+                ordered_titles,
+                ordered_creators,
+                ordered_links,
+                presentation_name=presentation_name
+            )
+
+            round_titles = ordered_titles
+            creators = ordered_creators
+            round_links = ordered_links
+
+            # new_presentation_id, creators, round_titles, round_links = create_presentation()
+
             MergedPresentation.objects.create(
                 name=presentation_name,
                 presentation_id=new_presentation_id,

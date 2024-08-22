@@ -25,7 +25,6 @@ MAIL_NAME_MAP = {
     'I': 'Ichigo',
     'Megan': 'Megan',
     'zach': 'Zach',
-    'Jenny': 'Jenny',
     'Debi': 'Debi',
     'Dan': 'Dan',
     'Chris': 'Chris',
@@ -679,12 +678,15 @@ def share_slides(presId):
 
 
 
-def create_presentation():
+def create_presentation(titles, creators, links, presentation_name):
     credentials = None
     # Check if the token.pickle file exists
     if os.path.exists(token_file_path):
         with open(token_file_path, 'rb') as token:
             credentials = pickle.load(token)
+
+    swapped_creators = [key for creator in creators for key, value in MAIL_NAME_MAP.items() if value == creator]
+    creators = swapped_creators
 
     # Check if the credentials have expired
     if credentials.expired and credentials.refresh_token:
@@ -712,8 +714,8 @@ def create_presentation():
 
     new_presentation_id = new_presentation(credentials)
     print("finding shared presentations for new presentation...")
-    shared_urls, creators = find_shared_presentations(credentials, [])
-
+    # shared_urls, creators = find_shared_presentations(credentials, [])
+    shared_urls = links
     # Build the service or the Apps Script API
     http = httplib2.Http(timeout=300)
     authorized_http = AuthorizedHttp(credentials, http=http)

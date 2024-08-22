@@ -73,16 +73,13 @@
 {% endblock %}
 
 {% block content %}
+    
+  <form method="post">
     <div class="container">
       {% if presentation_url %}
         <iframe src="{{ presentation_url }}" width="90%" height="auto" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
       {% endif %}
-
-      <form method="post">
-        {% csrf_token %}
-        <button type="submit" name="action" value="generate">Generate Slides</button>
-        <button type="submit" name="action" value="update">Update Slides</button>
-
+    
       <div class="table-container">
         <div class="round-selection-table">
             <div class="round-selection-table-header">
@@ -96,7 +93,7 @@
                     <div id="order_box_{{ forloop.counter0 }}" class="order-box" onclick="toggleOrder(this, {{ forloop.counter0 }})"></div>
                     <input type="hidden" name="round_order_{{ forloop.counter0 }}" id="round_order_{{ forloop.counter0 }}" value="">
                 </div>
-                <div class="round-selection-table-cell">
+                <div class="round-selection-table-cell wrap-text">
                     {{ title }}
                     <input type="hidden" name="round_title_{{ forloop.counter0 }}" value="{{ title }}">
                 </div>
@@ -108,8 +105,12 @@
             {% endfor %}
         </div>
         </div>
-      </form>
     </div>
+    
+    {% csrf_token %}
+    <button type="submit" name="action" value="generate">Generate Slides</button>
+    <button type="submit" name="action" value="update">Update Slides</button>
+</form>
 
     <script>
         let currentOrder = 1;
