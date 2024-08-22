@@ -84,7 +84,7 @@ def new_presentation(credentials):
         return None
 
 
-def find_shared_presentations(credentials, processed_senders=[]):
+def find_shared_presentations(credentials, processed_senders=[], selected_links=[], old_links=[]):
     print(processed_senders)
     try:
         new_senders = []
@@ -138,9 +138,10 @@ def find_shared_presentations(credentials, processed_senders=[]):
                         if url_match:
                             # print(f"3: Found presentation URL: {url_match.group(1)}")
                             presentation_url = url_match.group(1)
-                            presentation_url = convert_shared_presentation(presentation_url, credentials)
-                            presentation_urls.append(presentation_url)
-                        mark_as_read(gmail_service, msg_id)
+                            new_presentation_url = convert_shared_presentation(presentation_url, credentials)
+                            presentation_urls.append(new_presentation_url)
+                        if presentation_url in (selected_links + old_links):
+                            mark_as_read(gmail_service, msg_id)
 
         print(f"Found {len(presentation_urls)} new presentations from creators: {processed_senders}")
 
@@ -213,7 +214,7 @@ def remove_first_slide(credentials, presentation_id):
     slides_service.presentations().batchUpdate(presentationId=presentation_id, body={'requests': [delete_request]}).execute()
 
 
-def update_merged_presentation(merged_presentation_id, merged_creators):
+def update_merged_presentation(merged_presentation_id, merged_creators, titles, creators, links, old_links):
     credentials = None
     # Check if the token.pickle file exists
     if os.path.exists(token_file_path):
@@ -239,6 +240,9 @@ def update_merged_presentation(merged_presentation_id, merged_creators):
         with open(token_file_path, 'wb') as token:
             pickle.dump(credentials, token)
 
+    swapped_creators = [key for creator in creators for key, value in MAIL_NAME_MAP.items() if value == creator]
+    creators = swapped_creators
+
     # Remove the last slide
     slides_service = build('slides', 'v1', credentials=credentials)
     presentation = slides_service.presentations().get(presentationId=merged_presentation_id).execute()
@@ -248,7 +252,9 @@ def update_merged_presentation(merged_presentation_id, merged_creators):
 
     # Append any new shared slides from new creators
     print("finding shared presentations for shared presentation...")
-    shared_urls, creators = find_shared_presentations(credentials, merged_creators)
+    # shared_urls, creators = find_shared_presentations(credentials, merged_creators)
+    find_shared_presentations(credentials, merged_creators, links, old_links)
+    shared_urls = links
 
     script_service = build('script', 'v1', credentials=credentials)
     FUNCTION_NAME = 'copySlides'
@@ -678,7 +684,7 @@ def share_slides(presId):
 
 
 
-def create_presentation(titles, creators, links, presentation_name):
+def create_presentation(titles, creators, links, presentation_name, old_links):
     credentials = None
     # Check if the token.pickle file exists
     if os.path.exists(token_file_path):
@@ -715,6 +721,7 @@ def create_presentation(titles, creators, links, presentation_name):
     new_presentation_id = new_presentation(credentials)
     print("finding shared presentations for new presentation...")
     # shared_urls, creators = find_shared_presentations(credentials, [])
+    find_shared_presentations(credentials, [], links, old_links)
     shared_urls = links
     # Build the service or the Apps Script API
     http = httplib2.Http(timeout=300)
@@ -970,7 +977,7 @@ def create_presentation(titles, creators, links, presentation_name):
 
     update_slide_permissions(new_presentation_id, credentials)
 
-    return new_presentation_id, creator_names, round_titles, copied_links
+    return new_presentation_id
 
 def convert_shared_presentation(presentation_url, credentials):
     try:
@@ -1040,6 +1047,7 @@ def get_round_titles_and_links(processed_senders=[]):
     try:
         new_senders = []
         presentation_urls = []
+        old_urls = []
         round_titles = []
 
         gmail_service = build('gmail', 'v1', credentials=credentials)
@@ -1079,11 +1087,11 @@ def get_round_titles_and_links(processed_senders=[]):
 
                             if url_match:
                                 presentation_url = url_match.group(1)
-                                presentation_url = convert_shared_presentation(presentation_url, credentials)
-                                presentation_urls.append(presentation_url)
-
+                                new_presentation_url = convert_shared_presentation(presentation_url, credentials)
+                                presentation_urls.append(new_presentation_url)
+                                old_urls.append(presentation_url)
                                 # Extract round title
-                                shared_presentation_id = presentation_url.split('/')[-2]
+                                shared_presentation_id = new_presentation_url.split('/')[-2]
                                 # request = {
                                 #     'function': FUNCTION_NAME,
                                 #     'parameters': [shared_presentation_id, merged_presentation_id],
@@ -1113,12 +1121,12 @@ def get_round_titles_and_links(processed_senders=[]):
         # unless the sender is not in the mail name map, then we just return "Unknown"
         new_senders = [MAIL_NAME_MAP[sender] if sender in MAIL_NAME_MAP else "Unknown" for sender in new_senders]
 
-        print(presentation_urls, round_titles, new_senders)
-        return presentation_urls, round_titles, new_senders
+        print(presentation_urls, round_titles, new_senders, old_urls)
+        return presentation_urls, round_titles, new_senders, old_urls
 
     except HttpError as error:
         print(f"An error occurred: {error}")
-        return None, None, None
+        return None, None, None, None
 
 
 if __name__ == '__main__':

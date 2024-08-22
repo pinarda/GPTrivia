@@ -862,7 +862,7 @@ def home(request):
         latest_presentation = None
         presentation_url = None
 
-    (links, titles, creators) = get_round_titles_and_links(processed_senders=[])
+    (links, titles, creators, old_links) = get_round_titles_and_links(processed_senders=[])
 
     presentation_name = datetime.date.strftime(datetime.date.today(), '%-m.%d.%Y')
     if request.method == 'POST':
@@ -878,6 +878,7 @@ def home(request):
                         'title': request.POST.get(f'round_title_{i}'),
                         'creator': request.POST.get(f'round_creator_{i}'),
                         'link': links[i],
+                        'old_link': old_links[i]
                     }
 
             # Sort rounds by order
@@ -887,13 +888,15 @@ def home(request):
             ordered_titles = [round['title'] for round in ordered_rounds]
             ordered_creators = [round['creator'] for round in ordered_rounds]
             ordered_links = [round['link'] for round in ordered_rounds]
+            ordered_old_links = [round['old_link'] for round in ordered_rounds]
 
             # Pass the ordered data to create_presentation
             new_presentation_id = create_presentation(
                 ordered_titles,
                 ordered_creators,
                 ordered_links,
-                presentation_name=presentation_name
+                presentation_name=presentation_name,
+                old_links=ordered_old_links
             )
 
             round_titles = ordered_titles
@@ -944,8 +947,38 @@ def home(request):
                 new_round.save()
 
         elif action == 'update':
+
+            round_order = {}
+            for i in range(len(titles)):
+                order = request.POST.get(f'round_order_{i}')
+                if order:
+                    round_order[int(order)] = {
+                        'title': request.POST.get(f'round_title_{i}'),
+                        'creator': request.POST.get(f'round_creator_{i}'),
+                        'link': links[i],
+                        'old_link': old_links[i]
+                    }
+
+            # Sort rounds by order
+            ordered_rounds = [round_order[key] for key in sorted(round_order.keys())]
+
+            # Extract ordered titles, creators, and links
+            ordered_titles = [round['title'] for round in ordered_rounds]
+            ordered_creators = [round['creator'] for round in ordered_rounds]
+            ordered_links = [round['link'] for round in ordered_rounds]
+            ordered_old_links = [round['old_link'] for round in ordered_rounds]
+
+            # Pass the ordered data to create_presentation
+            # new_presentation_id = create_presentation(
+            #     ordered_titles,
+            #     ordered_creators,
+            #     ordered_links,
+            #     presentation_name=presentation_name
+            # )
+
             updated_presentation_id, new_creators, round_titles, new_links = update_merged_presentation(latest_presentation.presentation_id,
-                                                                               latest_presentation.creator_list)
+                                                                               latest_presentation.creator_list, ordered_titles, ordered_creators, ordered_links, ordered_old_links)
+
             # update the MergedPresentation object that has the same presentation_id as the latest_presentation
             # by appending the new creators to the creator_list and appending the new round titles to the round_names
 
