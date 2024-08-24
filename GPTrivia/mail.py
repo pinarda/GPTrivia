@@ -262,6 +262,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
     round_titles = []
     copied_links = []  # List to store links to the first slide of each copied presentation in the new presentation
 
+    i = 0
     for url in shared_urls:
         shared_presentation_id = url.split('/')[-2]
         request = {
@@ -295,6 +296,8 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
 
         # Clean up the title text by removing excess whitespace and line breaks
         title_text = re.sub(r'\s+', ' ', title_text).strip()
+        i += 1
+        title_text = titles[i]
 
         # Add the title to the list of round titles
         round_titles.append(title_text)
@@ -806,6 +809,7 @@ def create_presentation(titles, creators, links, presentation_name, old_links):
     round_titles = []
     copied_links = []  # List to store links to the first slide of each copied presentation in the new presentation
 
+    i = 0
     for url in shared_urls:
         shared_presentation_id = url.split('/')[-2]
         request = {
@@ -840,6 +844,8 @@ def create_presentation(titles, creators, links, presentation_name, old_links):
 
         # Clean up the title text by removing excess whitespace and line breaks
         title_text = re.sub(r'\s+', ' ', title_text).strip()
+        i += 1
+        title_text = titles[i]
 
         # Add the title to the list of round titles
         round_titles.append(title_text)
