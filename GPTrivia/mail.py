@@ -296,8 +296,8 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
 
         # Clean up the title text by removing excess whitespace and line breaks
         title_text = re.sub(r'\s+', ' ', title_text).strip()
-        i += 1
         title_text = titles[i]
+        i += 1
 
         # Add the title to the list of round titles
         round_titles.append(title_text)
@@ -844,8 +844,9 @@ def create_presentation(titles, creators, links, presentation_name, old_links):
 
         # Clean up the title text by removing excess whitespace and line breaks
         title_text = re.sub(r'\s+', ' ', title_text).strip()
-        i += 1
+
         title_text = titles[i]
+        i += 1
 
         # Add the title to the list of round titles
         round_titles.append(title_text)
