@@ -32,7 +32,8 @@ h3 {
   color: #eee;
 }
 
-input[type="text"] {
+
+.homeInput {
   width: 100%;
   padding: 12px 20px;
   margin: 8px 0;
