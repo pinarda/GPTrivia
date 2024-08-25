@@ -32,6 +32,16 @@ h3 {
   color: #eee;
 }
 
+input[type="text"] {
+  width: 100%;
+  padding: 12px 20px;
+  margin: 8px 0;
+  box-sizing: border-box;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+    background-color: #333;
+}
+
 button {
   background-color: #0073cc;
   border: none;
