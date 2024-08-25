@@ -33,7 +33,7 @@ h3 {
 }
 
 
-input[type="text"] {
+.homeInput {
     background-color: #333;
 }
 

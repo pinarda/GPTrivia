@@ -127,13 +127,13 @@
                 <div class="round-selection-table-row">
                     <div class="round-selection-table-cell">
                         <div id="order_box_{{ forloop.counter0 }}" class="order-box" onclick="toggleOrder(this, {{ forloop.counter0 }})"></div>
-                        <input type="hidden" name="round_order_{{ forloop.counter0 }}" id="round_order_{{ forloop.counter0 }}" value="">
+                        <input class="homeInput" type="hidden" name="round_order_{{ forloop.counter0 }}" id="round_order_{{ forloop.counter0 }}" value="">
                     </div>
                     <div class="round-selection-table-cell wrap-text">
-                        <input type="text" name="round_title_{{ forloop.counter0 }}" value="{{ title }}" class="editable-cell">
+                        <input class="homeInput" type="text" name="round_title_{{ forloop.counter0 }}" value="{{ title }}" class="editable-cell">
                     </div>
                     <div class="round-selection-table-cell wrap-text">
-                        <input type="text" name="round_creator_{{ forloop.counter0 }}" value="{{ avail_creators|index:forloop.counter0 }}" class="editable-cell">
+                        <input class="homeInput" type="text" name="round_creator_{{ forloop.counter0 }}" value="{{ avail_creators|index:forloop.counter0 }}" class="editable-cell">
                     </div>
                 </div>
                 {% endfor %}
