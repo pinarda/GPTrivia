@@ -126,6 +126,9 @@ class ShareView(View):
 @login_required
 def rounds_list(request):
     rounds = GPTriviaRound.objects.all()
+    # can we reverse the order of the rounds
+    rounds = rounds[::-1]
+
     text_color = {}
     players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom", "Paige"]
     for player in players:
