@@ -60,7 +60,7 @@
     }
 }
 
-#homeInput {
+.homeInput {
   width: 100%;
   padding: 12px 20px;
   margin: 8px 0;
@@ -70,7 +70,7 @@
     background-color: #333;
 }
 
-#homeInput:focus {
+.homeInput:focus {
     border-color: #0073cc;
     outline: none;
 }
@@ -142,13 +142,13 @@
                 <div class="round-selection-table-row">
                     <div class="round-selection-table-cell">
                         <div id="order_box_{{ forloop.counter0 }}" class="order-box" onclick="toggleOrder(this, {{ forloop.counter0 }})"></div>
-                        <input id="homeInput" type="hidden" name="round_order_{{ forloop.counter0 }}" id="round_order_{{ forloop.counter0 }}" value="">
+                        <input id="round_order_{{ forloop.counter0 }}" class="homeInput" type="hidden" name="round_order_{{ forloop.counter0 }}" id="round_order_{{ forloop.counter0 }}" value="">
                     </div>
                     <div class="round-selection-table-cell wrap-text">
-                        <input id="homeInput" type="text" name="round_title_{{ forloop.counter0 }}" value="{{ title }}" class="editable-cell">
+                        <input id="round_title_{{ forloop.counter0 }}" class="homeInput" type="text" name="round_title_{{ forloop.counter0 }}" value="{{ title }}" class="editable-cell">
                     </div>
                     <div class="round-selection-table-cell wrap-text">
-                        <input id="homeInput" type="text" name="round_creator_{{ forloop.counter0 }}" value="{{ avail_creators|index:forloop.counter0 }}" class="editable-cell">
+                        <input id="round_creator_{{ forloop.counter0 }}" class="homeInput" type="text" name="round_creator_{{ forloop.counter0 }}" value="{{ avail_creators|index:forloop.counter0 }}" class="editable-cell">
                     </div>
                 </div>
                 {% endfor %}
