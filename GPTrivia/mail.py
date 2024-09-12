@@ -869,8 +869,8 @@ def create_presentation(titles, creators, links, presentation_name, old_links):
     second_slide_elements = second_slide['pageElements']
 
     # Define placeholders for the rounds and creators
-    round_placeholders = ['ROUND1', 'ROUND2', 'ROUND3', 'ROUND4', 'ROUND5']
-    creator_placeholders = ['CREATOR1', 'CREATOR2', 'CREATOR3', 'CREATOR4', 'CREATOR5']
+    round_placeholders = ['ROUND1', 'ROUND2', 'ROUND3', 'ROUND4', 'ROUND5', 'ROUND6']
+    creator_placeholders = ['CREATOR1', 'CREATOR2', 'CREATOR3', 'CREATOR4', 'CREATOR5', 'CREATOR6']
 
     # Iterate through the page elements in the second slide
     for element in second_slide_elements:
