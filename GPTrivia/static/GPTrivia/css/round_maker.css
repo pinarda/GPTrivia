@@ -71,7 +71,7 @@ br {
 }
 
 .accordion:hover {
-    background-color: #86b072;
+    background-color: #18af9d;
 }
 
 .panel {
@@ -325,7 +325,7 @@ select option {
 
 .intro-text strong {
     font-size: 1.2em;
-    color: #ffd700; /* Gold color for emphasis */
+    color: #240046; /* Gold color for emphasis */
 }
 
 /* Existing CSS... */
