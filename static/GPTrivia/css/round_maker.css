@@ -298,12 +298,15 @@ select option {
     }
 }
 
-/* Footer and Header Styles */
 .header-container {
-    background-color: #240046;
+    display: flex;
+    align-items: inherit;
+    flex-direction: column;
     padding: 20px;
-    text-align: center;
+    margin: 0px;
+    background-color: #240046;
 }
+
 
 .footer-container {
     background-color: #240046;
@@ -379,7 +382,12 @@ select option {
     }
 }
 
-
+@media screen and (max-width: 790px) {
+    .header-container {
+        /*flex-direction: column;*/
+        padding: 10px;
+    }
+}
 
 
 /* Color Classes */
