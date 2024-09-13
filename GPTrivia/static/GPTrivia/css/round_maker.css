@@ -1,28 +1,209 @@
-
+/* General Styles */
 body {
-  font-family: YoungSerif;
-  line-height: 1.6;
-  background-color: #333;
-  color:white;
-
-  background-image: url('swoop.png'), url('facingleft.png');
-  background-position: -200px 400px, 700px 800px;  /* e.g., 'center top', '100px 200px' */
-  background-size: 70vw 70vw, 70vw 70vw;  /* e.g., 'cover', 'contain', '100px 200px' */
-  background-repeat: no-repeat, no-repeat;  /* e.g., 'repeat-x', 'repeat-y', 'no-repeat' */
-  position: relative;
-  z-index: -1;
+    font-family: 'YoungSerif', serif;
+    line-height: 1.6;
+    background-color: #333;
+    color: white;
+    background-image: url('swoop.png'), url('facingleft.png');
+    background-position: -200px 400px, 700px 800px;
+    background-size: 70vw 70vw, 70vw 70vw;
+    background-repeat: no-repeat, no-repeat;
+    position: relative;
+    z-index: -1;
+    margin: 0;
+    padding: 0;
 }
 
 br {
     margin: 5px 0;
 }
 
+/* Content Wrapper */
+.content-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.intro-text p {
+    font-size: 1.2em;
+    text-align: center;
+    color: #fff;
+    margin-bottom: 20px;
+}
+
+/* Accordion Styles */
+.accordion-container {
+    width: 100%;
+}
+
+.accordion-item {
+    margin-bottom: 10px;
+}
+
+.accordion {
+    background-color: #94c482;
+    color: #000;
+    cursor: pointer;
+    padding: 18px;
+    width: 100%;
+    border: none;
+    text-align: left;
+    font-size: 18px;
+    font-family: 'YoungSerif', serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    position: relative;
+    border-radius: 5px;
+}
+
+.accordion::after {
+    content: '\002B';
+    font-size: 20px;
+    color: #777;
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.accordion.active::after {
+    content: "\2212";
+}
+
+.accordion:hover {
+    background-color: #86b072;
+}
+
+.panel {
+    padding: 0 18px;
+    background-color: rgba(255, 255, 255, 0.1);
+    display: none;
+    overflow: hidden;
+    color: #fff; /* Changed text color to white */
+    border-radius: 0 0 5px 5px;
+}
+
+.panel.show {
+    display: block;
+}
+
+.form-group {
+    margin: 15px 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #fff; /* Ensure labels are white */
+}
+
+.form-group input[type="text"],
+.form-group input[type="password"],
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-family: 'YoungSerif', serif;
+    font-size: 16px;
+    background-color: #222;
+    color: #fff; /* Input text color */
+}
+
+.form-group input[type="text"]::placeholder {
+    color: #aaa;
+}
+
+.form-group input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+.checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 10px;
+    color: #fff; /* Ensure checkbox label is white */
+}
+
+.question-answer-pair {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+/* Button Styles */
+button {
+    background-color: #9d4edd;
+    color: white;
+    cursor: pointer;
+    border: none;
+    padding: 10px 24px;
+    text-align: center;
+    font-size: 16px;
+    margin: 5px 2px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    font-family: 'YoungSerif', serif;
+    border-radius: 4px;
+}
+
+button:hover {
+    background-color: #7b38c0;
+    transform: translateY(-2px);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+/* Select Styles */
+select {
+    background-color: #9d4edd;
+    color: white;
+    cursor: pointer;
+    border: none;
+    padding: 10px;
+    font-size: 16px;
+    margin: 5px 2px;
+    font-family: 'YoungSerif', serif;
+    border-radius: 4px;
+    /* Remove default styling */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    outline: none;
+}
+
+select:hover {
+    background-color: #7b38c0;
+}
+
+select option {
+    background-color: #9d4edd;
+    color: white;
+}
+
+/* Spinner Animation */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(-360deg); }
+}
+
+.spinner {
+    animation: spin 2s linear infinite;
+    margin: 5px;
+}
+
+/* Embed Container */
 .embed-container {
     position: relative;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    padding-bottom: 56.25%;
     height: 0;
     overflow: hidden;
+    margin-top: 20px;
 }
+
 .embed-container iframe {
     position: absolute;
     top: 0;
@@ -31,188 +212,159 @@ br {
     height: 100%;
 }
 
-div {
-    display: flex;
+/* Alternative Option */
+.alternative-option {
+    margin-top: 20px;
     text-align: center;
-    justify-content: center;
 }
 
-#chat-response {
-    justify-content: left;
-    text-align: left;
+.alternative-option p {
+    margin-bottom: 10px;
+    color: #fff; /* Ensure text is visible */
 }
 
-#dalle-image-link{
-    margin-top: 20px;
-}
-
+/* Chat Response */
+#chat-response,
 #question-response {
-    justify-content: left;
-    text-align: left;
     margin-top: 20px;
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 5px;
+    color: #fff; /* Ensure text is visible */
 }
 
-#question-form {
-    display: none;
+/* Hover Effects */
+.accordion:hover,
+.accordion.active {
+    background-color: #ddd;
+    color: #000;
 }
 
-.panel {
-    display: flex;
+.accordion.active {
+    background-color: #ccc;
 }
 
-.header-container{
-    /*background-color: #b8475d;*/
-    /*background-color: #9d4edd;*/
-    background-color: #240046;
+/* Input Hover and Focus */
+.form-group input[type="text"]:focus,
+.form-group select:focus {
+    border-color: #0073cc;
+    outline: none;
 }
 
-.footer-container{
-    /*background-color: #b8475d;*/
-    /*background-color: #9d4edd;*/
-    background-color: #240046;
-    position: inherit;
-    font-family: YoungSerif;
-}
-
-/*https://coolors.co/palette/ff6d00-ff8500-ff9e00-240046-5a189a-9d4edd-18af9d*/
-.red{
-    color: #ff6d00;
-}
-
-.orange {
-    color: #ff8500;
-}
-
-.yellow {
-    color: #ff9e00;
-}
-
-.green {
-    color: #94c482;
-}
-
-.blue {
-    color: #18af9d;
-}
-
-.purple {
-    color: #9d4edd;
-}
-
-.content-container {
-    display: flex;
-    min-height: calc(100vh - 200px);
-}
-
-@media screen and (max-width: 850px) {
-    .content-container {
-        display: flex;
-        min-height: calc(100vh - 73px - 10vw);
-    }
-}
-
-button {
-    font-family: YoungSerif;
-    margin: 5px
-}
-
-main {
-    width: 90%;
-}
-
-select {
-    font-family: YoungSerif;
-    margin: 5px;
-}
-
-input {
-    font-family: YoungSerif;
-}
-
+/* Hidden Elements */
 .hidden {
     display: none;
 }
 
-
-    .input-row {
-        min-height: 50px;  /* Adjust as needed */
+/* Responsive Styles */
+@media screen and (max-width: 850px) {
+    .content-wrapper {
+        padding: 15px;
     }
 
     .accordion {
-        background-color: #94c482;
-        color: #000;
-        cursor: pointer;
-        padding: 18px;
-        width: 100%;
-        border: none;
-        text-align: left;
-        outline: none;
-        font-size: 15px;
-        transition: 0.4s;
-        font-family: YoungSerif;
+        font-size: 16px;
     }
 
     button {
-        background-color: #9d4edd;
-        color: white;
-        cursor: pointer;
-        border: none;
-        padding: 10px 24px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 16px;
-        margin: 4px 2px;
-        cursor: pointer;
-        transition-duration: 0.4s;
-        font-family: YoungSerif; /* Set your desired font family */
-        border-radius: 4px; /* Optional: Add border radius for rounded corners */
+        padding: 8px 16px;
+        font-size: 14px;
     }
 
-    select {
-        background-color: #9d4edd;
-        color: white;
-        cursor: pointer;
-        border: none;
-        padding: 10px 10px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 16px;
-        margin: 4px 2px;
-        cursor: pointer;
-        transition-duration: 0.4s;
-        font-family: YoungSerif; /* Set your desired font family */
-        border-radius: 4px; /* Optional: Add border radius for rounded corners */
+    .form-group input[type="text"],
+    .form-group select {
+        font-size: 14px;
     }
-
-    #acc1 {
-        background-color: #94c482;
-    }
-    #acc2 {
-        background-color: #18af9d;
-    }
-    #acc3 {
-        background-color: #ff6d00;
-    }
-
-    .active, .accordion:hover {
-        background-color: #ccc;
-    }
-
-    .panel {
-        padding: 0 18px;
-        display: none;
-        overflow: hidden;
-    }
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(-360deg); }
 }
 
+/* Footer and Header Styles */
+.header-container {
+    background-color: #240046;
+    padding: 20px;
+    text-align: center;
+}
+
+.footer-container {
+    background-color: #240046;
+    position: inherit;
+    font-family: 'YoungSerif', serif;
+    padding: 10px;
+    text-align: center;
+}
+
+/* Intro Text Styling */
+.intro-text {
+    background: linear-gradient(135deg, #ff6d00 0%, #9d4edd 100%);
+    color: #fff;
+    padding: 20px;
+    text-align: center;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.intro-text::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.1);
+    transform: rotate(45deg);
+}
+
+.intro-text p {
+    position: relative;
+    font-size: 1.5em;
+    z-index: 1;
+    margin: 0;
+}
+
+.intro-text strong {
+    font-size: 1.2em;
+    color: #ffd700; /* Gold color for emphasis */
+}
+
+/* Existing CSS... */
+
+/* Spinner Styles */
 .spinner {
-    animation: spin 2s linear infinite;  /* Adjust the 2s value to make the spin faster or slower */
-    margin: 5px;
+    display: none; /* Hide the spinner by default */
+    margin-left: 10px; /* Space between button and spinner */
+    vertical-align: middle;
+    animation: spin 2s linear infinite;
+    width: auto;
+    height: 40px; /* Make the spinner match the button's height */
 }
 
+.button-with-spinner {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+/* Optional: Changing spinner colors while spinning */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+        filter: hue-rotate(0deg);
+    }
+    100% {
+        transform: rotate(-360deg);
+        filter: hue-rotate(-360deg);
+    }
+}
+
+
+
+
+/* Color Classes */
+.red { color: #ff6d00; }
+.orange { color: #ff8500; }
+.yellow { color: #ff9e00; }
+.green { color: #94c482; }
+.blue { color: #18af9d; }
+.purple { color: #9d4edd; }

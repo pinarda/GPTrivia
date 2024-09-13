@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="{% static 'GPTrivia/css/round_maker.css' %}">
 {% endblock %}
 
-
 {% block image %}
     <img src="{% static 'snake.png' %}" alt="New Image" id="snakeimg" style="margin-right: 1.5vw">
 {% endblock %}
@@ -18,127 +17,127 @@
 
 {% block content %}
 
+<div class="content-wrapper">
 
-
-
-
-<!-- Accordion menu -->
-    <div>Out of time? No ideas for your round? Try the S.W.O.O.P.<br>(Speedy Way of Obtaining Presentations)!
-</div> <br>
-<button class="accordion" id="acc1">Generate Ideas with Swooper</button>
-<div class="panel">
-    <br>
-    <form method="post" id="chat-form">
-        {% csrf_token %}
-        <input type="text" name="user_input" id="user-input" placeholder="Type your message" required>
-        <div>
-            <button type="submit" id="gpt-submit">Submit</button>
-            <img class="spinner" id="submit-spinner1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
-        </div>
-    </form>
-
-    <div id="chat-response">
-        <!-- The ChatGPT response will be inserted here -->
-        {{ gpt_response|safe }}
+    <!-- Introduction -->
+    <div class="intro-text">
+        <p>Out of time? No ideas for your round? Try the <strong>S.W.O.O.P.</strong><br>(Speedy Way of Obtaining Presentations)!</p>
     </div>
 
-    <div id="dalle-image-link">
-    <!-- The DALL-E image link will be inserted here -->
-    </div>
 
-    <form method="post" id="question-form">
-        {% csrf_token %}
-        <div>
-            <button type="submit" id="question-submit">Great, can I get a sample question?</button>
-            <img class="spinner" id="submit-spinner87" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
-        </div>
-    </form>
+    <!-- Accordion Menu -->
+    <div class="accordion-container">
 
-    <div id="question-response">
-        <!-- The ChatGPT response will be inserted here -->
-        {{ autogen_response|safe }}
-    </div>
+        <!-- Accordion Item 1 -->
+        <div class="accordion-item">
+            <button class="accordion" id="acc1">Generate Ideas with Swooper</button>
+            <div class="panel">
+                <form method="post" id="chat-form">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <input type="text" name="user_input" id="user-input" placeholder="Type your message" required>
+                    </div>
+                    <div class="form-group button-with-spinner">
+                        <button type="submit" id="gpt-submit">Submit</button>
+                        <img class="spinner" id="submit-spinner1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
+                    </div>
+                </form>
 
-    <div style="margin-top: 2rem"> Not feeling chatty? Try this instead: </div>
+                <div id="chat-response">
+                    {{ gpt_response|safe }}
+                </div>
 
-    <button id="generate-round-button">Generate Idea</button>
-    <div id="round-suggestion"></div>
-    <br>
-</div>
-
-
-<!-- ... your other HTML ... -->
-
-<button class="accordion" id="acc2">Enter Your Questions</button>
-<div class="panel">
-    <table style="width: 100%;">
-        <!-- First Row -->
-        <tr>
-            <td style="padding: 10px;">
-                <label for="round-title">Round Title</label><br>
-                <input type="text" id="round-title" name="round_title">
-{#                <input type="checkbox" id="coop" name="coop">#}
-                <label for="coop">Coop?</label>
-            </td>
-        </tr>
-        <!-- Question and Answer Rows -->
-        {% for i in 10|get_range %}
-            <tr>
-                <td style="padding: 10px;">
-                    <label for="question-{{ i }}">Question {{ i }}</label><br>
-                    <input type="text" id="question-{{ i }}" name="questions"><br><br>
-{#                    <button type="submit" class="download-button" id="download-{{ i }}" data-question-id="question-{{ i }}">download icon</button>#}
-{#                    <div id="dalle-image-link2">#}
+                <div id="dalle-image-link">
                     <!-- The DALL-E image link will be inserted here -->
+                </div>
 
-{#                    </div>#}
-{#                    <img class="spinner" id="submit-spinner-icon-1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">#}
-                    <label for="answer-{{ i }}">Answer {{ i }}</label><br>
-                    <input type="text" id="answer-{{ i }}" name="answers"><br><br>
-                </td>
-            </tr>
-        {% endfor %}
-    </table>
-</div>
+                <form method="post" id="question-form">
+                    {% csrf_token %}
+                    <div class="form-group button-with-spinner">
+                        <button type="submit" id="question-submit">Great, can I get a sample question?</button>
+                        <img class="spinner" id="submit-spinner87" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading...">
+                    </div>
+                </form>
 
-<!-- ... your other HTML ... -->
+                <div id="question-response">
+                    {{ autogen_response|safe }}
+                </div>
 
+                <div class="alternative-option">
+                    <p>Not feeling chatty? Try this instead:</p>
+                    <button id="generate-round-button">Generate Idea</button>
+                    <div id="round-suggestion"></div>
+                    <br>
+                </div>
+            </div>
+        </div>
 
-<!-- ... your other HTML ... -->
+        <!-- Accordion Item 2 -->
+        <div class="accordion-item">
+            <button class="accordion" id="acc2">Enter Your Questions</button>
+            <div class="panel">
+                <form id="question-entry-form">
+                    <div class="form-group">
+                        <label for="round-title">Round Title</label>
+                        <input type="text" id="round-title" name="round_title" placeholder="Enter Round Title">
+                        <label for="coop" class="checkbox-label">
+                            <input type="checkbox" id="coop" name="coop"> Coop?
+                        </label>
+                    </div>
+                    <!-- Question and Answer Fields -->
+                    {% for i in 10|get_range %}
+                    <div class="question-answer-pair">
+                        <div class="form-group">
+                            <label for="question-{{ i }}">Question {{ i }}</label>
+                            <input type="text" id="question-{{ i }}" name="questions" placeholder="Enter Question {{ i }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="answer-{{ i }}">Answer {{ i }}</label>
+                            <input type="text" id="answer-{{ i }}" name="answers" placeholder="Enter Answer {{ i }}">
+                        </div>
+                    </div>
+                    {% endfor %}
+                </form>
+            </div>
+        </div>
 
+        <!-- Accordion Item 3 -->
+        <div class="accordion-item">
+            <button class="accordion" id="acc3">Preview, Edit & Submit</button>
+            <div class="panel">
+                <p>NOTE: Editing rounds is not available on phones.</p>
+                <div class="form-group">
+                    <label for="theme-selector">Select a theme:</label>
+                    <select id="theme-selector">
+                        <option value="theme1">Minimal</option>
+                        <option value="theme3">Plain</option>
+                        <option value="theme2">Trivial Pursuit</option>
+                        <!-- ... other themes ... -->
+                    </select>
+                </div>
+                <div class="form-group hidden" id="icon-group">
+                    <label id="iconLabel" for="iconCheckbox">Generate Icons</label>
+                    <input type="checkbox" id="iconCheckbox" name="iconCheckbox">
+                </div>
+                <!-- Preview Button -->
+                <div class="form-group button-with-spinner">
+                    <button id="preview-button">Preview/Edit</button>
+                    <img class="spinner" id="preview-spinner" src="{% static 'GPTrivia/css/ouroboros.png' %}" alt="Loading...">
+                </div>
+                <!-- Google Slides Embed -->
+                <div class="embed-container">
+                    <iframe id="slides-preview" style="display:none;" src="https://docs.google.com/presentation/d/109EgKCocHzTtUF9hVJVKEfV0HzFjaBfpWPKXaLNsos0/edit?usp=drive_link" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
+                </div>
+                <!-- Submit Button -->
+                <div class="form-group button-with-spinner">
+                    <button style="display:none;" id="submit-button">Submit</button>
+                    <img class="spinner" id="submit-spinner2" src="{% static 'GPTrivia/css/ouroboros.png' %}" alt="Loading...">
+                </div>
+                <div id="submission-message"></div>
+            </div>
+        </div>
 
-<button class="accordion" id="acc3">Preview, Edit & Submit</button>
-<div class="panel">
-    <!-- Theme Selector -->
-    NOTE: Editing rounds is not available on phones.
-    <div>
-        Select a theme:
-        <select id="theme-selector">
-            <option value="theme1">Minimal</option>
-            <option value="theme3">Plain</option>
-            <option value="theme2">Trivial Pursuit</option>
-            <!-- ... other themes ... -->
-        </select>
-
-        <label id="iconLabel" for="iconCheckbox" class="hidden">Generate Icons</label>
-        <input type="checkbox" id="iconCheckbox" name="iconCheckbox" class="hidden">
-
-        <!-- Preview Button -->
-        <button id="preview-button">Preview/Edit</button>
-        <img class="spinner" id="preview-spinner" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
     </div>
-
-    <!-- Google Slides Embed -->
-    <div class="embed-container">
-        <iframe id="slides-preview" style="display:none;" src="https://docs.google.com/presentation/d/109EgKCocHzTtUF9hVJVKEfV0HzFjaBfpWPKXaLNsos0/edit?usp=drive_link" width="100%" height="500px" aspectRatio="16:9" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
-    </div>
-
-    <!-- Submit Button -->
-    <button style="display:none;" id="submit-button">Submit</button>
-    <img class="spinner" id="submit-spinner2" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
-
-    <div id="submission-message"></div>  <!-- Element where the submission message will be displayed -->
-</div>
 
 <!-- JavaScript for accordion functionality -->
 <script>
@@ -163,62 +162,59 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
 
+    // Check if localStorage is available
     function isLocalStorageAvailable() {
         try {
-            // Test key for storage
             const testKey = 'testLocalStorage';
             const storage = window.localStorage;
-
-            // Try setting an item
             storage.setItem(testKey, 'testValue');
-            // Try getting the item
             const testValue = storage.getItem(testKey);
-            // Try removing the item
             storage.removeItem(testKey);
-
-            // Check if the value was properly set and retrieved
-            console.log("Local Storage available:", testValue === 'testValue')
             return testValue === 'testValue';
         } catch (e) {
-            // Log the error for troubleshooting
             console.error("Local Storage not available:", e);
-
-            // Return false indicating local storage is not available
             return false;
         }
     }
 
-
+    // Set a cookie with a given name and value
     function setCookie(name, value, days) {
         var expires = "";
         if (days) {
             var date = new Date();
-            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
             expires = "; expires=" + date.toUTCString();
         }
-        document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=None; Secure";
+        document.cookie =
+            name + "=" + (value || "") + expires + "; path=/; SameSite=None; Secure";
     }
 
+    // Get a cookie by name
     function getCookie(name) {
         var nameEQ = name + "=";
-        var ca = document.cookie.split(';');
+        var ca = document.cookie.split(";");
         for (var i = 0; i < ca.length; i++) {
             var c = ca[i];
-            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            while (c.charAt(0) === " ") c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) === 0)
+                return c.substring(nameEQ.length, c.length);
         }
         return null;
     }
 
+    // Clear a cookie by name
     function clearCookie(name) {
-        setCookie(name, '', -1);
+        setCookie(name, "", -1);
     }
 
     // Saving data to storage
     function saveData() {
-        const textboxes = document.querySelectorAll('#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title');
-        textboxes.forEach(textbox => {
-            textbox.addEventListener('input', () => {
+        const textboxes = document.querySelectorAll(
+            '#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title'
+        );
+
+        textboxes.forEach((textbox) => {
+            textbox.addEventListener("input", () => {
                 if (isLocalStorageAvailable()) {
                     localStorage.setItem(textbox.id, textbox.value);
                 } else {
@@ -230,8 +226,11 @@
 
     // Loading data from storage
     function loadData() {
-        const textboxes = document.querySelectorAll('#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title');
-        textboxes.forEach(textbox => {
+        const textboxes = document.querySelectorAll(
+            '#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title'
+        );
+
+        textboxes.forEach((textbox) => {
             let savedValue;
             if (isLocalStorageAvailable()) {
                 savedValue = localStorage.getItem(textbox.id);
@@ -244,21 +243,37 @@
         });
     }
 
-    // Clear data from storage on form submission
+    // Clear data from storage on submit button click
     function clearData() {
-        const form = document.querySelector('#submit-button');
-        form.addEventListener('submit', () => {
+        const submitButton = document.querySelector('#submit-button');
+        submitButton.addEventListener('click', (event) => {
+            event.preventDefault(); // Prevent default action if necessary
+
+            // Proceed with your form submission logic here (e.g., AJAX call)
+            // ...
+
+            // After submission logic, clear stored data
             if (isLocalStorageAvailable()) {
                 localStorage.clear();
             } else {
-                // Clear each cookie individually
-                document.querySelectorAll('#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title').forEach(textbox => {
-                    clearCookie(textbox.id);
-                });
+                document
+                    .querySelectorAll(
+                        '#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title'
+                    )
+                    .forEach((textbox) => {
+                        clearCookie(textbox.id);
+                    });
             }
+
+            // Reset the form fields
+            const form = document.querySelector('#question-entry-form');
+            if (form) {
+                form.reset();
+            }
+
+            {#alert('Form submitted and data cleared.');#}
         });
     }
-
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
@@ -266,6 +281,7 @@
         saveData();
         clearData();
     });
+
 
     function typeWriter(text, elem, i, interval) {
         if (i < text.length) {
@@ -458,28 +474,27 @@
 
         $('#theme-selector').on('change', function() {
             var selectedTheme = $(this).val();
-            console.log('Selected theme:', selectedTheme)
+            console.log('Selected theme:', selectedTheme);
             switch (selectedTheme) {
                 case 'theme1':
                     presentationId = '109EgKCocHzTtUF9hVJVKEfV0HzFjaBfpWPKXaLNsos0';
-                    $('#iconCheckbox').addClass('hidden');
-                    $('#iconLabel').addClass('hidden');
+                    $('#icon-group').addClass('hidden');
                     console.log('Hiding Checkbox'); // Debugging log
                     break;
                 case 'theme2':
                     presentationId = '1x8J9cEpFeMMYAJ_Inxw4Z_2-zYBwa5NMfOsN8pZKVHQ';
-                    $('#iconCheckbox').removeClass('hidden');
-                    $('#iconLabel').removeClass('hidden');
+                    $('#icon-group').removeClass('hidden');
                     console.log('Showing Checkbox'); // Debugging log
                     break;
                 case 'theme3':
                     presentationId = '1ZFahoyu0FSUx84IldZjcfTVMKTOzfRevArv9K3KPkmw';
-                    $('#iconCheckbox').addClass('hidden');
-                    $('#iconLabel').addClass('hidden');
+                    $('#icon-group').addClass('hidden');
                     console.log('Hiding Checkbox'); // Debugging log
+                    break;
                 // ... add cases for other themes as needed ...
                 default:
                     console.error('Unknown theme selected:', selectedTheme);
+                    $('#icon-group').addClass('hidden');
                     break;
             }
 
@@ -583,5 +598,7 @@
         });
     });
 </script>
+
+</div>
 
 {% endblock %}
