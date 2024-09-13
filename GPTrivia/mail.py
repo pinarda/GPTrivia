@@ -1017,6 +1017,16 @@ def convert_shared_presentation(presentation_url, credentials):
         print(f'An error occurred: {error}')
         return None
 
+# Pre-compile the regex pattern outside the loop for efficiency
+URL_PATTERN = re.compile(r'(https?://docs\.google\.com/presentation/d/[^\s]+)')
+
+# Assuming MAIL_NAME_MAP is defined elsewhere
+# Example:
+# MAIL_NAME_MAP = {
+#     "sender@example.com": "Desired Name",
+#     # Add more mappings as needed
+# }
+
 def get_round_titles_and_links(processed_senders=[]):
     credentials = None
     # Check if the token.pickle file exists
@@ -1025,7 +1035,7 @@ def get_round_titles_and_links(processed_senders=[]):
             credentials = pickle.load(token)
 
     # Check if the credentials have expired
-    if credentials.expired and credentials.refresh_token:
+    if credentials and credentials.expired and credentials.refresh_token:
         try:
             # Refresh the credentials
             credentials.refresh(Request())
@@ -1034,7 +1044,7 @@ def get_round_titles_and_links(processed_senders=[]):
             with open(token_file_path, 'wb') as token:
                 pickle.dump(credentials, token)
         except Exception as e:
-            print("Failed to refresh the token, getting new credentials")
+            print("Failed to refresh the token, getting new credentials:", e)
             credentials = build_credentials()
             with open(token_file_path, 'wb') as token:
                 pickle.dump(credentials, token)
@@ -1059,74 +1069,122 @@ def get_round_titles_and_links(processed_senders=[]):
 
         gmail_service = build('gmail', 'v1', credentials=credentials)
         query = 'subject:"Presentation shared with you:.*" is:unread'
-        response = gmail_service.users().messages().list(userId='me', q=query).execute()
+        response = gmail_service.users().messages().list(userId='me', q=query, maxResults=500).execute()  # Increased maxResults for batching
 
         if 'messages' in response:
+            messages = response['messages']
             messages_with_date = []
-            for message in response['messages']:
-                msg_id = message['id']
-                msg = gmail_service.users().messages().get(userId='me', id=msg_id, format='metadata', metadataHeaders=['From', 'internalDate']).execute()
-                messages_with_date.append((msg, msg['internalDate']))
 
+            # Function to handle batch responses for metadata
+            def metadata_callback(request_id, response, exception):
+                if exception is not None:
+                    print(f"Error fetching metadata for message ID {request_id}: {exception}")
+                else:
+                    internal_date = response.get('internalDate', '0')
+                    messages_with_date.append((response, internal_date))
+
+            # Create a batch request for fetching message metadata
+            batch = gmail_service.new_batch_http_request(callback=metadata_callback)
+
+            for message in messages:
+                msg_id = message['id']
+                batch.add(gmail_service.users().messages().get(
+                    userId='me',
+                    id=msg_id,
+                    format='metadata',
+                    metadataHeaders=['From', 'internalDate']
+                ), request_id=msg_id)
+
+            # Execute the batch request
+            batch.execute()
+
+            # Sort messages by internalDate
             messages_with_date.sort(key=lambda x: x[1])
 
-            for msg, _ in messages_with_date:
+            # Function to handle batch responses for full messages
+            def fullmsg_callback(request_id, response, exception):
+                if exception is not None:
+                    print(f"Error fetching full message for ID {request_id}: {exception}")
+                else:
+                    process_full_message(response)
+
+            # Function to process each full message
+            def process_full_message(msg):
                 msg_id = msg['id']
                 headers = msg['payload']['headers']
-                sender = [header['value'] for header in headers if header['name'] == 'From'][0]
-                sender = sender.split()[0]
-                sender = sender[1:]
+                try:
+                    # Optimized header extraction using generator expression
+                    sender = next(header['value'] for header in headers if header['name'] == 'From')
+                    sender = sender.split()[0][1:]
+                except StopIteration:
+                    sender = "Unknown"
 
                 new_senders.append(sender)
-                msg = gmail_service.users().messages().get(userId='me', id=msg_id, format='full').execute()
-                parts = msg['payload']['parts']
+
+                parts = msg['payload'].get('parts', [])
 
                 for part in parts:
-                    if part['mimeType'] == 'text/plain':
-                        data = part['body']['data']
+                    if part.get('mimeType') == 'text/plain':
+                        data = part.get('body', {}).get('data')
                         if data:
-                            msg_str = base64.urlsafe_b64decode(data.encode('ASCII'))
-                            url_pattern = r'(https?://docs\.google\.com/presentation/d/[^\s]+)'
-                            # 'https://docs.google.com/presentation/d/1ECVqOMtgWEbzMOtzNLDQCRSSOA8BXbhRdJ_9yNWzgj0/edit?u'
-                            # url_pattern = r'(https?://docs\.google\.com/presentation/d/[\w-]+)'
-                            # 'https://docs.google.com/presentation/d/1ECVqOMtgWEbzMOtzNLDQCRSSOA8BXbhRdJ_9yNWzgj0'
-                            url_match = re.search(url_pattern, msg_str.decode('utf-8'))
+                            try:
+                                msg_str = base64.urlsafe_b64decode(data.encode('ASCII')).decode('utf-8')
+                            except (base64.binascii.Error, UnicodeDecodeError) as e:
+                                print(f"Decoding error for message {msg_id}: {e}")
+                                continue
 
+                            url_match = URL_PATTERN.search(msg_str)
                             if url_match:
                                 presentation_url = url_match.group(1)
                                 new_presentation_url = convert_shared_presentation(presentation_url, credentials)
                                 presentation_urls.append(new_presentation_url)
                                 old_urls.append(presentation_url)
-                                # Extract round title
+
                                 shared_presentation_id = new_presentation_url.split('/')[-2]
-                                # request = {
-                                #     'function': FUNCTION_NAME,
-                                #     'parameters': [shared_presentation_id, merged_presentation_id],
-                                #     'devMode': True
-                                # }
-                                # response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
-                                shared_presentation = slides_service.presentations().get(presentationId=shared_presentation_id).execute()
-                                first_slide = shared_presentation['slides'][0]
+                                try:
+                                    shared_presentation = slides_service.presentations().get(presentationId=shared_presentation_id).execute()
+                                except HttpError as e:
+                                    print(f"Failed to fetch presentation {shared_presentation_id}: {e}")
+                                    continue
 
+                                slides = shared_presentation.get('slides', [])
+                                if not slides:
+                                    print(f"No slides found in presentation {shared_presentation_id}")
+                                    continue
+
+                                first_slide = slides[0]
+
+                                # Extract title_text
                                 title_text = ""
-                                flag=0
-                                for element in first_slide['pageElements']:
-                                    if 'shape' in element and 'text' in element['shape']:
-                                        text = element['shape']['text']['textElements']
-                                        if flag:
+                                for element in first_slide.get('pageElements', []):
+                                    shape = element.get('shape', {})
+                                    text = shape.get('text', {}).get('textElements', [])
+                                    for text_element in text:
+                                        if 'textRun' in text_element and 'content' in text_element['textRun']:
+                                            title_text += text_element['textRun']['content']
                                             break
-                                        for text_element in text:
-                                            if 'textRun' in text_element and 'content' in text_element['textRun']:
-                                                flag=1
-                                                title_text += text_element['textRun']['content']
-                                                break
+                                    if title_text:
+                                        break
 
-                                title_text = re.sub(r'\\s+', ' ', title_text).strip()
+                                title_text = re.sub(r'\s+', ' ', title_text).strip()
                                 round_titles.append(title_text)
 
-        # replace the sender using mail name map with the current name as the key and the name we want to return as the value
-        # unless the sender is not in the mail name map, then we just return "Unknown"
-        new_senders = [MAIL_NAME_MAP[sender] if sender in MAIL_NAME_MAP else "Unknown" for sender in new_senders]
+            # Create a batch request for fetching full messages
+            fullmsg_batch = gmail_service.new_batch_http_request(callback=fullmsg_callback)
+
+            for msg, _ in messages_with_date:
+                msg_id = msg['id']
+                fullmsg_batch.add(gmail_service.users().messages().get(
+                    userId='me',
+                    id=msg_id,
+                    format='full'
+                ), request_id=msg_id)
+
+            # Execute the batch request for full messages
+            fullmsg_batch.execute()
+
+        # Replace the sender using MAIL_NAME_MAP
+        new_senders = [MAIL_NAME_MAP.get(sender, "Unknown") for sender in new_senders]
 
         print(presentation_urls, round_titles, new_senders, old_urls)
         return presentation_urls, round_titles, new_senders, old_urls
@@ -1134,6 +1192,124 @@ def get_round_titles_and_links(processed_senders=[]):
     except HttpError as error:
         print(f"An error occurred: {error}")
         return None, None, None, None
+
+# def get_round_titles_and_links(processed_senders=[]):
+#     credentials = None
+#     # Check if the token.pickle file exists
+#     if os.path.exists(token_file_path):
+#         with open(token_file_path, 'rb') as token:
+#             credentials = pickle.load(token)
+#
+#     # Check if the credentials have expired
+#     if credentials.expired and credentials.refresh_token:
+#         try:
+#             # Refresh the credentials
+#             credentials.refresh(Request())
+#
+#             # Save the refreshed credentials back to the 'token.pickle' file
+#             with open(token_file_path, 'wb') as token:
+#                 pickle.dump(credentials, token)
+#         except Exception as e:
+#             print("Failed to refresh the token, getting new credentials")
+#             credentials = build_credentials()
+#             with open(token_file_path, 'wb') as token:
+#                 pickle.dump(credentials, token)
+#
+#     # If the credentials are not available or invalid, prompt the user to authenticate again.
+#     if not credentials or not credentials.valid:
+#         credentials = build_credentials()
+#         with open(token_file_path, 'wb') as token:
+#             pickle.dump(credentials, token)
+#
+#     http = httplib2.Http(timeout=300)
+#     authorized_http = AuthorizedHttp(credentials, http=http)
+#     script_service = build('script', 'v1', http=authorized_http)
+#     slides_service = build('slides', 'v1', credentials=credentials)
+#
+#     print(processed_senders)
+#     try:
+#         new_senders = []
+#         presentation_urls = []
+#         old_urls = []
+#         round_titles = []
+#
+#         gmail_service = build('gmail', 'v1', credentials=credentials)
+#         query = 'subject:"Presentation shared with you:.*" is:unread'
+#         response = gmail_service.users().messages().list(userId='me', q=query).execute()
+#
+#         if 'messages' in response:
+#             messages_with_date = []
+#             for message in response['messages']:
+#                 msg_id = message['id']
+#                 msg = gmail_service.users().messages().get(userId='me', id=msg_id, format='metadata', metadataHeaders=['From', 'internalDate']).execute()
+#                 messages_with_date.append((msg, msg['internalDate']))
+#
+#             messages_with_date.sort(key=lambda x: x[1])
+#
+#             for msg, _ in messages_with_date:
+#                 msg_id = msg['id']
+#                 headers = msg['payload']['headers']
+#                 sender = [header['value'] for header in headers if header['name'] == 'From'][0]
+#                 sender = sender.split()[0]
+#                 sender = sender[1:]
+#
+#                 new_senders.append(sender)
+#                 msg = gmail_service.users().messages().get(userId='me', id=msg_id, format='full').execute()
+#                 parts = msg['payload']['parts']
+#
+#                 for part in parts:
+#                     if part['mimeType'] == 'text/plain':
+#                         data = part['body']['data']
+#                         if data:
+#                             msg_str = base64.urlsafe_b64decode(data.encode('ASCII'))
+#                             url_pattern = r'(https?://docs\.google\.com/presentation/d/[^\s]+)'
+#                             # 'https://docs.google.com/presentation/d/1ECVqOMtgWEbzMOtzNLDQCRSSOA8BXbhRdJ_9yNWzgj0/edit?u'
+#                             # url_pattern = r'(https?://docs\.google\.com/presentation/d/[\w-]+)'
+#                             # 'https://docs.google.com/presentation/d/1ECVqOMtgWEbzMOtzNLDQCRSSOA8BXbhRdJ_9yNWzgj0'
+#                             url_match = re.search(url_pattern, msg_str.decode('utf-8'))
+#
+#                             if url_match:
+#                                 presentation_url = url_match.group(1)
+#                                 new_presentation_url = convert_shared_presentation(presentation_url, credentials)
+#                                 presentation_urls.append(new_presentation_url)
+#                                 old_urls.append(presentation_url)
+#                                 # Extract round title
+#                                 shared_presentation_id = new_presentation_url.split('/')[-2]
+#                                 # request = {
+#                                 #     'function': FUNCTION_NAME,
+#                                 #     'parameters': [shared_presentation_id, merged_presentation_id],
+#                                 #     'devMode': True
+#                                 # }
+#                                 # response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
+#                                 shared_presentation = slides_service.presentations().get(presentationId=shared_presentation_id).execute()
+#                                 first_slide = shared_presentation['slides'][0]
+#
+#                                 title_text = ""
+#                                 flag=0
+#                                 for element in first_slide['pageElements']:
+#                                     if 'shape' in element and 'text' in element['shape']:
+#                                         text = element['shape']['text']['textElements']
+#                                         if flag:
+#                                             break
+#                                         for text_element in text:
+#                                             if 'textRun' in text_element and 'content' in text_element['textRun']:
+#                                                 flag=1
+#                                                 title_text += text_element['textRun']['content']
+#                                                 break
+#
+#                                 title_text = re.sub(r'\\s+', ' ', title_text).strip()
+#                                 round_titles.append(title_text)
+#
+#         # replace the sender using mail name map with the current name as the key and the name we want to return as the value
+#         # unless the sender is not in the mail name map, then we just return "Unknown"
+#         new_senders = [MAIL_NAME_MAP[sender] if sender in MAIL_NAME_MAP else "Unknown" for sender in new_senders]
+#
+#         print(presentation_urls, round_titles, new_senders, old_urls)
+#         return presentation_urls, round_titles, new_senders, old_urls
+#
+#     except HttpError as error:
+#         print(f"An error occurred: {error}")
+#         return None, None, None, None
 
 
 if __name__ == '__main__':
