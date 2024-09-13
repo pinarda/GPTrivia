@@ -4,7 +4,7 @@ body {
     line-height: 1.6;
     background-color: #333;
     color: white;
-    background-image: url('swoop.png'), url('facingleft.png');
+    background-image: url('swoop.png'), url('facingleftold.png');
     background-position: -200px 400px, 700px 800px;
     background-size: 70vw 70vw, 70vw 70vw;
     background-repeat: no-repeat, no-repeat;
@@ -13,6 +13,22 @@ body {
     margin: 0;
     padding: 0;
 }
+
+body {
+    font-family: 'YoungSerif', serif;
+    line-height: 1.6;
+    background-color: #333;
+    color: white;
+    background-image: url('facingleft.png');
+    background-position: calc(50% + 4vw) 300px; /* Centered horizontally, but shifted left by 1vw */
+    background-size: 70vw auto; /* Ensures width is 70% of viewport, height is auto */
+    background-repeat: repeat-y;
+    background-clip: padding-box; /* Makes sure the padding affects the background */
+    padding: 0; /* Adds padding to the sides of the body */
+    margin: 0;
+}
+
+
 
 br {
     margin: 5px 0;
@@ -53,7 +69,9 @@ br {
     font-family: 'YoungSerif', serif;
     transition: background-color 0.3s ease, color 0.3s ease;
     position: relative;
-    border-radius: 5px;
+    border-radius: 2px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    opacity: 100%;
 }
 
 .accordion::after {
@@ -80,7 +98,7 @@ br {
     display: none;
     overflow: hidden;
     color: #fff; /* Changed text color to white */
-    border-radius: 0 0 5px 5px;
+    border-radius: 0 0 2px 2px;
 }
 
 .panel.show {
@@ -109,6 +127,7 @@ br {
     font-size: 16px;
     background-color: #222;
     color: #fff; /* Input text color */
+    margin-bottom: 0px;
 }
 
 .form-group input[type="text"]::placeholder {
@@ -145,7 +164,7 @@ button {
     margin: 5px 2px;
     transition: background-color 0.3s ease, transform 0.2s ease;
     font-family: 'YoungSerif', serif;
-    border-radius: 4px;
+    border-radius: 2px;
 }
 
 button:hover {
@@ -167,7 +186,7 @@ select {
     font-size: 16px;
     margin: 5px 2px;
     font-family: 'YoungSerif', serif;
-    border-radius: 4px;
+    border-radius: 2px;
     /* Remove default styling */
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -236,18 +255,19 @@ select option {
 /* Hover Effects */
 .accordion:hover,
 .accordion.active {
-    background-color: #18af9d;
-    color: #000;
+    background-color: #240046;
+    color: white;
 }
 
 .accordion.active {
-    background-color: #18af9d;
+    background-color: #240046;
+    color: white;
 }
 
 /* Input Hover and Focus */
 .form-group input[type="text"]:focus,
 .form-group select:focus {
-    border-color: #0073cc;
+    border-color: #18af9d;
     outline: none;
 }
 
@@ -274,6 +294,7 @@ select option {
     .form-group input[type="text"],
     .form-group select {
         font-size: 14px;
+        margin-bottom: 0px;
     }
 }
 
@@ -288,7 +309,6 @@ select option {
     background-color: #240046;
     position: inherit;
     font-family: 'YoungSerif', serif;
-    padding: 10px;
     text-align: center;
 }
 
@@ -298,11 +318,12 @@ select option {
     color: #fff;
     padding: 20px;
     text-align: center;
-    border-radius: 8px;
+    border-radius: 2px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     margin-bottom: 20px;
     position: relative;
     overflow: hidden;
+    opacity: 100%;
 }
 
 .intro-text::before {
