@@ -236,12 +236,12 @@ select option {
 /* Hover Effects */
 .accordion:hover,
 .accordion.active {
-    background-color: #ddd;
+    background-color: #18af9d;
     color: #000;
 }
 
 .accordion.active {
-    background-color: #ccc;
+    background-color: #18af9d;
 }
 
 /* Input Hover and Focus */
@@ -294,7 +294,7 @@ select option {
 
 /* Intro Text Styling */
 .intro-text {
-    background: linear-gradient(135deg, #ff6d00 0%, #9d4edd 100%);
+    background: linear-gradient(45deg, #ff6d00 0%, #9d4edd 100%);
     color: #fff;
     padding: 20px;
     text-align: center;
@@ -325,7 +325,7 @@ select option {
 
 .intro-text strong {
     font-size: 1.2em;
-    color: #240046; /* Gold color for emphasis */
+    color: white; /* Gold color for emphasis */
 }
 
 /* Existing CSS... */
