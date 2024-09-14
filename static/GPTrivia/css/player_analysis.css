@@ -32,7 +32,7 @@ body {
     transition-duration: 0.4s;
     background-color: #f94144;
     font-family: YoungSerif;
-    border-radius: 4px;
+    border-radius: 2px;
 }
 
 .select-label {
