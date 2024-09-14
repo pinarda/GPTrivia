@@ -96,7 +96,6 @@ position: relative;
 
 
 #roundList tbody{
-    position: relative;
     top: 10px;
 }
 
@@ -369,9 +368,15 @@ a .logo {
     }
 
     #roundList tbody{
-        position: relative;
         top: 10px;
     }
+
+
+@media (max-width: 1000px) {
+    #roundList tbody{
+        position: relative;
+    }
+}
 
     /*.logo {*/
     /*    width: 50%;*/
