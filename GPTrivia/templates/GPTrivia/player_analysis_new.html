@@ -4,96 +4,75 @@
 
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}">
-
-    <style>
-    @media (max-width: 800px) {
-        .select-wrapper {
-            flex-direction: column; /* Change to column layout on smaller screens */
-        }
-        #CorrMatrix, #PMatrix {
-            width: 100%; /* Set width to 100% for full width */
-        }
-    }
-    </style>
 {% endblock %}
 
 {% block content %}
-<div class="select-wrapper">
-    <div class="select-container">
-        <label for="creator-selector" class="select-label">Creator</label>
-        <select name="creators" id="creator-selector" class="select-dropdown">
-            <option value="" selected>-- Select a creator --</option>
-            {% for creator in creators %}
-            <option value="{{ creator }}">{{ creator }}</option>
-            {% endfor %}
-        </select>
+<div class="content-wrapper">
+    <div class="select-wrapper">
+        <div class="select-container">
+            <label for="creator-selector" class="select-label">Creator</label>
+            <select name="creators" id="creator-selector" class="select-dropdown">
+                <option value="" selected>-- Select a creator --</option>
+                {% for creator in creators %}
+                <option value="{{ creator }}">{{ creator }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="select-container">
+            <label for="category-selector" class="select-label">Category</label>
+            <select name="categories" id="category-selector" class="select-dropdown">
+                <option value="" selected>-- Select a category --</option>
+                {% for category in categories %}
+                <option value="{{ category }}">{{ category }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="select-container">
+            <label for="player-selector" class="select-label">Player</label>
+            <select name="players" id="player-selector" class="select-dropdown">
+                <option value="" selected>-- Select a player --</option>
+                {% for player in players %}
+                <option value="{{ player }}">{{ player }}</option>
+                {% endfor %}
+            </select>
+        </div>
     </div>
 
-    <div class="select-container">
-        <label for="category-selector" class="select-label">Category</label>
-        <select name="categories" id="category-selector" class="select-dropdown">
-            <option value="" selected>-- Select a category --</option>
-            {% for category in categories %}
-            <option value="{{ category }}">{{ category }}</option>
-            {% endfor %}
-        </select>
+    <!-- Plots and Graphs -->
+    <div class="plots-container">
+        <div id="bar-space" class="plot-div" style="width:100%; height:500px;"></div>
+        <div id="violin-space" class="plot-div" style="width:100%; height:500px;"></div>
+        <div id="CorrMatrix" class="plot-div" style="width:100%; height:500px;"></div>
+        <div id="PMatrix" class="plot-div" style="width:100%; height:500px;"></div>
+        <div id="CreatorMatrix" class="plot-div" style="width:100%; height:90%; position: relative;">
+            <div id="plot-checkbox" style="position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 1000;">
+                <label for="showValuesCheckbox">Difficulty Adjustment</label>
+                <input type="checkbox" id="showValuesCheckbox">
+            </div>
+        </div>
+        <div id="PCAplot" class="plot-div" style="width:100%; height:1000px;"></div>
+        <div id="catBar" class="plot-div" style="width:100%; height:500px;"></div>
+        <div id="creatorBar" class="plot-div" style="width:100%; height:500px;"></div>
+        <div id="player-bar-space" class="plot-div" style="width:100%; height:500px;"></div>
+        <div id="player-violin-space" class="plot-div" style="width:100%; height:500px;"></div>
+        <div id="player-cat-bar-space" class="plot-div" style="width:100%; height:500px;"></div>
+        <div id="creator-violin-space" class="plot-div" style="width:100%; height:500px;"></div>
+        <div id="time-series-creator" class="plot-div" style="width:100%; height:500px;"></div>
+        <div id="trivia-night-streak" class="plot-div" style="width:100%; height:500px;"></div>
+        <div id="joker_percentage" class="plot-div"></div>
     </div>
 
-    <div class="select-container">
-        <label for="player-selector" class="select-label">Player</label>
-        <select name="players" id="player-selector" class="select-dropdown">
-            <option value="" selected>-- Select a player --</option>
-            {% for player in players %}
-            <option value="{{ player }}">{{ player }}</option>
-            {% endfor %}
-        </select>
+    <button class="expand-collapse-button" id="roundsButton" onclick="toggleRounds()">Show/Hide Rounds Table</button>
+    <div id="column-checkboxes" style="width:100%; display: none;">
+    <!-- Checkboxes will be dynamically generated here -->
     </div>
+
+    <div id="rounds-table"></div>
 </div>
-
-<div id="bar-space" style="width:100%; height:500px;"></div>
-<div id="violin-space" style="width:100%; height:500px; display: inline-block"></div>
-{#<div id="plots-container">#}
-    <div id="CorrMatrix" style="width:100%; height:500px; display: inline-block"></div>
-    <div id="PMatrix" style="width:100%; height:500px; display: inline-block"></div>
-{#</div>#}
-<div id="plot-container" style="position: relative; width: 100%; height: 100%;">
-    <div id="CreatorMatrix" style="width:100%; height:90%;"></div>
-    <div id="plot-checkbox" style="position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 1000;">
-        <label for="showValuesCheckbox">Difficulty Adjustment</label>
-        <input type="checkbox" id="showValuesCheckbox">
-    </div>
-</div>
-<div id="PCAplot" style="width:100%; height:1000px;"></div>
-<div id="catBar" style="width:100%; height:500px;"></div>
-<div id="creatorBar" style="width:100%; height:500px;"></div>
-<div id="player-bar-space" style="width:100%; height:500px;"></div>
-<div id="player-violin-space" style="width:100%; height:500px;"></div>
-<div id="player-cat-bar-space" style="width:100%; height:500px;"></div>
-<div id="creator-violin-space" style="width:100%; height:500px;"></div>
-<div id="time-series-creator" style="width:100%; height:500px;"></div>
-<div id="trivia-night-streak" style="width:100%; height:500px;"></div>
-<div id="joker_percentage"></div>
-<button class="expand-collapse-button" id="roundsButton" onclick="toggleRounds()">Show/Hide Rounds Table</button>
-<div id="column-checkboxes" style="width:100%; display: none";>
-<!-- Checkboxes will be dynamically generated here -->
-</div>
-
-<div id="rounds-table"></div>
-
-
-{#<div id="violin-chart" style="width:100%; height:500px;"></div>#}
-{#<div id="histPlot" style="width:100%; height:500px;"></div>#}
-{##}
-{#<button id="loadPlot">Load PCA Plot</button>#}
-{#<div id="PCAplot"></div>#}
-{#<div id="extreme-titles"></div>#}
-{#<button id="loadCorrMatrix">Load Correlation Matrix</button>#}
-{#<div id="corrMatrixPlot"></div>#}
-{#<div id="significanceMatrixPlot"></div>#}
-{#<button id="loadSurfacePlot">Load 3D Surface Plot</button>#}
-{#<div id="surfacePlot"></div>#}
-
 {% endblock %}
+
 
 {% block extra_js %}
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
