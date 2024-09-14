@@ -17,13 +17,24 @@
 
 .round-selection-table {
     display: table;
-    width: 75%; /* Make the table take up the full width of its container */
-    {#max-width: 800px; /* Max width the table can grow to */#}
-    min-width: 200px; /* Ensure the table doesn't shrink too much */
+    width: 75%; /* Keep width as it was */
+    min-width: 200px;
     max-height: 400px;
     overflow-y: auto;
     border-collapse: collapse;
     border: 1px solid #0073cc;
+}
+
+/* Title row styling */
+.round-selection-table-title {
+    display: table-caption; /* Use table-caption to allow the title to behave like a table header */
+    text-align: left;
+    font-size: 1.8em;
+    font-weight: bold;
+    padding: 10px 20px;
+    color: white;
+    background-color: #0073cc; /* Match the table header background */
+    caption-side: top;
 }
 
 .round-selection-table-header, .round-selection-table-row {
@@ -32,7 +43,7 @@
 
 .round-selection-table-cell {
     display: table-cell;
-    padding: 10px;
+    padding: 5px;
     border: 1px solid #0073cc;
     text-align: center;
     vertical-align: middle;
@@ -45,6 +56,7 @@
     text-align: left; /* Align text to the left for better readability */
     white-space: normal; /* Allow text to wrap within the cell */
     word-wrap: break-word; /* Break long words if necessary to avoid overflow */
+    padding: 0px 20px;
 }
 
 /* Adjust header styles */
@@ -61,7 +73,6 @@
     }
 }
 
-/* Specific adjustments for smaller screens */
 @media (max-width: 1000px) {
     .date_cell {
         display: none;
@@ -69,13 +80,13 @@
 }
 
 .round-selection-table-cell input[type="text"] {
-  width: 100%;
-  padding: 12px 20px;
-  margin: 8px 0;
-  box-sizing: border-box;
-  border: 2px solid #ccc;
-  border-radius: 4px;
+    width: 90%;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
     background-color: #333;
+    color: white;
+    font-family: YoungSerif;
 }
 
 .editable-cell:focus {
@@ -107,26 +118,10 @@
     color: white;
 }
 
-.round-selection-table-cell input[type="text"] {
-    width: 90%;
-    {#padding: 5px;#}
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 14px;
-    background-color: #333;
-    outline: #0c0c0c;
-    color: white;
-    font-family: YoungSerif;
-    font-size: 16px;
-}
-
 .round-selection-table-cell input[type="text"]:focus {
     border-color: #0073cc;
     outline: none;
 }
-
-
-
 
   </style>
 {% endblock %}
@@ -141,6 +136,7 @@
 
         <div class="table-container">
             <div class="round-selection-table">
+            <div class="round-selection-table-title" colspan="4">Currently Available Rounds</div>
                 <div class="round-selection-table-header">
                     <div class="round-selection-table-cell">Order</div>
                     <div class="round-selection-table-cell">Round Title</div>
