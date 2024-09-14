@@ -12,12 +12,13 @@
     align-items: center; /* Vertically centers the table */
     width: 100%; /* Ensure the container takes full width */
     margin-top: 25px;
+    margin-bottom: 15px;
 }
 
 .round-selection-table {
     display: table;
-    width: 60%; /* Make the table take up the full width of its container */
-    max-width: 800px; /* Max width the table can grow to */
+    width: 75%; /* Make the table take up the full width of its container */
+    {#max-width: 800px; /* Max width the table can grow to */#}
     min-width: 200px; /* Ensure the table doesn't shrink too much */
     max-height: 400px;
     overflow-y: auto;
@@ -57,6 +58,13 @@
 @media (max-width: 600px) {
     .round-selection-table {
         width: 90%; /* Ensure the table takes up all available space on small screens */
+    }
+}
+
+/* Specific adjustments for smaller screens */
+@media (max-width: 1000px) {
+    .date_cell {
+        display: none;
     }
 }
 
@@ -137,6 +145,7 @@
                     <div class="round-selection-table-cell">Order</div>
                     <div class="round-selection-table-cell">Round Title</div>
                     <div class="round-selection-table-cell">Creator</div>
+                    <div class="round-selection-table-cell date_cell">Date</div>
                 </div>
                 {% for title in avail_titles %}
                 <div class="round-selection-table-row">
@@ -149,6 +158,9 @@
                     </div>
                     <div class="round-selection-table-cell wrap-text">
                         <input id="round_creator_{{ forloop.counter0 }}" type="text" name="round_creator_{{ forloop.counter0 }}" value="{{ avail_creators|index:forloop.counter0 }}" class="editable-cell">
+                    </div>
+                    <div class="round-selection-table-cell wrap-text date_cell">
+                        <span id="round_date_{{ forloop.counter0 }}" class="editable-cell">{{ shared_dates|index:forloop.counter0 }}</span>
                     </div>
                 </div>
                 {% endfor %}

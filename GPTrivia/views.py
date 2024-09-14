@@ -865,7 +865,7 @@ def home(request):
         latest_presentation = None
         presentation_url = None
 
-    (links, titles, creators, old_links) = get_round_titles_and_links(processed_senders=[])
+    (links, titles, creators, old_links, shared_dates) = get_round_titles_and_links(processed_senders=[])
 
     presentation_name = datetime.date.strftime(datetime.date.today(), '%-m.%d.%Y')
     if request.method == 'POST':
@@ -881,7 +881,8 @@ def home(request):
                         'title': request.POST.get(f'round_title_{i}'),
                         'creator': request.POST.get(f'round_creator_{i}'),
                         'link': links[i],
-                        'old_link': old_links[i]
+                        'old_link': old_links[i],
+                        'shared_date': shared_dates[i]
                     }
 
             # Sort rounds by order
@@ -1022,7 +1023,7 @@ def home(request):
                 new_round.link = new_links[round_index]
                 new_round.save()
 
-    return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None", 'avail_links': links, 'avail_titles': titles, 'avail_creators': creators})
+    return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None", 'avail_links': links, 'avail_titles': titles, 'avail_creators': creators, 'shared_dates': shared_dates})
 
 @login_required
 def scoresheet(request):

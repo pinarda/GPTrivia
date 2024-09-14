@@ -1187,7 +1187,14 @@ def get_round_titles_and_links(processed_senders=[]):
         new_senders = [MAIL_NAME_MAP.get(sender, "Unknown") for sender in new_senders]
 
         print(presentation_urls, round_titles, new_senders, old_urls)
-        return presentation_urls, round_titles, new_senders, old_urls
+
+        # convert the messages_with_date dates from a string containing a unix timestamp to a string with the month, day and year
+        newdates = []
+        for i in range(len(messages_with_date)):
+            newdates.append(datetime.datetime.fromtimestamp(int(messages_with_date[i][1])/1000).strftime("%B %d, %Y"))
+
+
+        return presentation_urls, round_titles, new_senders, old_urls, newdates
 
     except HttpError as error:
         print(f"An error occurred: {error}")
