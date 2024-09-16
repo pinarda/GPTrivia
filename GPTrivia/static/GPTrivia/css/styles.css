@@ -257,7 +257,7 @@ body {
     margin: 10px 10px 0px 10px;
     /*padding: 10px;*/
     box-sizing: border-box;
-    min-height: calc(81vh);
+    min-height: calc(82vh);
 }
 
 
@@ -386,7 +386,7 @@ a .logo {
         margin: 10px;
         /*padding: 10px;*/
         box-sizing: border-box;
-        min-height: calc(81vh);
+        min-height: calc(82vh);
     }
 }
 
