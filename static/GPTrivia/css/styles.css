@@ -242,10 +242,6 @@ body {
   opacity: 0.3;
 }
 
-footer{
-    position: relative;
-}
-
 .header-container {
     display: flex;
     align-items: inherit;
@@ -259,8 +255,7 @@ footer{
     margin: 10px;
     /*padding: 10px;*/
     box-sizing: border-box;
-    /*min-height: calc(100vh - 200px);*/
-
+    min-height: calc(100vh - 200px);
 }
 
 .expand-collapse-button {
