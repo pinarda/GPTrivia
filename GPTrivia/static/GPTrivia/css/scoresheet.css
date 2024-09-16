@@ -11,15 +11,6 @@ body {
     background-color: #1e7662;
 }
 
-@media (max-width: 1200px) {
-        .content-container {
-        border: 0px solid #ccc;
-        margin: 10px;
-        /*padding: 10px;*/
-        box-sizing: border-box;
-        min-height: calc(100vh - 235px);
-    }
-}
 
 input[type="text"] {
     width: 100%;
@@ -45,7 +36,7 @@ input.largerCheckbox {
 }
 
 .content-container {
-    min-height: calc(100vh - 200px);
+    min-height: calc(80vh);
 }
 
 @media screen and (max-width: 850px) {
@@ -174,7 +165,7 @@ a {
     }
 
     .content-container {
-        min-height: calc(100vh - 235px);
+        min-height: calc(80vh);
     }
 }
 

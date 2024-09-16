@@ -257,7 +257,7 @@ body {
     margin: 10px;
     /*padding: 10px;*/
     box-sizing: border-box;
-    min-height: calc(100vh - 200px);
+    min-height: calc(80vh);
 }
 
 
@@ -380,15 +380,13 @@ a .logo {
     #roundList tbody{
         position: relative;
     }
-}
 
-@media (max-width: 1200px) {
-        .content-container {
+    .content-container {
         border: 0px solid #ccc;
         margin: 10px;
         /*padding: 10px;*/
         box-sizing: border-box;
-        min-height: calc(100vh - 235px);
+        min-height: calc(80vh);
     }
 }
 
