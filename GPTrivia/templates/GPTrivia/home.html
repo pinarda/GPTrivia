@@ -45,8 +45,8 @@
 .round-selection-table-cell {
     display: table-cell;
     padding: 5px;
-    border: 1px solid #0073cc;
-    text-align: center;
+    {#border: 1px solid #0073cc;#}
+    text-align: left;
     vertical-align: middle;
     color: white;
     position: relative;
@@ -78,9 +78,22 @@
     .date_cell {
         display: none;
     }
+    .round-selection-table {
+        width: 90%; /* Ensure the table takes up all available space on small screens */
+    }
 }
 
 .round-selection-table-cell input[type="text"] {
+    width: 90%;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    font-size: 16px;
+    background-color: #333;
+    color: white;
+    font-family: YoungSerif;
+}
+
+.round-selection-table-cell creator-cell {
     width: 90%;
     border: 1px solid #ccc;
     border-radius: 2px;
@@ -154,7 +167,7 @@
                         <input id="round_title_{{ forloop.counter0 }}" type="text" name="round_title_{{ forloop.counter0 }}" value="{{ title }}" class="editable-cell">
                     </div>
                     <div class="round-selection-table-cell wrap-text">
-                        <input id="round_creator_{{ forloop.counter0 }}" type="text" name="round_creator_{{ forloop.counter0 }}" value="{{ avail_creators|index:forloop.counter0 }}" class="editable-cell">
+                        <input id="round_creator_{{ forloop.counter0 }}" type="text" name="round_creator_{{ forloop.counter0 }}" value="{{ avail_creators|index:forloop.counter0 }}" class="editable-cell creator-cell">
                     </div>
                     <div class="round-selection-table-cell wrap-text date_cell">
                         <span id="round_date_{{ forloop.counter0 }}" class="editable-cell">{{ shared_dates|index:forloop.counter0 }}</span>
