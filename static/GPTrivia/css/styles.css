@@ -188,7 +188,7 @@ body {
     width: 100%;
     position: absolute;
     font-family: YoungSerif;
-    padding-bottom: 35px;
+    /*padding-bottom: 35px;*/
 }
 
 .dropdown {
