@@ -9,6 +9,7 @@ body {
 
 .header-container{
     background-color: #1e7662;
+    height: 111px;
 }
 
 
@@ -37,7 +38,7 @@ input.largerCheckbox {
 }
 
 .content-container {
-    min-height: calc(80vh - 20px);
+      min-height: calc(95vh - 131px);
 }
 
 @media screen and (max-width: 850px) {
@@ -166,7 +167,7 @@ a {
     }
 
     .content-container {
-        min-height: calc(80vh - 20px);
+      min-height: calc(95vh - 131px);
     }
 }
 

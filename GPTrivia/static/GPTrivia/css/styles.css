@@ -259,6 +259,7 @@ body {
     flex-direction: column;
     padding: 20px;
     margin: 0px;
+    height: 111px;
 }
 
 .content-container {
@@ -266,7 +267,7 @@ body {
     margin: 10px 10px 10px 10px;
     /*padding: 10px;*/
     box-sizing: border-box;
-    min-height: calc(80vh - 20px);
+      min-height: calc(95vh - 131px);
 }
 
 
@@ -332,6 +333,7 @@ body {
 .header-container {
     display: flex;
     justify-content: space-between;
+    height: 111px;
 }
 
 .logo img {

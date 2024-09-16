@@ -36,7 +36,7 @@ a {
     overflow: auto;
     /*min-height: 150px !important;*/
     height: 100%;
-    max-height: calc(80vh - 20px);
+      min-height: calc(95vh - 131px);
     margin-top: 0px;
 }
 
@@ -72,7 +72,7 @@ a {
 }
 
 .content-container {
-    min-height: calc(80vh - 20px);
+      min-height: calc(95vh - 131px);
     margin-bottom: 0px;
     padding-bottom: 0px;
     margin-top: 0px;

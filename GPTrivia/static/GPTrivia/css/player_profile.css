@@ -46,7 +46,7 @@ a {
 /*}*/
 .content-container {
   display: grid;
-  min-height: calc(80vh - 20px);
+      min-height: calc(95vh - 131px);
     justify-content: center;
 }
 
@@ -129,7 +129,7 @@ form {
     }
 
     .content-container {
-      min-height: calc(80vh - 20px);
+      min-height: calc(95vh - 131px);
     justify-content: center;
     }
 }
@@ -148,6 +148,7 @@ form {
 
 .header-container{
     background-color: #2d3047;
+    height: 111px;
 }
 
 .footer-container{
