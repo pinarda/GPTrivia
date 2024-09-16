@@ -46,7 +46,7 @@ a {
 /*}*/
 .content-container {
   display: grid;
-  min-height: calc(75vh - 20px);
+  min-height: calc(80vh - 20px);
     justify-content: center;
 }
 
