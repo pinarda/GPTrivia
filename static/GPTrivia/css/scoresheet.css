@@ -38,7 +38,7 @@ input.largerCheckbox {
 }
 
 .content-container {
-      min-height: calc(95vh - 131px);
+      min-height: calc(95vh - 171px);
 }
 
 @media screen and (max-width: 850px) {
