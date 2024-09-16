@@ -65,8 +65,8 @@ a {
     .table-container {
         overflow: auto;
         /*min-height: 150px !important;*/
-        height: 100%;
-        max-height: calc(100vh - 180px - 10vw + 90px);
+        /*height: 100%;*/
+        max-height: calc(94vh - 171px);
     }
 
 }
