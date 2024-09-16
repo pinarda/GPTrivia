@@ -129,7 +129,7 @@ form {
     }
 
     .content-container {
-      min-height: calc(100vh - 66px - 10vw);
+      min-height: calc(80vh - 20px);
     justify-content: center;
     }
 }

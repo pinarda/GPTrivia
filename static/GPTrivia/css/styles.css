@@ -167,7 +167,14 @@ header {
     box-sizing: border-box;
     padding: 0px;
     margin: 0px;
-    height: 15vh;
+    /*height: 15vh;*/
+}
+
+@media screen and orientation: landscape {
+    header {
+        height: 10vh;
+    }
+
 }
 
 header div{
