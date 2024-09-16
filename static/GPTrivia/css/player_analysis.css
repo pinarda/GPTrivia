@@ -247,7 +247,7 @@ button, .expand-collapse-button {
     display: block;
     width: auto; /* Remove width: 100% to allow auto-sizing */
     padding: 12px;
-    margin: 20px auto; /* Center the button horizontally */
+    margin: 0px auto; /* Center the button horizontally */
     background-color: #f94144;
     color: white;
     font-size: 16px;

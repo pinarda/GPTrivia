@@ -171,10 +171,11 @@ header {
 
 header div{
     align-items: center;
-    text-align: center;
+    text-align: right;
     padding: 0;
     margin: 0;
 }
+
 
 body {
     margin: 0px;
@@ -357,7 +358,7 @@ a .logo {
         display: flex;
         justify-content: center;
         align-items: center;
-        width: 100%;
+        /*width: 100%;*/
         padding-right: 0px;
     }
 
@@ -365,6 +366,8 @@ a .logo {
         margin-right: 0;
         font-family: YoungSerif;
         font-size:calc(12px + 1.5vw);
+        align-self: end;
+        padding-right: calc(14.5vw - 17px);
     }
 
     #roundList tbody{
