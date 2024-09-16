@@ -380,8 +380,10 @@ a .logo {
     #roundList tbody{
         position: relative;
     }
+}
 
-    .content-container {
+@media (max-width: 1200px) {
+        .content-container {
         border: 0px solid #ccc;
         margin: 10px;
         /*padding: 10px;*/
