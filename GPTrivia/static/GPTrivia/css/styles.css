@@ -188,6 +188,7 @@ body {
     width: 100%;
     position: absolute;
     font-family: YoungSerif;
+    padding-bottom: 35px;
 }
 
 .dropdown {
@@ -385,7 +386,7 @@ a .logo {
         margin: 10px;
         /*padding: 10px;*/
         box-sizing: border-box;
-        min-height: calc(100vh - 250px);
+        min-height: calc(100vh - 215px);
     }
 }
 
