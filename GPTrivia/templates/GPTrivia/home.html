@@ -52,12 +52,23 @@
     position: relative;
 }
 
+.creator-cell {
+    display: table-cell;
+    padding: 5px;
+    {#border: 1px solid #0073cc;#}
+    text-align: left;
+    vertical-align: middle;
+    color: white;
+    position: relative;
+    width: 20%;
+}
+
 /* Ensure the round title column text wraps */
 .round-selection-table-cell.wrap-text {
     text-align: left; /* Align text to the left for better readability */
     white-space: normal; /* Allow text to wrap within the cell */
     word-wrap: break-word; /* Break long words if necessary to avoid overflow */
-    padding: 0px 20px;
+    padding: 0px 0px;
 }
 
 /* Adjust header styles */
@@ -93,7 +104,7 @@
     font-family: YoungSerif;
 }
 
-.round-selection-table-cell creator-cell {
+.round-selection-table-cell creator-input {
     width: 90%;
     border: 1px solid #ccc;
     border-radius: 2px;
@@ -102,6 +113,7 @@
     color: white;
     font-family: YoungSerif;
 }
+
 
 .editable-cell:focus {
     border-color: #0073cc;
@@ -154,7 +166,7 @@
                 <div class="round-selection-table-header">
                     <div class="round-selection-table-cell">Order</div>
                     <div class="round-selection-table-cell">Round Title</div>
-                    <div class="round-selection-table-cell">Creator</div>
+                    <div class="round-selection-table-cell creator-cell">Creator</div>
                     <div class="round-selection-table-cell date_cell">Date</div>
                 </div>
                 {% for title in avail_titles %}
@@ -166,8 +178,8 @@
                     <div class="round-selection-table-cell wrap-text">
                         <input id="round_title_{{ forloop.counter0 }}" type="text" name="round_title_{{ forloop.counter0 }}" value="{{ title }}" class="editable-cell">
                     </div>
-                    <div class="round-selection-table-cell wrap-text">
-                        <input id="round_creator_{{ forloop.counter0 }}" type="text" name="round_creator_{{ forloop.counter0 }}" value="{{ avail_creators|index:forloop.counter0 }}" class="editable-cell creator-cell">
+                    <div class="round-selection-table-cell wrap-text creator-cell">
+                        <input id="round_creator_{{ forloop.counter0 }}" type="text" name="round_creator_{{ forloop.counter0 }}" value="{{ avail_creators|index:forloop.counter0 }}" class="editable-cell creator-input">
                     </div>
                     <div class="round-selection-table-cell wrap-text date_cell">
                         <span id="round_date_{{ forloop.counter0 }}" class="editable-cell">{{ shared_dates|index:forloop.counter0 }}</span>
