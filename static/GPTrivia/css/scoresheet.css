@@ -162,6 +162,10 @@ a {
         justify-content: center;
         margin: auto;
     }
+
+    .content-container {
+        min-height: calc(100vh - 235px);
+    }
 }
 
 @media screen and (min-width: 1000px) {
