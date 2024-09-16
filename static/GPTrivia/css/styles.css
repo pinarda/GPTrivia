@@ -242,6 +242,10 @@ body {
   opacity: 0.3;
 }
 
+footer{
+    position: relative;
+}
+
 .header-container {
     display: flex;
     align-items: inherit;
