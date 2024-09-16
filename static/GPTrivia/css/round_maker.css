@@ -313,6 +313,7 @@ select option {
     position: inherit;
     font-family: 'YoungSerif', serif;
     text-align: center;
+    min-height: 5vh;
 }
 
 /* Intro Text Styling */

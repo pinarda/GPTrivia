@@ -28,6 +28,7 @@ input[type="text"] {
     background-color: #1e7662;
     position: inherit;
     font-family: YoungSerif;
+    min-height: 5vh;
 }
 
 input.largerCheckbox {
@@ -36,7 +37,7 @@ input.largerCheckbox {
 }
 
 .content-container {
-    min-height: calc(80vh);
+    min-height: calc(75vh - 20px);
 }
 
 @media screen and (max-width: 850px) {

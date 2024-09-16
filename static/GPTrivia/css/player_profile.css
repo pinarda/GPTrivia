@@ -46,7 +46,7 @@ a {
 /*}*/
 .content-container {
   display: grid;
-  min-height: calc(100vh - 197px);
+  min-height: calc(75vh - 20px);
     justify-content: center;
 }
 
@@ -154,6 +154,7 @@ form {
     background-color: #2d3047;
     position: inherit;
     font-family: YoungSerif;
+    min-height: 5vh;
 }
 
 .red{
