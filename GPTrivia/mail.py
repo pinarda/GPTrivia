@@ -431,7 +431,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                             creator_end_index = creator_start_index + len(creator_placeholder)
 
                             if coops[i] == 1:
-                                new_text = new_text + " (Co-op)"
+                                new_text = new_text + " - Co-op"
 
                             print(f"creator_start_index: {creator_start_index}")
                             print(f"creator_end_index: {creator_end_index}")
@@ -963,7 +963,7 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                             creator_end_index = creator_start_index + len(creator_placeholder)
 
                             if coops[i] == 'on':
-                                new_text = f"{new_text} (Co-op)"
+                                new_text = f"{new_text} - Co-op"
 
                             print(f"creator_start_index: {creator_start_index}")
                             print(f"creator_end_index: {creator_end_index}")

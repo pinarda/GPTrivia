@@ -52,6 +52,12 @@
     position: relative;
 }
 
+/* Style for disabled buttons */
+.disabled-button {
+    background-color: grey;
+    cursor: not-allowed;
+}
+
 .creator-cell {
     display: table-cell;
     padding: 5px;
@@ -335,6 +341,76 @@
         // Update currentOrder to the next available number
         currentOrder = newOrder;
     }
+
+        // Function to disable buttons and show spinner
+    function disableButtons() {
+        document.getElementById('gen-button').disabled = true;
+        document.getElementById('up-button').disabled = true;
+
+        // Optionally, change button styles to look disabled
+        document.getElementById('gen-button').classList.add('disabled-button');
+        document.getElementById('up-button').classList.add('disabled-button');
+
+        // Show spinner and message
+        document.getElementById('submit-spinner1').style.display = 'inline';
+        document.getElementById('msg').style.display = 'block';
+    }
+
+    // Function to re-enable buttons and hide spinner
+    function enableButtons() {
+        document.getElementById('gen-button').disabled = false;
+        document.getElementById('up-button').disabled = false;
+
+        // Remove disabled styles
+        document.getElementById('gen-button').classList.remove('disabled-button');
+        document.getElementById('up-button').classList.remove('disabled-button');
+
+        // Hide spinner and message
+        document.getElementById('submit-spinner1').style.display = 'none';
+        document.getElementById('msg').style.display = 'none';
+    }
+
+    // Submit the form via AJAX
+    document.querySelector('form').addEventListener('submit', function(event) {
+        event.preventDefault();  // Prevent the default form submission
+
+        disableButtons();  // Disable buttons and show spinner
+
+        // Create a FormData object from the form
+        let formData = new FormData(this);
+
+        // Get the action value (i.e., the button that was clicked)
+        let clickedButton = document.activeElement;  // Gets the currently active element (the clicked button)
+        formData.append('action', clickedButton.value);  // Add the button's value to the form data
+
+        // Get the current page URL as the action
+        let actionUrl = window.location.href;  // Current page URL
+
+        fetch(actionUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'  // Add CSRF token if using Django
+            }
+        })
+        .then(response => {
+            // If the response is OK, reload the page
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.text();  // Since we don't need the response, we can just handle it as text
+        })
+        .then(() => {
+            // Reload the page after successful form submission
+            window.location.reload();
+        })
+        .catch((error) => {
+            // Handle errors and re-enable buttons
+            console.error('Error:', error);
+            enableButtons();
+        });
+    });
+
 
     </script>
 {% endblock %}
