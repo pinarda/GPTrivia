@@ -114,6 +114,26 @@ main {
     min-height: 111px;
 }
 
+.spinner {
+    display: none; /* Hide the spinner by default */
+    margin-left: 10px; /* Space between button and spinner */
+    vertical-align: middle;
+    animation: spin 2s linear infinite;
+    width: auto;
+    height: 40px; /* Make the spinner match the button's height */
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+        filter: hue-rotate(0deg);
+    }
+    100% {
+        transform: rotate(-360deg);
+        filter: hue-rotate(-360deg);
+    }
+}
+
 /*.red{*/
 /*    color: #ffd373;*/
 /*}*/

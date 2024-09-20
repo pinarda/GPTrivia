@@ -190,8 +190,10 @@
         </div>
 
         {% csrf_token %}
-        <button type="submit" name="action" value="generate">Generate Slides</button>
-        <button type="submit" name="action" value="update">Update Slides</button>
+        <button id="gen-button" type="submit" name="action" value="generate">Generate Slides</button>
+        <button id="up-button" type="submit" name="action" value="update">Update Slides</button>
+        <img class="spinner" id="submit-spinner1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
+
     </div>
 </form>
 
@@ -199,6 +201,16 @@
     <script>
         let currentOrder = 1;
         const selectedOrders = {};
+
+        // when the gen-button is clicked, show the spinner
+        document.getElementById('gen-button').addEventListener('click', function() {
+            document.getElementById('submit-spinner1').style.display = 'inline';
+        });
+
+        // likewise, when the up-button is clicked, show the spinner
+        document.getElementById('up-button').addEventListener('click', function() {
+            document.getElementById('submit-spinner1').style.display = 'inline';
+        });
 
         function toggleOrder(element, index) {
             const input = document.getElementById(`round_order_${index}`);
