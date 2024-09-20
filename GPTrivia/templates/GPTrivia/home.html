@@ -193,6 +193,7 @@
         <button id="gen-button" type="submit" name="action" value="generate">Generate Slides</button>
         <button id="up-button" type="submit" name="action" value="update">Update Slides</button>
         <img class="spinner" id="submit-spinner1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
+        <div id="msg" style="color: white; display: none">Working... This may take a few minutes.</div>
 
     </div>
 </form>
@@ -205,11 +206,15 @@
         // when the gen-button is clicked, show the spinner
         document.getElementById('gen-button').addEventListener('click', function() {
             document.getElementById('submit-spinner1').style.display = 'inline';
+            // also show the "Working..." message
+            document.getElementById('msg').style.display = 'block';
         });
 
         // likewise, when the up-button is clicked, show the spinner
         document.getElementById('up-button').addEventListener('click', function() {
             document.getElementById('submit-spinner1').style.display = 'inline';
+            // also show the "Working..." message
+            document.getElementById('msg').style.display = 'block';
         });
 
         function toggleOrder(element, index) {

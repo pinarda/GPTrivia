@@ -1023,6 +1023,8 @@ def home(request):
                 new_round.link = new_links[round_index]
                 new_round.save()
 
+        (links, titles, creators, old_links, shared_dates) = get_round_titles_and_links(processed_senders=[])
+
     return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None", 'avail_links': links, 'avail_titles': titles, 'avail_creators': creators, 'shared_dates': shared_dates})
 
 @login_required
