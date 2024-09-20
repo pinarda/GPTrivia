@@ -911,7 +911,7 @@ def home(request):
                 ordered_links,
                 presentation_name=presentation_name,
                 old_links=ordered_old_links,
-                coop=ordered_coop
+                coops=ordered_coop
             )
 
             round_titles = ordered_titles
@@ -1003,7 +1003,7 @@ def home(request):
             # )
 
             updated_presentation_id, new_creators, round_titles, new_links = update_merged_presentation(latest_presentation.presentation_id,
-                                                                               latest_presentation.creator_list, ordered_titles, ordered_creators, ordered_links, ordered_old_links, ordered_coop)
+                                                                               latest_presentation.creator_list, ordered_titles, ordered_creators, ordered_links, ordered_old_links, coops=ordered_coop)
 
             # update the MergedPresentation object that has the same presentation_id as the latest_presentation
             # by appending the new creators to the creator_list and appending the new round titles to the round_names
