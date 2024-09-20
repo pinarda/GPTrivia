@@ -882,7 +882,8 @@ def home(request):
                         'creator': request.POST.get(f'round_creator_{i}'),
                         'link': links[i],
                         'old_link': old_links[i],
-                        'shared_date': shared_dates[i]
+                        'shared_date': shared_dates[i],
+                        'coop': request.POST.get(f'round_coop_{i}')
                     }
 
             # Sort rounds by order
@@ -893,6 +894,7 @@ def home(request):
             ordered_creators = [round['creator'] for round in ordered_rounds]
             ordered_links = [round['link'] for round in ordered_rounds]
             ordered_old_links = [round['old_link'] for round in ordered_rounds]
+            ordered_coop = [round['coop'] for round in ordered_rounds]
 
             # Pass the ordered data to create_presentation
             new_presentation_id = create_presentation(
@@ -946,7 +948,8 @@ def home(request):
                 new_round.score_drew = 0
                 new_round.score_tom = 0
                 new_round.replay = 0
-                new_round.cooperative = 0
+                # round coop will be 0 if the checkbox is not checked, 1 if it is
+                new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
                 new_round.link = round_links[round_index]
                 new_round.save()
 
@@ -1025,7 +1028,7 @@ def home(request):
 
         (links, titles, creators, old_links, shared_dates) = get_round_titles_and_links(processed_senders=[])
 
-    return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None", 'avail_links': links, 'avail_titles': titles, 'avail_creators': creators, 'shared_dates': shared_dates})
+    return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None", 'avail_links': links, 'avail_titles': titles, 'avail_creators': creators, 'shared_dates': shared_dates, 'avail_coops': [0]*len(titles)})
 
 @login_required
 def scoresheet(request):

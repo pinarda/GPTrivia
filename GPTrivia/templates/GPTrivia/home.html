@@ -83,6 +83,12 @@
     .round-selection-table {
         width: 90%; /* Ensure the table takes up all available space on small screens */
     }
+    .coop_cell {
+        display: none;
+    }
+    .date_cell {
+        display: none;
+    }
 }
 
 @media (max-width: 1000px) {
@@ -93,6 +99,49 @@
         width: 90%; /* Ensure the table takes up all available space on small screens */
     }
 }
+
+.coop_cell {
+    text-align: center !important;
+}
+
+.coop-box {
+    width: 25px;
+    height: 25px;
+    border: 2px solid #0073cc;
+    background-color: white;
+    color: #0073cc;
+    cursor: pointer;
+    position: relative; /* Changed from absolute */
+    display: inline-block; /* Checkbox is inline by default */
+    vertical-align: middle;
+    margin: 0;
+    appearance: none; /* Removes default checkbox styling */
+    -webkit-appearance: none; /* For Safari */
+    outline: none; /* Removes outline when focused */
+    text-align: center; /* Centers the checkmark */
+}
+
+.coop-box::before {
+    content: '✔'; /* Placeholder checkmark */
+    font-size: 20px;
+    display: none; /* Initially hidden */
+    line-height: 1;
+}
+
+.coop-box:checked {
+    background-color: #0073cc;
+    color: white;
+}
+
+.coop-box:checked::before {
+    display: block; /* Show the checkmark */
+    color: white;
+}
+
+.coop-box:hover {
+    border-color: #005a99; /* Slightly darker border on hover */
+}
+
 
 .round-selection-table-cell input[type="text"] {
     width: 90%;
@@ -167,6 +216,7 @@
                     <div class="round-selection-table-cell">Order</div>
                     <div class="round-selection-table-cell">Round Title</div>
                     <div class="round-selection-table-cell creator-cell">Creator</div>
+                    <div class="round-selection-table-cell coop_cell">Coop</div>
                     <div class="round-selection-table-cell date_cell">Date</div>
                 </div>
                 {% for title in avail_titles %}
@@ -180,6 +230,9 @@
                     </div>
                     <div class="round-selection-table-cell wrap-text creator-cell">
                         <input id="round_creator_{{ forloop.counter0 }}" type="text" name="round_creator_{{ forloop.counter0 }}" value="{{ avail_creators|index:forloop.counter0 }}" class="editable-cell creator-input">
+                    </div>
+                    <div class="round-selection-table-cell wrap-text coop_cell">
+                        <input id="round_coop_{{ forloop.counter0 }}" class="coop-box" type="checkbox" name="round_coop_{{ forloop.counter0 }}" {% if avail_coops|index:forloop.counter0 %}checked{% endif %}>
                     </div>
                     <div class="round-selection-table-cell wrap-text date_cell">
                         <span id="round_date_{{ forloop.counter0 }}" class="editable-cell">{{ shared_dates|index:forloop.counter0 }}</span>
