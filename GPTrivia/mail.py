@@ -214,7 +214,7 @@ def remove_first_slide(credentials, presentation_id):
     slides_service.presentations().batchUpdate(presentationId=presentation_id, body={'requests': [delete_request]}).execute()
 
 
-def update_merged_presentation(merged_presentation_id, merged_creators, titles, creators, links, old_links):
+def update_merged_presentation(merged_presentation_id, merged_creators, titles, creators, links, old_links, coops):
     credentials = None
     # Check if the token.pickle file exists
     if os.path.exists(token_file_path):
@@ -429,6 +429,9 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                             new_text = MAIL_NAME_MAP[creators.pop(0)]
                             creator_start_index = content.index(creator_placeholder)  # + element_len + 2
                             creator_end_index = creator_start_index + len(creator_placeholder)
+
+                            if coops[i] == 1:
+                                new_text = new_text + " (Co-op)"
 
                             print(f"creator_start_index: {creator_start_index}")
                             print(f"creator_end_index: {creator_end_index}")
@@ -687,7 +690,7 @@ def share_slides(presId):
 
 
 
-def create_presentation(titles, creators, links, presentation_name, old_links):
+def create_presentation(titles, creators, links, presentation_name, old_links, coops):
     credentials = None
     # Check if the token.pickle file exists
     if os.path.exists(token_file_path):
@@ -958,6 +961,9 @@ def create_presentation(titles, creators, links, presentation_name, old_links):
                             new_text = MAIL_NAME_MAP[creators_list[i]]
                             creator_start_index = content.index(creator_placeholder)# + element_len + 2
                             creator_end_index = creator_start_index + len(creator_placeholder)
+
+                            if coops[i] == 'on':
+                                new_text = f"{new_text} (Co-op)"
 
                             print(f"creator_start_index: {creator_start_index}")
                             print(f"creator_end_index: {creator_end_index}")

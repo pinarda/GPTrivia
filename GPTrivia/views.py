@@ -886,6 +886,14 @@ def home(request):
                         'coop': request.POST.get(f'round_coop_{i}')
                     }
 
+            # make sure there's at least one round, or else just return
+            if len(round_order) == 0:
+                return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url,
+                                                              'pres_name': latest_presentation.name if latest_presentation else "None",
+                                                              'avail_links': links, 'avail_titles': titles,
+                                                              'avail_creators': creators, 'shared_dates': shared_dates,
+                                                              'avail_coops': [0] * len(titles)})
+
             # Sort rounds by order
             ordered_rounds = [round_order[key] for key in sorted(round_order.keys())]
 
@@ -902,7 +910,8 @@ def home(request):
                 ordered_creators,
                 ordered_links,
                 presentation_name=presentation_name,
-                old_links=ordered_old_links
+                old_links=ordered_old_links,
+                coop=ordered_coop
             )
 
             round_titles = ordered_titles
@@ -967,6 +976,13 @@ def home(request):
                         'coop': request.POST.get(f'round_coop_{i}'),
                     }
 
+            if len(round_order) == 0:
+                return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url,
+                                                              'pres_name': latest_presentation.name if latest_presentation else "None",
+                                                              'avail_links': links, 'avail_titles': titles,
+                                                              'avail_creators': creators, 'shared_dates': shared_dates,
+                                                              'avail_coops': [0] * len(titles)})
+
             # Sort rounds by order
             ordered_rounds = [round_order[key] for key in sorted(round_order.keys())]
 
@@ -987,7 +1003,7 @@ def home(request):
             # )
 
             updated_presentation_id, new_creators, round_titles, new_links = update_merged_presentation(latest_presentation.presentation_id,
-                                                                               latest_presentation.creator_list, ordered_titles, ordered_creators, ordered_links, ordered_old_links)
+                                                                               latest_presentation.creator_list, ordered_titles, ordered_creators, ordered_links, ordered_old_links, ordered_coop)
 
             # update the MergedPresentation object that has the same presentation_id as the latest_presentation
             # by appending the new creators to the creator_list and appending the new round titles to the round_names
