@@ -963,7 +963,8 @@ def home(request):
                         'title': request.POST.get(f'round_title_{i}'),
                         'creator': request.POST.get(f'round_creator_{i}'),
                         'link': links[i],
-                        'old_link': old_links[i]
+                        'old_link': old_links[i],
+                        'coop': request.POST.get(f'round_coop_{i}'),
                     }
 
             # Sort rounds by order
@@ -974,6 +975,8 @@ def home(request):
             ordered_creators = [round['creator'] for round in ordered_rounds]
             ordered_links = [round['link'] for round in ordered_rounds]
             ordered_old_links = [round['old_link'] for round in ordered_rounds]
+            ordered_coop = [round['coop'] for round in ordered_rounds]
+
 
             # Pass the ordered data to create_presentation
             # new_presentation_id = create_presentation(
@@ -1022,7 +1025,7 @@ def home(request):
                 new_round.score_drew = 0
                 new_round.score_tom = 0
                 new_round.replay = 0
-                new_round.cooperative = 0
+                new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
                 new_round.link = new_links[round_index]
                 new_round.save()
 
