@@ -43,7 +43,7 @@
                     </div>
                 </form>
 
-                <div id="chat-response">
+                <div id="chat-response" style="display: none">
                     {{ gpt_response|safe }}
                 </div>
 
@@ -54,12 +54,12 @@
                 <form method="post" id="question-form">
                     {% csrf_token %}
                     <div class="form-group button-with-spinner">
-                        <button type="submit" id="question-submit">Great, can I get a sample question?</button>
+                        <button type="submit" id="question-submit" style="display: none">Great, can I get a sample question?</button>
                         <img class="spinner" id="submit-spinner87" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading...">
                     </div>
                 </form>
 
-                <div id="question-response">
+                <div id="question-response" style="display: none">
                     {{ autogen_response|safe }}
                 </div>
 
@@ -312,6 +312,7 @@
                 },
                 success: function(data) {
                     $('#chat-response').html('');  // Clear the previous response
+                    $('#chat-response').show();  // Clear the previous response
                     var words = data.gpt_response.split('');
                     typeWriter(words, '#chat-response', 0, 30);  // Display new response word by word
 
@@ -368,6 +369,7 @@
                 success: function(data) {
                     $('#submit-spinner87').hide();  // Hide spinner
                     $('#question-response').html('');  // Clear the previous response
+                    $('#question-response').show();  // Clear the previous response
                     $('#question-submit').hide();
                     // Insert a newline before 'Answer' and remove 'TERMINATE'
                     var formattedResponse = data.autogen_response.replace(' Answer:', '\n \n Answer:').replace('TERMINATE', '');
