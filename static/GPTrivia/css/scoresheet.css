@@ -9,7 +9,7 @@ body {
 
 .header-container{
     background-color: #1e7662;
-    height: 111px;
+    min-height: 111px;
 }
 
 

@@ -259,7 +259,7 @@ body {
     flex-direction: column;
     padding: 20px;
     margin: 0px;
-    height: 111px;
+    min-height: 111px;
 }
 
 .content-container {
@@ -333,7 +333,7 @@ body {
 .header-container {
     display: flex;
     justify-content: space-between;
-    height: 111px;
+    min-height: 111px;
 }
 
 .logo img {
