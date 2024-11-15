@@ -18,18 +18,14 @@ button:active {
     background-color: #3e8e41; /* Even darker green when clicked */
 }
 
-/* Style the last press text */
-#last-press {
-    font-size: 1.2rem; /* Slightly larger font size */
-    color: #333; /* Default color */
-    transition: color 0.5s ease, transform 0.5s ease; /* Smooth transitions */
+/* Pressed state */
+button.pressed {
+    background-color: #f44336; /* Red when pressed */
+    color: white; /* Maintain white text */
+    transform: scale(1.1); /* Slightly enlarge the button */
+    transition: background-color 0.3s ease, transform 0.3s ease; /* Smooth effects */
 }
 
-/* Highlight when updated */
-#last-press.updated {
-    color: #e91e63; /* Bright pink when updated */
-    transform: scale(1.2); /* Slightly enlarged */
-}
 
 
 label {
