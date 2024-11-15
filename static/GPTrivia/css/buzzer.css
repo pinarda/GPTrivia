@@ -20,14 +20,9 @@
     background-color: #45a049; /* Darker green on hover */
 }
 
-/* Pressed state (on WebSocket message) */
-#action-button.pressed {
-    background-color: #f44336; /* Change to red when pressed */
-    transform: scale(1.1);     /* Slightly enlarge the button */
-}
 
 /* Pressed state */
-button.pressed {
+#action-button.pressed {
     background-color: #f44336; /* Red when pressed */
     color: white; /* Maintain white text */
     transition: background-color 0.1s ease, transform 0.1s ease; /* Smooth effects */

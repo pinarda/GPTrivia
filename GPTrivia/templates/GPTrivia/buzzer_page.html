@@ -12,29 +12,32 @@
             (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
         );
 
+        let isLocked = false; // Flag to control the cooldown
+
         socket.onmessage = function (e) {
+            if (isLocked) {
+                console.log("Message ignored due to cooldown.");
+                return; // Ignore messages if the lock is active
+            }
+
+            isLocked = true; // Activate the lock
             const data = JSON.parse(e.data);
 
             // Update the last-press text
             const lastPressElement = document.getElementById('last-press');
             lastPressElement.textContent = data.username;
 
-            // Attempt to select the button
-            const button = document.getElementById('action-button'); // Select the button by ID
-            console.log("Selected button:", button);
-
+            // Select the button and add the "pressed" class
+            const button = document.getElementById('action-button');
             if (button) {
-                // Add the "pressed" class and log the action
-                button.classList.add('pressed');
-                console.log("'pressed' class added to the button.");
+                button.classList.add('pressed'); // Change the button's color
 
                 // Remove the "pressed" class after 2 seconds
                 setTimeout(() => {
                     button.classList.remove('pressed');
-                    console.log("'pressed' class removed from the button.");
+                    console.log("Cooldown period ended.");
+                    isLocked = false; // Unlock after 2 seconds
                 }, 2000);
-            } else {
-                console.error("Button not found on the page!");
             }
         };
 
@@ -54,7 +57,7 @@
         <h1>Press the Button!</h1>
         <label for="username">Your Name:</label>
         <input type="text" id="username" placeholder="Enter your name" />
-        <button id="action-button" onclick="sendPress()">Press Me!</button>
+        <button id="action-button" onclick="sendPress()"></button>
         <h3>Last person to press the button:</h3>
         <p id="last-press">No one yet</p>
     </body>
