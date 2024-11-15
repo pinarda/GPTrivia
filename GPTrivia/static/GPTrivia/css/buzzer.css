@@ -28,8 +28,7 @@
 /* Locked state */
 #action-button.locked {
     background-color: #f44336; /* Red when locked */
-    cursor: not-allowed; /* Show not-allowed cursor */
-    transition: background-color 0.3s ease, transform 0.3s ease; /* Smooth transitions */
+    transition: background-color 0.1s ease, transform 0.1s ease; /* Smooth transitions */
     opacity: 0.8; /* Dim the button */
 }
 
