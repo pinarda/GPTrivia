@@ -4,8 +4,9 @@
     <title>Button Press</title>
     <script>
         const socket = new WebSocket(
-            'ws://' + window.location.host + '/ws/button/'
+            (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
         );
+
 
         socket.onmessage = function(e) {
             const data = JSON.parse(e.data);
