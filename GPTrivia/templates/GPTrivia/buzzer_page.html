@@ -70,20 +70,6 @@
         console.log("WebSocket message received. Locking main button.");
         lockMainButton();
     };
-
-    document.addEventListener('DOMContentLoaded', function () {
-        const mainButton = document.getElementById('action-button');
-        if (mainButton) {
-            mainButton.addEventListener('mousedown', (event) => {
-                if (mainButton.disabled) {
-                    console.log("Main button clicked while disabled.");
-                    lockMainButton();
-                }
-            });
-        } else {
-            console.error("Main button not found!");
-        }
-    });
 </script>
 {% endblock %}
 
@@ -100,4 +86,16 @@
     <p id="last-press">No one yet</p>
 </body>
 </html>
+
+<script>
+
+    // Detect clicks on the button, even when it is disabled
+    document.getElementById('action-button').addEventListener('mousedown', (event) => {
+        const mainButton = document.getElementById('action-button');
+        if (mainButton.disabled) {
+            console.log("Main button clicked while disabled.");
+            lockMainButton();
+        }
+    });
+</script>
 {% endblock %}
