@@ -8,12 +8,27 @@
 
 {% block extra_meta %}
     <script>
+    
+        let isLocked = true; // Lock the button by default
+    
+
+        function unlockMainButton() {
+            const unlockButton = document.getElementById('unlock-button');
+            const mainButton = document.getElementById('action-button');
+        
+            // Enable the main button
+            mainButton.disabled = false;
+            console.log("Main button unlocked.");
+        
+            // Disable the unlock button
+            unlockButton.disabled = true;
+            console.log("Unlock button deactivated.");
+        }
+
         const socket = new WebSocket(
             (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
         );
-
-        let isLocked = false; // Flag to control the cooldown
-
+        
         socket.onmessage = function (e) {
             if (isLocked) {
                 console.log("Message ignored due to cooldown.");
@@ -42,11 +57,18 @@
         };
 
         function sendPress() {
+            if (isLocked) {
+                console.log("Main button is locked. Ignoring press.");
+                return; // Do nothing if the button is locked
+            }
+        
             const username = document.getElementById('username').value;
-
             if (username) {
                 // Send data to WebSocket
                 socket.send(JSON.stringify({ username: username }));
+        
+                // Immediately lock the button for 2 seconds
+                lockMainButton();
             }
         }
     </script>
@@ -57,6 +79,7 @@
         <h1>Press the Button!</h1>
         <label for="username">Your Name:</label>
         <input type="text" id="username" placeholder="Enter your name" />
+        <button id="unlock-button" onclick="unlockMainButton()">Unlock Main Button</button>
         <button id="action-button" onclick="sendPress()"></button>
         <h3>Last person to press the button:</h3>
         <p id="last-press">No one yet</p>

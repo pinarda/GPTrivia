@@ -29,6 +29,37 @@
 }
 
 
+/* Style the unlock button */
+#unlock-button {
+    font-size: 1rem;
+    padding: 10px 20px;
+    background-color: #2196F3; /* Blue background */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 20px; /* Space between buttons */
+    transition: background-color 0.3s ease;
+}
+
+#unlock-button:hover {
+    background-color: #1976D2; /* Darker blue on hover */
+}
+
+/* Disabled main button */
+#action-button:disabled {
+    background-color: #ccc; /* Gray background */
+    cursor: not-allowed; /* Show not-allowed cursor */
+    opacity: 0.7; /* Make it look inactive */
+}
+
+#unlock-button:disabled {
+    background-color: #ccc; /* Gray background */
+    cursor: not-allowed; /* Show not-allowed cursor */
+    opacity: 0.7; /* Make it look inactive */
+}
+
+
 
 label {
     font-size: 1rem;
