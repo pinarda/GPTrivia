@@ -11,64 +11,64 @@
         function unlockMainButton() {
             const unlockButton = document.getElementById('unlock-button');
             const mainButton = document.getElementById('action-button');
-        
+
             // Enable the main button
             mainButton.disabled = false;
             console.log("Main button unlocked.");
-        
+
             // Disable the unlock button
             unlockButton.disabled = true;
             console.log("Unlock button deactivated.");
         }
-        
+
         function sendPress() {
             const mainButton = document.getElementById('action-button');
             const username = document.getElementById('username').value;
-        
+
             if (mainButton.disabled) {
                 console.log("Main button is locked. Ignoring press.");
                 return; // Do nothing if the button is locked
             }
-        
+
             if (username) {
                 // Send data to WebSocket
                 socket.send(JSON.stringify({ username: username }));
-        
+
                 // Lock the button for 2 seconds after press
                 lockMainButton();
             }
         }
-        
+
         function lockMainButton() {
             const mainButton = document.getElementById('action-button');
-        
+
             // Lock the button
             mainButton.disabled = true;
             console.log("Main button locked.");
-        
+
             // Unlock the button after 2 seconds
             setTimeout(() => {
                 mainButton.disabled = false;
                 console.log("Main button unlocked.");
             }, 2000);
         }
-        
+
         // WebSocket setup
         const socket = new WebSocket(
             (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
         );
-        
+
         socket.onmessage = function (e) {
             const data = JSON.parse(e.data);
-        
+
             // Update the last-press text
             const lastPressElement = document.getElementById('last-press');
             lastPressElement.textContent = data.username;
-        
+
             // Lock the main button on WebSocket message
             console.log("WebSocket message received. Locking main button.");
             lockMainButton();
-        
+
             // Change button color on message received
             const mainButton = document.getElementById('action-button');
             if (mainButton) {
