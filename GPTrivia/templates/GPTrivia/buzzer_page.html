@@ -8,7 +8,7 @@
 
 {% block extra_meta %}
 <script>
-    let isLocked = false; // Lock state for the button
+    let isLocked = true; // Start with the button locked
     let lockTimeout = null; // Reference to the timeout
 
     // Create a WebSocket connection
@@ -30,7 +30,7 @@
         const username = document.getElementById('username').value;
 
         if (isLocked) {
-            console.log("Button is already locked. Resetting lock timeout.");
+            console.log("Button is already locked. Ignoring press.");
             resetLockTimeout(); // Reset the timeout if the button is clicked while locked
             return; // Ignore the press
         }
@@ -88,16 +88,21 @@
         mainButton.classList.remove('locked');
         console.log("Main button manually unlocked.");
 
-        // Disable the unlock button
+        // Disable the unlock button after use
         unlockButton.disabled = true;
         console.log("Unlock button disabled.");
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         const mainButton = document.getElementById('action-button');
-        mainButton.addEventListener('click', sendPress);
-
         const unlockButton = document.getElementById('unlock-button');
+
+        // Initialize the locked state visually
+        mainButton.classList.add('locked');
+        console.log("Main button starts locked.");
+
+        // Attach event listeners
+        mainButton.addEventListener('click', sendPress);
         unlockButton.addEventListener('click', unlockMainButton);
     });
 </script>
