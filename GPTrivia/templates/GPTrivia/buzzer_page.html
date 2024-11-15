@@ -113,8 +113,13 @@
     <h1>Press the Button!</h1>
     <label for="username">Your Name:</label>
     <div>
-        <input type="text" id="username" placeholder="Enter your name" />
-        <button id="action-button">Press Me!</button>
+        <input
+            type="text"
+            id="username"
+            placeholder="Enter your name"
+            value="{{ username|default:'unknown' }}"
+        />
+        <button id="action-button">Press</button>
         <button id="unlock-button">Unlock Main Button</button>
         <h3>Last person to press the button:</h3>
         <p id="last-press">No one yet</p>
