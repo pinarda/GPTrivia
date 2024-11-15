@@ -1,21 +1,29 @@
-/* Style the button */
-button {
-    font-size: 1.5rem; /* Bigger font size */
-    padding: 15px 30px; /* Larger padding */
+/* Style the circular button */
+#action-button {
+    width: 200px;             /* Set the button's width */
+    height: 200px;            /* Set the button's height (same as width for a circle) */
     background-color: #4CAF50; /* Green background */
-    color: white; /* White text */
-    border: none; /* Remove borders */
-    border-radius: 8px; /* Rounded corners */
-    cursor: pointer; /* Pointer cursor */
-    transition: background-color 0.3s ease; /* Smooth background change */
+    color: white;             /* White text */
+    border: none;             /* Remove borders */
+    border-radius: 50%;       /* Make it a circle */
+    cursor: pointer;          /* Pointer cursor on hover */
+    font-size: 1.5rem;        /* Increase font size */
+    text-align: center;       /* Center text horizontally */
+    display: flex;            /* Use flexbox for centering text */
+    justify-content: center;  /* Center text horizontally */
+    align-items: center;      /* Center text vertically */
+    transition: transform 0.3s ease, background-color 0.3s ease; /* Smooth transitions */
 }
 
-button:hover {
+/* Button hover effect */
+#action-button:hover {
     background-color: #45a049; /* Darker green on hover */
 }
 
-button:active {
-    background-color: #3e8e41; /* Even darker green when clicked */
+/* Pressed state (on WebSocket message) */
+#action-button.pressed {
+    background-color: #f44336; /* Change to red when pressed */
+    transform: scale(1.1);     /* Slightly enlarge the button */
 }
 
 /* Pressed state */
