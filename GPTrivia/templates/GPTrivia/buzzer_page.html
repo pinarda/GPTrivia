@@ -9,81 +9,97 @@
 {% block extra_meta %}
 <script>
     let isLocked = false; // Lock state for the button
-    
+    let lockTimeout = null; // Reference to the timeout
+
     // Create a WebSocket connection
     const socket = new WebSocket(
         (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
     );
-    
+
     socket.onmessage = function (e) {
         const data = JSON.parse(e.data);
         const lastPressElement = document.getElementById('last-press');
-    
+
         // Update the "Last person to press the button" text
         lastPressElement.textContent = data.username;
         console.log(`Received WebSocket message: ${data.username}`);
     };
-    
+
     function sendPress() {
         const mainButton = document.getElementById('action-button');
         const username = document.getElementById('username').value;
-    
+
         if (isLocked) {
-            console.log("Button is locked. Ignoring press.");
-            return; // Ignore presses while the button is locked
+            console.log("Button is already locked. Resetting lock timeout.");
+            resetLockTimeout(); // Reset the timeout if the button is clicked while locked
+            return; // Ignore the press
         }
-    
+
         if (username) {
             // Send data to WebSocket
             const message = { username: username };
             socket.send(JSON.stringify(message));
             console.log(`Message sent: ${username}`);
-    
+
             // Lock the button for 2 seconds
             lockMainButton();
         } else {
             console.log("No username provided. Press ignored.");
         }
     }
-    
+
     function lockMainButton() {
         const mainButton = document.getElementById('action-button');
         isLocked = true; // Set the lock state
-    
+
         // Add a "locked" class for visual feedback
         mainButton.classList.add('locked');
         console.log("Button locked.");
-    
-        // Unlock the button after 2 seconds
-        setTimeout(() => {
+
+        // Start or reset the unlock timeout
+        resetLockTimeout();
+    }
+
+    function resetLockTimeout() {
+        const mainButton = document.getElementById('action-button');
+
+        // Clear any existing timeout
+        if (lockTimeout) {
+            clearTimeout(lockTimeout);
+        }
+
+        // Set a new timeout to unlock the button
+        lockTimeout = setTimeout(() => {
             isLocked = false; // Reset the lock state
             mainButton.classList.remove('locked'); // Remove the visual feedback
             console.log("Button unlocked.");
         }, 2000);
     }
-    
+
     function unlockMainButton() {
         const mainButton = document.getElementById('action-button');
         const unlockButton = document.getElementById('unlock-button');
-    
+
         // Reset the lock state and remove visual feedback
         isLocked = false;
+        if (lockTimeout) {
+            clearTimeout(lockTimeout); // Clear any existing timeout
+        }
         mainButton.classList.remove('locked');
         console.log("Main button manually unlocked.");
-    
+
         // Disable the unlock button
         unlockButton.disabled = true;
         console.log("Unlock button disabled.");
     }
-    
+
     document.addEventListener('DOMContentLoaded', () => {
         const mainButton = document.getElementById('action-button');
         mainButton.addEventListener('click', sendPress);
-    
+
         const unlockButton = document.getElementById('unlock-button');
         unlockButton.addEventListener('click', unlockMainButton);
     });
-
 </script>
 {% endblock %}
 
