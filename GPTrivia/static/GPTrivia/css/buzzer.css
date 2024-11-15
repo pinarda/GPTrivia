@@ -20,6 +20,7 @@
 }
 
 #action-button:disabled {
+        pointer-events: none; /* Disable pointer events on the button */
     background-color: #f44336; /* Red background when disabled */
     /*cursor: not-allowed;       !* Not-allowed cursor *!*/
     opacity: 0.7;              /* Dimmed appearance */
