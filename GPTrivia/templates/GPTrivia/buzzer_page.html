@@ -19,24 +19,22 @@
             lastPressElement.textContent = data.username;
 
             // Add a class to trigger CSS transition
-            lastPressElement.classList.add('updated');
-            setTimeout(() => lastPressElement.classList.remove('updated'), 1000); // Remove after animation
+            lastPressElement.classList.add('pressed');
+            
+            // Remove the class after 2 seconds
+            setTimeout(() => button.classList.remove('pressed'), 2000);
         };
 
 
         function sendPress() {
             const username = document.getElementById('username').value;
             const button = document.querySelector('button');
-            
+
             if (username) {
                 // Send data to WebSocket
                 socket.send(JSON.stringify({ username: username }));
-        
-                // Add a class to the button for styling
-                button.classList.add('pressed');
-        
-                // Remove the class after 2 seconds
-                setTimeout(() => button.classList.remove('pressed'), 2000);
+
+
             }
         }
     </script>
