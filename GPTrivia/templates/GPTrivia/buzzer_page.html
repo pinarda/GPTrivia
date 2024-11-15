@@ -24,6 +24,10 @@
         // Update the "Last person to press the button" text
         lastPressElement.textContent = data.username;
         console.log(`Received WebSocket message: ${data.username}`);
+
+        // Lock the button when a WebSocket message is received
+        console.log("Locking button due to WebSocket message.");
+        lockMainButton();
     };
 
     function sendPress() {
@@ -116,6 +120,7 @@
         console.log("Main button starts in hard lock.");
     });
 
+
 </script>
 {% endblock %}
 
@@ -130,7 +135,7 @@
             placeholder="Enter your name"
             value="{{ username|default:'unknown' }}"
         />
-        <button id="action-button">Press</button>
+        <button id="action-button">Push Me</button>
         <button id="unlock-button">Unlock Main Button</button>
         <h3>Last person to press the button:</h3>
         <p id="last-press">No one yet</p>
