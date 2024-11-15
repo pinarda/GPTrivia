@@ -8,8 +8,6 @@
 
 {% block extra_meta %}
 <script>
-    let cooldown = false; // Prevents sending a press immediately after re-enabling
-
     function unlockMainButton() {
         const unlockButton = document.getElementById('unlock-button');
         const mainButton = document.getElementById('action-button');
@@ -27,9 +25,9 @@
         const mainButton = document.getElementById('action-button');
         const username = document.getElementById('username').value;
 
-        if (mainButton.disabled || cooldown) {
-            console.log("Main button is in cooldown or disabled. Ignoring press.");
-            return; // Do nothing if the button is disabled or in cooldown
+        if (mainButton.disabled) {
+            console.log("Main button is locked. Ignoring press.");
+            return; // Do nothing if the button is disabled
         }
 
         if (username) {
@@ -37,7 +35,7 @@
             socket.send(JSON.stringify({ username: username }));
             console.log(`Message sent: ${username}`);
 
-            // Lock the button and start cooldown
+            // Lock the button for 2 seconds after press
             lockMainButton();
         }
     }
@@ -47,19 +45,12 @@
 
         // Lock the button
         mainButton.disabled = true;
-        cooldown = true; // Start cooldown
-        console.log("Main button locked and cooldown started.");
+        console.log("Main button locked.");
 
         // Re-enable the button after 2 seconds
         setTimeout(() => {
             mainButton.disabled = false;
             console.log("Main button re-enabled.");
-        }, 2000);
-
-        // End the cooldown after 2 seconds
-        setTimeout(() => {
-            cooldown = false;
-            console.log("Cooldown ended. Main button can send presses again.");
         }, 2000);
     }
 
