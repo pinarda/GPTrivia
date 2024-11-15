@@ -51,7 +51,9 @@ input {
 
 .footer-container{
     background-color: #000B58;
-    min-height: 111px;
+    position: inherit;
+    font-family: YoungSerif;
+    min-height: 5vh;
 }
 
 .red{
