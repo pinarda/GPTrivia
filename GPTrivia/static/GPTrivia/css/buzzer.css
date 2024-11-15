@@ -1,43 +1,43 @@
-/* Main Button */
-#action-button {
-    width: 200px;             /* Set the button's width */
-    height: 200px;            /* Set the button's height (circle) */
-    background-color: #4CAF50; /* Green background */
-    color: white;             /* White text */
-    border: none;             /* Remove borders */
-    border-radius: 50%;       /* Make it a circle */
-    cursor: pointer;          /* Pointer cursor on hover */
-    font-size: 1.5rem;        /* Increase font size */
-    text-align: center;       /* Center text horizontally */
-    display: flex;            /* Use flexbox for centering text */
-    justify-content: center;  /* Center text horizontally */
-    align-items: center;      /* Center text vertically */
-    transition: transform 0.3s ease, background-color 0.3s ease; /* Smooth transitions */
-}
-
-#action-button:hover:not(:disabled) {
-    background-color: #45a049; /* Darker green on hover */
-}
-
-#action-button:disabled {
-        pointer-events: none; /* Disable pointer events on the button */
-    background-color: #f44336; /* Red background when disabled */
-    /*cursor: not-allowed;       !* Not-allowed cursor *!*/
-    opacity: 0.7;              /* Dimmed appearance */
-    transition: transform 0.1s ease, background-color 0.1s ease; /* Smooth transitions */
-}
-
-/* Unlock Button */
-#unlock-button {
+#action-button, #unlock-button {
     font-size: 1rem;
     padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer; /* Pointer cursor */
+    transition: background-color 0.3s ease, transform 0.3s ease; /* Smooth transitions */
+}
+
+/* Main button */
+#action-button {
+    width: 200px;
+    height: 200px;
+    background-color: #4CAF50; /* Green background */
+    color: white;
+    border-radius: 50%; /* Circular shape */
+    font-size: 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Hover state */
+#action-button:hover {
+    background-color: #45a049; /* Darker green */
+}
+
+/* Locked state */
+#action-button.locked {
+    background-color: #f44336; /* Red when locked */
+    cursor: not-allowed; /* Show not-allowed cursor */
+    transition: background-color 0.3s ease, transform 0.3s ease; /* Smooth transitions */
+    opacity: 0.8; /* Dim the button */
+}
+
+/* Unlock button */
+#unlock-button {
     background-color: #2196F3; /* Blue background */
-    color: white;              /* White text */
-    border: none;              /* Remove borders */
-    border-radius: 5px;        /* Rounded corners */
-    cursor: pointer;           /* Pointer cursor */
-    margin-bottom: 20px;       /* Space below the unlock button */
-    transition: background-color 0.3s ease, opacity 0.3s ease; /* Smooth transitions */
+    color: white;
+    margin-top: 20px;
 }
 
 #unlock-button:hover:not(:disabled) {
@@ -45,11 +45,10 @@
 }
 
 #unlock-button:disabled {
-    background-color: #ccc;    /* Gray background when disabled */
-    cursor: not-allowed;       /* Not-allowed cursor */
-    opacity: 0.7;              /* Dimmed appearance */
+    background-color: #ccc; /* Gray when disabled */
+    cursor: not-allowed; /* Not-allowed cursor */
+    opacity: 0.7; /* Dimmed appearance */
 }
-
 
 
 label {
