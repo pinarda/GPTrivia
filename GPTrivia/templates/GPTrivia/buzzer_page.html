@@ -8,9 +8,7 @@
 
 {% block extra_meta %}
 <script>
-    const socket = new WebSocket(
-        (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
-    );
+    let cooldown = false; // Prevents sending a press immediately after re-enabling
 
     function unlockMainButton() {
         const unlockButton = document.getElementById('unlock-button');
@@ -29,16 +27,17 @@
         const mainButton = document.getElementById('action-button');
         const username = document.getElementById('username').value;
 
-        if (mainButton.disabled) {
-            console.log("Main button is locked. Ignoring press.");
-            return; // Do nothing if the button is locked
+        if (mainButton.disabled || cooldown) {
+            console.log("Main button is in cooldown or disabled. Ignoring press.");
+            return; // Do nothing if the button is disabled or in cooldown
         }
 
         if (username) {
             // Send data to WebSocket
             socket.send(JSON.stringify({ username: username }));
+            console.log(`Message sent: ${username}`);
 
-            // Lock the button for 2 seconds after press
+            // Lock the button and start cooldown
             lockMainButton();
         }
     }
@@ -48,14 +47,26 @@
 
         // Lock the button
         mainButton.disabled = true;
-        console.log("Main button locked.");
+        cooldown = true; // Start cooldown
+        console.log("Main button locked and cooldown started.");
 
-        // Unlock the button after 2 seconds
+        // Re-enable the button after 2 seconds
         setTimeout(() => {
             mainButton.disabled = false;
-            console.log("Main button unlocked.");
+            console.log("Main button re-enabled.");
+        }, 2000);
+
+        // End the cooldown after 2 seconds
+        setTimeout(() => {
+            cooldown = false;
+            console.log("Cooldown ended. Main button can send presses again.");
         }, 2000);
     }
+
+    // WebSocket setup
+    const socket = new WebSocket(
+        (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
+    );
 
     socket.onmessage = function (e) {
         const data = JSON.parse(e.data);
