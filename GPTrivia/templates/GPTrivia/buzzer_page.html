@@ -3,7 +3,7 @@
 {% load custom_tags %}
 
 
-{% block extra_meta %}}
+{% block extra_meta %}
     <script>
         const socket = new WebSocket(
             (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
@@ -14,7 +14,7 @@
             const data = JSON.parse(e.data);
             const lastPressElement = document.getElementById('last-press');
             lastPressElement.textContent = data.username;
-        
+
             // Add a class to trigger CSS transition
             lastPressElement.classList.add('updated');
             setTimeout(() => lastPressElement.classList.remove('updated'), 1000); // Remove after animation

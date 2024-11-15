@@ -1,0 +1,91 @@
+/* Style the button */
+button {
+    font-size: 1.5rem; /* Bigger font size */
+    padding: 15px 30px; /* Larger padding */
+    background-color: #4CAF50; /* Green background */
+    color: white; /* White text */
+    border: none; /* Remove borders */
+    border-radius: 8px; /* Rounded corners */
+    cursor: pointer; /* Pointer cursor */
+    transition: background-color 0.3s ease; /* Smooth background change */
+}
+
+button:hover {
+    background-color: #45a049; /* Darker green on hover */
+}
+
+button:active {
+    background-color: #3e8e41; /* Even darker green when clicked */
+}
+
+/* Style the last press text */
+#last-press {
+    font-size: 1.2rem; /* Slightly larger font size */
+    color: #333; /* Default color */
+    transition: color 0.5s ease, transform 0.5s ease; /* Smooth transitions */
+}
+
+/* Highlight when updated */
+#last-press.updated {
+    color: #e91e63; /* Bright pink when updated */
+    transform: scale(1.2); /* Slightly enlarged */
+}
+
+/* Add body styling */
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    text-align: center; /* Center-align the content */
+}
+
+h1 {
+    font-size: 2rem;
+    color: #333;
+}
+
+label {
+    font-size: 1rem;
+    margin-right: 10px;
+}
+
+input {
+    padding: 8px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.header-container{
+    background-color: #000B58;
+    min-height: 111px;
+}
+
+.footer-container{
+    background-color: #000B58;
+    min-height: 111px;
+}
+
+.red{
+    color: #FFF4B7;
+}
+
+.orange {
+    color: #006A67;
+}
+
+.yellow {
+    color: #003161;
+}
+
+.green {
+    color: white;
+}
+
+.blue {
+    color: black;
+
+}
+
+.purple {
+    color: darkorange;
+}
