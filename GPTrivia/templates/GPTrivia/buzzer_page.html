@@ -64,6 +64,7 @@
 
         // Add a "locked" class for visual feedback
         mainButton.classList.add('locked');
+        mainButton.textContent = "WAIT"; // Change button text
         console.log("Button locked.");
 
         // Start or reset the unlock timer
@@ -83,10 +84,12 @@
             if (!hardLock) {
                 isLocked = false; // Reset the lock state
                 mainButton.classList.remove('locked'); // Remove the visual feedback
+                mainButton.textContent = "Push Me!!"; // Reset button text
                 console.log("Button unlocked.");
             }
         }, 2000);
     }
+
 
     function unlockMainButton() {
         const mainButton = document.getElementById('action-button');
@@ -128,14 +131,14 @@
 <body>
     <h1>Press the Button!</h1>
     <label for="username">Your Name:</label>
-    <div>
+    <div id="buttondiv">
         <input
             type="text"
             id="username"
             placeholder="Enter your name"
             value="{{ username|default:'unknown' }}"
         />
-        <button id="action-button">Push Me</button>
+        <button id="action-button">Push Me!!</button>
         <button id="unlock-button">Unlock Main Button</button>
         <h3>Last person to press the button:</h3>
         <p id="last-press">No one yet</p>
