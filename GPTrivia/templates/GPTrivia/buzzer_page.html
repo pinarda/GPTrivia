@@ -19,7 +19,7 @@
             lastPressElement.textContent = data.username;
 
             // Add a class to trigger CSS transition
-            lastPressElement.classList.add('pressed');
+            button.classList.add('pressed');
             
             // Remove the class after 2 seconds
             setTimeout(() => button.classList.remove('pressed'), 2000);
@@ -28,13 +28,10 @@
 
         function sendPress() {
             const username = document.getElementById('username').value;
-            const button = document.querySelector('button');
 
             if (username) {
                 // Send data to WebSocket
                 socket.send(JSON.stringify({ username: username }));
-
-
             }
         }
     </script>
