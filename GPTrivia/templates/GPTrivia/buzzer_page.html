@@ -80,7 +80,9 @@
     <input type="text" id="username" placeholder="Enter your name" />
     <div>
         <button id="unlock-button" onclick="unlockMainButton()">Unlock Main Button</button>
-        <button id="action-button" onclick="sendPress()" disabled>Press Me!</button>
+        <div id="button-container">
+            <button id="action-button" onclick="sendPress()" disabled>Press Me!</button>
+        </div>
     </div>
     <h3>Last person to press the button:</h3>
     <p id="last-press">No one yet</p>
@@ -88,9 +90,9 @@
 </html>
 
 <script>
-
+    const buttonContainer = document.getElementById('button-container');
     // Detect clicks on the button, even when it is disabled
-    document.getElementById('action-button').addEventListener('mousedown', (event) => {
+    buttonContainer.addEventListener('mousedown', (event) => {
         const mainButton = document.getElementById('action-button');
         if (mainButton.disabled) {
             console.log("Main button clicked while disabled.");
