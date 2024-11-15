@@ -71,11 +71,17 @@
         lockMainButton();
     };
 
-    // Detect clicks on the button, even when it is disabled
-    document.getElementById('action-button').addEventListener('mousedown', (event) => {
+    document.addEventListener('DOMContentLoaded', function () {
         const mainButton = document.getElementById('action-button');
-        if (mainButton.disabled) {
-            console.log("Main button clicked while disabled.");
+        if (mainButton) {
+            mainButton.addEventListener('mousedown', (event) => {
+                if (mainButton.disabled) {
+                    console.log("Main button clicked while disabled.");
+                    lockMainButton();
+                }
+            });
+        } else {
+            console.error("Main button not found!");
         }
     });
 </script>
