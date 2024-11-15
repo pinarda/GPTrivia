@@ -31,17 +31,6 @@ button:active {
     transform: scale(1.2); /* Slightly enlarged */
 }
 
-/* Add body styling */
-body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
-    text-align: center; /* Center-align the content */
-}
-
-h1 {
-    font-size: 2rem;
-    color: #333;
-}
 
 label {
     font-size: 1rem;
