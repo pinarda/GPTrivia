@@ -70,6 +70,14 @@
         console.log("WebSocket message received. Locking main button.");
         lockMainButton();
     };
+
+    // Detect clicks on the button, even when it is disabled
+    document.getElementById('action-button').addEventListener('mousedown', (event) => {
+        const mainButton = document.getElementById('action-button');
+        if (mainButton.disabled) {
+            console.log("Main button clicked while disabled.");
+        }
+    });
 </script>
 {% endblock %}
 
