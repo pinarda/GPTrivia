@@ -1125,7 +1125,7 @@ def scoresheet(request):
 
 @login_required
 def buzzer_page(request):
-    return render(request, 'buzzer_page.html')
+    return render(request, 'GPTrivia/buzzer_page.html')
 
 
 @login_required
