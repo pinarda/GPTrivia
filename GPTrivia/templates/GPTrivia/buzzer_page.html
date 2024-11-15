@@ -8,69 +8,68 @@
 
 {% block extra_meta %}
     <script>
-    
         let isLocked = true; // Lock the button by default
-    
 
         function unlockMainButton() {
             const unlockButton = document.getElementById('unlock-button');
             const mainButton = document.getElementById('action-button');
-        
+
             // Enable the main button
             mainButton.disabled = false;
             console.log("Main button unlocked.");
-        
+
             // Disable the unlock button
             unlockButton.disabled = true;
             console.log("Unlock button deactivated.");
         }
-
-        const socket = new WebSocket(
-            (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
-        );
-        
-        socket.onmessage = function (e) {
-            if (isLocked) {
-                console.log("Message ignored due to cooldown.");
-                return; // Ignore messages if the lock is active
-            }
-
-            isLocked = true; // Activate the lock
-            const data = JSON.parse(e.data);
-
-            // Update the last-press text
-            const lastPressElement = document.getElementById('last-press');
-            lastPressElement.textContent = data.username;
-
-            // Select the button and add the "pressed" class
-            const button = document.getElementById('action-button');
-            if (button) {
-                button.classList.add('pressed'); // Change the button's color
-
-                // Remove the "pressed" class after 2 seconds
-                setTimeout(() => {
-                    button.classList.remove('pressed');
-                    console.log("Cooldown period ended.");
-                    isLocked = false; // Unlock after 2 seconds
-                }, 2000);
-            }
-        };
 
         function sendPress() {
             if (isLocked) {
                 console.log("Main button is locked. Ignoring press.");
                 return; // Do nothing if the button is locked
             }
-        
+
             const username = document.getElementById('username').value;
             if (username) {
                 // Send data to WebSocket
                 socket.send(JSON.stringify({ username: username }));
-        
+
                 // Immediately lock the button for 2 seconds
                 lockMainButton();
             }
         }
+
+        function lockMainButton() {
+            const mainButton = document.getElementById('action-button');
+            mainButton.disabled = true; // Disable the main button
+            isLocked = true; // Activate lock
+
+            setTimeout(() => {
+                mainButton.disabled = false; // Re-enable the button after 2 seconds
+                isLocked = false; // Deactivate lock
+                console.log("Main button re-enabled.");
+            }, 2000);
+        }
+
+        // WebSocket setup
+        const socket = new WebSocket(
+            (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
+        );
+
+        socket.onmessage = function (e) {
+            const data = JSON.parse(e.data);
+
+            // Update the last-press text
+            const lastPressElement = document.getElementById('last-press');
+            lastPressElement.textContent = data.username;
+
+            // Change button color on message received
+            const mainButton = document.getElementById('action-button');
+            if (mainButton) {
+                mainButton.classList.add('pressed');
+                setTimeout(() => mainButton.classList.remove('pressed'), 2000);
+            }
+        };
     </script>
 {% endblock %}
 
