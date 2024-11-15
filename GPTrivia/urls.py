@@ -30,6 +30,7 @@ from django.forms.models import model_to_dict
 from django.views.decorators.csrf import csrf_exempt
 from .views import RoundMaker, GenerateIdeaView, PreviewView, ShareView, GenerateImageView, AutoGenView, IconView
 from .analysis import PlayerAnalysisPlot
+from debug_toolbar.toolbar import debug_toolbar_urls
 
 
 
@@ -65,5 +66,6 @@ urlpatterns = [
     # path('compute-correlation-matrix/', views.compute_correlation_matrix, name='compute_correlation_matrix'),
     # path('compute-3d-surface-data/', views.compute_3d_surface_data, name='compute_3d_surface_data'),
     path('player_analysis_plot/', PlayerAnalysisPlot.as_view(), name='player_analysis_plot'),
+    path('button/', views.buzzer_page, name='button_page'),
     # path('profilepic/', views.profilepic, name='profilepic'),
-] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + debug_toolbar_urls()

@@ -1123,6 +1123,10 @@ def scoresheet(request):
 
     return render(request, 'GPTrivia/scoresheet.html', context)
 
+@login_required
+def buzzer_page(request):
+    return render(request, 'buzzer_page.html')
+
 
 @login_required
 def scoresheet_new(request):

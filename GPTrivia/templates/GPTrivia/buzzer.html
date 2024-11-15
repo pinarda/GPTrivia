@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Button Press</title>
+    <script>
+        const socket = new WebSocket(
+            'ws://' + window.location.host + '/ws/button/'
+        );
+
+        socket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            document.getElementById('last-press').textContent = data.username;
+        };
+
+        function sendPress() {
+            const username = document.getElementById('username').value;
+            if (username) {
+                socket.send(JSON.stringify({ username: username }));
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Press the Button!</h1>
+    <label for="username">Your Name:</label>
+    <input type="text" id="username" placeholder="Enter your name" />
+    <button onclick="sendPress()">Press Me!</button>
+
+    <h3>Last person to press the button:</h3>
+    <p id="last-press">No one yet</p>
+</body>
+</html>
