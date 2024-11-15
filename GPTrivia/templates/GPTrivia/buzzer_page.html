@@ -11,7 +11,7 @@
     let isLocked = true; // Start with the button locked
     let lockTimeout = null; // Reference to the timeout
 
-    // Create a WebSocket connection
+    // WebSocket setup
     const socket = new WebSocket(
         (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
     );
@@ -30,9 +30,8 @@
         const username = document.getElementById('username').value;
 
         if (isLocked) {
-            console.log("Button is already locked. Ignoring press.");
-            resetLockTimeout(); // Reset the timeout if the button is clicked while locked
-            return; // Ignore the press
+            console.log("Button is locked. Ignoring press.");
+            return; // Do not start the timer or process the press
         }
 
         if (username) {
@@ -56,11 +55,11 @@
         mainButton.classList.add('locked');
         console.log("Button locked.");
 
-        // Start or reset the unlock timeout
-        resetLockTimeout();
+        // Start the unlock timer
+        startUnlockTimer();
     }
 
-    function resetLockTimeout() {
+    function startUnlockTimer() {
         const mainButton = document.getElementById('action-button');
 
         // Clear any existing timeout
@@ -88,22 +87,21 @@
         mainButton.classList.remove('locked');
         console.log("Main button manually unlocked.");
 
-        // Disable the unlock button after use
+        // Disable the unlock button
         unlockButton.disabled = true;
         console.log("Unlock button disabled.");
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         const mainButton = document.getElementById('action-button');
-        const unlockButton = document.getElementById('unlock-button');
+        mainButton.addEventListener('click', sendPress);
 
-        // Initialize the locked state visually
+        const unlockButton = document.getElementById('unlock-button');
+        unlockButton.addEventListener('click', unlockMainButton);
+
+        // Ensure the locked state is set visually on load
         mainButton.classList.add('locked');
         console.log("Main button starts locked.");
-
-        // Attach event listeners
-        mainButton.addEventListener('click', sendPress);
-        unlockButton.addEventListener('click', unlockMainButton);
     });
 </script>
 {% endblock %}

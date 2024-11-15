@@ -1125,8 +1125,10 @@ def scoresheet(request):
 
 @login_required
 def buzzer_page(request):
-    return render(request, 'GPTrivia/buzzer_page.html')
-
+    context = {
+        'username': request.user.username if request.user.is_authenticated else None
+    }
+    return render(request, 'GPTrivia/buzzer_page.html', context)
 
 @login_required
 def scoresheet_new(request):
