@@ -12,19 +12,21 @@
             (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
         );
 
-
-        socket.onmessage = function(e) {
+        // Listen for messages from the WebSocket
+        socket.onmessage = function (e) {
             const data = JSON.parse(e.data);
+
+            // Update the last-press text
             const lastPressElement = document.getElementById('last-press');
             lastPressElement.textContent = data.username;
 
-            // Add a class to trigger CSS transition
+            // Select the button and add the "pressed" class
+            const button = document.querySelector('button');
             button.classList.add('pressed');
-            
-            // Remove the class after 2 seconds
+
+            // Remove the "pressed" class after 2 seconds
             setTimeout(() => button.classList.remove('pressed'), 2000);
         };
-
 
         function sendPress() {
             const username = document.getElementById('username').value;
@@ -32,6 +34,13 @@
             if (username) {
                 // Send data to WebSocket
                 socket.send(JSON.stringify({ username: username }));
+
+                // Immediately add the "pressed" class for visual feedback
+                const button = document.querySelector('button');
+                button.classList.add('pressed');
+
+                // Remove the "pressed" class after 2 seconds
+                setTimeout(() => button.classList.remove('pressed'), 2000);
             }
         }
     </script>
