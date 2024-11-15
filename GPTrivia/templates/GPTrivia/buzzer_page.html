@@ -22,10 +22,12 @@
 
             // Select the button and add the "pressed" class
             const button = document.querySelector('button');
-            button.classList.add('pressed');
+            if (button) {
+                button.classList.add('pressed'); // Change the button's color
 
-            // Remove the "pressed" class after 2 seconds
-            setTimeout(() => button.classList.remove('pressed'), 2000);
+                // Remove the "pressed" class after 2 seconds
+                setTimeout(() => button.classList.remove('pressed'), 2000);
+            }
         };
 
         function sendPress() {
@@ -34,13 +36,6 @@
             if (username) {
                 // Send data to WebSocket
                 socket.send(JSON.stringify({ username: username }));
-
-                // Immediately add the "pressed" class for visual feedback
-                const button = document.querySelector('button');
-                button.classList.add('pressed');
-
-                // Remove the "pressed" class after 2 seconds
-                setTimeout(() => button.classList.remove('pressed'), 2000);
             }
         }
     </script>
