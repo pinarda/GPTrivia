@@ -1,7 +1,9 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Button Press</title>
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_tags %}
+
+
+{% block extra_meta %}}
     <script>
         const socket = new WebSocket(
             (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
@@ -10,8 +12,14 @@
 
         socket.onmessage = function(e) {
             const data = JSON.parse(e.data);
-            document.getElementById('last-press').textContent = data.username;
+            const lastPressElement = document.getElementById('last-press');
+            lastPressElement.textContent = data.username;
+        
+            // Add a class to trigger CSS transition
+            lastPressElement.classList.add('updated');
+            setTimeout(() => lastPressElement.classList.remove('updated'), 1000); // Remove after animation
         };
+
 
         function sendPress() {
             const username = document.getElementById('username').value;
@@ -20,14 +28,17 @@
             }
         }
     </script>
-</head>
-<body>
-    <h1>Press the Button!</h1>
-    <label for="username">Your Name:</label>
-    <input type="text" id="username" placeholder="Enter your name" />
-    <button onclick="sendPress()">Press Me!</button>
+{% endblock %}
 
-    <h3>Last person to press the button:</h3>
-    <p id="last-press">No one yet</p>
-</body>
-</html>
+{% block content %}
+    <body>
+        <h1>Press the Button!</h1>
+        <label for="username">Your Name:</label>
+        <input type="text" id="username" placeholder="Enter your name" />
+        <button onclick="sendPress()">Press Me!</button>
+
+        <h3>Last person to press the button:</h3>
+        <p id="last-press">No one yet</p>
+    </body>
+    </html>
+{% endblock %}
