@@ -10,6 +10,7 @@
 <script>
     let isLocked = true; // Start with the button locked
     let lockTimeout = null; // Reference to the timeout
+    let hardLock = true; // Prevent unlocking until explicitly unlocked
 
     // WebSocket setup
     const socket = new WebSocket(
@@ -28,6 +29,11 @@
     function sendPress() {
         const mainButton = document.getElementById('action-button');
         const username = document.getElementById('username').value;
+
+        if (hardLock) {
+            console.log("Button is in hard lock. Ignoring press.");
+            return; // Ignore all presses while hard-locked
+        }
 
         if (isLocked) {
             console.log("Button is locked. Resetting lock timeout.");
@@ -68,11 +74,13 @@
             clearTimeout(lockTimeout);
         }
 
-        // Set a new timeout to unlock the button
+        // Set a new timeout to unlock the button (only if not hard-locked)
         lockTimeout = setTimeout(() => {
-            isLocked = false; // Reset the lock state
-            mainButton.classList.remove('locked'); // Remove the visual feedback
-            console.log("Button unlocked.");
+            if (!hardLock) {
+                isLocked = false; // Reset the lock state
+                mainButton.classList.remove('locked'); // Remove the visual feedback
+                console.log("Button unlocked.");
+            }
         }, 2000);
     }
 
@@ -80,11 +88,14 @@
         const mainButton = document.getElementById('action-button');
         const unlockButton = document.getElementById('unlock-button');
 
-        // Reset the lock state and remove visual feedback
+        // Allow the button to unlock and reset the lock state
+        hardLock = false;
         isLocked = false;
+
         if (lockTimeout) {
             clearTimeout(lockTimeout); // Clear any existing timeout
         }
+
         mainButton.classList.remove('locked');
         console.log("Main button manually unlocked.");
 
@@ -102,8 +113,9 @@
 
         // Ensure the locked state is set visually on load
         mainButton.classList.add('locked');
-        console.log("Main button starts locked.");
+        console.log("Main button starts in hard lock.");
     });
+
 </script>
 {% endblock %}
 
