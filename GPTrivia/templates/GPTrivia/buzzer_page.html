@@ -30,8 +30,9 @@
         const username = document.getElementById('username').value;
 
         if (isLocked) {
-            console.log("Button is locked. Ignoring press.");
-            return; // Do not start the timer or process the press
+            console.log("Button is locked. Resetting lock timeout.");
+            resetLockTimeout(); // Reset the unlock timer if clicked while locked
+            return; // Ignore the press
         }
 
         if (username) {
@@ -55,11 +56,11 @@
         mainButton.classList.add('locked');
         console.log("Button locked.");
 
-        // Start the unlock timer
-        startUnlockTimer();
+        // Start or reset the unlock timer
+        resetLockTimeout();
     }
 
-    function startUnlockTimer() {
+    function resetLockTimeout() {
         const mainButton = document.getElementById('action-button');
 
         // Clear any existing timeout
