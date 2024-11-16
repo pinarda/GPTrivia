@@ -52,8 +52,7 @@ class ScoresheetConsumer(AsyncWebsocketConsumer):
 
 class ButtonPressConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.room_name = 'button_press_updates'
-        self.room_group_name = f'button_press_{self.room_name}'
+        self.room_group_name = 'button_group'
 
         # Join room group
         await self.channel_layer.group_add(
@@ -71,21 +70,38 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        username = data.get('username')
 
-        # Broadcast the username to the group
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'button_press_event',
-                'username': username,
-            }
-        )
+        if data['type'] == 'unlock':
+            # Broadcast unlock message to all clients
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'unlock_message',
+                }
+            )
+        elif data['type'] == 'update':
+            username = data['username']
 
-    async def button_press_event(self, event):
+            # Broadcast update message to all clients
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'update_message',
+                    'username': username,
+                }
+            )
+
+    async def unlock_message(self, event):
+        # Send unlock message to WebSocket
+        await self.send(text_data=json.dumps({
+            'type': 'unlock'
+        }))
+
+    async def update_message(self, event):
         username = event['username']
 
-        # Send the updated username to the WebSocket
+        # Send update message to WebSocket
         await self.send(text_data=json.dumps({
-            'username': username
+            'type': 'update',
+            'username': username,
         }))
