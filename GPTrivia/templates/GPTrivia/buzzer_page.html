@@ -17,19 +17,36 @@
         (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
     );
 
+    // Handle incoming WebSocket messages
     socket.onmessage = function (e) {
         const data = JSON.parse(e.data);
-        const lastPressElement = document.getElementById('last-press');
 
-        // Update the "Last person to press the button" text
-        lastPressElement.textContent = data.username;
-        console.log(`Received WebSocket message: ${data.username}`);
+        if (data.type === 'unlock') {
+            console.log("Received unlock signal from WebSocket. Unlocking button.");
 
-        // Lock the button when a WebSocket message is received
-        console.log("Locking button due to WebSocket message.");
-        lockMainButton();
+            // Global unlock for all clients
+            const mainButton = document.getElementById('action-button');
+            hardLock = false;
+            isLocked = false;
+
+            if (lockTimeout) {
+                clearTimeout(lockTimeout); // Clear any existing timeout
+            }
+
+            mainButton.classList.remove('locked');
+            mainButton.textContent = "Push Me!!";
+        } else if (data.type === 'update') {
+            const lastPressElement = document.getElementById('last-press');
+            lastPressElement.textContent = data.username;
+            console.log(`Received WebSocket message: ${data.username}`);
+
+            // Lock the button when a WebSocket message is received
+            console.log("Locking button due to WebSocket message.");
+            lockMainButton();
+        }
     };
 
+    // Send press to WebSocket
     function sendPress() {
         const mainButton = document.getElementById('action-button');
         const username = document.getElementById('username').value;
@@ -46,10 +63,10 @@
         }
 
         if (username) {
-            // Send data to WebSocket
-            const message = { username: username };
+            // Send data to WebSocket with type 'update'
+            const message = { type: 'update', username: username };
             socket.send(JSON.stringify(message));
-            console.log(`Message sent: ${username}`);
+            console.log(`Message sent: ${JSON.stringify(message)}`);
 
             // Lock the button for 2 seconds
             lockMainButton();
@@ -58,6 +75,7 @@
         }
     }
 
+    // Lock the main button and start/reset the unlock timer
     function lockMainButton() {
         const mainButton = document.getElementById('action-button');
         isLocked = true; // Set the lock state
@@ -71,6 +89,7 @@
         resetLockTimeout();
     }
 
+    // Reset the lock timeout and unlock the button after 2 seconds
     function resetLockTimeout() {
         const mainButton = document.getElementById('action-button');
 
@@ -90,12 +109,16 @@
         }, 2000);
     }
 
-
+    // Handle unlock button click
     function unlockMainButton() {
         const mainButton = document.getElementById('action-button');
         const unlockButton = document.getElementById('unlock-button');
 
-        // Allow the button to unlock and reset the lock state
+        // Send unlock signal to the WebSocket
+        socket.send(JSON.stringify({ type: 'unlock' }));
+        console.log("Unlock button pressed. Unlock signal sent to WebSocket.");
+
+        // Local unlock for the user who clicked the unlock button
         hardLock = false;
         isLocked = false;
 
@@ -104,26 +127,28 @@
         }
 
         mainButton.classList.remove('locked');
+        mainButton.textContent = "Push Me!!";
         console.log("Main button manually unlocked.");
 
-        // Disable the unlock button
-        unlockButton.disabled = true;
+        // Disable the unlock button for the local user
+        unlockButton.disabled = false;
         console.log("Unlock button disabled.");
     }
 
+    // Set up event listeners on DOM content load
     document.addEventListener('DOMContentLoaded', () => {
         const mainButton = document.getElementById('action-button');
         mainButton.addEventListener('click', sendPress);
 
         const unlockButton = document.getElementById('unlock-button');
-        unlockButton.addEventListener('click', unlockMainButton);
+        if (unlockButton) {
+            unlockButton.addEventListener('click', unlockMainButton);
+        }
 
         // Ensure the locked state is set visually on load
         mainButton.classList.add('locked');
         console.log("Main button starts in hard lock.");
     });
-
-
 </script>
 {% endblock %}
 
@@ -139,7 +164,9 @@
             value="{{ username|default:'unknown' }}"
         />
         <button id="action-button">WAIT</button>
-        <button id="unlock-button">Unlock Main Button</button>
+        {% if username == "Alex" %}
+            <button id="unlock-button">Unlock Main Button</button>
+        {% endif %}
         <h3>Last person to press the button:</h3>
         <p id="last-press">No one yet</p>
     </div>
