@@ -50,14 +50,17 @@
     function sendPress() {
         const mainButton = document.getElementById('action-button');
         const username = document.getElementById('username').value;
+        const lockedSound = document.getElementById('locked-sound'); // Get the audio element
 
         if (hardLock) {
             console.log("Button is in hard lock. Ignoring press.");
+            lockedSound.play(); // Play the sound effect
             return; // Ignore all presses while hard-locked
         }
 
         if (isLocked) {
             console.log("Button is locked. Resetting lock timeout.");
+            lockedSound.play(); // Play the sound effect
             resetLockTimeout(); // Reset the unlock timer if clicked while locked
             return; // Ignore the press
         }
@@ -170,6 +173,8 @@
         <h3>Last person to press the button:</h3>
         <p id="last-press">No one yet</p>
     </div>
+
+    <audio id="locked-sound" src="{% static 'audio/buzzer.mp3' %}" preload="auto"></audio>
 </body>
 </html>
 {% endblock %}
