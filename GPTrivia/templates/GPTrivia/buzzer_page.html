@@ -17,7 +17,6 @@
         (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
     );
 
-    // Handle incoming WebSocket messages
     socket.onmessage = function (e) {
         const data = JSON.parse(e.data);
 
@@ -35,6 +34,16 @@
 
             mainButton.classList.remove('locked');
             mainButton.textContent = "Push Me!!";
+        } else if (data.type === 'lock') {
+            console.log("Received lock signal from WebSocket. Locking button.");
+
+            // Global lock for all clients
+            const mainButton = document.getElementById('action-button');
+            hardLock = true;
+            isLocked = true;
+
+            mainButton.classList.add('locked');
+            mainButton.textContent = "WAIT";
         } else if (data.type === 'update') {
             const lastPressElement = document.getElementById('last-press');
             lastPressElement.textContent = data.username;
@@ -43,6 +52,15 @@
             // Lock the button when a WebSocket message is received
             console.log("Locking button due to WebSocket message.");
             lockMainButton();
+        } else if (data.type === 'host_options_toggle') {
+            console.log("Received host options toggle signal from WebSocket.");
+
+            // Close host options globally
+            const hostOptions = document.getElementById('host-options');
+            if (!hostOptions.classList.contains('hidden')) {
+                hostOptions.classList.add('hidden');
+                console.log("Host options hidden.");
+            }
         }
     };
 
