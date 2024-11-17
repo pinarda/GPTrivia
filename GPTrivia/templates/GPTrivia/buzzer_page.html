@@ -154,6 +154,7 @@
     function hardLockMainButton() {
         const mainButton = document.getElementById('action-button');
         const lockButton = document.getElementById('lock-button');
+        socket.send(JSON.stringify({ type: 'lock' }));
 
         // Send lock signal (optional, if you want to notify the WebSocket)
         console.log("Lock button pressed.");
@@ -172,6 +173,23 @@
             unlockButton.disabled = false;
             console.log("Unlock button enabled.");
         }
+    }
+
+    // Toggle host options visibility and notify WebSocket
+    function toggleHostOptions() {
+        const hostOptions = document.getElementById('host-options');
+
+        if (hostOptions.classList.contains('hidden')) {
+            hostOptions.classList.remove('hidden');
+            console.log("Host options shown locally.");
+        } else {
+            hostOptions.classList.add('hidden');
+            console.log("Host options hidden locally.");
+        }
+
+        // Notify WebSocket
+        socket.send(JSON.stringify({ type: 'host_options_toggle' })); // Correctly sending the host toggle signal
+        console.log("Host options toggle signal sent to WebSocket.");
     }
 
 
@@ -196,14 +214,7 @@
             lockButton.addEventListener('click', hardLockMainButton);
         }
 
-        // Toggle host options visibility
-        showHostOptionsButton.addEventListener('click', () => {
-            hostOptions.classList.toggle('hidden'); // Toggle visibility
-            console.log(
-                "Host options toggled. Host options are now " +
-                    (hostOptions.classList.contains('hidden') ? "hidden" : "visible")
-            );
-        });
+        showHostOptionsButton.addEventListener('click', toggleHostOptions);
 
         // Ensure the locked state is set visually on load
         mainButton.classList.add('locked');
