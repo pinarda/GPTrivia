@@ -72,36 +72,36 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
 
         if data['type'] == 'unlock':
-            # Broadcast unlock message to all clients
             await self.channel_layer.group_send(
                 self.room_group_name,
-                {
-                    'type': 'unlock_message',
-                }
+                {'type': 'unlock_message'}
+            )
+        elif data['type'] == 'lock':
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {'type': 'lock_message'}
             )
         elif data['type'] == 'update':
             username = data['username']
-
-            # Broadcast update message to all clients
             await self.channel_layer.group_send(
                 self.room_group_name,
-                {
-                    'type': 'update_message',
-                    'username': username,
-                }
+                {'type': 'update_message', 'username': username}
+            )
+        elif data['type'] == 'host_options_toggle':
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {'type': 'host_options_toggle_message'}
             )
 
+    async def lock_message(self, event):
+        await self.send(text_data=json.dumps({'type': 'lock'}))
+
     async def unlock_message(self, event):
-        # Send unlock message to WebSocket
-        await self.send(text_data=json.dumps({
-            'type': 'unlock'
-        }))
+        await self.send(text_data=json.dumps({'type': 'unlock'}))
 
     async def update_message(self, event):
         username = event['username']
+        await self.send(text_data=json.dumps({'type': 'update', 'username': username}))
 
-        # Send update message to WebSocket
-        await self.send(text_data=json.dumps({
-            'type': 'update',
-            'username': username,
-        }))
+    async def host_options_toggle_message(self, event):
+        await self.send(text_data=json.dumps({'type': 'host_options_toggle'}))
