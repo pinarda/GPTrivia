@@ -56,6 +56,18 @@
     margin-top: 20px;
 }
 
+#lock-button {
+    background-color: #2196F3; /* Blue background */
+    color: white;
+    margin-top: 20px;
+}
+
+#show-host-options-button {
+    background-color: #2196F3; /* Blue background */
+    color: white;
+    margin-top: 20px;
+}
+
 #unlock-button:hover:not(:disabled) {
     background-color: #1976D2; /* Darker blue on hover */
 }

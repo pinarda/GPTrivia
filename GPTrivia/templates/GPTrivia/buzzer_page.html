@@ -12,6 +12,7 @@
     let lockTimeout = null; // Reference to the timeout
     let hardLock = true; // Prevent unlocking until explicitly unlocked
 
+    const clientId = Math.random().toString(36).substr(2, 9);
     // WebSocket setup
     const socket = new WebSocket(
         (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
@@ -20,6 +21,10 @@
     socket.onmessage = function (e) {
         const data = JSON.parse(e.data);
 
+        if (data.sender_id === clientId) {
+            console.log("Ignoring message from self.");
+            return;
+        }
         if (data.type === 'unlock') {
             console.log("Received unlock signal from WebSocket. Unlocking button.");
 
@@ -80,7 +85,7 @@
 
         if (username) {
             // Send data to WebSocket with type 'update'
-            const message = { type: 'update', username: username };
+            const message = { type: 'update', username: username, sender_id: clientId };
             socket.send(JSON.stringify(message));
             console.log(`Message sent: ${JSON.stringify(message)}`);
 
@@ -131,7 +136,7 @@
         const unlockButton = document.getElementById('unlock-button');
 
         // Send unlock signal to the WebSocket
-        socket.send(JSON.stringify({ type: 'unlock' }));
+        socket.send(JSON.stringify({ type: 'unlock', sender_id: clientId }));
         console.log("Unlock button pressed. Unlock signal sent to WebSocket.");
 
         // Local unlock for the user who clicked the unlock button
@@ -154,7 +159,7 @@
     function hardLockMainButton() {
         const mainButton = document.getElementById('action-button');
         const lockButton = document.getElementById('lock-button');
-        socket.send(JSON.stringify({ type: 'lock' }));
+        socket.send(JSON.stringify({ type: 'lock', sender_id: clientId }));
 
         // Send lock signal (optional, if you want to notify the WebSocket)
         console.log("Lock button pressed.");
@@ -188,7 +193,7 @@
         }
 
         // Notify WebSocket
-        socket.send(JSON.stringify({ type: 'host_options_toggle' })); // Correctly sending the host toggle signal
+        socket.send(JSON.stringify({ type: 'host_options_toggle', sender_id: clientId })); // Correctly sending the host toggle signal
         console.log("Host options toggle signal sent to WebSocket.");
     }
 
