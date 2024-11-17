@@ -152,16 +152,16 @@
         mainButton.classList.add('locked');
         console.log("Main button starts in hard lock.");
     });
-
+    
     document.addEventListener('DOMContentLoaded', () => {
         const showHostOptionsButton = document.getElementById('show-host-options-button');
         const unlockButton = document.getElementById('unlock-button');
-
+    
         showHostOptionsButton.addEventListener('click', () => {
             unlockButton.classList.toggle('hidden'); // Toggle visibility
             console.log("Host options toggled. Unlock button is now " + (unlockButton.classList.contains('hidden') ? "hidden" : "visible"));
         });
-
+    
         // Add other event listeners (e.g., for unlocking)
         if (unlockButton) {
             unlockButton.addEventListener('click', unlockMainButton);
@@ -174,16 +174,18 @@
 {% block content %}
 <body>
     <h1>Press the Button!</h1>
-    <div>
+    <label for="username">Your Name:</label>
+    <div id="buttondiv">
         <input
             type="text"
             id="username"
             placeholder="Enter your name"
             value="{{ username|default:'unknown' }}"
         />
-        <button id="action-button">Push Me!!</button>
-        <button id="show-host-options-button">Show Host Options</button>
-        <button id="unlock-button" class="hidden">Unlock Main Button</button>
+        <button id="action-button">WAIT</button>
+        {% if username == "Alex" %}
+            <button id="unlock-button">Unlock Main Button</button>
+        {% endif %}
         <h3>Last person to press the button:</h3>
         <p id="last-press">No one yet</p>
     </div>

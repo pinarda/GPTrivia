@@ -52,6 +52,9 @@
                 <div class="makerbtn">
                     <a style="color: white; font-size: large" href={% url 'round_maker' %}>S.W.O.O.P.</a>
                 </div>
+                <div class="btnbtn">
+                    <a style="color: white;" href={% url 'button' %}>Button</a>
+                </div>
                 {% if user.is_authenticated %}
                     <div class="profilebtn">
                         <a style="color: white; font-size: large" href="{% url 'player_profile' player_name=user.username %}">{{ user.username }}'s Profile</a>
@@ -80,6 +83,9 @@
             </div>
             <div class="makerbtn">
                 <a style="color: white;" href={% url 'round_maker' %}>S.W.O.O.P.</a>
+            </div>
+            <div class="btnbtn">
+                <a style="color: white;" href={% url 'button' %}>Button</a>
             </div>
             {% if user.is_authenticated %}
                 <div class="profilebtn">

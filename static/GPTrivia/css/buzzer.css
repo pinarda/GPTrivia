@@ -32,6 +32,11 @@
     align-items: center;
 }
 
+.hidden {
+    display: none;
+}
+
+
 /* Hover state */
 #action-button:hover {
     background-color: #45a049; /* Darker green */
