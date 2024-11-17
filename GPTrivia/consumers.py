@@ -74,34 +74,35 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
         if data['type'] == 'unlock':
             await self.channel_layer.group_send(
                 self.room_group_name,
-                {'type': 'unlock_message'}
+                {'type': 'unlock_message', 'sender_id': data.get('sender_id')}
             )
         elif data['type'] == 'lock':
             await self.channel_layer.group_send(
                 self.room_group_name,
-                {'type': 'lock_message'}
+                {'type': 'lock_message', 'sender_id': data.get('sender_id')}
             )
         elif data['type'] == 'update':
             username = data['username']
             await self.channel_layer.group_send(
                 self.room_group_name,
-                {'type': 'update_message', 'username': username}
+                {'type': 'update_message', 'username': username, 'sender_id': data.get('sender_id')}
             )
         elif data['type'] == 'host_options_toggle':
             await self.channel_layer.group_send(
                 self.room_group_name,
-                {'type': 'host_options_toggle_message'}
+                {'type': 'host_options_toggle_message', 'sender_id': data.get('sender_id')}
             )
 
     async def lock_message(self, event):
-        await self.send(text_data=json.dumps({'type': 'lock'}))
+        await self.send(text_data=json.dumps({'type': 'lock', 'sender_id': event.get('sender_id')}))
 
     async def unlock_message(self, event):
-        await self.send(text_data=json.dumps({'type': 'unlock'}))
+        await self.send(text_data=json.dumps({'type': 'unlock', 'sender_id': event.get('sender_id')}))
 
     async def update_message(self, event):
         username = event['username']
-        await self.send(text_data=json.dumps({'type': 'update', 'username': username}))
+        await self.send(
+            text_data=json.dumps({'type': 'update', 'username': username, 'sender_id': event.get('sender_id')}))
 
     async def host_options_toggle_message(self, event):
-        await self.send(text_data=json.dumps({'type': 'host_options_toggle'}))
+        await self.send(text_data=json.dumps({'type': 'host_options_toggle', 'sender_id': event.get('sender_id')}))
