@@ -37,13 +37,8 @@
         } else if (data.type === 'lock') {
             console.log("Received lock signal from WebSocket. Locking button.");
 
-            // Global lock for all clients
-            const mainButton = document.getElementById('action-button');
-            hardLock = true;
-            isLocked = true;
+            hardLockMainButton()
 
-            mainButton.classList.add('locked');
-            mainButton.textContent = "WAIT";
         } else if (data.type === 'update') {
             const lastPressElement = document.getElementById('last-press');
             lastPressElement.textContent = data.username;
@@ -156,7 +151,7 @@
         console.log("Unlock button disabled.");
     }
 
-    function lockMainButton() {
+    function hardLockMainButton() {
         const mainButton = document.getElementById('action-button');
         const lockButton = document.getElementById('lock-button');
 
@@ -198,7 +193,7 @@
 
         // Add lock button click listener
         if (lockButton) {
-            lockButton.addEventListener('click', lockMainButton);
+            lockButton.addEventListener('click', hardLockMainButton);
         }
 
         // Toggle host options visibility
