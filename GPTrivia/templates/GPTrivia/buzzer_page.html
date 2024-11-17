@@ -138,34 +138,63 @@
         console.log("Unlock button disabled.");
     }
 
+    function lockMainButton() {
+        const mainButton = document.getElementById('action-button');
+        const lockButton = document.getElementById('lock-button');
+
+        // Send lock signal (optional, if you want to notify the WebSocket)
+        console.log("Lock button pressed.");
+
+        // Local lock for the user who clicked the lock button
+        hardLock = true;
+        isLocked = true;
+
+        mainButton.classList.add('locked');
+        mainButton.textContent = "WAIT";
+        console.log("Main button hard-locked.");
+
+        // Enable the unlock button (in case it was disabled)
+        const unlockButton = document.getElementById('unlock-button');
+        if (unlockButton) {
+            unlockButton.disabled = false;
+            console.log("Unlock button enabled.");
+        }
+    }
+
+
     // Set up event listeners on DOM content load
     document.addEventListener('DOMContentLoaded', () => {
         const mainButton = document.getElementById('action-button');
+        const unlockButton = document.getElementById('unlock-button');
+        const lockButton = document.getElementById('lock-button');
+        const showHostOptionsButton = document.getElementById('show-host-options-button');
+        const hostOptions = document.getElementById('host-options');
+
+        // Add main button click listener
         mainButton.addEventListener('click', sendPress);
 
-        const unlockButton = document.getElementById('unlock-button');
+        // Add unlock button click listener
         if (unlockButton) {
             unlockButton.addEventListener('click', unlockMainButton);
         }
+
+        // Add lock button click listener
+        if (lockButton) {
+            lockButton.addEventListener('click', lockMainButton);
+        }
+
+        // Toggle host options visibility
+        showHostOptionsButton.addEventListener('click', () => {
+            hostOptions.classList.toggle('hidden'); // Toggle visibility
+            console.log(
+                "Host options toggled. Host options are now " +
+                    (hostOptions.classList.contains('hidden') ? "hidden" : "visible")
+            );
+        });
 
         // Ensure the locked state is set visually on load
         mainButton.classList.add('locked');
         console.log("Main button starts in hard lock.");
-    });
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const showHostOptionsButton = document.getElementById('show-host-options-button');
-        const unlockButton = document.getElementById('unlock-button');
-
-        showHostOptionsButton.addEventListener('click', () => {
-            unlockButton.classList.toggle('hidden'); // Toggle visibility
-            console.log("Host options toggled. Unlock button is now " + (unlockButton.classList.contains('hidden') ? "hidden" : "visible"));
-        });
-
-        // Add other event listeners (e.g., for unlocking)
-        if (unlockButton) {
-            unlockButton.addEventListener('click', unlockMainButton);
-        }
     });
 
 </script>
@@ -174,8 +203,8 @@
 {% block content %}
 <body>
     <h1>Press the Button!</h1>
-    <label for="username">Your Name:</label>
     <div id="buttondiv">
+        <label for="username">Your Name:</label>
         <input
             type="text"
             id="username"
@@ -184,7 +213,10 @@
         />
         <button id="action-button">WAIT</button>
         <button id="show-host-options-button">Show Host Options</button>
-        <button id="unlock-button" class="hidden">Unlock Main Button</button>
+        <div id="host-options" class="hidden">
+            <button id="unlock-button">Unlock Main Button</button>
+            <button id="lock-button">Lock Main Button</button>
+        </div>
         <h3>Last person to press the button:</h3>
         <p id="last-press">No one yet</p>
     </div>
