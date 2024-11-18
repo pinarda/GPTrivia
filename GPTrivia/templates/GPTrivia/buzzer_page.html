@@ -21,11 +21,12 @@
     socket.onmessage = function (e) {
         const data = JSON.parse(e.data);
 
-        if (data.sender_id === clientId) {
-            console.log("Ignoring message from self.");
-            return;
-        }
+
         if (data.type === 'unlock') {
+            if (data.sender_id === clientId) {
+                console.log("Ignoring message from self.");
+                return;
+            }
             console.log("Received unlock signal from WebSocket. Unlocking button.");
 
             // Global unlock for all clients
@@ -40,6 +41,10 @@
             mainButton.classList.remove('locked');
             mainButton.textContent = "Push Me!!";
         } else if (data.type === 'lock') {
+            if (data.sender_id === clientId) {
+                console.log("Ignoring message from self.");
+                return;
+            }
             console.log("Received lock signal from WebSocket. Locking button.");
             const mainButton = document.getElementById('action-button');
             const lockButton = document.getElementById('lock-button');
@@ -71,6 +76,10 @@
             console.log("Locking button due to WebSocket message.");
             lockMainButton();
         } else if (data.type === 'host_options_toggle') {
+            if (data.sender_id === clientId) {
+                console.log("Ignoring message from self.");
+                return;
+            }
             console.log("Received host options toggle signal from WebSocket.");
 
             // Close host options globally
