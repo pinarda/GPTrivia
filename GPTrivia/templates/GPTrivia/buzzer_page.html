@@ -88,6 +88,7 @@
                 hostOptions.classList.add('hidden');
                 console.log("Host options hidden.");
             }
+            const mainButton = document.getElementById('action-button');
             mainButton.removeAttribute('disabled'); // Ensure the button is enabled
         }
     };
@@ -216,14 +217,17 @@
         if (hostOptions.classList.contains('hidden')) {
             hostOptions.classList.remove('hidden');
             console.log("Host options shown locally.");
+            mainButton.setAttribute('disabled', 'true'); // Disable the button
+            console.log("Main button disabled for local user after toggling host options.");
+
         } else {
             hostOptions.classList.add('hidden');
             console.log("Host options hidden locally.");
+            mainButton.removeAttribute("disabled");
+            console.log("Main button reenabled.")
         }
 
-        // Disable the main button for this user
-        mainButton.setAttribute('disabled', 'true'); // Disable the button
-        console.log("Main button disabled for local user after toggling host options.");
+        
 
         // Notify WebSocket to enable the button for other users
         socket.send(JSON.stringify({ type: 'host_options_toggle', sender_id: clientId }));
