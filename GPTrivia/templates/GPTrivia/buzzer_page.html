@@ -97,6 +97,9 @@
             }
             const mainButton = document.getElementById('action-button');
             mainButton.removeAttribute('disabled'); // Ensure the button is enabled
+        } else if (data.type === 'reset_max_time') {
+            console.log("Received reset signal from WebSocket. Resetting max_time.");
+            max_time = 0; // Reset the variable
         }
     };
 

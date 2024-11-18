@@ -2,6 +2,7 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
 import time
+import asyncio
 
 class ScoresheetConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -52,6 +53,7 @@ class ScoresheetConsumer(AsyncWebsocketConsumer):
 
 
 class ButtonPressConsumer(AsyncWebsocketConsumer):
+    periodic_task = None  # Reference to the periodic task
     async def connect(self):
         self.room_group_name = 'button_group'
 
@@ -62,12 +64,23 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
         )
         await self.accept()
 
+        # Start periodic task for resetting max_time
+        if not type(self).periodic_task:
+            type(self).periodic_task = asyncio.create_task(self.periodic_reset())
+
+
     async def disconnect(self, close_code):
         # Leave room group
         await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
         )
+
+        # Dynamically reference the class to manage periodic_task
+        if not self.channel_layer.groups[self.room_group_name]:  # Check if group is empty
+            if type(self).periodic_task:
+                type(self).periodic_task.cancel()
+                type(self).periodic_task = None
 
     async def receive(self, text_data):
         data = json.loads(text_data)
@@ -103,6 +116,28 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
                 self.room_group_name,
                 {'type': 'host_options_toggle_message', 'sender_id': data.get('sender_id')}
             )
+
+    async def periodic_reset(self):
+        while True:
+            try:
+                # Broadcast a reset message to all clients
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'reset_message'
+                    }
+                )
+                await asyncio.sleep(2)  # Send reset message every 60 seconds
+            except asyncio.CancelledError:
+                # Handle task cancellation
+                print("Periodic reset task canceled.")
+                break
+
+    async def reset_message(self, event):
+        # Send reset message to the WebSocket
+        await self.send(text_data=json.dumps({
+            'type': 'reset_max_time'
+        }))
 
     async def lock_message(self, event):
         await self.send(text_data=json.dumps({'type': 'lock', 'sender_id': event.get('sender_id')}))
