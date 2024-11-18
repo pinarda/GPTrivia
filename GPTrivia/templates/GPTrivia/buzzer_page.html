@@ -72,10 +72,10 @@
 
         } else if (data.type === 'update') {
             const lastPressElement = document.getElementById('last-press');
-            if (data.timestamp < max_time) {
+            if (data.timestamp_diff < max_time) {
                 lastPressElement.textContent = data.username;
             }
-            max_time = data.timestamp;
+            max_time = data.timestamp_diff;
             console.log(`Received WebSocket message: ${data.username}`);
 
             // Lock the button when a WebSocket message is received
@@ -122,7 +122,7 @@
             const timestamp = Date.now(); // Current time in milliseconds
             // Send data to WebSocket with type 'update'
             const difference = timestamp - unlock_time; // Correct calculation
-            const message = { type: 'update', username: username, sender_id: clientId, timestamp: difference };
+            const message = { type: 'update', username: username, sender_id: clientId, timestamp_diff: difference };
             socket.send(JSON.stringify(message));
             console.log(`Message sent: ${JSON.stringify(message)}`);
 

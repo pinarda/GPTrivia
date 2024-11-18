@@ -84,7 +84,7 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
             )
         elif data['type'] == 'update':
             username = data['username']
-            client_timestamp = data.get('timestamp')
+            client_timestamp = data.get('timestamp_diff')
 
             if client_timestamp:
                 server_time = time.time() * 1000  # Current server time in milliseconds
@@ -96,7 +96,7 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
 
             await self.channel_layer.group_send(
                 self.room_group_name,
-                {'type': 'update_message', 'username': username, 'sender_id': data.get('sender_id'), 'timestamp': client_timestamp}
+                {'type': 'update_message', 'username': username, 'sender_id': data.get('sender_id'), 'timestamp_diff': client_timestamp}
             )
         elif data['type'] == 'host_options_toggle':
             await self.channel_layer.group_send(
