@@ -88,6 +88,7 @@
                 hostOptions.classList.add('hidden');
                 console.log("Host options hidden.");
             }
+            mainButton.removeAttribute('disabled'); // Ensure the button is enabled
         }
     };
 
@@ -210,6 +211,7 @@
     // Toggle host options visibility and notify WebSocket
     function toggleHostOptions() {
         const hostOptions = document.getElementById('host-options');
+        const mainButton = document.getElementById('action-button');
 
         if (hostOptions.classList.contains('hidden')) {
             hostOptions.classList.remove('hidden');
@@ -219,8 +221,12 @@
             console.log("Host options hidden locally.");
         }
 
-        // Notify WebSocket
-        socket.send(JSON.stringify({ type: 'host_options_toggle', sender_id: clientId })); // Correctly sending the host toggle signal
+        // Disable the main button for this user
+        mainButton.setAttribute('disabled', 'true'); // Disable the button
+        console.log("Main button disabled for local user after toggling host options.");
+
+        // Notify WebSocket to enable the button for other users
+        socket.send(JSON.stringify({ type: 'host_options_toggle', sender_id: clientId }));
         console.log("Host options toggle signal sent to WebSocket.");
     }
 
