@@ -10,7 +10,7 @@
 }
 
 
-#action-button, #unlock-button {
+#action-button, #unlock-button, #lock-button, #show-host-options-button {
     font-size: 1rem;
     padding: 10px 20px;
     border: none;
