@@ -44,6 +44,7 @@
             mainButton.classList.remove('locked');
             mainButton.textContent = "Push Me!!";
         } else if (data.type === 'lock') {
+            max_time = 100000000000000;
             if (data.sender_id === clientId) {
                 console.log("Ignoring message from self.");
                 return;
