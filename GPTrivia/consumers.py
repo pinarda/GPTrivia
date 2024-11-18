@@ -54,6 +54,7 @@ class ScoresheetConsumer(AsyncWebsocketConsumer):
 
 class ButtonPressConsumer(AsyncWebsocketConsumer):
     periodic_task = None  # Reference to the periodic task
+    last_update_time = 0  # Class-level variable to track the last update time
     async def connect(self):
         self.room_group_name = 'button_group'
 
@@ -106,6 +107,8 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
                 # Log and store the RTT
                 # self.connected_clients[self.client_id]["rtt"] = rtt
                 # print(f"RTT for client {self.client_id}: {rtt} ms")
+            type(self).last_update_time = time.time()
+            print(f"Update message received. Last update time set to {type(self).last_update_time}")
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -120,14 +123,19 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
     async def periodic_reset(self):
         while True:
             try:
-                # Broadcast a reset message to all clients
-                await self.channel_layer.group_send(
-                    self.room_group_name,
-                    {
-                        'type': 'reset_message'
-                    }
-                )
-                await asyncio.sleep(2)  # Send reset message every 60 seconds
+                current_time = time.time()
+                # Only send reset if no update message received in the last 2 seconds
+                if current_time - type(self).last_update_time > 2:
+                    print("Sending periodic reset message (no updates in last 2 seconds).")
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'reset_message'
+                        }
+                    )
+                else:
+                    print("Skipping periodic reset (recent update received).")
+                await asyncio.sleep(2)  # Check every 2 seconds
             except asyncio.CancelledError:
                 # Handle task cancellation
                 print("Periodic reset task canceled.")
