@@ -5,7 +5,6 @@
     align-items: center; /* Center horizontally */
     justify-content: center; /* Center vertically */
     margin: auto; /* Center the div itself */
-    height: 50vh; /* Adjust to suit your desired size */
     border: 1px solid transparent; /* Optional: For alignment debugging */
 }
 

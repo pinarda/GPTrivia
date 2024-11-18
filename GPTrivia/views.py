@@ -15,6 +15,7 @@ import pandas as pd
 import numpy as np
 from django.views import View
 import os
+import string
 import random
 from autogen import AssistantAgent, UserProxyAgent
 import autogen
@@ -1125,9 +1126,12 @@ def scoresheet(request):
 
 
 def buzzer_page(request):
-    context = {
-        'username': request.user.username if request.user.is_authenticated else None
-    }
+    def generate_random_suffix(length=5):
+        # Generate a random string of uppercase letters and digits
+        return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
+    username = request.user.username if request.user.is_authenticated else f"unknown_{generate_random_suffix()}"
+    context = {'username': username}
     return render(request, 'GPTrivia/buzzer_page.html', context)
 
 @login_required

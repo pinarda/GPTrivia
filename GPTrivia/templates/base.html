@@ -41,32 +41,32 @@
             </div>
             <div class="menu-buttons" id="menu-buttons" style="display: flex; flex-direction:row; justify-content: space-between; max-width: 700px">
                 <div class="scorebtn">
-                    <a style="color: white; font-size: large" href={% url 'scoresheet_new' %}>Scoresheet</a>
+                    <a style="color: white;" href={% url 'scoresheet_new' %}>Scoresheet</a>
                 </div>
                 <div class="analysisbtn">
-                    <a style="color: white; font-size: large" href={% url 'player_analysis' %}>Analysis</a>
+                    <a style="color: white;" href={% url 'player_analysis' %}>Analysis</a>
                 </div>
                 <div class="roundsbtn">
-                    <a style="color: white; font-size: large" href={% url 'rounds_list' %}>Rounds List</a>
+                    <a style="color: white;" href={% url 'rounds_list' %}>Rounds List</a>
                 </div>
                 <div class="makerbtn">
-                    <a style="color: white; font-size: large" href={% url 'round_maker' %}>S.W.O.O.P.</a>
+                    <a style="color: white;" href={% url 'round_maker' %}>S.W.O.O.P.</a>
                 </div>
                 <div class="btnbtn">
                     <a style="color: white;" href={% url 'button_page' %}>Button</a>
                 </div>
                 {% if user.is_authenticated %}
                     <div class="profilebtn">
-                        <a style="color: white; font-size: large" href="{% url 'player_profile' player_name=user.username %}">{{ user.username }}'s Profile</a>
+                        <a style="color: white;" href="{% url 'player_profile' player_name=user.username %}">{{ user.username }}'s Profile</a>
                     </div>
                 {% endif %}
                 {% if user.is_authenticated %}
                     <div class="logoutbtn">
-                        <a style="color: white; font-size: large" href="{% url 'logout' %}">Logout</a>
+                        <a style="color: white;" href="{% url 'logout' %}">Logout</a>
                     </div>
                 {% else %}
                     <div class="loginbtn">
-                        <a style="color: white; font-size: large" href="{% url 'login' %}">Login</a>
+                        <a style="color: white;" href="{% url 'login' %}">Login</a>
                     </div>
                 {%  endif %}
             </div>
