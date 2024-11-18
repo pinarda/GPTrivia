@@ -86,13 +86,13 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
             username = data['username']
             client_timestamp = data.get('timestamp_diff')
 
-            if client_timestamp:
-                server_time = time.time() * 1000  # Current server time in milliseconds
-                rtt = server_time - client_timestamp
+            # if client_timestamp:
+            #     server_time = time.time() * 1000  # Current server time in milliseconds
+                # rtt = server_time - client_timestamp
 
                 # Log and store the RTT
-                self.connected_clients[self.client_id]["rtt"] = rtt
-                print(f"RTT for client {self.client_id}: {rtt} ms")
+                # self.connected_clients[self.client_id]["rtt"] = rtt
+                # print(f"RTT for client {self.client_id}: {rtt} ms")
 
             await self.channel_layer.group_send(
                 self.room_group_name,
