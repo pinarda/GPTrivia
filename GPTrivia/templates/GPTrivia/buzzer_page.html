@@ -113,8 +113,9 @@
         }
 
         if (username) {
+            const timestamp = Date.now(); // Current time in milliseconds
             // Send data to WebSocket with type 'update'
-            const message = { type: 'update', username: username, sender_id: clientId };
+            const message = { type: 'update', username: username, sender_id: clientId, timestamp: timestamp };
             socket.send(JSON.stringify(message));
             console.log(`Message sent: ${JSON.stringify(message)}`);
 

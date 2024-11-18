@@ -1,6 +1,7 @@
 # consumers.py
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
+import time
 
 class ScoresheetConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -83,6 +84,16 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
             )
         elif data['type'] == 'update':
             username = data['username']
+            client_timestamp = data.get('timestamp')
+
+            if client_timestamp:
+                server_time = time.time() * 1000  # Current server time in milliseconds
+                rtt = server_time - client_timestamp
+
+                # Log and store the RTT
+                self.connected_clients[self.client_id]["rtt"] = rtt
+                print(f"RTT for client {self.client_id}: {rtt} ms")
+
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {'type': 'update_message', 'username': username, 'sender_id': data.get('sender_id')}
