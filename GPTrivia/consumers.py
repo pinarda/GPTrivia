@@ -96,7 +96,7 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
 
             await self.channel_layer.group_send(
                 self.room_group_name,
-                {'type': 'update_message', 'username': username, 'sender_id': data.get('sender_id')}
+                {'type': 'update_message', 'username': username, 'sender_id': data.get('sender_id'), 'timestamp': client_timestamp}
             )
         elif data['type'] == 'host_options_toggle':
             await self.channel_layer.group_send(
