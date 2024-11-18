@@ -113,7 +113,7 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
     async def update_message(self, event):
         username = event['username']
         await self.send(
-            text_data=json.dumps({'type': 'update', 'username': username, 'sender_id': event.get('sender_id')}))
+            text_data=json.dumps({'type': 'update', 'username': username, 'sender_id': event.get('sender_id'), 'timestamp': event.get('timestamp_diff')}))
 
     async def host_options_toggle_message(self, event):
         await self.send(text_data=json.dumps({'type': 'host_options_toggle', 'sender_id': event.get('sender_id')}))
