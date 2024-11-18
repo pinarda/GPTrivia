@@ -41,8 +41,26 @@
             mainButton.textContent = "Push Me!!";
         } else if (data.type === 'lock') {
             console.log("Received lock signal from WebSocket. Locking button.");
+            const mainButton = document.getElementById('action-button');
+            const lockButton = document.getElementById('lock-button');
 
-            hardLockMainButton()
+            // Send lock signal (optional, if you want to notify the WebSocket)
+            console.log("Lock button pressed.");
+
+            // Local lock for the user who clicked the lock button
+            hardLock = true;
+            isLocked = true;
+
+            mainButton.classList.add('locked');
+            mainButton.textContent = "WAIT";
+            console.log("Main button hard-locked.");
+
+            // Enable the unlock button (in case it was disabled)
+            const unlockButton = document.getElementById('unlock-button');
+            if (unlockButton) {
+                unlockButton.disabled = false;
+                console.log("Unlock button enabled.");
+            }
 
         } else if (data.type === 'update') {
             const lastPressElement = document.getElementById('last-press');
