@@ -72,10 +72,10 @@
 
         } else if (data.type === 'update') {
             const lastPressElement = document.getElementById('last-press');
-            if (data.timestamp_diff < max_time) {
+            if (data.timestamp < max_time) {
                 lastPressElement.textContent = data.username;
             }
-            max_time = data.timestamp_diff;
+            max_time = data.timestamp;
             console.log(`Received WebSocket message: ${data.username}`);
 
             // Lock the button when a WebSocket message is received
