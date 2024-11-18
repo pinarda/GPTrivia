@@ -11,6 +11,8 @@
     let isLocked = true; // Start with the button locked
     let lockTimeout = null; // Reference to the timeout
     let hardLock = true; // Prevent unlocking until explicitly unlocked
+    let unlock_time = 0;
+    let max_time = 100000000000000;
 
     const clientId = Math.random().toString(36).substr(2, 9);
     // WebSocket setup
@@ -38,6 +40,7 @@
                 clearTimeout(lockTimeout); // Clear any existing timeout
             }
 
+            unlock_time = Date.now()
             mainButton.classList.remove('locked');
             mainButton.textContent = "Push Me!!";
         } else if (data.type === 'lock') {
@@ -69,7 +72,10 @@
 
         } else if (data.type === 'update') {
             const lastPressElement = document.getElementById('last-press');
-            lastPressElement.textContent = data.username;
+            if (data.timestamp < max_time) {
+                lastPressElement.textContent = data.username;
+            }
+            max_time = data.timestamp;
             console.log(`Received WebSocket message: ${data.username}`);
 
             // Lock the button when a WebSocket message is received
@@ -115,7 +121,8 @@
         if (username) {
             const timestamp = Date.now(); // Current time in milliseconds
             // Send data to WebSocket with type 'update'
-            const message = { type: 'update', username: username, sender_id: clientId, timestamp: timestamp };
+            const difference = timestamp - unlock_time; // Correct calculation
+            const message = { type: 'update', username: username, sender_id: clientId, timestamp: difference };
             socket.send(JSON.stringify(message));
             console.log(`Message sent: ${JSON.stringify(message)}`);
 
@@ -228,7 +235,7 @@
             console.log("Main button reenabled.")
         }
 
-        
+
 
         // Notify WebSocket to enable the button for other users
         socket.send(JSON.stringify({ type: 'host_options_toggle', sender_id: clientId }));
