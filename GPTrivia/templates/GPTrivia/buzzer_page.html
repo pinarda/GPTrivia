@@ -15,10 +15,65 @@
     let max_time = 100000000000000;
 
     const clientId = Math.random().toString(36).substr(2, 9);
-    // WebSocket setup
-    const socket = new WebSocket(
-        (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
-    );
+    {#// WebSocket setup#}
+    {#const socket = new WebSocket(#}
+    {#    (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'#}
+    {#);#}
+    
+    let socket;
+    let reconnectInterval;
+    
+    // Function to establish the WebSocket connection
+    function connectWebSocket() {
+        socket = new WebSocket(
+            (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
+        );
+    
+        socket.onopen = function () {
+            console.log("WebSocket connected.");
+            clearInterval(reconnectInterval); // Stop reconnection attempts on successful connection
+        };
+    
+        socket.onmessage = function (e) {
+            const data = JSON.parse(e.data);
+    
+            if (data.type === 'unlock') {
+                console.log("Unlock received via WebSocket.");
+                unlockMainButton(); // Your existing logic for unlocking the button
+            } else if (data.type === 'update') {
+                console.log("Update received via WebSocket.");
+                lockMainButton(); // Your existing logic for locking the button
+            }
+        };
+    
+        socket.onclose = function (e) {
+            console.error("WebSocket closed. Attempting to reconnect...", e.reason);
+            attemptReconnect();
+        };
+    
+        socket.onerror = function (e) {
+            console.error("WebSocket error observed:", e);
+            socket.close(); // Close the socket on error to trigger the reconnect logic
+        };
+    }
+    
+    // Function to attempt reconnection
+    function attemptReconnect() {
+        if (reconnectInterval) {
+            return; // Avoid multiple reconnection intervals
+        }
+    
+        reconnectInterval = setInterval(() => {
+            console.log("Attempting to reconnect WebSocket...");
+            connectWebSocket();
+        }, 3000); // Attempt to reconnect every 3 seconds
+    }
+    
+    // Initialize the WebSocket connection on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        connectWebSocket();
+    });
+
 
     socket.onmessage = function (e) {
         const data = JSON.parse(e.data);
@@ -255,6 +310,8 @@
         const lockButton = document.getElementById('lock-button');
         const showHostOptionsButton = document.getElementById('show-host-options-button');
         const hostOptions = document.getElementById('host-options');
+        
+        connectWebSocket();
 
         // Add main button click listener
         mainButton.addEventListener('click', sendPress);
