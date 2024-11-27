@@ -37,12 +37,83 @@
         socket.onmessage = function (e) {
             const data = JSON.parse(e.data);
     
+    
             if (data.type === 'unlock') {
-                console.log("Unlock received via WebSocket.");
-                unlockMainButton(); // Your existing logic for unlocking the button
+                unlock_time = Date.now()
+                if (data.sender_id === clientId) {
+                    console.log("Ignoring message from self.");
+                    return;
+                }
+                console.log("Received unlock signal from WebSocket. Unlocking button.");
+    
+                // Global unlock for all clients
+                const mainButton = document.getElementById('action-button');
+                hardLock = false;
+                isLocked = false;
+    
+                if (lockTimeout) {
+                    clearTimeout(lockTimeout); // Clear any existing timeout
+                }
+    
+                mainButton.classList.remove('locked');
+                mainButton.textContent = "Push Me!!";
+            } else if (data.type === 'lock') {
+                max_time = 100000000000000;
+                if (data.sender_id === clientId) {
+                    console.log("Ignoring message from self.");
+                    return;
+                }
+                console.log("Received lock signal from WebSocket. Locking button.");
+                const mainButton = document.getElementById('action-button');
+                const lockButton = document.getElementById('lock-button');
+    
+                // Send lock signal (optional, if you want to notify the WebSocket)
+                console.log("Lock button pressed.");
+    
+                // Local lock for the user who clicked the lock button
+                hardLock = true;
+                isLocked = true;
+    
+                mainButton.classList.add('locked');
+                mainButton.textContent = "WAIT";
+                console.log("Main button hard-locked.");
+    
+                // Enable the unlock button (in case it was disabled)
+                const unlockButton = document.getElementById('unlock-button');
+                if (unlockButton) {
+                    unlockButton.disabled = false;
+                    console.log("Unlock button enabled.");
+                }
+    
             } else if (data.type === 'update') {
-                console.log("Update received via WebSocket.");
-                lockMainButton(); // Your existing logic for locking the button
+                const lastPressElement = document.getElementById('last-press');
+                if (data.timestamp < max_time) {
+                    lastPressElement.textContent = data.username;
+                }
+                max_time = data.timestamp;
+                console.log(`Received WebSocket message: ${data.username}`);
+    
+                // Lock the button when a WebSocket message is received
+                console.log("Locking button due to WebSocket message.");
+                lockMainButton();
+            } else if (data.type === 'host_options_toggle') {
+                if (data.sender_id === clientId) {
+                    console.log("Ignoring message from self.");
+                    return;
+                }
+                console.log("Received host options toggle signal from WebSocket.");
+    
+                // Close host options globally
+                const hostOptions = document.getElementById('host-options');
+                if (!hostOptions.classList.contains('hidden')) {
+                    hostOptions.classList.add('hidden');
+                    console.log("Host options hidden.");
+                }
+                const mainButton = document.getElementById('action-button');
+                mainButton.removeAttribute('disabled'); // Ensure the button is enabled
+            } else if (data.type === 'reset_max_time') {
+                console.log("Received reset signal from WebSocket. Resetting max_time.");
+                max_time = 100000000000000;
             }
         };
     
@@ -75,89 +146,7 @@
     });
 
 
-    socket.onmessage = function (e) {
-        const data = JSON.parse(e.data);
-
-
-        if (data.type === 'unlock') {
-            unlock_time = Date.now()
-            if (data.sender_id === clientId) {
-                console.log("Ignoring message from self.");
-                return;
-            }
-            console.log("Received unlock signal from WebSocket. Unlocking button.");
-
-            // Global unlock for all clients
-            const mainButton = document.getElementById('action-button');
-            hardLock = false;
-            isLocked = false;
-
-            if (lockTimeout) {
-                clearTimeout(lockTimeout); // Clear any existing timeout
-            }
-
-            mainButton.classList.remove('locked');
-            mainButton.textContent = "Push Me!!";
-        } else if (data.type === 'lock') {
-            max_time = 100000000000000;
-            if (data.sender_id === clientId) {
-                console.log("Ignoring message from self.");
-                return;
-            }
-            console.log("Received lock signal from WebSocket. Locking button.");
-            const mainButton = document.getElementById('action-button');
-            const lockButton = document.getElementById('lock-button');
-
-            // Send lock signal (optional, if you want to notify the WebSocket)
-            console.log("Lock button pressed.");
-
-            // Local lock for the user who clicked the lock button
-            hardLock = true;
-            isLocked = true;
-
-            mainButton.classList.add('locked');
-            mainButton.textContent = "WAIT";
-            console.log("Main button hard-locked.");
-
-            // Enable the unlock button (in case it was disabled)
-            const unlockButton = document.getElementById('unlock-button');
-            if (unlockButton) {
-                unlockButton.disabled = false;
-                console.log("Unlock button enabled.");
-            }
-
-        } else if (data.type === 'update') {
-            const lastPressElement = document.getElementById('last-press');
-            if (data.timestamp < max_time) {
-                lastPressElement.textContent = data.username;
-            }
-            max_time = data.timestamp;
-            console.log(`Received WebSocket message: ${data.username}`);
-
-            // Lock the button when a WebSocket message is received
-            console.log("Locking button due to WebSocket message.");
-            lockMainButton();
-        } else if (data.type === 'host_options_toggle') {
-            if (data.sender_id === clientId) {
-                console.log("Ignoring message from self.");
-                return;
-            }
-            console.log("Received host options toggle signal from WebSocket.");
-
-            // Close host options globally
-            const hostOptions = document.getElementById('host-options');
-            if (!hostOptions.classList.contains('hidden')) {
-                hostOptions.classList.add('hidden');
-                console.log("Host options hidden.");
-            }
-            const mainButton = document.getElementById('action-button');
-            mainButton.removeAttribute('disabled'); // Ensure the button is enabled
-        } else if (data.type === 'reset_max_time') {
-            console.log("Received reset signal from WebSocket. Resetting max_time.");
-            max_time = 100000000000000;
-        }
-    };
-
+    
     // Send press to WebSocket
     function sendPress() {
         const mainButton = document.getElementById('action-button');
