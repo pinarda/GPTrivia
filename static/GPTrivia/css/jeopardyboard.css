@@ -259,3 +259,97 @@ body {
 .hidden {
     display: none !important;
 }
+
+
+
+
+
+
+
+
+/* General Styling for Input Boxes */
+.amount-input {
+    width: 80px; /* Adjust width as needed */
+    padding: 5px;
+    font-size: 1.5em; /* Larger font size for emphasis */
+    font-family: 'Impact', sans-serif; /* Impact font with fallback */
+    color: white; /* White text */
+    background-color: #060ce9; /* Lighter blue background */
+    border: 0px solid #3A78C0; /* Slightly darker blue border for contrast */
+    border-radius: 4px; /* Smooth edges */
+    margin-left: 5px; /* Space between $ and input */
+    text-align: right; /* Align text to the right for monetary values */
+    outline: none; /* Remove default focus outline */
+    -moz-appearance: textfield;
+}
+
+/* Input Box Focus State */
+.amount-input:focus {
+    background-color: #060ce9; /* Slightly darker blue on focus */
+    box-shadow: 0 0 5px #3A78C0; /* Add a subtle glow effect */
+}
+
+.amount-input::placeholder {
+    color: white;
+    opacity: 1; /* Ensure it's fully opaque */
+}
+
+/* Input Box Labels */
+/*span {*/
+/*    font-size: 1.5em;*/
+/*    font-weight: bold;*/
+/*    color: white; !* Jeopardy gold *!*/
+/*    margin-right: 5px; !* Space between label and input box *!*/
+/*}*/
+
+.amount-input::-webkit-outer-spin-button,
+.amount-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+
+/* Positioning for Left Input Box */
+.left-input {
+    position: inherit;
+    left: -200px; /* Distance from the left */
+    display: flex;
+    align-items: center; /* Align text and input box vertically */
+    gap: 5px; /* Space between $ and input box */
+}
+
+/* Positioning for Right Input Box */
+.right-input {
+    position: inherit;
+    right: -200px; /* Distance from the right */
+    display: flex;
+    align-items: center; /* Align text and input box vertically */
+    gap: 5px; /* Space between $ and input box */
+}
+
+/* Navigation Section Adjustments */
+.navigation {
+    position: relative; /* Establish positioning context for input boxes */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px; /* Space between control buttons and navigation arrow */
+    font-size: 1.5em;
+}
+
+/* Buttons Styling */
+.nav-button {
+    background-color: #060ce9; /* Jeopardy blue */
+    color: white; /* Jeopardy gold */
+    font-size: 1em;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+.nav-button:hover {
+    background-color: #050a9b; /* Slightly darker blue */
+    transform: scale(1.05);
+}
