@@ -68,4 +68,9 @@ urlpatterns = [
     path('player_analysis_plot/', PlayerAnalysisPlot.as_view(), name='player_analysis_plot'),
     path('button/', views.buzzer_page, name='button_page'),
     # path('profilepic/', views.profilepic, name='profilepic'),
+    path('api/question/<int:question_id>/', views.get_j_question, name='get_j_question'),
+    path('api/question/<int:question_id>/deactivate/', views.deactivate_j_question, name='deactivate_j_question'),
+    path('jeopardy/', views.jeopardy_screen, name='jeopardy_screen'),
+    path('double-jeopardy/', views.double_jeopardy_screen, name='double_jeopardy_screen'),
+    path('final-jeopardy/', views.final_jeopardy_screen, name='final_jeopardy_screen'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + debug_toolbar_urls()

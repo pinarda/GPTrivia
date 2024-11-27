@@ -19,25 +19,25 @@
     {#const socket = new WebSocket(#}
     {#    (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'#}
     {#);#}
-    
+
     let socket;
     let reconnectInterval;
-    
+
     // Function to establish the WebSocket connection
     function connectWebSocket() {
         socket = new WebSocket(
             (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/button/'
         );
-    
+
         socket.onopen = function () {
             console.log("WebSocket connected.");
             clearInterval(reconnectInterval); // Stop reconnection attempts on successful connection
         };
-    
+
         socket.onmessage = function (e) {
             const data = JSON.parse(e.data);
-    
-    
+
+
             if (data.type === 'unlock') {
                 unlock_time = Date.now()
                 if (data.sender_id === clientId) {
@@ -45,16 +45,16 @@
                     return;
                 }
                 console.log("Received unlock signal from WebSocket. Unlocking button.");
-    
+
                 // Global unlock for all clients
                 const mainButton = document.getElementById('action-button');
                 hardLock = false;
                 isLocked = false;
-    
+
                 if (lockTimeout) {
                     clearTimeout(lockTimeout); // Clear any existing timeout
                 }
-    
+
                 mainButton.classList.remove('locked');
                 mainButton.textContent = "Push Me!!";
             } else if (data.type === 'lock') {
@@ -66,25 +66,25 @@
                 console.log("Received lock signal from WebSocket. Locking button.");
                 const mainButton = document.getElementById('action-button');
                 const lockButton = document.getElementById('lock-button');
-    
+
                 // Send lock signal (optional, if you want to notify the WebSocket)
                 console.log("Lock button pressed.");
-    
+
                 // Local lock for the user who clicked the lock button
                 hardLock = true;
                 isLocked = true;
-    
+
                 mainButton.classList.add('locked');
                 mainButton.textContent = "WAIT";
                 console.log("Main button hard-locked.");
-    
+
                 // Enable the unlock button (in case it was disabled)
                 const unlockButton = document.getElementById('unlock-button');
                 if (unlockButton) {
                     unlockButton.disabled = false;
                     console.log("Unlock button enabled.");
                 }
-    
+
             } else if (data.type === 'update') {
                 const lastPressElement = document.getElementById('last-press');
                 if (data.timestamp < max_time) {
@@ -92,7 +92,7 @@
                 }
                 max_time = data.timestamp;
                 console.log(`Received WebSocket message: ${data.username}`);
-    
+
                 // Lock the button when a WebSocket message is received
                 console.log("Locking button due to WebSocket message.");
                 lockMainButton();
@@ -102,7 +102,7 @@
                     return;
                 }
                 console.log("Received host options toggle signal from WebSocket.");
-    
+
                 // Close host options globally
                 const hostOptions = document.getElementById('host-options');
                 if (!hostOptions.classList.contains('hidden')) {
@@ -116,37 +116,37 @@
                 max_time = 100000000000000;
             }
         };
-    
+
         socket.onclose = function (e) {
             console.error("WebSocket closed. Attempting to reconnect...", e.reason);
             attemptReconnect();
         };
-    
+
         socket.onerror = function (e) {
             console.error("WebSocket error observed:", e);
             socket.close(); // Close the socket on error to trigger the reconnect logic
         };
     }
-    
+
     // Function to attempt reconnection
     function attemptReconnect() {
         if (reconnectInterval) {
             return; // Avoid multiple reconnection intervals
         }
-    
+
         reconnectInterval = setInterval(() => {
             console.log("Attempting to reconnect WebSocket...");
             connectWebSocket();
         }, 3000); // Attempt to reconnect every 3 seconds
     }
-    
+
     // Initialize the WebSocket connection on page load
     document.addEventListener('DOMContentLoaded', () => {
         connectWebSocket();
     });
 
 
-    
+
     // Send press to WebSocket
     function sendPress() {
         const mainButton = document.getElementById('action-button');
@@ -299,7 +299,7 @@
         const lockButton = document.getElementById('lock-button');
         const showHostOptionsButton = document.getElementById('show-host-options-button');
         const hostOptions = document.getElementById('host-options');
-        
+
         connectWebSocket();
 
         // Add main button click listener

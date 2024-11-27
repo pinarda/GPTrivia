@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/jeopardyboard.css' %}">
+{% endblock %}
+
+{% block content %}
+
+
+
+
+<div class="scoreboard-container">
+    <!-- Round Titles Row -->
+    <div class="round-titles">
+        {% for round in rounds %}
+            <div class="round-title">{{ round.title }}</div>
+        {% endfor %}
+    </div>
+
+    <!-- Question Columns -->
+    <div class="question-columns">
+        {% for round in rounds %}
+            <div class="round-column">
+                {% for question in round.questions.all %}
+                    {% load custom_tags %}
+                    <button
+                        class="question-button {% if not question.is_active %}inactive{% endif %}"
+                        data-question-id="{{ question.id }}"
+                        {% if not question.is_active %}disabled{% endif %}
+                    >
+                        {% if is_final_jeopardy %}
+                            Choose Your Wager
+                        {% else %}
+                            {% if question.is_active %}
+                                ${{ forloop.counter|multiply:value_multiplier }}
+                            {% endif %}
+                        {% endif %}
+                    </button>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Navigation -->
+    {% if next_screen %}
+
+        <div class="navigation" style="display: inherit; position: relative;">
+            <!-- Input Box on the Left -->
+            <div class="left-input">
+                <span>Team 1: $</span>
+                <input type="number" id="left-input" class="amount-input" placeholder="0">
+            </div>
+
+            <!-- Control Buttons -->
+            <div class="control-buttons">
+                <button id="hide-header-footer" class="nav-button">Fullscreen</button>
+                <button id="show-header-footer" class="nav-button hidden">Windowed</button>
+            </div>
+
+            <!-- Navigation Button -->
+            <div>
+                <a href="{% url next_screen %}?header_hidden=true" id="next-screen-link">
+                    <button class="nav-button">→</button>
+                </a>
+            </div>
+
+            <!-- Input Box on the Right -->
+            <div class="right-input">
+                <span>Team 2: $</span>
+                <input type="number" id="right-input" class="amount-input" placeholder="0">
+            </div>
+        </div>
+
+
+    {% endif %}
+</div>
+
+
+<!-- Modal for Question Slide -->
+<div id="question-modal" class="modal hidden">
+    <div class="modal-content">
+        <p id="question-text"></p>
+        <button id="close-modal-button">Close</button>
+    </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const questionButtons = document.querySelectorAll('.question-button');
+        const modal = document.getElementById('question-modal');
+        const questionTextElement = document.getElementById('question-text');
+        const closeModalButton = document.getElementById('close-modal-button');
+
+        questionButtons.forEach(button => {
+            button.addEventListener('click', async () => {
+                const questionId = button.getAttribute('data-question-id');
+
+                try {
+                    // Fetch question text from the server
+                    const response = await fetch(`/api/question/${questionId}/`);
+                    const data = await response.json();
+
+                    // Display question text in modal
+                    questionTextElement.textContent = data.text;
+                    modal.classList.remove('hidden');
+
+                    // Mark the question as inactive in the backend
+                    await fetch(`/api/question/${questionId}/deactivate/`, { method: 'POST' });
+
+                    // Update button state
+                    button.textContent = '';
+                    button.classList.add('inactive');
+                    button.disabled = true;
+                } catch (error) {
+                    console.error(error);
+                    alert("An error occurred. Please try again.");
+                }
+            });
+        });
+
+        // Close modal
+        closeModalButton.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+
+        const hideButton = document.getElementById('hide-header-footer');
+        const showButton = document.getElementById('show-header-footer');
+        const header = document.querySelector('header');
+        const footer = document.querySelector('footer');
+        const nextScreenLink = document.getElementById('next-screen-link');
+
+        function updateNextScreenLink() {
+            const isHeaderHidden = header.classList.contains('hidden') ? 'true' : 'false';
+            const url = new URL(nextScreenLink.href);
+            url.searchParams.set('header_hidden', isHeaderHidden);
+            nextScreenLink.href = url.toString();
+        }
+
+        hideButton.addEventListener('click', () => {
+            header.classList.add('hidden');
+            footer.classList.add('hidden');
+            hideButton.classList.add('hidden');
+            showButton.classList.remove('hidden');
+            updateNextScreenLink();
+        });
+
+        showButton.addEventListener('click', () => {
+            header.classList.remove('hidden');
+            footer.classList.remove('hidden');
+            showButton.classList.add('hidden');
+            hideButton.classList.remove('hidden');
+            updateNextScreenLink();
+        });
+
+        // Check URL parameters on page load
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('header_hidden') === 'true') {
+            header.classList.add('hidden');
+            footer.classList.add('hidden');
+            hideButton.classList.add('hidden');
+            showButton.classList.remove('hidden');
+        }
+        
+        
+        
+        
+            const leftInput = document.getElementById('left-input');
+            const rightInput = document.getElementById('right-input');
+        
+            // Load persisted values from localStorage on page load
+            leftInput.value = localStorage.getItem('left-input') || ''; // Default to empty if no value
+            rightInput.value = localStorage.getItem('right-input') || '';
+        
+            // Save input values to localStorage when they change
+            leftInput.addEventListener('input', () => {
+                localStorage.setItem('left-input', leftInput.value);
+            });
+        
+            rightInput.addEventListener('input', () => {
+                localStorage.setItem('right-input', rightInput.value);
+            });
+
+    });
+</script>
+{% endblock %}

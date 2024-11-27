@@ -100,6 +100,17 @@ DONE - get the reverse proxy back up and get hailsciencetrivia.com working again
 DONE - last two scoresheets in june 2024 are on wrong date
 DONE - fix links to slides, presentation IDs in db
 DONE - Jokers are not loading for many rounds
+DONE - websockets not working on server
+DONE - fix the select styling on the player analysis page
+DONE - Be able to specify what position to put new rounds, instead of appending to end of presentation, add interface to select unused rounds from email (or old rounds?). Show the number of submitted rounds/who has submitted a round for the current week on the home page, ability to edit round and creator names before building presentation.
+REDUNDANT - add a creator name input to SWOOP, somehow pass that to create presentation functionality (one option - save the round in the database as it is submitted, not after presentation is created)
+DONE - messed up the accordion menu css
+DONE - Hide the swoop empty text fields and question buttons until they should be shown
+DONE - page still shows rounds used to make presentation until page is refreshed again
+DONE - when generate or update is clicked, show ourobouros and a message (this may take a few minutes... do not exit this page!)
+DONE - add coop column to available round list
+DONE - if no round is selected and the gen or update button is pressed, make sure nothing happens...
+
 
 TEST - make sure everyone has permission to access the presentation - set general access to anyone with the link when creating the presentation
 TEST FIX - Figure out why the production site's generate button is timing out (in under 30 seconds or so). - and why is the date wrong?? one day later than it should be (Could be a timezone issue)
@@ -108,39 +119,45 @@ TEST FIX - Figure out why the production site's generate button is timing out (i
 
 TRIVIAL (minutes)
 
+TODO - new rounds added to scoresheet are still a day late
 TODO - remove any hardcoded passwords or api keys
-TODO - add some swoop templates
-TODO - websockets not working on server
+TODO - scoresheet defaults to zeros in the scoresheet instead of no value
+TODO - clean the db of any unused rounds, make sure presentations table is good to go
+TODO - fix embed issue on the home page, why does it break after about 24 hours?
 
+High - Add a way to set coop and creator in SWOOP
 High - add normalize option to the rounds list
-Medium - Add a way to set coop and creator in SWOOP
+Medium - add some swoop templates
 
 MEDIUM (1-2 hrs)
 
+TODO - profile page needs cleanup, mayyybe the rounds list too?
 TODO - add players, host/scorekeeper colummns to the database
+TODO - add tiebreaker/note/style columns to the scoresheet
 TODO - change the way we detect sender for the scoresheet, timeout has serious flaws, use a sender ID instead.
-
-
-SCORESHEET WISHLIST - style points, tiebreaker, notes, icon next to name showing a mini version of the user's profile pic?
+TODO - have swoop track converstaions between sessions.
+TODO - add info box/link to blog post from the performance chart (first, then maybe the other plots)
+TODO - disable buttons locally and on other computers while round is being generated or updated
 
 High - add sorting to the player round/rounds list page, also want to be able to see the lowest high score on a round.
 High - add a link to the rounds list page on the round category counts that filters by rounds that person has created with that category
-Medium - could redo mobile CSS for scoresheet to show all rounds for one player, then they could enter their scores for each round, and the button would switch the player.
+Medium - allow players to score themselves: could redo mobile CSS for scoresheet to show all rounds for one player, then they could enter their scores for each round, and the button would switch the player.
 Medium - General CSS tweaking, mainly for mobile view (scoresheet esp.) (in particular, maybe sync the visible players using channels)
 Medium - Weird stuff like if you joker two different rounds (Zach, 9/1/2022), or "Mario Party" random joker, or if a round has two different creators...
 Medium - Let the user change their color in their profile page
-
+Medium - Add an option to view a previous week's presentation on the home page.
+Medium - add a way to load old used rounds from email in the available rounds table (the for loop to grab round title is quite slow, could maybe infer title from user and date and LINK! already in the rounds list)
+Medium - icon next to name showing a mini version of the user's profile pic?
+Medium - add a way to prevent issues if the page is left or refreshed while a round is being generated via swoop or home page
 
 LARGE (2-8hrs)
 
-TODO - Be able to specify what position to put new rounds, instead of appending to end of presentation, add interface to select unused rounds from email (or old rounds?). Show the number of submitted rounds/who has submitted a round for the current week on the home page, ability to edit round and creator names before building presentation.
 TODO - Finish the stats for the analysis page ("Player" options) / possibly add the player specific stuff to the profile pages. NORMALIZE SCORES before computing stats
-TODO - Add the prediction models back to the scoresheet (try joint conditioning on both player and category) (and the blog?)
+TODO - Add the prediction models back to the scoresheet/under scoresheet or new page... (try joint conditioning on both player and category)
+TODO - Add a blog page
+TODO - If we add a new player on the scoresheet, we need to modify the GPTriviaround model to accept additional players and save their scores too.
 
-High - If we add a new player on the scoresheet, we need to modify the GPTriviaround model to accept additional players and save their scores too.
 Medium - Add SWOOP picture/music round functionality
-Medium - add a creator name input to SWOOP, somehow pass that to create presentation functionality (one option - save the round in the database as it is submitted, not after presentation is created)
-Medium - Add an option to view a previous week's presentation on the home page.
 
 
 HUGE (>8 hrs)

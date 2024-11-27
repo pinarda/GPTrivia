@@ -76,3 +76,23 @@ class MergedPresentation(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class JeopardyRound(models.Model):
+    JEOPARDY = 'JEOPARDY'
+    DOUBLE_JEOPARDY = 'DOUBLE_JEOPARDY'
+    FINAL_JEOPARDY = 'FINAL_JEOPARDY'
+    ROUND_TYPES = [
+        (JEOPARDY, 'Jeopardy'),
+        (DOUBLE_JEOPARDY, 'Double Jeopardy'),
+        (FINAL_JEOPARDY, 'Final Jeopardy'),
+    ]
+    title = models.CharField(max_length=255)
+    type = models.CharField(max_length=20, choices=ROUND_TYPES, default=JEOPARDY)
+
+
+class JeopardyQuestion(models.Model):
+    round = models.ForeignKey(JeopardyRound, on_delete=models.CASCADE, related_name="questions")
+    text = models.TextField()
+    is_active = models.BooleanField(default=True)  # Track if the question is still active
+

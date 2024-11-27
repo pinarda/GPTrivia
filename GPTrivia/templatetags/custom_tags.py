@@ -18,3 +18,7 @@ def index(sequence, position):
         return sequence[position]
     except IndexError:
         return ''
+
+@register.filter
+def multiply(value, arg):
+    return value * arg

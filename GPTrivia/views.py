@@ -50,7 +50,7 @@ from django.core import serializers
 from rest_framework.renderers import JSONRenderer
 from datetime import date
 from django.contrib.postgres.fields import JSONField  # Import this at the top of your file
-
+from .models import JeopardyQuestion, JeopardyRound
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
@@ -93,6 +93,30 @@ playerColorMapping = {
 players = [
     'score_alex', 'score_ichigo', 'score_megan', 'score_zach', 'score_jenny', 'score_debi',
     'score_dan', 'score_chris', 'score_drew', 'score_tom', 'score_paige']
+
+
+def get_j_question(request, question_id):
+    question = get_object_or_404(JeopardyQuestion, id=question_id)
+    return JsonResponse({'text': question.text})
+
+def deactivate_j_question(request, question_id):
+    question = get_object_or_404(JeopardyQuestion, id=question_id)
+    question.is_active = False
+    question.save()
+    return JsonResponse({'success': True})
+
+
+def jeopardy_screen(request):
+    rounds = JeopardyRound.objects.filter(type=JeopardyRound.JEOPARDY)
+    return render(request, 'GPTrivia/jeopardyboard.html', {'rounds': rounds, 'next_screen': 'double_jeopardy_screen', 'value_multiplier': 200, 'is_final_jeopardy': False})
+
+def double_jeopardy_screen(request):
+    rounds = JeopardyRound.objects.filter(type=JeopardyRound.DOUBLE_JEOPARDY)
+    return render(request, 'GPTrivia/jeopardyboard.html', {'rounds': rounds, 'next_screen': 'final_jeopardy_screen', 'value_multiplier': 400, 'is_final_jeopardy': False})
+
+def final_jeopardy_screen(request):
+    round_ = JeopardyRound.objects.filter(type=JeopardyRound.FINAL_JEOPARDY)
+    return render(request, 'GPTrivia/jeopardyboard.html', {'rounds': round_, 'next_screen': 'jeopardy_screen', 'value_multiplier': 0, 'is_final_jeopardy': True})
 
 
 class CustomPasswordChangeView(auth_views.PasswordChangeView):
