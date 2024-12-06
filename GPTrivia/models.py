@@ -95,4 +95,4 @@ class JeopardyQuestion(models.Model):
     round = models.ForeignKey(JeopardyRound, on_delete=models.CASCADE, related_name="questions")
     text = models.TextField()
     is_active = models.BooleanField(default=True)  # Track if the question is still active
-
+    daily_double = models.BooleanField(default=False)  # New field

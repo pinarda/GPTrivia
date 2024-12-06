@@ -7,9 +7,6 @@
 
 {% block content %}
 
-
-
-
 <div class="scoreboard-container">
     <!-- Round Titles Row -->
     <div class="round-titles">
@@ -44,7 +41,6 @@
 
     <!-- Navigation -->
     {% if next_screen %}
-
         <div class="navigation" style="display: inherit; position: relative;">
             <!-- Input Box on the Left -->
             <div class="left-input">
@@ -56,6 +52,10 @@
             <div class="control-buttons">
                 <button id="hide-header-footer" class="nav-button">Fullscreen</button>
                 <button id="show-header-footer" class="nav-button hidden">Windowed</button>
+            </div>
+
+            <div class="nav-buttons">
+                <button id="theMenu" class="nav-button">Menu</button> <!-- Menu Button -->
             </div>
 
             <!-- Navigation Button -->
@@ -71,11 +71,8 @@
                 <input type="number" id="right-input" class="amount-input" placeholder="0">
             </div>
         </div>
-
-
     {% endif %}
 </div>
-
 
 <!-- Modal for Question Slide -->
 <div id="question-modal" class="modal hidden">
@@ -85,7 +82,52 @@
     </div>
 </div>
 
+<!-- Menu Modal -->
+<div id="menu-modal" class="modal hidden">
+    <div class="modal-content">
+        <h2>Select Rounds</h2>
+        <form id="menu-form">
+            <h3>Jeopardy Rounds</h3>
+            {% for i in range_six %}
+                <label for="jeopardy-round-{{ i }}">Round {{ i }}:</label>
+                <select id="jeopardy-round-{{ i }}" name="jeopardy-round-{{ i }}" class="round-dropdown">
+                    {% for round in jeopardy_rounds %}
+                        <option value="{{ round.id }}" {% if round.id == selected_jeopardy_rounds|slice:i|default:'' %}selected{% endif %}>
+                            {{ round.title }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% endfor %}
 
+            <h3>Double Jeopardy Rounds</h3>
+            {% for i in range_six %}
+                <label for="double-jeopardy-round-{{ i }}">Round {{ i }}:</label>
+                <select id="double-jeopardy-round-{{ i }}" name="double-jeopardy-round-{{ i }}" class="round-dropdown">
+                    {% for round in double_jeopardy_rounds %}
+                        <option value="{{ round.id }}" {% if round.id == selected_double_jeopardy_rounds|slice:i|default:'' %}selected{% endif %}>
+                            {{ round.title }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% endfor %}
+
+            <h3>Final Jeopardy</h3>
+            <label for="final-jeopardy-round">Round:</label>
+            <select id="final-jeopardy-round" name="final-jeopardy-round" class="round-dropdown">
+                {% for round in final_jeopardy_rounds %}
+                    <option value="{{ round.id }}" {% if round.id == selected_final_jeopardy_round %}selected{% endif %}>
+                        {{ round.title }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <button type="button" id="save-menu-settings">Save</button>
+            <button type="button" id="close-menu-modal">Close</button>
+        </form>
+    </div>
+</div>
+
+<audio id="daily-double-sound" src="{% static 'audio/double.mp3' %}" preload="auto"></audio>
 
 {% endblock %}
 
@@ -96,38 +138,164 @@
         const modal = document.getElementById('question-modal');
         const questionTextElement = document.getElementById('question-text');
         const closeModalButton = document.getElementById('close-modal-button');
+        const leftInputVar1 = document.getElementById('left-input');
+        const rightInputVar1 = document.getElementById('right-input');
+        const dailyDoubleAudio = document.getElementById('daily-double-sound'); // Reference the audio element
+        let isDailyDouble = false; // Track if the current question is a Daily Double
+        let showingDailyDouble = false; // Track if the modal is currently showing "DAILY DOUBLE!"
+        let questionData = {}; // Store question data for later
+        const menuButton = document.getElementById('theMenu');
+        const menuModal = document.getElementById('menu-modal');
+        const closeMenuButton = document.getElementById('close-menu-modal');
+        const saveSettingsButton = document.getElementById('save-menu-settings');
+
+        // Open the Menu modal
+        menuButton.addEventListener('click', () => {
+            menuModal.classList.remove('hidden');
+        });
+
+        // Close the Menu modal
+        closeMenuButton.addEventListener('click', () => {
+            menuModal.classList.add('hidden');
+        });
+
+        // Save settings and reload the page
+        saveSettingsButton.addEventListener('click', () => {
+            const form = document.getElementById('menu-form');
+            const formData = new FormData(form);
+
+            // Collect the selected rounds
+            const selectedRounds = {};
+            formData.forEach((value, key) => {
+                selectedRounds[key] = value;
+            });
+
+            // Save to the server via an API call
+            fetch('/api/save-rounds/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(selectedRounds),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload(); // Reload the page to apply changes
+                    } else {
+                        alert('Failed to save settings. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving settings:', error);
+                    alert('An error occurred. Please try again.');
+                });
+        });
 
         questionButtons.forEach(button => {
             button.addEventListener('click', async () => {
                 const questionId = button.getAttribute('data-question-id');
 
                 try {
-                    // Fetch question text from the server
+                    // Fetch question data from the server
                     const response = await fetch(`/api/question/${questionId}/`);
-                    const data = await response.json();
+                    questionData = await response.json();
 
-                    // Display question text in modal
-                    questionTextElement.textContent = data.text;
+                    console.log("Fetched question data:", questionData); // Debug log
+
+                    if (!questionData.id) {
+                        console.error("Question ID is undefined in the response.");
+                        alert("An error occurred: Missing question ID. Please contact support.");
+                        return;
+                    }
+
+                    isDailyDouble = questionData.daily_double;
+
+                    // If it's a Daily Double, show "DAILY DOUBLE!" first
+                    if (isDailyDouble && !showingDailyDouble) {
+                        {#questionTextElement.textContent = "DAILY DOUBLE!";#}
+                        questionTextElement.innerHTML = `
+                            <div style="text-align: center;">
+                                <div class="flash">DAILY DOUBLE!</div>
+                                <div>Team 1 Current Score: $${leftInput.value || 0}</div>
+                                <div>Team 2 Current Score: $${rightInput.value || 0}</div>
+                            </div>
+                        `;
+                        questionTextElement.classList.add('daily-double'); // Add the special styling
+                        dailyDoubleAudio.play(); // Play the audio
+                        showingDailyDouble = true;
+                        modal.classList.remove('hidden');
+                        return; // Exit early to wait for the next click
+                    }
+
+                    // Show the actual question text
+                    questionTextElement.textContent = questionData.text;
+                    questionTextElement.classList.remove('daily-double'); // Remove the special styling
                     modal.classList.remove('hidden');
+                    showingDailyDouble = false;
 
-                    // Mark the question as inactive in the backend
-                    await fetch(`/api/question/${questionId}/deactivate/`, { method: 'POST' });
-
-                    // Update button state
+                    // Immediately update button state
                     button.textContent = '';
                     button.classList.add('inactive');
                     button.disabled = true;
+
+                    // Mark the question as inactive in the backend
+                    const deactivateResponse = await fetch(`/api/question/${questionData.id}/deactivate/`, { method: 'POST' });
+
+                    if (!deactivateResponse.ok) {
+                        console.error("Failed to deactivate the question. Status:", deactivateResponse.status);
+                        alert("Failed to deactivate the question. Please try again.");
+                    }
                 } catch (error) {
-                    console.error(error);
+                    console.error("Error fetching question data:", error);
                     alert("An error occurred. Please try again.");
                 }
             });
         });
 
+        // Transition to the actual question text on modal click
+        modal.addEventListener('click', async () => {
+            if (isDailyDouble && showingDailyDouble) {
+                // Transition from "DAILY DOUBLE!" to the actual question text
+                questionTextElement.textContent = questionData.text; // Show the question text
+                questionTextElement.classList.remove('daily-double'); // Remove the special styling
+                showingDailyDouble = false;
+
+                // Update the button state immediately
+                const questionId = questionData.id;
+                const button = document.querySelector(`[data-question-id="${questionId}"]`);
+                if (button) {
+                    button.textContent = '';
+                    button.classList.add('inactive');
+                    button.disabled = true;
+                }
+
+                // Mark the question as inactive in the backend
+                try {
+                    const deactivateResponse = await fetch(`/api/question/${questionData.id}/deactivate/`, { method: 'POST' });
+
+                    if (!deactivateResponse.ok) {
+                        console.error("Failed to deactivate the question. Status:", deactivateResponse.status);
+                        alert("Failed to deactivate the question. Please try again.");
+                    }
+                } catch (error) {
+                    console.error("Error during deactivation:", error);
+                    alert("An error occurred while deactivating the question.");
+                }
+            }
+        });
+
+
+
+
+
+
+
+
         // Close modal
         closeModalButton.addEventListener('click', () => {
             modal.classList.add('hidden');
+            showingDailyDouble = false; // Reset state when modal is closed
         });
+
 
         const hideButton = document.getElementById('hide-header-footer');
         const showButton = document.getElementById('show-header-footer');
@@ -166,22 +334,22 @@
             hideButton.classList.add('hidden');
             showButton.classList.remove('hidden');
         }
-        
-        
-        
-        
+
+
+
+
             const leftInput = document.getElementById('left-input');
             const rightInput = document.getElementById('right-input');
-        
+
             // Load persisted values from localStorage on page load
             leftInput.value = localStorage.getItem('left-input') || ''; // Default to empty if no value
             rightInput.value = localStorage.getItem('right-input') || '';
-        
+
             // Save input values to localStorage when they change
             leftInput.addEventListener('input', () => {
                 localStorage.setItem('left-input', leftInput.value);
             });
-        
+
             rightInput.addEventListener('input', () => {
                 localStorage.setItem('right-input', rightInput.value);
             });

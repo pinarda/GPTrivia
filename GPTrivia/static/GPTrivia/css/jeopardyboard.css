@@ -117,8 +117,8 @@ body {
 
 /* Question Buttons */
 .question-button {
-    width: 250px; /* Square button */
-    height: 150px; /* Square button */
+    width: 7em; /* Square button */
+    height: 4em; /* Square button */
     margin: 0; /* No extra margin, gaps handled by flexbox */
     background-color: #060ce9; /* Jeopardy blue */
     color: #ffcc00; /* Jeopardy gold */
@@ -269,7 +269,7 @@ body {
 
 /* General Styling for Input Boxes */
 .amount-input {
-    width: 80px; /* Adjust width as needed */
+    width: 4em; /* Adjust width as needed */
     padding: 5px;
     font-size: 1.5em; /* Larger font size for emphasis */
     font-family: 'Impact', sans-serif; /* Impact font with fallback */
@@ -352,4 +352,32 @@ body {
 .nav-button:hover {
     background-color: #050a9b; /* Slightly darker blue */
     transform: scale(1.05);
+}
+
+@keyframes flash {
+    0%, 100% {
+        color: #ffcc00; /* Jeopardy gold */
+    }
+    50% {
+        color: #ffffff; /* Flashing red */
+    }
+}
+
+
+.modal-content .flash {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #ffcc00;
+    text-align: center;
+    text-transform: uppercase;
+    animation: flash 1s infinite;
+}
+
+@keyframes flash {
+    0%, 100% {
+        color: #ffcc00; /* Jeopardy gold */
+    }
+    50% {
+        color: #ffffff; /* Red flash */
+    }
 }

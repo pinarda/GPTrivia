@@ -97,7 +97,11 @@ players = [
 
 def get_j_question(request, question_id):
     question = get_object_or_404(JeopardyQuestion, id=question_id)
-    return JsonResponse({'text': question.text})
+    return JsonResponse({"id": question.id,  # Include the ID field,
+                         'text': question.text,
+                         "is_active": question.is_active,
+                         "daily_double": question.daily_double  # Ensure this field is included
+                         })
 
 def deactivate_j_question(request, question_id):
     question = get_object_or_404(JeopardyQuestion, id=question_id)
@@ -106,9 +110,62 @@ def deactivate_j_question(request, question_id):
     return JsonResponse({'success': True})
 
 
+# def jeopardy_screen(request):
+#     rounds = JeopardyRound.objects.filter(type=JeopardyRound.JEOPARDY)
+#     return render(request, 'GPTrivia/jeopardyboard.html', {'rounds': rounds, 'next_screen': 'double_jeopardy_screen', 'value_multiplier': 200, 'is_final_jeopardy': False})
+
+# @csrf_exempt
+# def save_rounds(request):
+#     if request.method == 'POST':
+#         try:
+#             data = json.loads(request.body)
+#             request.session['selected_rounds'] = data  # Save to session for simplicity
+#             return JsonResponse({'success': True})
+#         except Exception as e:
+#             return JsonResponse({'success': False, 'error': str(e)}, status=400)
+#     return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+@csrf_exempt
+def save_rounds(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+
+            # Save the selected rounds in the session
+            request.session['selected_jeopardy_rounds'] = [int(data[f'jeopardy-round-{i}']) for i in range(1, 7)]
+            request.session['selected_double_jeopardy_rounds'] = [int(data[f'double-jeopardy-round-{i}']) for i in range(1, 7)]
+            request.session['selected_final_jeopardy_round'] = int(data['final-jeopardy-round'])
+
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+
 def jeopardy_screen(request):
-    rounds = JeopardyRound.objects.filter(type=JeopardyRound.JEOPARDY)
-    return render(request, 'GPTrivia/jeopardyboard.html', {'rounds': rounds, 'next_screen': 'double_jeopardy_screen', 'value_multiplier': 200, 'is_final_jeopardy': False})
+    # Get available rounds
+    jeopardy_rounds = JeopardyRound.objects.filter(type=JeopardyRound.JEOPARDY)
+    double_jeopardy_rounds = JeopardyRound.objects.filter(type=JeopardyRound.DOUBLE_JEOPARDY)
+    final_jeopardy_rounds = JeopardyRound.objects.filter(type=JeopardyRound.FINAL_JEOPARDY)
+
+    # Get the selected rounds from the session or use defaults
+    selected_jeopardy_rounds = request.session.get('selected_jeopardy_rounds', [r.id for r in jeopardy_rounds[:6]])
+    selected_double_jeopardy_rounds = request.session.get('selected_double_jeopardy_rounds', [r.id for r in double_jeopardy_rounds[:6]])
+    selected_final_jeopardy_round = request.session.get('selected_final_jeopardy_round', final_jeopardy_rounds.first().id if final_jeopardy_rounds.exists() else None)
+
+    return render(request, 'GPTrivia/jeopardyboard.html', {
+        'rounds': jeopardy_rounds.filter(id__in=selected_jeopardy_rounds),
+        'next_screen': 'double_jeopardy_screen',
+        'value_multiplier': 200,
+        'is_final_jeopardy': False,
+        'jeopardy_rounds': jeopardy_rounds,
+        'double_jeopardy_rounds': double_jeopardy_rounds,
+        'final_jeopardy_rounds': final_jeopardy_rounds,
+        'selected_jeopardy_rounds': selected_jeopardy_rounds,
+        'selected_double_jeopardy_rounds': selected_double_jeopardy_rounds,
+        'selected_final_jeopardy_round': selected_final_jeopardy_round,
+        'range_six': range(1, 7),  # Range for dropdown positions
+    })
 
 def double_jeopardy_screen(request):
     rounds = JeopardyRound.objects.filter(type=JeopardyRound.DOUBLE_JEOPARDY)

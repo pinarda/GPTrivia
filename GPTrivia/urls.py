@@ -73,4 +73,5 @@ urlpatterns = [
     path('jeopardy/', views.jeopardy_screen, name='jeopardy_screen'),
     path('double-jeopardy/', views.double_jeopardy_screen, name='double_jeopardy_screen'),
     path('final-jeopardy/', views.final_jeopardy_screen, name='final_jeopardy_screen'),
+    path('api/save-rounds/', views.save_rounds, name='save_rounds'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + debug_toolbar_urls()
