@@ -53,7 +53,8 @@ class ScoresheetConsumer(AsyncWebsocketConsumer):
 
 
 class ButtonPressConsumer(AsyncWebsocketConsumer):
-    periodic_task = None  # Reference to the periodic task
+    # periodic_task = None  # Reference to the periodic task
+    reset_task = None  # Reference to the reset task
     last_update_time = 0  # Class-level variable to track the last update time
     async def connect(self):
         self.room_group_name = 'button_group'
@@ -66,8 +67,8 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
         # Start periodic task for resetting max_time
-        if not type(self).periodic_task:
-            type(self).periodic_task = asyncio.create_task(self.periodic_reset())
+        # if not type(self).periodic_task:
+        #     type(self).periodic_task = asyncio.create_task(self.periodic_reset())
 
 
     async def disconnect(self, close_code):
@@ -110,36 +111,64 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
             type(self).last_update_time = time.time()
             print(f"Update message received. Last update time set to {type(self).last_update_time}")
 
+
+            self.last_update_time = time.time()
+
+            # Cancel any existing reset task
+            if self.reset_task and not self.reset_task.done():
+                self.reset_task.cancel()
+
+            # Create a new reset task
+            self.reset_task = asyncio.create_task(self.schedule_reset())
+
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {'type': 'update_message', 'username': username, 'sender_id': data.get('sender_id'), 'timestamp_diff': client_timestamp}
             )
+
         elif data['type'] == 'host_options_toggle':
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {'type': 'host_options_toggle_message', 'sender_id': data.get('sender_id')}
             )
 
-    async def periodic_reset(self):
-        while True:
-            try:
-                current_time = time.time()
-                # Only send reset if no update message received in the last 2 seconds
-                if current_time - type(self).last_update_time > 2:
-                    print("Sending periodic reset message (no updates in last 2 seconds).")
-                    await self.channel_layer.group_send(
-                        self.room_group_name,
-                        {
-                            'type': 'reset_message'
-                        }
-                    )
-                else:
-                    print("Skipping periodic reset (recent update received).")
-                await asyncio.sleep(2)  # Check every 2 seconds
-            except asyncio.CancelledError:
-                # Handle task cancellation
-                print("Periodic reset task canceled.")
-                break
+    async def schedule_reset(self):
+        # This coroutine waits exactly 2 seconds.
+        try:
+            await asyncio.sleep(2)
+            # After exactly 2 seconds with no new message:
+            print("Sending exact 2-second reset message.")
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'reset_message'
+                }
+            )
+        except asyncio.CancelledError:
+            # This happens if a new message arrives before 2 seconds are up
+            # Just pass and let the new timer take over
+            pass
+
+    # async def periodic_reset(self):
+    #     while True:
+    #         try:
+    #             current_time = time.time()
+    #             # Only send reset if no update message received in the last 2 seconds
+    #             if current_time - type(self).last_update_time > 2:
+    #                 print("Sending periodic reset message (no updates in last 2 seconds).")
+    #                 await self.channel_layer.group_send(
+    #                     self.room_group_name,
+    #                     {
+    #                         'type': 'reset_message'
+    #                     }
+    #                 )
+    #             else:
+    #                 print("Skipping periodic reset (recent update received).")
+    #             await asyncio.sleep(2)  # Check every 2 seconds
+    #         except asyncio.CancelledError:
+    #             # Handle task cancellation
+    #             print("Periodic reset task canceled.")
+    #             break
 
     async def reset_message(self, event):
         # Send reset message to the WebSocket

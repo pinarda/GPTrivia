@@ -46,6 +46,7 @@
                 }
                 console.log("Received unlock signal from WebSocket. Unlocking button.");
 
+
                 // Global unlock for all clients
                 const mainButton = document.getElementById('action-button');
                 hardLock = false;
@@ -321,6 +322,24 @@
         mainButton.classList.add('locked');
         console.log("Main button starts in hard lock.");
     });
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        // Page is now visible
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          console.log("Page visible again, checking and attempting reconnect...");
+          connectWebSocket();
+        }
+      }
+    });
+
+    window.addEventListener('focus', () => {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          console.log("Page visible again, checking and attempting reconnect...");
+          connectWebSocket();
+        }
+    });
+
 
 </script>
 {% endblock %}
