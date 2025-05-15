@@ -123,6 +123,31 @@ main {
     height: 40px; /* Make the spinner match the button's height */
 }
 
+#rounds-spinner {
+    display: inline-block;
+    width:70%;
+    height:70%;
+    transform-origin:center;
+    vertical-align:middle;
+    margin-left: 5px; /* Space between button and spinner */
+    margin-top: 5px; /* Space between button and spinner */
+}
+
+.loading-cell{
+    display:flex;
+    justify-content:center;   /* horizontal centering */
+    align-items:center;       /* vertical centering  */
+    gap:0.5rem;               /* space between spinner and text */
+}
+
+.spinner-wrap{
+    display:inline-block;
+    width:50px;
+    height:50px;
+    overflow:hidden;        /* anything that sticks out is clipped */
+    vertical-align:middle;
+}
+
 @keyframes spin {
     0% {
         transform: rotate(0deg);

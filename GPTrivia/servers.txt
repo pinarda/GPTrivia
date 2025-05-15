@@ -80,3 +80,11 @@ For the scoresheet react app development:
 
 Start the server locally (python manage.py runserver)
 See the README in the scoresheet directory (npm start)
+
+
+
+
+TO UPDATE THE PRODUCTION SERVER WITH NEW CODE:
+cd git/GPTrivia
+git pull
+sudo systemctl restart daphne
