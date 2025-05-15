@@ -222,6 +222,7 @@
         <div class="table-container">
             <div class="round-selection-table">
             <div class="round-selection-table-title" colspan="4">Currently Available Rounds</div>
+            
                 <div class="round-selection-table-header">
                     <div class="round-selection-table-cell">Order</div>
                     <div class="round-selection-table-cell">Round Title</div>
@@ -229,6 +230,19 @@
                     <div class="round-selection-table-cell coop_cell">Co-op</div>
                     <div class="round-selection-table-cell date_cell">Date</div>
                 </div>
+            
+                <div id="rounds-placeholder" class="round-selection-table-row">
+                  <div class="round-selection-table-cell loading-cell" colspan="5">
+                      <span class="spinner-wrap">
+                          <img src="{% static 'GPTrivia/css/ouroboros.png' %}"
+                               id="rounds-spinner"
+                               class="spinner"
+                               alt="Loading…">
+                      </span>
+                      Loading rounds…
+                  </div>
+                </div>
+            
                 {% for title in avail_titles %}
                 <div class="round-selection-table-row">
                     <div class="round-selection-table-cell">
@@ -263,6 +277,93 @@
 
 
     <script>
+        document.addEventListener("DOMContentLoaded", () => {
+          fetch("/api/collect_rounds/", {credentials: "same-origin"})
+            .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+            .then(({rounds}) => {
+              const table = document.querySelector(".round-selection-table");
+        
+              // Remove any placeholder row (“Loading rounds…”)
+              document.getElementById("rounds-placeholder").style.display = "none";
+        
+              rounds.forEach((r, idx) => {
+                // ───────────── row container ─────────────
+                const row = document.createElement("div");
+                row.className = "round-selection-table-row";
+        
+                // ───────────── Order cell ─────────────
+                const orderCell = document.createElement("div");
+                orderCell.className = "round-selection-table-cell";
+                const orderBox = document.createElement("div");
+                orderBox.id        = `order_box_${idx}`;
+                orderBox.className = "order-box";
+                orderBox.onclick   = () => toggleOrder(orderBox, idx);
+                const orderInput = document.createElement("input");
+                orderInput.type  = "hidden";
+                orderInput.name  = `round_order_${idx}`;
+                orderInput.id    = `round_order_${idx}`;
+                orderCell.append(orderBox, orderInput);
+        
+                // ───────────── Title cell ─────────────
+                const titleCell = document.createElement("div");
+                titleCell.className = "round-selection-table-cell wrap-text";
+                const titleInput = document.createElement("input");
+                titleInput.type  = "text";
+                titleInput.name  = `round_title_${idx}`;
+                titleInput.id    = `round_title_${idx}`;
+                titleInput.value = r.title;
+                titleInput.className = "editable-cell";
+                titleCell.appendChild(titleInput);
+        
+                // ───────────── Creator cell ─────────────
+                const creatorCell = document.createElement("div");
+                creatorCell.className = "round-selection-table-cell wrap-text creator-cell";
+                const creatorInput = document.createElement("input");
+                creatorInput.type  = "text";
+                creatorInput.name  = `round_creator_${idx}`;
+                creatorInput.id    = `round_creator_${idx}`;
+                creatorInput.value = r.creator;
+                creatorInput.className = "editable-cell creator-input";
+                creatorCell.appendChild(creatorInput);
+        
+                // ───────────── Co-op checkbox cell ─────────────
+                const coopCell = document.createElement("div");
+                coopCell.className = "round-selection-table-cell wrap-text coop_cell";
+                const coopInput = document.createElement("input");
+                coopInput.type  = "checkbox";
+                coopInput.name  = `round_coop_${idx}`;
+                coopInput.id    = `round_coop_${idx}`;
+                coopInput.className = "coop-box";
+                coopCell.appendChild(coopInput);
+        
+                // ───────────── Date cell ─────────────
+                const dateCell = document.createElement("div");
+                dateCell.className = "round-selection-table-cell wrap-text date_cell";
+                const dateSpan = document.createElement("span");
+                dateSpan.id   = `round_date_${idx}`;
+                dateSpan.className = "editable-cell";
+                dateSpan.textContent = r.shared_date;
+                dateCell.appendChild(dateSpan);
+                
+                 row.insertAdjacentHTML("beforeend", `
+                    <input type="hidden" name="round_link_${idx}"        value="${r.link}">
+                    <input type="hidden" name="round_old_link_${idx}"    value="${r.old_link}">
+                    <input type="hidden" name="round_shared_date_${idx}" value="${r.shared_date}">
+                `);
+        
+                // ───────────── assemble the row ─────────────
+                row.append(orderCell, titleCell, creatorCell, coopCell, dateCell);
+                table.appendChild(row);
+              });
+            })
+            .catch(err => {
+              console.error("Failed to load rounds:", err);
+              document.getElementById("rounds-spinner").style.display = "none";
+              document.getElementById("rounds-placeholder").firstElementChild.textContent =
+                "Couldn’t load rounds — try refreshing.";
+            });
+        });
+    
         let currentOrder = 1;
         const selectedOrders = {};
 

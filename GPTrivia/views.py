@@ -14,11 +14,14 @@ from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
 from django.views import View
+from asgiref.sync import sync_to_async
 import os
 import string
+from django.views.decorators.csrf import ensure_csrf_cookie
 import random
 from autogen import AssistantAgent, UserProxyAgent
 import autogen
+from django.shortcuts import redirect
 from django.contrib.auth.models import User
 import subprocess
 from asgiref.sync import async_to_sync
@@ -938,7 +941,26 @@ def player_profile(request, player_name):
     context = player_profile_dict(request, player_name)
     return render(request, 'GPTrivia/player_profile.html', context)
 
+
+@sync_to_async          # runs blocking code in a thread-pool
+def _collect_rounds():
+    links, titles, creators, old_links, shared_dates = get_round_titles_and_links()
+    return [
+        {
+            "title": t, "creator": c, "link": l,
+            "old_link": o, "shared_date": d
+        }
+        for t, c, l, o, d in zip(titles, creators, links, old_links, shared_dates)
+    ]
+
+async def collect_rounds_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    data = await _collect_rounds()
+    return JsonResponse({"rounds": data})
+
 @login_required
+@ensure_csrf_cookie
 def home(request):
     try:
         latest_presentation = MergedPresentation.objects.latest('id')
@@ -947,34 +969,42 @@ def home(request):
         latest_presentation = None
         presentation_url = None
 
-    (links, titles, creators, old_links, shared_dates) = get_round_titles_and_links(processed_senders=[])
+    # (links, titles, creators, old_links, shared_dates) = get_round_titles_and_links(processed_senders=[])
 
     presentation_name = datetime.date.strftime(datetime.date.today(), '%-m.%d.%Y')
     if request.method == 'POST':
         action = request.POST.get('action')
+        indices = {
+            key.rsplit("_", 1)[-1]  # → "0", "1", …
+            for key in request.POST
+            if key.startswith("round_title_")
+        }
 
         if action == 'generate':
 
             round_order = {}
-            for i in range(len(titles)):
-                order = request.POST.get(f'round_order_{i}')
-                if order:
-                    round_order[int(order)] = {
-                        'title': request.POST.get(f'round_title_{i}'),
-                        'creator': request.POST.get(f'round_creator_{i}'),
-                        'link': links[i],
-                        'old_link': old_links[i],
-                        'shared_date': shared_dates[i],
-                        'coop': request.POST.get(f'round_coop_{i}')
-                    }
+            for idx in indices:
+                order_val = request.POST.get(f"round_order_{idx}")
+                if not order_val:
+                    continue  # user didn’t pick this row
+                order = int(order_val)
 
+                round_order[order] = {
+                    "title": request.POST.get(f"round_title_{idx}"),
+                    "creator": request.POST.get(f"round_creator_{idx}"),
+                    "link": request.POST.get(f"round_link_{idx}"),
+                    "old_link": request.POST.get(f"round_old_link_{idx}"),
+                    "shared_date": request.POST.get(f"round_shared_date_{idx}"),
+                    "coop": request.POST.get(f"round_coop_{idx}"),
+                }
             # make sure there's at least one round, or else just return
-            if len(round_order) == 0:
-                return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url,
-                                                              'pres_name': latest_presentation.name if latest_presentation else "None",
-                                                              'avail_links': links, 'avail_titles': titles,
-                                                              'avail_creators': creators, 'shared_dates': shared_dates,
-                                                              'avail_coops': [0] * len(titles)})
+            if not round_order:
+                return render(
+                    request,
+                    "GPTrivia/home.html",
+                    {"presentation_url": presentation_url,
+                     "pres_name": latest_presentation.name if latest_presentation else "None"}
+                )
 
             # Sort rounds by order
             ordered_rounds = [round_order[key] for key in sorted(round_order.keys())]
@@ -1047,23 +1077,29 @@ def home(request):
         elif action == 'update':
 
             round_order = {}
-            for i in range(len(titles)):
-                order = request.POST.get(f'round_order_{i}')
-                if order:
-                    round_order[int(order)] = {
-                        'title': request.POST.get(f'round_title_{i}'),
-                        'creator': request.POST.get(f'round_creator_{i}'),
-                        'link': links[i],
-                        'old_link': old_links[i],
-                        'coop': request.POST.get(f'round_coop_{i}'),
-                    }
+            for idx in indices:
+                order_val = request.POST.get(f"round_order_{idx}")
+                if not order_val:
+                    continue  # user didn’t pick this row
+                order = int(order_val)
 
-            if len(round_order) == 0:
-                return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url,
-                                                              'pres_name': latest_presentation.name if latest_presentation else "None",
-                                                              'avail_links': links, 'avail_titles': titles,
-                                                              'avail_creators': creators, 'shared_dates': shared_dates,
-                                                              'avail_coops': [0] * len(titles)})
+                round_order[order] = {
+                    "title": request.POST.get(f"round_title_{idx}"),
+                    "creator": request.POST.get(f"round_creator_{idx}"),
+                    "link": request.POST.get(f"round_link_{idx}"),
+                    "old_link": request.POST.get(f"round_old_link_{idx}"),
+                    "shared_date": request.POST.get(f"round_shared_date_{idx}"),
+                    "coop": request.POST.get(f"round_coop_{idx}"),
+                }
+
+            if not round_order:
+                # nothing selected → render page without hitting Gmail
+                return render(
+                    request,
+                    "GPTrivia/home.html",
+                    {"presentation_url": presentation_url,
+                     "pres_name": latest_presentation.name if latest_presentation else "None"}
+                )
 
             # Sort rounds by order
             ordered_rounds = [round_order[key] for key in sorted(round_order.keys())]
@@ -1128,8 +1164,10 @@ def home(request):
                 new_round.save()
 
         (links, titles, creators, old_links, shared_dates) = get_round_titles_and_links(processed_senders=[])
+        return redirect("home")
 
-    return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None", 'avail_links': links, 'avail_titles': titles, 'avail_creators': creators, 'shared_dates': shared_dates, 'avail_coops': [0]*len(titles)})
+    # return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None", 'avail_links': links, 'avail_titles': titles, 'avail_creators': creators, 'shared_dates': shared_dates, 'avail_coops': [0]*len(titles)})
+    return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None"})
 
 @login_required
 def scoresheet(request):
