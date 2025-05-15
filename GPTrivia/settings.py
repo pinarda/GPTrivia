@@ -30,8 +30,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-# DEBUG = False
+# DEBUG = True
+DEBUG = False
 print(f"DEBUG is set to: {DEBUG}")
 
 ALLOWED_HOSTS = ['hailsciencetrivia.com', 'www.hailsciencetrivia.com', '192.168.0.178', '127.0.0.1', "localhost", "192.168.0.100", "67.165.238.242", "24.128.76.57", "35.89.236.168", "52.42.119.83"]
@@ -147,6 +147,11 @@ CSRF_TRUSTED_ORIGINS = ['https://hailsciencetrivia.com',
                         'http://www.hailsciencetrivia.com',]
 
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development
+
+CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
 
 ROOT_URLCONF = "GPTrivia.urls"
 
