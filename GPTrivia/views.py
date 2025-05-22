@@ -186,17 +186,17 @@ def save_subscription(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
-def send_push(title, message, subscriptions):
-    for sub in subscriptions:
-        try:
-            webpush(
-                subscription_info=sub,
-                data=json.dumps({'title': title, 'body': message}),
-                vapid_private_key='pk',
-                vapid_claims={"sub": "mailto:hailsciencetrivia@gmail.com"}
-            )
-        except WebPushException as ex:
-            print("Web push failed:", repr(ex))
+# def send_push(title, message, subscriptions):
+#     for sub in subscriptions:
+#         try:
+#             webpush(
+#                 subscription_info=sub,
+#                 data=json.dumps({'title': title, 'body': message}),
+#                 vapid_private_key='MKOWyxQRCG8kKDaoX4BEME-aQuij50hdO9DfWxna8bo',
+#                 vapid_claims={"sub": "mailto:hailsciencetrivia@gmail.com"}
+#             )
+#         except WebPushException as ex:
+#             print("Web push failed:", repr(ex))
 
 # def jeopardy_screen(request):
 #     rounds = JeopardyRound.objects.filter(type=JeopardyRound.JEOPARDY)
