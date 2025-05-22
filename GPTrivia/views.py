@@ -112,7 +112,7 @@ class PushSubscriptionAdmin(admin.ModelAdmin):
     search_fields = ('endpoint', 'user__username')
 
 @admin.register(PushSubscription)
-class PushSubscriptionAdmin(admin.ModelAdmin):
+class PushSubscriptionAdminAgain(admin.ModelAdmin):
     list_display = ('user', 'endpoint', 'created_at')
     actions = ['send_test_push']
 
