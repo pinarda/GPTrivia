@@ -16,9 +16,8 @@ class Command(BaseCommand):
             creator_list += f", +{len(creators) - 3} more"
 
         message = (
-            f"We currently have {num_rounds} trivia rounds "
-            f"from {num_creators} different creators ({creator_list})."
+            f"We have trivia rounds from {num_creators} different creators ({creator_list})."
         )
 
-        full_message = f"\n\n{message} Join at 7:30pm PST!"
-        send_push_to_all("Trivia Night!", full_message)
+        full_message = f"{message}"
+        send_push_to_all("Trivia at 7:30pm PST!", full_message)
