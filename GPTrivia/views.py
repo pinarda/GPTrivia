@@ -10,6 +10,7 @@ from datetime import datetime
 from django.core.exceptions import ObjectDoesNotExist
 from django.views.decorators.csrf import csrf_exempt
 from openai import OpenAI
+from django.contrib import admin
 from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
@@ -99,9 +100,15 @@ players = [
     'score_dan', 'score_chris', 'score_drew', 'score_tom', 'score_paige']
 
 
+VAPID_PRIVATE_KEY = 'MKOWyxQRCG8kKDaoX4BEME-aQuij50hdO9DfWxna8bo'
 VAPID_CLAIMS = {
     "sub": "mailto:hailsciencetrivia@gmail.com"
 }
+
+@admin.register(PushSubscription)
+class PushSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'endpoint', 'created_at')
+    search_fields = ('endpoint', 'user__username')
 
 def send_push_to_all(title, body):
     subscriptions = PushSubscription.objects.all()
