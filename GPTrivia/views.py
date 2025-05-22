@@ -106,21 +106,18 @@ VAPID_CLAIMS = {
     "sub": "mailto:hailsciencetrivia@gmail.com"
 }
 
-@admin.register(PushSubscription)
-class PushSubscriptionAdmin(admin.ModelAdmin):
-    list_display = ('user', 'endpoint', 'created_at')
-    search_fields = ('endpoint', 'user__username')
 
 @admin.register(PushSubscription)
 class PushSubscriptionAdminAgain(admin.ModelAdmin):
     list_display = ('user', 'endpoint', 'created_at')
     actions = ['send_test_push']
+    search_fields = ('endpoint', 'user__username')
 
     def send_test_push(self, request, queryset):
         send_push_to_all("Admin Test", "Test push from admin.")
         self.message_user(request, "Push notification sent to all subscriptions.", messages.SUCCESS)
     send_test_push.short_description = "Send test push notification to all"
-    
+
 def send_push_to_all(title, body):
     subscriptions = PushSubscription.objects.all()
     payload = {
