@@ -138,7 +138,7 @@ def send_push_to_all(title, body):
                 subscription_info=sub_info,
                 data=json.dumps(payload),
                 vapid_private_key=VAPID_PRIVATE_KEY,
-                vapid_claims=VAPID_CLAIMS,
+                vapid_claims=VAPID_CLAIMS.copy(),
             )
             print(f"Notification sent to {sub.endpoint}")
         except WebPushException as ex:
