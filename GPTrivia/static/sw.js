@@ -27,3 +27,14 @@ self.addEventListener("fetch", event => {
     )
   );
 });
+
+self.addEventListener('push', function(event) {
+  const data = event.data.json();
+  const title = data.title || 'Hail Science Trivia';
+  const options = {
+    body: data.body,
+    icon: '/static/favicon.ico'
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});

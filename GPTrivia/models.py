@@ -78,6 +78,18 @@ class MergedPresentation(models.Model):
         return self.name
 
 
+
+class PushSubscription(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    endpoint = models.URLField(unique=True)
+    p256dh = models.TextField()
+    auth = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Subscription for {self.user or 'anonymous'}"
+
+
 class JeopardyRound(models.Model):
     JEOPARDY = 'JEOPARDY'
     DOUBLE_JEOPARDY = 'DOUBLE_JEOPARDY'
