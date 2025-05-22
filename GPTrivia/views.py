@@ -125,6 +125,7 @@ def send_push_to_all(title, body):
         "body": body,
     }
     for sub in subscriptions:
+        print(f"Endpoint: {sub.endpoint}")
         sub_info = {
             "endpoint": sub.endpoint,
             "keys": {
