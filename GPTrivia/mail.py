@@ -324,6 +324,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
     print(creators)
     print(merged_creators)
 
+    j=0
     for element in second_slide_elements:
         if 'shape' in element and 'text' in element['shape']:
             element_id = element['objectId']
@@ -430,8 +431,9 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                             creator_start_index = content.index(creator_placeholder)  # + element_len + 2
                             creator_end_index = creator_start_index + len(creator_placeholder)
 
-                            if coops[i] == 1:
+                            if coops[i] == 'on':
                                 new_text = new_text + " - Co-op"
+                            j+=1
 
                             print(f"creator_start_index: {creator_start_index}")
                             print(f"creator_end_index: {creator_end_index}")
@@ -1327,7 +1329,7 @@ def get_round_titles_and_links(processed_senders=[]):
 
 if __name__ == '__main__':
     # get_round_titles_and_links([])
-    # create_presentation()
+    create_presentation(["title1"], ["creator1"], ["link1"], "name", ["oldlink1"], ["no"])
     questions_answers = {
         'Question1': "Pterodactyl, brontosaurus or trex?",
         'Answer2': "Dinos",

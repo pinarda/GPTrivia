@@ -20,6 +20,7 @@
     {% csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token }}">
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+
 {% endblock %}
 
 {% block content %}
@@ -29,6 +30,27 @@
     <script src="{% static 'scoresheet/build/static/js/main.95f57237.js' %}"></script>
     <button id="animate-btn">Animate</button>
 
+    <button id="magic-button">Click me!</button>
+    <div id="star-overlay"></div>
+    
+    <div id="elephant-track">
+      <div id="elephant-wrapper">
+        <div id="elephant"></div>
+      </div>
+    </div>
+    
+    <button id="let-elephant-go">Swoop!</button>
+    
+    <script>
+    document.getElementById('let-elephant-go').addEventListener('click', () => {
+      const wrap = document.getElementById('elephant-wrapper');
+      wrap.style.animation = 'none';     // reset
+      void wrap.offsetWidth;             // force reflow
+      wrap.style.animation = 'walk-x 12s linear 1 forwards';
+    });
+    </script>
+
+    <script src="{% static 'GPTrivia/js/stars.js' %}"></script>
     <script>
     document.getElementById('animate-btn').addEventListener('click', function() {
         // Reset the target element state before animating

@@ -173,3 +173,61 @@ a {
         display:none;
     }
 }
+
+/* ----- overlay that catches flying stars ----- */
+#star-overlay{
+  position: fixed;
+  inset: 0;                 /* top:0; right:0; bottom:0; left:0 */
+  pointer-events: none;     /* clicks pass through */
+  overflow: visible;
+  z-index: 9999;
+}
+
+/* ----- a single star ----- */
+.star{
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: gold;
+  /* simple 5-point star shape */
+  clip-path: polygon(
+      50% 0%,  61% 35%, 98% 35%,
+      68% 57%, 79% 91%, 50% 70%,
+      21% 91%, 32% 57%, 2%  35%,
+      39% 35%
+  );
+  will-change: transform, opacity;
+}
+
+#elephant-track{
+  position:fixed; inset:0;
+  pointer-events:none;
+  z-index:10010;
+}
+
+/* wrapper slides left → right when button is clicked */
+#elephant-wrapper{
+  position:absolute;
+  bottom:12%;
+  left:-100px;                 /* start just off-screen */
+}
+
+#elephant {
+  width: 100px;
+  height: 67px;
+  /*background: url("/static/img/elephant_strip_centered_bold_final.png") -4px -4px no-repeat;*/
+    background: url("/static/img/snakesprite.png") no-repeat;
+    background-size: 200px 67px;
+  animation: walk-frames 0.6s steps(2) infinite;
+  /*filter: invert(1);        !* black → white *!*/
+}
+
+@keyframes walk-frames {
+  to { background-position-x: calc(-2 * 100px); }   /* 3 frames × step width */
+}
+
+
+/* slide wrapper the full viewport width + sprite width */
+@keyframes walk-x{
+to { transform: translateX(calc(100vw + 100px)); } /* 8 px safety */
+}
