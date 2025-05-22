@@ -40,9 +40,7 @@
                     </form>
                 {% endif %}
                 {% if user.is_authenticated and user.username == player_name %}
-                    <form action={% url 'enable_notifications' %}>
-                        <button class="expand-collapse-button" id="notificationbtn">Enable Notifications</button>
-                    </form>
+                    <button class="expand-collapse-button" id="notificationbtn">Enable Notifications</button>
                 {% endif %}
             </div>
 
@@ -155,22 +153,32 @@
             }
 
             async function subscribeUser() {
-                const registration = await navigator.serviceWorker.ready;
-                const subscription = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: 'BFTBiTvIwlHIeF0V47_EkfTVXG3K1ivlbgYnbhdZMsuR6IwKa42VeDtB4vLwqc60oYX198CRc75MKIuqTP-1tpY'
-                });
+                try {
+                    const registration = await navigator.serviceWorker.ready;
+                    console.log('Service worker ready:', registration);
 
-                // Send subscription to the server
-                await fetch('/api/save-subscription/', {
-                    method: 'POST',
-                    body: JSON.stringify(subscription),
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                });
+                    const subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: 'BFTBiTvIwlHIeF0V47_EkfTVXG3K1ivlbgYnbhdZMsuR6IwKa42VeDtB4vLwqc60oYX198CRc75MKIuqTP-1tpY'
+                    });
+                    console.log('Push subscription created:', subscription);
+
+                    const response = await fetch('/api/save-subscription/', {
+                        method: 'POST',
+                        body: JSON.stringify(subscription),
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': 'SbPQytYxlWI1xU8jYh18IRC9xFFIKcj2mAOfWAmBVB0MQGm3Yvzwxn05dugLqchV'
+                        }
+                    });
+
+                    console.log('Subscription saved:', await response.json());
+                } catch (err) {
+                    console.error('Error in subscribeUser():', err);
+                    debugger; // Hit this if anything goes wrong
+                }
             }
+
 
 
           function setButtonColors() {

@@ -99,6 +99,35 @@ players = [
     'score_dan', 'score_chris', 'score_drew', 'score_tom', 'score_paige']
 
 
+VAPID_CLAIMS = {
+    "sub": "mailto:hailsciencetrivia@gmail.com"
+}
+
+def send_push_to_all(title, body):
+    subscriptions = PushSubscription.objects.all()
+    payload = {
+        "title": title,
+        "body": body,
+    }
+    for sub in subscriptions:
+        sub_info = {
+            "endpoint": sub.endpoint,
+            "keys": {
+                "p256dh": sub.p256dh,
+                "auth": sub.auth,
+            }
+        }
+        try:
+            webpush(
+                subscription_info=sub_info,
+                data=json.dumps(payload),
+                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_claims=VAPID_CLAIMS,
+            )
+            print(f"Notification sent to {sub.endpoint}")
+        except WebPushException as ex:
+            print(f"Failed to send notification: {ex}")
+
 def get_j_question(request, question_id):
     question = get_object_or_404(JeopardyQuestion, id=question_id)
     return JsonResponse({"id": question.id,  # Include the ID field,
@@ -147,8 +176,8 @@ def send_push(title, message, subscriptions):
             webpush(
                 subscription_info=sub,
                 data=json.dumps({'title': title, 'body': message}),
-                vapid_private_key='YOUR_PRIVATE_KEY',
-                vapid_claims={"sub": "mailto:you@example.com"}
+                vapid_private_key='pk',
+                vapid_claims={"sub": "mailto:hailsciencetrivia@gmail.com"}
             )
         except WebPushException as ex:
             print("Web push failed:", repr(ex))

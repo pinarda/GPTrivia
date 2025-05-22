@@ -1,8 +1,10 @@
 const CACHE_NAME = "hail-science-trivia";
-const STATIC_ASSETS = [
-  "/",
-  "/static/"
-];
+// const STATIC_ASSETS = [
+//   "/",
+//   "/static/"
+// ];
+
+const STATIC_ASSETS = [];
 
 self.addEventListener("install", event => {
   event.waitUntil(

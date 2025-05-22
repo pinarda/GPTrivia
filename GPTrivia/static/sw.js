@@ -1,4 +1,3 @@
-// static/sw.js  – very small “offline first” example
 const CACHE_NAME = "hail-science-trivia";
 const STATIC_ASSETS = [
   "/",
@@ -10,6 +9,7 @@ self.addEventListener("install", event => {
     caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();             // activate right away
+  console.log('SW: Installed');
 });
 
 self.addEventListener("activate", event => {
@@ -18,6 +18,7 @@ self.addEventListener("activate", event => {
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     )
   );
+  console.log('SW: Activated');
 });
 
 self.addEventListener("fetch", event => {
@@ -26,6 +27,7 @@ self.addEventListener("fetch", event => {
       cached => cached || fetch(event.request)
     )
   );
+  console.log('SW: Fetched');
 });
 
 self.addEventListener('push', function(event) {
@@ -37,4 +39,5 @@ self.addEventListener('push', function(event) {
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
+  console.log('SW: Pushed');
 });
