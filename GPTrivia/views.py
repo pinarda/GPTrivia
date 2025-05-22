@@ -42,6 +42,7 @@ import datetime
 
 ## API Libs
 from rest_framework import generics
+from pywebpush import webpush, WebPushException
 from .serializers import GPTriviaRoundSerializer, MergedPresentationSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -53,7 +54,7 @@ from django.core import serializers
 from rest_framework.renderers import JSONRenderer
 from datetime import date
 from django.contrib.postgres.fields import JSONField  # Import this at the top of your file
-from .models import JeopardyQuestion, JeopardyRound
+from .models import JeopardyQuestion, JeopardyRound, PushSubscription
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
@@ -112,6 +113,45 @@ def deactivate_j_question(request, question_id):
     question.save()
     return JsonResponse({'success': True})
 
+
+@csrf_exempt  # Use this only if you're not including CSRF token (better to include it in the JS)
+def save_subscription(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+
+            endpoint = data.get('endpoint')
+            keys = data.get('keys', {})
+            p256dh = keys.get('p256dh')
+            auth = keys.get('auth')
+
+            if not endpoint or not p256dh or not auth:
+                return JsonResponse({'success': False, 'error': 'Incomplete subscription info'}, status=400)
+
+            sub, created = PushSubscription.objects.get_or_create(endpoint=endpoint)
+            sub.p256dh = p256dh
+            sub.auth = auth
+            if request.user.is_authenticated:
+                sub.user = request.user
+            sub.save()
+
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+def send_push(title, message, subscriptions):
+    for sub in subscriptions:
+        try:
+            webpush(
+                subscription_info=sub,
+                data=json.dumps({'title': title, 'body': message}),
+                vapid_private_key='YOUR_PRIVATE_KEY',
+                vapid_claims={"sub": "mailto:you@example.com"}
+            )
+        except WebPushException as ex:
+            print("Web push failed:", repr(ex))
 
 # def jeopardy_screen(request):
 #     rounds = JeopardyRound.objects.filter(type=JeopardyRound.JEOPARDY)

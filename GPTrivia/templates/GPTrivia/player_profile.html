@@ -39,6 +39,11 @@
                         <button class="expand-collapse-button" id="passwordbtn">Change Password</button>
                     </form>
                 {% endif %}
+                {% if user.is_authenticated and user.username == player_name %}
+                    <form action={% url 'enable_notifications' %}>
+                        <button class="expand-collapse-button" id="notificationbtn">Enable Notifications</button>
+                    </form>
+                {% endif %}
             </div>
 
             <div id="picdiv_reg">
@@ -131,6 +136,42 @@
           let playerColorMapping = {{ player_color_mapping|safe }};
           let playerName = "{{ player_name }}";
           let textColor = "{{ text_color }}";
+
+          document.addEventListener('DOMContentLoaded', () => {
+                const notifyBtn = document.getElementById('notificationbtn');
+                if (notifyBtn) {
+                    notifyBtn.addEventListener('click', askPermission);
+                }
+            });
+
+          async function askPermission() {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    console.log('Notification permission granted.');
+                    subscribeUser();
+                } else {
+                    console.warn('Permission not granted for notifications.');
+                }
+            }
+
+            async function subscribeUser() {
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: 'BFTBiTvIwlHIeF0V47_EkfTVXG3K1ivlbgYnbhdZMsuR6IwKa42VeDtB4vLwqc60oYX198CRc75MKIuqTP-1tpY'
+                });
+
+                // Send subscription to the server
+                await fetch('/api/save-subscription/', {
+                    method: 'POST',
+                    body: JSON.stringify(subscription),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+            }
+
 
           function setButtonColors() {
             let playerColor = playerColorMapping[playerName];
