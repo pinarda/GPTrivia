@@ -71,7 +71,7 @@ client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 config_list = [
     {
-        'model': 'gpt-4o-search-preview',
+        'model': 'gpt-4o',
         'api_key': os.getenv('OPENAI_API_KEY')
     }
 ]
