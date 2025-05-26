@@ -2,15 +2,13 @@
 {% load static %}
 {% load custom_tags %}
 
-{% block extra_meta %}
-    <meta name="theme-color" content="#000B58">
-{% endblock %}
 
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/buzzer.css' %}">
 {% endblock %}
 
 {% block extra_meta %}
+    <meta name="theme-color" content="#000B58">
 <script>
     let isLocked = true; // Start with the button locked
     let lockTimeout = null; // Reference to the timeout

@@ -2,15 +2,13 @@
 {% load static %}
 {% load static GPTrivia_extras %}
 
-{% block extra_meta %}
-    <meta name="theme-color" content="#1e7662">
-{% endblock %}
 
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/scoresheet.css' %}">
 {% endblock %}
 
 {% block extra_meta %}
+    <meta name="theme-color" content="#1e7662">
     <link href="{% static 'DataTables/datatables.min.css' %}" rel="stylesheet"/>
     <script src="{% static 'DataTables/datatables.min.js' %}"></script>
 
