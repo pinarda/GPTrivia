@@ -323,7 +323,7 @@
                     $('#chat-response').html('');  // Clear the previous response
                     $('#chat-response').show();  // Clear the previous response
                     var words = data.gpt_response.split('');
-                    typeWriter(words, '#chat-response', 0, 30);  // Display new response word by word
+                    typeWriter(words, '#chat-response', 0, 15);  // Display new response word by word
 
                     generateDalleImage(data.gpt_response, e);
                     $('#question-form').show();
@@ -368,7 +368,7 @@
           $('#copy-generated-qna').on('click', function () {
             // 1. Get the text we just showed
             const raw = $('#question-response').text().trim();
-        
+
             // Expect format “… \n\n Answer: …”
             const parts = raw.split(/\s*Answer:\s*/i);
             if (parts.length < 2) {
@@ -377,13 +377,13 @@
             }
             const question = parts[0].trim();
             const answer   = parts[1].trim();
-        
+
             // 2. Find the first empty question/answer pair
             let filled = false;
             for (let i = 1; i <= 10; i++) {
               const $q = $('#question-' + i);
               const $a = $('#answer-' + i);
-        
+
               if (!$q.val() && !$a.val()) {           // both blank
                 $q.val(question);
                 $a.val(answer);
@@ -395,16 +395,18 @@
               alert('All 10 slots are already filled.');
             }
           });
-          
+
         $('#question-form').on('submit', function(e) {
             $('#submit-spinner87').show();  // Hide spinner
             e.preventDefault();
             $.ajax({
                 url: '/autogen/',
                 method: 'POST',
+                cache: false,
                 data: {
                     user_input: $('#chat-response').text(),
-                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val(),
+                    nonce: Date.now()
                 },
                 success: function(data) {
                     $('#submit-spinner87').hide();  // Hide spinner
@@ -418,7 +420,7 @@
                     {#mystring =  "\n \n Note: ChatGPT responses are not guaranteed to be correct. Please check the answer before using this question in a round."#}
                     {#formattedResponse = formattedResponse.concat(mystring);#}
 
-                    typeWriter(formattedResponse, '#question-response', 0, 60);  // Display new response word by word
+                    typeWriter(formattedResponse, '#question-response', 0, 15);  // Display new response word by word
                 }
             });
         });
