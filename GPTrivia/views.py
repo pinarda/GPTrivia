@@ -852,7 +852,7 @@ class AutoGenView(View):
             name="User_proxy",
             system_message="""
     Reply TERMINATE if the task has been solved at full satisfaction. 
-    Otherwise, reply CONTINUE, or the reason why the task is not solved yet.""",
+    Otherwise, reply RETRY, or the reason why the task is not solved yet.""",
             human_input_mode="NEVER",
             is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
             llm_config=llm_config,
@@ -875,7 +875,7 @@ class AutoGenView(View):
         )
         final = autogen.AssistantAgent(
             name="Finalizer",
-            system_message="Once the Critic says the answer is correct, simply state the question provided by the QuestionMaster and answer provided by the Critic, absolutely nothing else. Start the question with the format 'Question:' and the answer after two newlines with the format 'Answer:' and end the message with the statement with the word `TERMINATE` (all caps, no period).",
+            system_message="Once the Critic says the answer is correct, simply state the question provided by the QuestionMaster and answer provided by the Critic, absolutely nothing else. Start the question with the format 'Question:' and the answer after two newlines with the format 'Answer:' (with NO PERIOD) and end the message with the statement with the word `TERMINATE` (all caps, no period).",
             llm_config=llm_config,
             is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
         )
