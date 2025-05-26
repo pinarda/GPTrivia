@@ -1,6 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_meta %}
+    <meta name="theme-color" content="#060ce9">
+{% endblock %}
+
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/jeopardyboard.css' %}">
 {% endblock %}

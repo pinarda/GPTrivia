@@ -2,6 +2,10 @@
 {% load static %}
 {% load static GPTrivia_extras %}
 
+{% block extra_meta %}
+    <meta name="theme-color" content="#1e7662">
+{% endblock %}
+
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/scoresheet.css' %}">
 {% endblock %}

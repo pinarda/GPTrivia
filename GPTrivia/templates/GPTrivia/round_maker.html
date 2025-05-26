@@ -3,6 +3,10 @@
 {% load static %}
 {% load custom_tags %}
 
+{% block extra_meta %}
+    <meta name="theme-color" content=#9d4edd">
+{% endblock %}
+
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/round_maker.css' %}">
 {% endblock %}

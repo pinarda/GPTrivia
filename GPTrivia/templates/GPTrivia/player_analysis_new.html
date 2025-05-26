@@ -2,6 +2,10 @@
 {% load GPTrivia_extras %}
 {% load static %}
 
+{% block extra_meta %}
+    <meta name="theme-color" content="#f94144">
+{% endblock %}
+
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}">
 {% endblock %}
