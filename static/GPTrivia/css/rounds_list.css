@@ -66,13 +66,13 @@ a {
         overflow: auto;
         /*min-height: 150px !important;*/
         height: 100%;
-        max-height: calc(94vh - 121px);
+        max-height: calc(94vh - 106px);
     }
 
 }
 
 .content-container {
-      min-height: calc(95vh - 121px);
+      min-height: calc(95vh - 106px);
     margin-bottom: 0px;
     padding-bottom: 0px;
     margin-top: 0px;
