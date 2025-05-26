@@ -164,7 +164,7 @@ a {
     }
 
     .content-container {
-      min-height: calc(95vh - 171px);
+      min-height: calc(95vh - 91px);
     }
 }
 
