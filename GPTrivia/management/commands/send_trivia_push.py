@@ -16,7 +16,7 @@ class Command(BaseCommand):
             creator_list += f", +{len(creators) - 3} more"
 
         message = (
-            f"We have trivia rounds from {num_creators} different creators ({creator_list})."
+            f"We have rounds from {num_creators} different creators ({creator_list})."
         )
 
         full_message = f"{message}"

@@ -112,6 +112,7 @@
                         <option value="theme1">Minimal</option>
                         <option value="theme3">Plain</option>
                         <option value="theme2">Trivial Pursuit</option>
+                        <option value="theme4">Geography</option>
                         <!-- ... other themes ... -->
                     </select>
                 </div>
@@ -490,6 +491,11 @@
                     break;
                 case 'theme3':
                     presentationId = '1ZFahoyu0FSUx84IldZjcfTVMKTOzfRevArv9K3KPkmw';
+                    $('#icon-group').addClass('hidden');
+                    console.log('Hiding Checkbox'); // Debugging log
+                    break;
+                case 'theme4':
+                    presentationId = '1y4ibgPyqSk5XdNydrGHZpGUvM1O92nRvGjOy2HAoc9o';
                     $('#icon-group').addClass('hidden');
                     console.log('Hiding Checkbox'); // Debugging log
                     break;
