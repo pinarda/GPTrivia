@@ -57,6 +57,8 @@ from rest_framework.renderers import JSONRenderer
 from datetime import date
 from django.contrib.postgres.fields import JSONField  # Import this at the top of your file
 from .models import JeopardyQuestion, JeopardyRound, PushSubscription
+import random
+
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
@@ -847,7 +849,7 @@ class GenerateIdeaView(View):
 
 class AutoGenView(View):
     def post(self, request, *args, **kwargs):
-        llm_config = {"config_list": config_list, "seed": 42}
+        llm_config = {"config_list": config_list, "seed": random.randint(1, 100000)}
         user_proxy = autogen.UserProxyAgent(
             name="User_proxy",
             system_message="""
