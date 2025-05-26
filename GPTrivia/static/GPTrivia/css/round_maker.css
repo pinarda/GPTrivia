@@ -286,6 +286,10 @@ select option {
         font-size: 16px;
     }
 
+    .logo {
+        font-size: 6vw;
+    }
+
     button {
         padding: 8px 16px;
         font-size: 14px;

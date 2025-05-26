@@ -71,7 +71,7 @@ client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 config_list = [
     {
-        'model': 'gpt-4',
+        'model': 'gpt-4o-search-preview',
         'api_key': os.getenv('OPENAI_API_KEY')
     }
 ]
@@ -875,7 +875,7 @@ class AutoGenView(View):
         )
         final = autogen.AssistantAgent(
             name="Finalizer",
-            system_message="Once the Critic says the answer is correct, simply state the question provided by the QuestionMaster and answer provided by the Critic, absolutely nothing else. Start the question with the format 'Question:' and the answer with the format 'Answer:' and end the message with the statement after the period with the word `TERMINATE` (all caps, no period).",
+            system_message="Once the Critic says the answer is correct, simply state the question provided by the QuestionMaster and answer provided by the Critic, absolutely nothing else. Start the question with the format 'Question:' and the answer after two newlines with the format 'Answer:' and end the message with the statement with the word `TERMINATE` (all caps, no period).",
             llm_config=llm_config,
             is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
         )
@@ -913,11 +913,11 @@ class GenerateImageView(View):
                 return JsonResponse({'dalle_image_url': None})
 
             # Call to DALL-E to generate an image based on the conversation
-            dalle_response = client.images.generate(prompt=f"Swooper, a snake with wings. He's mysterious and sly. Draw Swooper, and have his surroundings and clothing reflect the theme of {second_response}. Make sure the image is artistic and stylized.",
+            dalle_response = client.images.generate(prompt=f"Swooper, a snake with wings. He's mysterious and sly. Draw Swooper, and have his surroundings and clothing reflect the theme of this sentence: {second_response}. Make sure the image is artistic and stylized.",
             # This assumes you want to generate an image based on the last text response from GPT-4
             n=1,  # Number of images to generate
             size="1024x1024",  # The size of the image
-            model='dall-e-3')
+            model='gpt-image-1')
             image_url = dalle_response.data[0].url  # URL of the generated image
             print(image_url)
 
@@ -961,7 +961,7 @@ class IconView(View):
             # This assumes you want to generate an image based on the last text response from GPT-4
             n=1,  # Number of images to generate
             size="1024x1024",  # The size of the image
-            model='dall-e-3')
+            model='gpt-image-1')
             print(f"DALLE RESPONSE: {dalle_response}")
             image_url = dalle_response.data[0].url  # URL of the generated image
             print(f"IMAGE_URL: {image_url}")

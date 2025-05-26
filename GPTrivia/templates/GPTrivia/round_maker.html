@@ -58,7 +58,7 @@
                 <form method="post" id="question-form">
                     {% csrf_token %}
                     <div class="form-group button-with-spinner">
-                        <button type="submit" id="question-submit" style="display: none">Great, can I get a sample question?</button>
+                        <button type="submit" id="question-submit" style="display: none">Can I get a sample question?</button>
                         <img class="spinner" id="submit-spinner87" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading...">
                     </div>
                 </form>
@@ -66,6 +66,10 @@
                 <div id="question-response" style="display: none">
                     {{ autogen_response|safe }}
                 </div>
+
+                <button id="copy-generated-qna" type="button" style="display:none;">
+                  ➜ Use this question
+                </button>
 
                 <div class="alternative-option">
                     <p>Not feeling chatty? Try this instead:</p>
@@ -361,6 +365,37 @@
 
 
     $(document).ready(function() {
+          $('#copy-generated-qna').on('click', function () {
+            // 1. Get the text we just showed
+            const raw = $('#question-response').text().trim();
+        
+            // Expect format “… \n\n Answer: …”
+            const parts = raw.split(/\s*Answer:\s*/i);
+            if (parts.length < 2) {
+              alert('Could not find “Answer:” in the generated text.');
+              return;
+            }
+            const question = parts[0].trim();
+            const answer   = parts[1].trim();
+        
+            // 2. Find the first empty question/answer pair
+            let filled = false;
+            for (let i = 1; i <= 10; i++) {
+              const $q = $('#question-' + i);
+              const $a = $('#answer-' + i);
+        
+              if (!$q.val() && !$a.val()) {           // both blank
+                $q.val(question);
+                $a.val(answer);
+                filled = true;
+                break;
+              }
+            }
+            if (!filled) {
+              alert('All 10 slots are already filled.');
+            }
+          });
+          
         $('#question-form').on('submit', function(e) {
             $('#submit-spinner87').show();  // Hide spinner
             e.preventDefault();
@@ -375,14 +410,15 @@
                     $('#submit-spinner87').hide();  // Hide spinner
                     $('#question-response').html('');  // Clear the previous response
                     $('#question-response').show();  // Clear the previous response
-                    $('#question-submit').hide();
+                    $('#copy-generated-qna').show();
+                    {#$('#question-submit').hide();#}
                     // Insert a newline before 'Answer' and remove 'TERMINATE'
                     var formattedResponse = data.autogen_response.replace(' Answer:', '\n \n Answer:').replace('TERMINATE', '');
                     // append string to formattedResponse
-                    mystring =  "\n \n Note: ChatGPT responses are not guaranteed to be correct. Please check the answer before using this question in a round."
-                    formattedResponse = formattedResponse.concat(mystring);
+                    {#mystring =  "\n \n Note: ChatGPT responses are not guaranteed to be correct. Please check the answer before using this question in a round."#}
+                    {#formattedResponse = formattedResponse.concat(mystring);#}
 
-                    typeWriter(formattedResponse, '#question-response', 0, 30);  // Display new response word by word
+                    typeWriter(formattedResponse, '#question-response', 0, 60);  // Display new response word by word
                 }
             });
         });
