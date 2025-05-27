@@ -362,8 +362,8 @@
         });
     }
 
-
-
+    const prevAutogens = [];         // grows  [resp₁, resp₂, …]
+    
     $(document).ready(function() {
           $('#copy-generated-qna').on('click', function () {
             // 1. Get the text we just showed
@@ -399,15 +399,25 @@
         $('#question-form').on('submit', function(e) {
             $('#submit-spinner87').show();  // Hide spinner
             e.preventDefault();
+            
+            const basePrompt = $('#chat-response').text().trim();
+            let fullPrompt = basePrompt;
+        
+            prevAutogens.forEach(r => {
+              fullPrompt += '\n\nCan I get a new question?\n\n' + r;
+            });
+        
+            const payload = {
+              user_input: fullPrompt,
+              csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val(),
+              nonce: Date.now()
+            };
+            
             $.ajax({
                 url: '/autogen/?t=' + Date.now(),
                 method: 'POST',
                 cache: false,
-                data: {
-                    user_input: $('#chat-response').text(),
-                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val(),
-                    nonce: Date.now()
-                },
+                data: payload,
                 success: function(data) {
                     $('#submit-spinner87').hide();  // Hide spinner
                     $('#question-response').html('');  // Clear the previous response
@@ -419,6 +429,7 @@
                     // append string to formattedResponse
                     {#mystring =  "\n \n Note: ChatGPT responses are not guaranteed to be correct. Please check the answer before using this question in a round."#}
                     {#formattedResponse = formattedResponse.concat(mystring);#}
+                    prevAutogens.push(formatted);
 
                     typeWriter(formattedResponse, '#question-response', 0, 15);  // Display new response word by word
                 }

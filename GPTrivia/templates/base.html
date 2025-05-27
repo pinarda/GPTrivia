@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 {#    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://ajax.googleapis.com https://cdn.plot.ly https://hailsciencetrivia.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src 'self' https://docs.google.com; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;">    <link rel="icon" href="{% static 'img/favicon.png' %}">#}
     <link rel="apple-touch-icon" href="{% static 'splash/apple-icon-180.png' %}">
 
@@ -62,6 +62,11 @@
 
 
     <title>Hail Science</title>
+
+      <style>
+        /* Stop double-tap / pinch zoom in Chromium-based browsers */
+        html, body { touch-action: manipulation; }
+      </style>
 
     <link rel="stylesheet" href="{% static 'GPTrivia/css/styles.css' %}">
     {% block extra_css %}{% endblock %}

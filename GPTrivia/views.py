@@ -863,7 +863,7 @@ class AutoGenView(View):
         qm = autogen.AssistantAgent(
             name="QuestionMaster",
             llm_config=llm_config,
-            system_message="You provide creative ideas for ONE SINGLE trivia question based on a theme provided to you by the User_proxy. You also provide an answer to your question. You start the question with the word 'Question:' and the answer with the word 'Answer:'. You are careful to make sure that the selected trivia idea is creative and unusual, but not too niche of a topic for a general-audience trivia night."
+            system_message="You provide creative ideas for ONE SINGLE trivia question based on a theme provided to you by the User_proxy. You also provide a SHORT answer to your question. You start the question with the word 'Question:' and the answer with the word 'Answer:'. You are careful to make sure that the selected trivia idea is creative and unusual, but not too niche of a topic for a general-audience trivia night."
         )
         ap = autogen.AssistantAgent(
             name="Analyzer",
