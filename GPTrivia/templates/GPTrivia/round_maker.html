@@ -363,7 +363,7 @@
     }
 
     const prevAutogens = [];         // grows  [resp₁, resp₂, …]
-    
+
     $(document).ready(function() {
           $('#copy-generated-qna').on('click', function () {
             // 1. Get the text we just showed
@@ -399,20 +399,20 @@
         $('#question-form').on('submit', function(e) {
             $('#submit-spinner87').show();  // Hide spinner
             e.preventDefault();
-            
+
             const basePrompt = $('#chat-response').text().trim();
             let fullPrompt = basePrompt;
-        
+
             prevAutogens.forEach(r => {
               fullPrompt += '\n\nCan I get a new question?\n\n' + r;
             });
-        
+
             const payload = {
               user_input: fullPrompt,
               csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val(),
               nonce: Date.now()
             };
-            
+
             $.ajax({
                 url: '/autogen/?t=' + Date.now(),
                 method: 'POST',
@@ -429,7 +429,7 @@
                     // append string to formattedResponse
                     {#mystring =  "\n \n Note: ChatGPT responses are not guaranteed to be correct. Please check the answer before using this question in a round."#}
                     {#formattedResponse = formattedResponse.concat(mystring);#}
-                    prevAutogens.push(formatted);
+                    prevAutogens.push(formattedResponse);
 
                     typeWriter(formattedResponse, '#question-response', 0, 15);  // Display new response word by word
                 }
