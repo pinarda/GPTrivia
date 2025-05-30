@@ -170,11 +170,11 @@ header {
     /*height: 15vh;*/
 }
 
-@media screen and (orientation: landscape) {
-  header {
-    height: 10vh;
-  }
-}
+/*@media screen and (orientation: landscape) {*/
+/*  !*header {*!*/
+/*  !*  height: 10vh;*!*/
+/*  !*}*!*/
+/*}*/
 
 header div{
     align-items: center;
