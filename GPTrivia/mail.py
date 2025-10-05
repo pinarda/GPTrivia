@@ -9,6 +9,7 @@ import httplib2
 from google_auth_httplib2 import AuthorizedHttp
 from googleapiclient.errors import HttpError
 import google.auth
+import pprint
 import pytz
 
 
@@ -748,7 +749,7 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
     }
     response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
 
-
+    print("Apps Script response:\n" + pprint.pformat(response), flush=True)
 
 
     ### MODIFYING THE DATE
