@@ -772,7 +772,7 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
             for text_element in text:
                 if 'textRun' in text_element and 'content' in text_element['textRun']:
                     content = text_element['textRun']['content']
-                    if "April" in content:
+                    if "June" in content:
                         date_element_id = element['objectId']
                         # get the text in this element
                         date_text = content
