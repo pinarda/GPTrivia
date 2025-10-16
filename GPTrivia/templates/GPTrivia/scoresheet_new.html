@@ -54,22 +54,77 @@
 
     <script src="{% static 'GPTrivia/js/stars.js' %}"></script>
     <script>
-    document.getElementById('animate-btn').addEventListener('click', function() {
-        // Reset the target element state before animating
-        var target = document.getElementById('react-scoresheet');
-        target.style.transform = 'none'; // Reset transform
-        target.style.backgroundColor = '#FF0000'; // Reset background color to initial
-
-        // Run the animation
-        anime({
-            targets: '#react-scoresheet',
-            translateX: 0,
-            rotate: '1turn',
-            backgroundColor: '#00FF00',
-            duration: 2000,
-            easing: 'easeInOutQuad'
-        });
+    // Run on click
+    document.getElementById('animate-btn').addEventListener('click', () => {
+      // scope to whole page: '*'  or just the scoresheet: '#react-scoresheet *'
+      chaosColors({ selector: '*', toMs: 400, backMs: 1600 });
     });
+    
+    function randomColor(){
+      // bright but readable
+      const h = Math.floor(Math.random()*360);
+      return `hsl(${h} 80% 55%)`;
+    }
+    
+    function chaosColors({selector='*', toMs=400, backMs=1600} = {}){
+      const els = Array.from(document.querySelectorAll(selector))
+        .filter(el => el.nodeType === 1 && !['SCRIPT','STYLE','LINK','META'].includes(el.tagName));
+    
+      const saved = new WeakMap();
+    
+      // phase 1: transition to random colors
+      for (const el of els){
+        const cs = getComputedStyle(el);
+        saved.set(el, {
+          color: cs.color,
+          bg: cs.backgroundColor,
+          border: cs.borderColor,
+          fill: cs.fill,
+          stroke: cs.stroke,
+          transition: el.style.transition
+        });
+    
+        el.style.transition = [
+          `color ${toMs}ms`,
+          `background-color ${toMs}ms`,
+          `border-color ${toMs}ms`,
+          `fill ${toMs}ms`,
+          `stroke ${toMs}ms`
+        ].join(', ');
+    
+        // set randoms only where it makes sense
+        el.style.color = randomColor();
+        if (cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent')
+          el.style.backgroundColor = randomColor();
+        if (parseFloat(cs.borderWidth) > 0) el.style.borderColor = randomColor();
+        if (cs.fill   && cs.fill   !== 'none') el.style.fill   = randomColor(); // SVG
+        if (cs.stroke && cs.stroke !== 'none') el.style.stroke = randomColor(); // SVG
+      }
+    
+      // phase 2: transition back
+      setTimeout(() => {
+        for (const el of els){
+          const rec = saved.get(el);
+          el.style.transition = [
+            `color ${backMs}ms`,
+            `background-color ${backMs}ms`,
+            `border-color ${backMs}ms`,
+            `fill ${backMs}ms`,
+            `stroke ${backMs}ms`
+          ].join(', ');
+    
+          el.style.color = rec.color;
+          el.style.backgroundColor = rec.bg;
+          el.style.borderColor = rec.border;
+          el.style.fill = rec.fill;
+          el.style.stroke = rec.stroke;
+    
+          // restore original transition after it finishes
+          setTimeout(() => { el.style.transition = rec.transition; }, backMs);
+        }
+      }, toMs);
+    }
+
     </script>
 
 {% endblock %}
