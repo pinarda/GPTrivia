@@ -7,6 +7,7 @@ const FADE_MS = 300;           // fade-out time
 const overlay     = document.getElementById("star-overlay");
 const magicButton = document.getElementById("magic-button");
 let FOOTER = null;        // declare it at module scope
+const MAX_SPEED = 25; // px/frame at which color hits "max"
 
 window.addEventListener('DOMContentLoaded', () => {
   FOOTER = document.getElementById('thefoot');
@@ -72,11 +73,21 @@ function launchStar(cx, cy) {
     }
 
       // ── NEW: colour based on current viewport coords ──
-    const normX = dx / window.innerWidth;       // 0 → 1
-    const normY = dy / window.innerHeight;      // 0 → 1
-    const hue  = normX * 720;                     // 2× colour wheel ⇒ faster change
-    const sat  = 60 + (1 - normY) * 40;           // 100 % high up → 60 % near bottom
-    const light = 50 + Math.pow(normY, 1.8) * 45; // starts 30 %, ends 75 %
+    // const normX = dx / window.innerWidth;       // 0 → 1
+    // const normY = dy / window.innerHeight;      // 0 → 1
+    // const hue  = normX * 720;                     // 2× colour wheel ⇒ faster change
+    // const sat  = 60 + (1 - normY) * 40;           // 100 % high up → 60 % near bottom
+    // const light = 50 + Math.pow(normY, 1.8) * 45; // starts 30 %, ends 75 %
+
+    const speed = Math.hypot(vx, vy);            // px per frame
+    const n = Math.min(speed / MAX_SPEED, 1);    // 0..1
+
+    // slow → blue, fast → red; more saturation and slightly darker when fast
+    const hue   = 240 - 240 * n;                 // 240=blue → 0=red
+    const sat   = 60  + 40  * n;                 // 60% → 100%
+    const light = 50  + 30  * n;                 // 70% → 40%
+
+    s.style.backgroundColor = `hsl(${hue}, ${sat}%, ${light}%)`;
 
     s.style.backgroundColor = `hsl(${hue}, ${sat}%, ${light}%)`;
 

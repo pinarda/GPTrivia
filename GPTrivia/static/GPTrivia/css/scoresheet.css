@@ -217,6 +217,7 @@ a {
   height: 67px;
   /*background: url("/static/img/elephant_strip_centered_bold_final.png") -4px -4px no-repeat;*/
     background: url("/static/img/snakesprite.png") no-repeat;
+
     background-size: 200px 67px;
   animation: walk-frames 0.6s steps(2) infinite;
   /*filter: invert(1);        !* black → white *!*/

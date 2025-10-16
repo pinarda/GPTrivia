@@ -73,7 +73,7 @@ client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 config_list = [
     {
-        'model': 'gpt-4o',
+        'model': 'o3',
         'api_key': os.getenv('OPENAI_API_KEY')
     }
 ]
@@ -903,10 +903,10 @@ class GenerateImageView(View):
             try:
                 response = client.chat.completions.create(# model="gpt-3.5-turbo",
                 # model="gpt-4",
-                model="gpt-4o",
+                model="o3",
                 temperature=1,
                 messages=conversation_history,
-                max_tokens=150)
+                max_completion_tokens=150)
                 print(f"RESPONSE: {response}")
                 second_response = response.choices[0].message.content
                 print(f"SECOND RESPONSE: {second_response}")
@@ -999,10 +999,10 @@ class RoundMaker(View):
         try:
             response = client.chat.completions.create(# model="gpt-3.5-turbo",
             # model="gpt-4",
-            model = "gpt-4o",
+            model = "o3",
             temperature=1,
             messages=conversation_history,
-            max_tokens=150)
+            max_completion_tokens=150)
             print(f"RESPONSE: {response}")
             gpt_response = response.choices[0].message.content
             conversation_history.append({"role": "assistant", "content": gpt_response})
