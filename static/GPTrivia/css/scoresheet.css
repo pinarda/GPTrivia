@@ -238,11 +238,11 @@ a {
 
 #snake {
   width: 100px;
-  height: 67px;
+  height: 100px;
   /*background: url("/static/img/elephant_strip_centered_bold_final.png") -4px -4px no-repeat;*/
     background: url("/static/img/snakey.png") no-repeat;
 
-    background-size: 700px 67px;
+    background-size: 700px 100px;
   animation: walk-frames 0.5s steps(7) infinite;
   /*filter: invert(1);        !* black → white *!*/
 }
