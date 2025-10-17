@@ -160,7 +160,7 @@
         flashBigSnake({ duration: total, src: '/static/img/snake_silhouette.png' });
       });
 
-      chaosColors({ selector: '#react-scoresheet *', toMs, backMs });
+      chaosColors({ selector: 'html, body, body *', toMs, backMs });
     });
 
 
@@ -186,7 +186,7 @@
       document.body.appendChild(overlay);
 
       const anim = overlay.animate(
-        [{ opacity: 0 }, { opacity: 1, offset: 0.1 }, { opacity: 0 }],
+        [{ opacity: 0 }, { opacity: 0.5, offset: 0.1 }, { opacity: 0 }],
         { duration, easing: 'ease-in-out', fill: 'forwards' }
       );
       anim.onfinish = () => overlay.remove();
