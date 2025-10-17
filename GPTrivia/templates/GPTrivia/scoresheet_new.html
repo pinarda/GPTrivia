@@ -118,22 +118,29 @@
       const h = Math.floor(Math.random()*360);
       return `hsl(${h} 80% 55%)`;
     }
-
+    
     function flashBigSnake({ src='/static/img/snake_silhouette.png', duration=1000 } = {}){
       const overlay = document.createElement('div');
-      // swap mask source if needed
-      overlay.style.webkitMask = `url("${src}") center/contain no-repeat`;
-      overlay.style.mask       = `url("${src}") center/contain no-repeat`;
-
-      overlay.style.opacity = '0';
+      Object.assign(overlay.style, {
+        position: 'fixed',
+        inset: '0',
+        zIndex: '10000',
+        pointerEvents: 'none',
+        background: '#000',                                // color that shows through the mask
+        opacity: '0',
+        WebkitMask: `url("${src}") center / 60vmin no-repeat`, // Safari
+        mask:       `url("${src}") center / 60vmin no-repeat`  // others
+      });
+    
       document.body.appendChild(overlay);
-
+    
       const anim = overlay.animate(
         [{ opacity: 0 }, { opacity: 1, offset: 0.4 }, { opacity: 0 }],
         { duration, easing: 'ease-in-out', fill: 'forwards' }
       );
       anim.onfinish = () => overlay.remove();
     }
+
 
 
 
