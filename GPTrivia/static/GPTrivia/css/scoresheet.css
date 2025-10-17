@@ -256,3 +256,61 @@ a {
 @keyframes walk-x{
 to { transform: translateX(calc(100vw + 100px)); } /* 8 px safety */
 }
+
+
+
+/* container for snakes */
+#snake-sky{
+  position: fixed; inset: 0;
+  pointer-events: none; overflow: hidden; z-index: 9999;
+}
+
+/* one snake sprite */
+/* defaults so var() always resolves */
+.snake{
+  position: absolute;
+  --y: 50vh;
+  --scale: 1;
+  --dur: 10s;
+  --delay: 0s;
+
+  top: var(--y);
+  left: -120px;
+  transform: scale(var(--scale));
+  animation:
+    walk-frames .5s steps(7) infinite,
+    fly-right var(--dur) linear var(--delay) forwards;
+}
+
+/* mirror for right→left snakes */
+.snake.left{
+  transform: scaleX(-1) scale(var(--scale,1));
+  left: calc(100vw + 120px);             /* start off-screen right */
+  animation:
+    walk-frames .5s steps(7) infinite,
+    fly-left var(--dur,10s) linear var(--delay,0s) forwards;
+}
+
+/* sprite strip */
+@keyframes walk-fleet{
+  from{ background-position:    0 0; }
+  to  { background-position: -600px 0; } /* (frames-1)*frameWidth */
+}
+
+/* flight paths */
+@keyframes fly-right{
+  from{ left: -120px; }
+  to  { left: calc(100vw + 120px); }
+}
+@keyframes fly-left{
+  from{ left: calc(100vw + 120px); }
+  to  { left: -120px; }
+}
+
+/* optional: respect reduced motion */
+/*
+@media (prefers-reduced-motion: reduce){
+  .snake{ animation: none; }
+}
+*/
+
