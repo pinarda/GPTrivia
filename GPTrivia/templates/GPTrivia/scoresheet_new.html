@@ -88,12 +88,12 @@
       launchFleet(16); // pick your fleet size
     });
 
-    document.getElementById('let-elephant-go').addEventListener('click', () => {
-      const wrap = document.getElementById('elephant-wrapper');
-      wrap.style.animation = 'none';     // reset
-      void wrap.offsetWidth;             // force reflow
-      wrap.style.animation = 'walk-x 12s linear 1 forwards';
-    });
+    {#document.getElementById('let-elephant-go').addEventListener('click', () => {#}
+    {#  const wrap = document.getElementById('elephant-wrapper');#}
+    {#  wrap.style.animation = 'none';     // reset#}
+    {#  void wrap.offsetWidth;             // force reflow#}
+    {#  wrap.style.animation = 'walk-x 12s linear 1 forwards';#}
+    {#});#}
 
     document.getElementById('let-snake-go').addEventListener('click', () => {
       const wrap = document.getElementById('snake-wrapper');
