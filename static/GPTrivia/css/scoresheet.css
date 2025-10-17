@@ -242,13 +242,13 @@ a {
   /*background: url("/static/img/elephant_strip_centered_bold_final.png") -4px -4px no-repeat;*/
     background: url("/static/img/snakey.png") no-repeat;
 
-    background-size: 200px 67px;
-  animation: walk-frames 0.3s steps(7) infinite;
+    background-size: 700px 67px;
+  animation: walk-frames 0.5s steps(7) infinite;
   /*filter: invert(1);        !* black → white *!*/
 }
 
 @keyframes walk-frames {
-  to { background-position-x: calc(-2 * 100px); }   /* 3 frames × step width */
+  to { background-position-x: calc(-7 * 100px); }   /* 3 frames × step width */
 }
 
 
