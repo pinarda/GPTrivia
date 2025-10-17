@@ -32,6 +32,8 @@
 
     <script src="{% static 'scoresheet/build/static/js/main.95f57237.js' %}"></script>
     <button id="animate-btn">Animate</button>
+    <audio id="snake-hiss" src="/static/img/snake-hissing-6092.mp3" preload="auto"></audio>
+
 
     <button id="magic-button">Click me!</button>
     <div id="star-overlay"></div>
@@ -54,6 +56,8 @@
 
     
     <script>
+
+
     // one-time preload
     const SNAKE_SRC = '/static/img/snake_silhouette.png';
     const snakeMaskReady = (function preload(src){
@@ -131,13 +135,34 @@
 
     <script src="{% static 'GPTrivia/js/stars.js' %}"></script>
     <script>
-    // Run on click
+    {#// Run on click#}
+    {#document.getElementById('animate-btn').addEventListener('click', () => {#}
+    {#  // scope to whole page: '*'  or just the scoresheet: '#react-scoresheet *'#}
+    {#  const toMs = 400, backMs = 1600;#}
+    {#  flashBigSnake({ duration: toMs + backMs, src: '/static/img/singlesnakey.png' });#}
+    {#  chaosColors({ selector: '*', toMs, backMs });#}
+    {#});#}
+
+    const hissEl = document.getElementById('snake-hiss');
+
+    function playHiss(vol = 0.7){
+      const a = hissEl.cloneNode();   // allows overlapping plays
+      a.volume = vol;
+      a.play();                       // user gesture required
+    }
+
     document.getElementById('animate-btn').addEventListener('click', () => {
-      // scope to whole page: '*'  or just the scoresheet: '#react-scoresheet *'
-      const toMs = 400, backMs = 1600;
-      flashBigSnake({ duration: toMs + backMs, src: '/static/img/singlesnakey.png' });
-      chaosColors({ selector: '*', toMs, backMs });
+      const toMs = 400, backMs = 1600, total = toMs + backMs;
+
+      // start both on the same frame
+      requestAnimationFrame(() => {
+        playHiss(0.7);
+        flashBigSnake({ duration: total, src: '/static/img/snake_silhouette.png' });
+      });
+
+      chaosColors({ selector: '#react-scoresheet *', toMs, backMs });
     });
+
 
     function randomColor(){
       // bright but r eadable
