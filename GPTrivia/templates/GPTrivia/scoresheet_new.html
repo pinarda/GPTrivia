@@ -108,16 +108,17 @@
     // Run on click
     document.getElementById('animate-btn').addEventListener('click', () => {
       // scope to whole page: '*'  or just the scoresheet: '#react-scoresheet *'
-      chaosColors({ selector: '*', toMs: 400, backMs: 1600 });
+      const toMs = 400, backMs = 1600;
+      chaosColors({ selector: '*', toMs, backMs });
       flashBigSnake({ duration: toMs + backMs, src: '/static/img/singlesnakey.png' });
     });
 
     function randomColor(){
-      // bright but readable
+      // bright but r eadable
       const h = Math.floor(Math.random()*360);
       return `hsl(${h} 80% 55%)`;
     }
-    
+
     // call this alongside your chaosColors(..)
     function flashBigSnake({ src='/static/img/singlesnakey.png', duration=2000 } = {}){
       const el = document.createElement('div');
@@ -134,7 +135,7 @@
         filter: 'hue-rotate(0deg)'
       });
       document.body.appendChild(el);
-    
+
       const hue = Math.floor(Math.random()*360);      // match the page color swing
       const anim = el.animate(
         [
