@@ -109,8 +109,8 @@
     document.getElementById('animate-btn').addEventListener('click', () => {
       // scope to whole page: '*'  or just the scoresheet: '#react-scoresheet *'
       const toMs = 400, backMs = 1600;
-      chaosColors({ selector: '*', toMs, backMs });
       flashBigSnake({ duration: toMs + backMs, src: '/static/img/singlesnakey.png' });
+      chaosColors({ selector: '*', toMs, backMs });
     });
 
     function randomColor(){
@@ -118,7 +118,7 @@
       const h = Math.floor(Math.random()*360);
       return `hsl(${h} 80% 55%)`;
     }
-    
+
     function flashBigSnake({ src='/static/img/snake_silhouette.png', duration=1000 } = {}){
       const overlay = document.createElement('div');
       Object.assign(overlay.style, {
@@ -131,9 +131,9 @@
         WebkitMask: `url("${src}") center / 60vmin no-repeat`, // Safari
         mask:       `url("${src}") center / 60vmin no-repeat`  // others
       });
-    
+
       document.body.appendChild(overlay);
-    
+
       const anim = overlay.animate(
         [{ opacity: 0 }, { opacity: 1, offset: 0.4 }, { opacity: 0 }],
         { duration, easing: 'ease-in-out', fill: 'forwards' }
