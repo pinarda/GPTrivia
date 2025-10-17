@@ -265,16 +265,6 @@ to { transform: translateX(calc(100vw + 100px)); } /* 8 px safety */
   pointer-events: none; overflow: hidden; z-index: 9999;
 }
 
-.big-snake-black{
-  position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none;
-}
-.big-snake-black::before{
-  content: "";
-  width: 60vw; height: 60vh;                 /* size as needed */
-  background: #000;                           /* fill color */
-  -webkit-mask: url("/static/img/singlesnakey.png") center/contain no-repeat;
-          mask: url("/static/img/singlesnakey.png") center/contain no-repeat;
-}
 
 /* one snake sprite */
 .snake{
