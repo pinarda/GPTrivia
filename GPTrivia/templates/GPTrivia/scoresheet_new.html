@@ -71,7 +71,7 @@
         s.style.setProperty('--scale', rand(0.7, 1.4).toFixed(2)); // size variance
         s.style.setProperty('--dur', `${rand(3, 6)}s`);           // speed variance
         s.style.setProperty('--delay', `${rand(0, 2)}s`);          // stagger
-
+        s.style.setProperty('--walk-delay', `-${(Math.random()*0.5).toFixed(3)}s`);
         // z-index layering
         s.style.zIndex = String(Math.floor(rand(1, 9)));
 
