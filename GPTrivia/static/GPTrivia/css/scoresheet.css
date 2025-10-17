@@ -266,22 +266,19 @@ to { transform: translateX(calc(100vw + 100px)); } /* 8 px safety */
 }
 
 /* one snake sprite */
-/* defaults so var() always resolves */
 .snake{
   position: absolute;
-  --y: 50vh;
-  --scale: 1;
-  --dur: 10s;
-  --delay: 0s;
-
-  top: var(--y);
-  left: -120px;
-  transform: scale(var(--scale));
+  top: var(--y, 50vh);
+  left: -120px;                          /* start off-screen left */
+  width: 100px; height: 67px;
+  background: url("/static/img/snakey.png") no-repeat;
+  background-size: 700px 67px;           /* 7 × 100px frames */
+  will-change: left, background-position;
+  transform: scale(var(--scale,1));
   animation:
     walk-frames .5s steps(7) infinite,
-    fly-right var(--dur) linear var(--delay) forwards;
+    fly-right var(--dur,10s) linear var(--delay,0s) forwards;
 }
-
 /* mirror for right→left snakes */
 .snake.left{
   transform: scaleX(-1) scale(var(--scale,1));
