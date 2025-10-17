@@ -41,11 +41,25 @@
       </div>
     </div>
     
+    <div id="snake-track">
+      <div id="snake-wrapper">
+        <div id="snake"></div>
+      </div>
+    </div>
+    
     <button id="let-elephant-go">Swoop!</button>
+    <button id="let-snake-go">Swoop!</button>
     
     <script>
     document.getElementById('let-elephant-go').addEventListener('click', () => {
       const wrap = document.getElementById('elephant-wrapper');
+      wrap.style.animation = 'none';     // reset
+      void wrap.offsetWidth;             // force reflow
+      wrap.style.animation = 'walk-x 12s linear 1 forwards';
+    });
+    
+    document.getElementById('let-snake-go').addEventListener('click', () => {
+      const wrap = document.getElementById('snake-wrapper');
       wrap.style.animation = 'none';     // reset
       void wrap.offsetWidth;             // force reflow
       wrap.style.animation = 'walk-x 12s linear 1 forwards';

@@ -223,6 +223,30 @@ a {
   /*filter: invert(1);        !* black → white *!*/
 }
 
+#snake-track{
+  position:fixed; inset:0;
+  pointer-events:none;
+  z-index:10010;
+}
+
+/* wrapper slides left → right when button is clicked */
+#snake-wrapper{
+  position:absolute;
+  bottom:12%;
+  left:-100px;                 /* start just off-screen */
+}
+
+#snake {
+  width: 100px;
+  height: 67px;
+  /*background: url("/static/img/elephant_strip_centered_bold_final.png") -4px -4px no-repeat;*/
+    background: url("/static/img/snakey.png") no-repeat;
+
+    background-size: 200px 67px;
+  animation: walk-frames 0.3s steps(7) infinite;
+  /*filter: invert(1);        !* black → white *!*/
+}
+
 @keyframes walk-frames {
   to { background-position-x: calc(-2 * 100px); }   /* 3 frames × step width */
 }
