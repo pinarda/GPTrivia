@@ -109,6 +109,7 @@
     document.getElementById('animate-btn').addEventListener('click', () => {
       // scope to whole page: '*'  or just the scoresheet: '#react-scoresheet *'
       chaosColors({ selector: '*', toMs: 400, backMs: 1600 });
+      flashBigSnake({ duration: toMs + backMs, src: '/static/img/singlesnakey.png' });
     });
 
     function randomColor(){
@@ -116,6 +117,36 @@
       const h = Math.floor(Math.random()*360);
       return `hsl(${h} 80% 55%)`;
     }
+    
+    // call this alongside your chaosColors(..)
+    function flashBigSnake({ src='/static/img/singlesnakey.png', duration=2000 } = {}){
+      const el = document.createElement('div');
+      Object.assign(el.style, {
+        position: 'fixed',
+        inset: '0',
+        zIndex: '10000',
+        pointerEvents: 'none',
+        backgroundImage: `url("${src}")`,
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: '50% 50%',
+        backgroundSize: 'cover',   // or 'contain' if you prefer letterboxing
+        opacity: '0',
+        filter: 'hue-rotate(0deg)'
+      });
+      document.body.appendChild(el);
+    
+      const hue = Math.floor(Math.random()*360);      // match the page color swing
+      const anim = el.animate(
+        [
+          { opacity: 0, filter: 'hue-rotate(0deg)' },
+          { opacity: 1, filter: `hue-rotate(${hue}deg)`, offset: 0.4 },
+          { opacity: 0, filter: 'hue-rotate(0deg)' }
+        ],
+        { duration, easing: 'ease-in-out', fill: 'forwards' }
+      );
+      anim.onfinish = () => el.remove();
+    }
+
 
     function chaosColors({selector='*', toMs=400, backMs=1600} = {}){
       const els = Array.from(document.querySelectorAll(selector))
