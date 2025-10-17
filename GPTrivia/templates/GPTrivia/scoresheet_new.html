@@ -119,34 +119,24 @@
       return `hsl(${h} 80% 55%)`;
     }
 
-    // call this alongside your chaosColors(..)
-    function flashBigSnake({ src='/static/img/singlesnakey.png', duration=2000 } = {}){
-      const el = document.createElement('div');
-      Object.assign(el.style, {
-        position: 'fixed',
-        inset: '0',
-        zIndex: '10000',
-        pointerEvents: 'none',
-        backgroundImage: `url("${src}")`,
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: '50% 50%',
-        backgroundSize: 'cover',   // or 'contain' if you prefer letterboxing
-        opacity: '0',
-        filter: 'hue-rotate(0deg)'
-      });
-      document.body.appendChild(el);
+    function flashBigSnake({ src='/static/img/singlesnakey.png', duration=1000 } = {}){
+      const overlay = document.createElement('div');
+      overlay.className = 'big-snake-black';
+      // swap mask source if needed
+      overlay.style.webkitMask = `url("${src}") center/contain no-repeat`;
+      overlay.style.mask       = `url("${src}") center/contain no-repeat`;
 
-      const hue = Math.floor(Math.random()*360);      // match the page color swing
-      const anim = el.animate(
-        [
-          { opacity: 0, filter: 'hue-rotate(0deg)' },
-          { opacity: 1, filter: `hue-rotate(${hue}deg)`, offset: 0.4 },
-          { opacity: 0, filter: 'hue-rotate(0deg)' }
-        ],
+      overlay.style.opacity = '0';
+      document.body.appendChild(overlay);
+
+      const anim = overlay.animate(
+        [{ opacity: 0 }, { opacity: 1, offset: 0.4 }, { opacity: 0 }],
         { duration, easing: 'ease-in-out', fill: 'forwards' }
       );
-      anim.onfinish = () => el.remove();
+      anim.onfinish = () => overlay.remove();
     }
+
+
 
 
     function chaosColors({selector='*', toMs=400, backMs=1600} = {}){
