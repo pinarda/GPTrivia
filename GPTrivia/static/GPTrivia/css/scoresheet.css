@@ -236,7 +236,7 @@ a {
   left:-100px;                 /* start just off-screen */
 }
 
-#snake {
+#snakey {
   width: 100px;
   height: 100px;
   /*background: url("/static/img/elephant_strip_centered_bold_final.png") -4px -4px no-repeat;*/
