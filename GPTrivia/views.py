@@ -1438,11 +1438,16 @@ def save_scores(request):
     creator_list = data.get('round_creators', [])
     date_str = "2020-12-12"
     player_list = data.get('player_list', [])
-    host = data.get('host', "")
-    scorekeeper = data.get('scorekeeper', "")
-    style_points = data.get('style_points', {})
-    notes = data.get('notes', {})
-    tiebreak_winner = data.get('tiebreak_winner', "")
+    host = data.get('host', "") or ""
+    scorekeeper = data.get('scorekeeper', "") or ""
+    notes = data.get('notes', "") or ""  # was {} → must be str
+    style_points = data.get('style_points') or {}
+    if isinstance(style_points, str):  # tolerate JSON string
+        try:
+            style_points = json.loads(style_points.replace("'", '"'))
+        except Exception:
+            style_points = {}
+    tiebreak_winner = data.get('tiebreak_winner', "") or ""
 
     all_player_list = {}
     # player_list is a string array of the players, so we need to convert it to a dictionary, use 0if the player is not in the list
@@ -1515,11 +1520,6 @@ def save_scores(request):
             trivia_round.save()
 
             # Run the update_links.py script only if the link field was modified
-            if script_should_run:
-                try:
-                    subprocess.run(['python', './modify_links.py'], check=True)
-                except subprocess.CalledProcessError as e:
-                    print(f"Error running update_links.py script: {e}")
             #
             # # After saving, send an update message to the channel layer
             # channel_layer = get_channel_layer()
@@ -1543,6 +1543,12 @@ def save_scores(request):
         except Exception as e:
             print(f"Error saving trivia_round: {e}")
 
+    if script_should_run:
+        try:
+            subprocess.run(['python', './modify_links.py'], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error running update_links.py script: {e}")
+
     # replace any single quotes with a tilde so that it doesn't mess up the json
     joker_round_indices = {key: value.replace("'", "~~~~") for key, value in joker_round_indices.items()}
 
@@ -1556,6 +1562,14 @@ def save_scores(request):
             presentation.creator_list = creator_list
             presentation.player_list = all_player_list
             presentation.round_names = round_names
+
+            # NEW
+            presentation.host = host
+            presentation.scorekeeper = scorekeeper
+            presentation.style_points = style_points
+            presentation.notes = notes
+            presentation.tiebreak_winner = tiebreak_winner
+
             presentation.save()
         except ObjectDoesNotExist:
             return JsonResponse({"message": "Presentation not found."}, status=400)
@@ -1566,6 +1580,12 @@ def save_scores(request):
             presentation.creator_list = creator_list
             presentation.player_list = all_player_list
             presentation.round_names = round_names
+
+            presentation.host = host
+            presentation.scorekeeper = scorekeeper
+            presentation.style_points = style_points
+            presentation.notes = notes
+            presentation.tiebreak_winner = tiebreak_winner
             presentation.save()
         except ObjectDoesNotExist:
             try:

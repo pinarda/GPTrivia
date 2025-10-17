@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -24,6 +24,7 @@ import { DatePicker, LocalizationProvider, PickersDay} from '@mui/x-date-pickers
 import { AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from 'dayjs';
 import Badge from '@mui/material/Badge';
+import { motion, useAnimation } from "framer-motion";
 
     const playerColorMapping = {
         'score_alex': '#D2042D',
@@ -353,6 +354,29 @@ const PlayerTable = () => {
     const [prevUpdateFlag, setPrevUpdateFlag] = useState(0); // Previous update flag
     const isLocalUpdate = useRef(false);
     const [openDatePicker, setOpenDatePicker] = useState(false);
+    // ANIMATION STUFF
+    const [showPic, setShowPic] = useState(false);
+    const playerControls = useAnimation();
+    const [host, setHost] = useState('');
+    const [scorekeeper, setScorekeeper] = useState('');
+    const [tiebreakWinner, setTiebreakWinner] = useState('');
+    const [notes, setNotes] = useState('');
+    const [stylePoints, setStylePoints] = useState({}); // { Alex: 1.0, Ichigo: 0.5, ... }
+
+    const playerNamesDisplay = useMemo(
+      () => (players || []).map(p => p.replace('score_',''))
+                           .map(n => n.charAt(0).toUpperCase()+n.slice(1)),
+      [players]
+    );
+
+
+    const pulsePlayer = useCallback(async () => {
+      await playerControls.start({
+        scale: [1, 1.2, 1],           // grow → shrink once
+        transition: { duration: 0.8, ease: "easeInOut" },
+      });
+    }, [playerControls]);
+
 
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
@@ -703,6 +727,22 @@ const PlayerTable = () => {
                 const ID = selectedPresentation.presentation_id;
 
                 setPresID(ID);
+
+                setPresID(ID);
+
+                // hydrate meta
+                setHost(selectedPresentation.host || '');
+                setScorekeeper(selectedPresentation.scorekeeper || '');
+                setTiebreakWinner(selectedPresentation.tiebreak_winner || '');
+                setNotes(selectedPresentation.notes || '');
+
+                // style_points may arrive as object or stringified JSON
+                let sp = selectedPresentation.style_points;
+                try {
+                  if (typeof sp === 'string' && sp.trim()) sp = JSON.parse(sp.replace(/'/g,'"'));
+                } catch(e){ sp = {}; }
+                setStylePoints(sp || {});
+
 
                 const newJokerRounds = playerNames.reduce((acc, player) => {
                     // remember to lower case the player name
@@ -1225,6 +1265,13 @@ const PlayerTable = () => {
             round_names: roundNames,
             round_creators: roundCreators,
             player_list: players,
+
+              // new meta block
+              host,
+              scorekeeper,
+              tiebreak_winner: tiebreakWinner || null,
+              notes,
+              style_points: stylePoints || {},
         };
 
         fetch(url + '/save_scores/', {
@@ -1486,17 +1533,119 @@ const PlayerTable = () => {
             <StyledButton variant="contained" color="secondary" onClick={() => handleAddColumn(selectedDate, rounds.length + 1)}>
               Add Round
             </StyledButton>
+              <StyledFormControl>
+                  <StyledInputLabel>Host</StyledInputLabel>
+                  <StyledSelect
+                    value={host}
+                    onChange={(e)=>{ setHost(e.target.value); setIsSaved(false); }}
+                  >
+                    <MenuItem value="">—</MenuItem>
+                    {playerNamesDisplay.map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
+                  </StyledSelect>
+                </StyledFormControl>
+
+                <StyledFormControl>
+                  <StyledInputLabel>Scorekeeper</StyledInputLabel>
+                  <StyledSelect
+                    value={scorekeeper}
+                    onChange={(e)=>{ setScorekeeper(e.target.value); setIsSaved(false); }}
+                  >
+                    <MenuItem value="">—</MenuItem>
+                    {playerNamesDisplay.map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
+                  </StyledSelect>
+                </StyledFormControl>
+
+                <StyledFormControl sx={{ minWidth: 160 }}>
+                  <StyledInputLabel>Tiebreak winner</StyledInputLabel>
+                  <StyledSelect
+                    value={tiebreakWinner}
+                    onChange={(e)=>{ setTiebreakWinner(e.target.value); setIsSaved(false); }}
+                  >
+                    <MenuItem value="">—</MenuItem>
+                    {playerNamesDisplay.map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
+                  </StyledSelect>
+                </StyledFormControl>
+
+                <StyledTextField
+                  value={notes}
+                  onChange={(e)=>{ setNotes(e.target.value); setIsSaved(false); }}
+                  variant="outlined"
+                  placeholder="Notes"
+                  style={{ margin: "0.4rem", minWidth: 240 }}
+                />
+
             <StyledButton variant="contained" color="primary" onClick={saveData} style={{ backgroundColor: isSaved ? '#1e7662' : '#810e19' }}>
               Save Scoresheet
             </StyledButton>
+
+            <StyledButton
+                variant="outlined"
+                color="primary"
+                onClick={() => setShowPic(true)}
+              >
+                Show Picture
+            </StyledButton>
+            <StyledButton variant="outlined" onClick={pulsePlayer}>
+                Pulse “Player”
+            </StyledButton>
           </Box>
         </Grid>
+
+                {/* Animated image appears here once showPic is true */}
+      {showPic && (
+          <Box
+            mt={2}
+            textAlign="center"
+            /* Box = the fixed-size frame */
+            display="inline-block"
+            width={240}
+            height={240}
+            position="relative"
+            overflow="hidden"   // keeps scaled edges from spilling out
+            borderRadius={2}
+          >
+            <motion.img
+              src="https://picsum.photos/240"
+              alt="Surprise!"
+              /* pop-in once, then gentle pulse forever */
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{
+                opacity: 1,
+                scale: [1, 1.1, 1],          // breathe 100 % → 110 % → 100 %
+              }}
+              transition={{
+                duration: 0.4,               // fade-in
+                scale: {
+                  duration: 3,               // one “breath”
+                  repeat: Infinity,
+                  repeatType: "mirror",
+                  ease: "easeInOut",
+                },
+              }}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",          // fill the frame without stretching
+                borderRadius: 8,
+              }}
+            />
+          </Box>
+        )}
+
 
       </Grid>
       <StyledTable id="table">
         <TableHead>
           <TableRow>
-            <StyledTableCell><div className={"textCell"}>Player</div></StyledTableCell>
+            <StyledTableCell><div className={"textCell"}>
+                <motion.div
+                    className="textCell"
+                    animate={playerControls}       // see step 3
+                    initial={false}                // don’t animate on first render
+                >
+                    Player
+                </motion.div>
+            </div></StyledTableCell>
             <StyledTableCell className={selectedColumnIndex === 1 ? 'selected-column' : ''}><div className={"textCell"}>Joker</div></StyledTableCell>
             {rounds.map((round, index) => (
               <StyledTableCell key={index} className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}>
@@ -1916,6 +2065,31 @@ const PlayerTable = () => {
             <TableCell></TableCell> {/* Empty cell for the joker column */}
             <TableCell></TableCell> {/* Empty cell for the player column */}
             <TableCell></TableCell> {/* Empty cell for the joker column */}
+          </StyledTableRow>
+        )}
+        {isBottomRowVisible && (
+          <StyledTableRow>
+            <TableCell colSpan={2}>
+              <div className="textCell"><strong>Style points</strong></div>
+            </TableCell>
+            <TableCell colSpan={rounds.length + 4}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap: '8px' }}>
+                {playerNamesDisplay.map(name => (
+                  <label key={name} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ minWidth:80 }}>{name}</span>
+                    <Input
+                      value={stylePoints?.[name] ?? ''}
+                      onChange={(e)=>{
+                        const v = e.target.value === '' ? undefined : Number(e.target.value);
+                        setStylePoints(prev => ({ ...prev, [name]: v }));
+                        setIsSaved(false);
+                      }}
+                      inputProps={{ step:0.5, min:0, type:'number' }}
+                    />
+                  </label>
+                ))}
+              </div>
+            </TableCell>
           </StyledTableRow>
         )}
         </TableBody>
