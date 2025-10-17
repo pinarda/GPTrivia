@@ -5,6 +5,7 @@
 
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/scoresheet.css' %}">
+    <link rel="preload" as="image" href="/static/img/snake_silhouette.png">
 {% endblock %}
 
 {% block extra_meta %}
@@ -53,6 +54,31 @@
 
     
     <script>
+    // one-time preload
+    const SNAKE_SRC = '/static/img/snake_silhouette.png';
+    const snakeMaskReady = (function preload(src){
+      return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(src); im.onerror = rej; im.src = src; });
+    })(SNAKE_SRC);
+
+    async function flashBigSnake({ src = SNAKE_SRC, duration = 1000 } = {}){
+      await snakeMaskReady; // ensure cached/decoded
+
+      const overlay = document.createElement('div');
+      Object.assign(overlay.style, {
+        position: 'fixed', inset: '0', zIndex: '10000', pointerEvents: 'none',
+        background: '#000', opacity: '0',
+        WebkitMask: `url("${src}") center / 60vmin no-repeat`,
+        mask:       `url("${src}") center / 60vmin no-repeat`
+      });
+      document.body.appendChild(overlay);
+
+      const anim = overlay.animate(
+        [{ opacity: 0 }, { opacity: 1, offset: 0.4 }, { opacity: 0 }],
+        { duration, easing: 'ease-in-out', fill: 'forwards' }
+      );
+      anim.onfinish = () => overlay.remove();
+    }
+
     // create the sky once
     function ensureSky(){
       let sky = document.getElementById('snake-sky');
