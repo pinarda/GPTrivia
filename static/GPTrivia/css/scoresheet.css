@@ -276,7 +276,7 @@ to { transform: translateX(calc(100vw + 100px)); } /* 8 px safety */
   will-change: left, background-position;
   transform: scale(var(--scale,1));
   animation:
-    walk-frames .5s steps(7) infinite,
+    walk-frames .8s steps(7) infinite,
     fly-right var(--dur,10s) linear var(--delay,0s) forwards;
 }
 /* mirror for right→left snakes */
@@ -284,7 +284,7 @@ to { transform: translateX(calc(100vw + 100px)); } /* 8 px safety */
   transform: scaleX(-1) scale(var(--scale,1));
   left: calc(100vw + 120px);             /* start off-screen right */
   animation:
-    walk-frames .5s steps(7) infinite,
+    walk-frames .8s steps(7) infinite,
     fly-left var(--dur,10s) linear var(--delay,0s) forwards;
 }
 

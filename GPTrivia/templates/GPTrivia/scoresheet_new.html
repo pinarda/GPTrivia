@@ -66,10 +66,10 @@
       for (let i=0; i<count; i++){
         const s = document.createElement('div');
         s.className = 'snake';
-        if (Math.random() < 0.5) s.classList.add('left');         // random direction
+        if (Math.random() < 0.0) s.classList.add('left');         // random direction
         s.style.setProperty('--y', `${rand(5, 90)}vh`);           // vertical track
         s.style.setProperty('--scale', rand(0.7, 1.4).toFixed(2)); // size variance
-        s.style.setProperty('--dur', `${rand(6, 14)}s`);           // speed variance
+        s.style.setProperty('--dur', `${rand(3, 6)}s`);           // speed variance
         s.style.setProperty('--delay', `${rand(0, 2)}s`);          // stagger
 
         // z-index layering
@@ -85,7 +85,7 @@
     }
 
     document.getElementById('let-snakes-go').addEventListener('click', () => {
-      launchFleet(16); // pick your fleet size
+      launchFleet(10); // pick your fleet size
     });
 
     {#document.getElementById('let-elephant-go').addEventListener('click', () => {#}
