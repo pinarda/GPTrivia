@@ -273,7 +273,7 @@ to { transform: translateX(calc(100vw + 100px)); } /* 8 px safety */
   left: -120px;                          /* start off-screen left */
   width: 100px; height: 120px;
   background: url("/static/img/snakey.png") no-repeat;
-  background-size: 700px 67px;           /* 7 × 100px frames */
+  background-size: 700px 120px;           /* 7 × 100px frames */
   will-change: left, background-position;
   transform: scale(var(--scale,1));
   animation:
