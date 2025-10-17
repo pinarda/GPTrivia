@@ -238,7 +238,7 @@ a {
 
 #snakey {
   width: 100px;
-  height: 100px;
+  height: 120px;
   /*background: url("/static/img/elephant_strip_centered_bold_final.png") -4px -4px no-repeat;*/
     background: url("/static/img/snakey.png") no-repeat;
 
@@ -270,7 +270,7 @@ to { transform: translateX(calc(100vw + 100px)); } /* 8 px safety */
   position: absolute;
   top: var(--y, 50vh);
   left: -120px;                          /* start off-screen left */
-  width: 100px; height: 67px;
+  width: 100px; height: 120px;
   background: url("/static/img/snakey.png") no-repeat;
   background-size: 700px 67px;           /* 7 × 100px frames */
   will-change: left, background-position;
