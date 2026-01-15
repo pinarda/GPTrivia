@@ -90,7 +90,7 @@ protobuf=3.20.3=py38h313beb8_0
 psycopg2=2.9.3=py38h80987f9_1
 pyasn1=0.4.8=pyhd3eb1b0_0
 pyasn1-modules=0.2.8=py_0
-pyautogen=0.2.2=pypi_0
+ag2=0.2.2=pypi_0
 pycparser=2.21=pyhd3eb1b0_0
 pydantic=1.10.12=py38h80987f9_1
 pyjwt=2.4.0=py38hca03da5_0
