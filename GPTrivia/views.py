@@ -30,6 +30,7 @@ import subprocess
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from scipy.stats import pearsonr
+import pytz
 
 import numpy as np
 from django.contrib.auth.forms import UserCreationForm
@@ -102,6 +103,8 @@ playerColorMapping = {
 players = [
     'score_alex', 'score_ichigo', 'score_megan', 'score_zach', 'score_jenny', 'score_debi',
     'score_dan', 'score_chris', 'score_drew', 'score_tom', 'score_paige']
+
+TRIVIA_TIMEZONE = pytz.timezone('America/Los_Angeles')
 
 
 VAPID_PRIVATE_KEY = 'sn34CZG_vKbl_AoGObw2aUFo1TV0t2QdGwa-vut-Q70'
@@ -1175,7 +1178,7 @@ def home(request):
 
     # (links, titles, creators, old_links, shared_dates) = get_round_titles_and_links(processed_senders=[])
 
-    presentation_name = datetime.date.strftime(datetime.date.today(), '%-m.%d.%Y')
+    presentation_name = datetime.date.strftime(_current_trivia_date(), '%-m.%d.%Y')
     if request.method == 'POST':
         action = request.POST.get('action')
         response_presentation = None
@@ -1568,6 +1571,10 @@ def _presentation_name_for_date(selected_date):
     if not parsed_date:
         return None
     return parsed_date.strftime("%m.%d.%Y")
+
+
+def _current_trivia_date():
+    return datetime.datetime.now(TRIVIA_TIMEZONE).date()
 
 
 def _get_scoresheet_presentation(presentation_id=None, selected_date=None):

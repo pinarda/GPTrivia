@@ -52,6 +52,69 @@ APPS_SCRIPT_ID = '1MWXrSq2Uf5GkMsmMeOHowiU-nY21LxGom6VWJ9WaPg7hBQZqBgD_HS_K'
 mail_file_directory = os.path.dirname(os.path.abspath(__file__))
 token_file_path = os.path.join(mail_file_directory, 'token.pickle')
 pst = pytz.timezone('America/Los_Angeles')
+CONVERTED_SOURCE_FILE_PROPERTY = 'converted_from_file_id'
+
+
+def _current_pacific_date():
+    return datetime.datetime.now(pst).date()
+
+
+def _format_pacific_timestamp(timestamp_ms):
+    return datetime.datetime.fromtimestamp(int(timestamp_ms) / 1000, tz=pst).strftime("%B %d, %Y")
+
+
+def _sanitize_slides_text(text):
+    if text is None:
+        return ''
+
+    sanitized_chars = []
+    for char in text:
+        codepoint = ord(char)
+        if codepoint in (0x09, 0x0A, 0x0D):
+            sanitized_chars.append(char)
+            continue
+        if 0x00 <= codepoint < 0x20 or 0x7F <= codepoint < 0xA0:
+            continue
+        if 0xE000 <= codepoint <= 0xF8FF:
+            continue
+        sanitized_chars.append(char)
+
+    return ''.join(sanitized_chars)
+
+
+def _utf16_code_units(text):
+    return len(text.encode('utf-16-le')) // 2
+
+
+def _utf16_placeholder_range(content, placeholder):
+    start_index = content.index(placeholder)
+    end_index = start_index + len(placeholder)
+    return (
+        _utf16_code_units(content[:start_index]),
+        _utf16_code_units(content[:end_index]),
+    )
+
+
+def _inserted_text_end_index(start_index, new_text):
+    return start_index + _utf16_code_units(_sanitize_slides_text(new_text))
+
+
+def _find_existing_converted_presentation(drive_service, file_id):
+    query = (
+        "mimeType = 'application/vnd.google-apps.presentation' "
+        f"and appProperties has {{ key='{CONVERTED_SOURCE_FILE_PROPERTY}' and value='{file_id}' }} "
+        "and trashed = false"
+    )
+    response = drive_service.files().list(
+        q=query,
+        spaces='drive',
+        fields='files(id)',
+        pageSize=1,
+    ).execute()
+    files = response.get('files', [])
+    return files[0]['id'] if files else None
+
+
 def list_subjects(credentials):
     try:
         service = build('gmail', 'v1', credentials=credentials)
@@ -71,7 +134,7 @@ def new_presentation(credentials):
     try:
         service = build('slides', 'v1', credentials=credentials)
         presentation_body = {
-            'title': datetime.date.strftime(datetime.datetime.now(pst).date(), '%-m.%d.%Y')
+            'title': datetime.date.strftime(_current_pacific_date(), '%-m.%d.%Y')
         }
         presentation = service.presentations() \
             .create(body=presentation_body).execute()
@@ -345,9 +408,10 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                         creator_placeholder = creator_placeholders[i]
 
                         if round_placeholder in content and len(round_titles) > 0:
-                            new_text = round_titles.pop(0)
-                            round_start_index = content.index(round_placeholder)
-                            round_end_index = round_start_index + len(round_placeholder)
+                            new_text = _sanitize_slides_text(round_titles.pop(0))
+                            round_start_index, round_end_index = _utf16_placeholder_range(
+                                content, round_placeholder
+                            )
                             delete_insert_requests = create_delete_insert_text_requests(
                                 element_id, round_start_index, round_end_index, new_text)
 
@@ -359,7 +423,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                                         "textRange": {
                                             "type": "FIXED_RANGE",  # Explicitly specifying the range type
                                             "startIndex": round_start_index,
-                                            "endIndex": round_start_index + len(new_text)
+                                            "endIndex": _inserted_text_end_index(round_start_index, new_text)
                                         },
                                         "style": {
                                             "fontSize": {
@@ -379,7 +443,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                                         "textRange": {
                                             "type": "FIXED_RANGE",  # Explicitly specifying the range type
                                             "startIndex": round_start_index,
-                                            "endIndex": round_start_index + len(new_text)
+                                            "endIndex": _inserted_text_end_index(round_start_index, new_text)
                                         },
                                         "style": {
                                             "fontSize": {
@@ -399,7 +463,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                                         "textRange": {
                                             "type": "FIXED_RANGE",  # Explicitly specifying the range type
                                             "startIndex": round_start_index,
-                                            "endIndex": round_start_index + len(new_text)
+                                            "endIndex": _inserted_text_end_index(round_start_index, new_text)
                                         },
                                         "style": {
                                             "fontSize": {
@@ -428,9 +492,10 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                                                            'textRun' in text_elem])
 
                         if creator_placeholder in content and len(creators) > 0:
-                            new_text = MAIL_NAME_MAP[creators.pop(0)]
-                            creator_start_index = content.index(creator_placeholder)  # + element_len + 2
-                            creator_end_index = creator_start_index + len(creator_placeholder)
+                            new_text = _sanitize_slides_text(MAIL_NAME_MAP[creators.pop(0)])
+                            creator_start_index, creator_end_index = _utf16_placeholder_range(
+                                content, creator_placeholder
+                            )
 
                             if coops[i] == 'on':
                                 new_text = new_text + " - Co-op"
@@ -780,7 +845,7 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                         break
 
     # Update the date text
-    date_text = datetime.datetime.now(pst).date().strftime("%B %d, %Y")
+    date_text = _current_pacific_date().strftime("%B %d, %Y")
 
     delete_text_request = {
         'deleteText': {
@@ -899,9 +964,10 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                         creator_placeholder = creator_placeholders[i]
 
                         if round_placeholder in content and len(round_titles) > i:
-                            new_text = round_titles[i]
-                            round_start_index = content.index(round_placeholder)
-                            round_end_index = round_start_index + len(round_placeholder)
+                            new_text = _sanitize_slides_text(round_titles[i])
+                            round_start_index, round_end_index = _utf16_placeholder_range(
+                                content, round_placeholder
+                            )
                             delete_insert_requests = create_delete_insert_text_requests(
                                 element_id, round_start_index, round_end_index, new_text)
 
@@ -913,7 +979,7 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                                         "textRange": {
                                             "type": "FIXED_RANGE",  # Explicitly specifying the range type
                                             "startIndex": round_start_index,
-                                            "endIndex": round_start_index + len(new_text)
+                                            "endIndex": _inserted_text_end_index(round_start_index, new_text)
                                         },
                                         "style": {
                                             "fontSize": {
@@ -933,7 +999,7 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                                         "textRange": {
                                             "type": "FIXED_RANGE",  # Explicitly specifying the range type
                                             "startIndex": round_start_index,
-                                            "endIndex": round_start_index + len(new_text)
+                                            "endIndex": _inserted_text_end_index(round_start_index, new_text)
                                         },
                                         "style": {
                                             "fontSize": {
@@ -962,9 +1028,10 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                                                            'textRun' in text_elem])
 
                         if creator_placeholder in content and len(creators_list) > i:
-                            new_text = MAIL_NAME_MAP[creators_list[i]]
-                            creator_start_index = content.index(creator_placeholder)# + element_len + 2
-                            creator_end_index = creator_start_index + len(creator_placeholder)
+                            new_text = _sanitize_slides_text(MAIL_NAME_MAP[creators_list[i]])
+                            creator_start_index, creator_end_index = _utf16_placeholder_range(
+                                content, creator_placeholder
+                            )
 
                             if coops[i] == 'on':
                                 new_text = f"{new_text} - Co-op"
@@ -1010,10 +1077,19 @@ def convert_shared_presentation(presentation_url, credentials):
 
         # Check if the file is not already a Google Slides presentation
         if mime_type != 'application/vnd.google-apps.presentation':
+            existing_converted_id = _find_existing_converted_presentation(drive_service, file_id)
+            if existing_converted_id:
+                return f"https://docs.google.com/presentation/d/{existing_converted_id}/edit"
+
             # Convert to Google Slides format
             converted_file = drive_service.files().copy(
                 fileId=file_id,
                 body={'mimeType': 'application/vnd.google-apps.presentation'}
+            ).execute()
+
+            drive_service.files().update(
+                fileId=converted_file['id'],
+                body={'appProperties': {CONVERTED_SOURCE_FILE_PROPERTY: file_id}},
             ).execute()
 
             # Return the new Google Slides URL
@@ -1201,7 +1277,7 @@ def get_round_titles_and_links(processed_senders=[]):
         # convert the messages_with_date dates from a string containing a unix timestamp to a string with the month, day and year
         newdates = []
         for i in range(len(messages_with_date)):
-            newdates.append(datetime.datetime.fromtimestamp(int(messages_with_date[i][1])/1000).strftime("%B %d, %Y"))
+            newdates.append(_format_pacific_timestamp(messages_with_date[i][1]))
 
 
         return presentation_urls, round_titles, new_senders, old_urls, newdates
