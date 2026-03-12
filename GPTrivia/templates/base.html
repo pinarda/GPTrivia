@@ -66,10 +66,45 @@
       <style>
         /* Stop double-tap / pinch zoom in Chromium-based browsers */
         html, body { touch-action: manipulation; }
+
+        html {
+            min-height: 100%;
+        }
+
+        body.site-shell {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.site-shell .page-body {
+            flex: 1 0 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        body.site-shell .content-container {
+            flex: 1 0 auto;
+            min-height: auto !important;
+        }
+
+        body.site-shell footer {
+            margin-top: auto;
+            flex-shrink: 0;
+        }
+
+        body.site-shell .footer-container {
+            position: static !important;
+            width: 100%;
+        }
       </style>
 
     <link rel="stylesheet" href="{% static 'GPTrivia/css/styles.css' %}">
     {% block extra_css %}{% endblock %}
+</head>
+
+<body class="site-shell">
     <header>
     <div class="header-container">
         <div class="header-content" style="display: flex; flex-direction: column;">
@@ -172,31 +207,24 @@
           });
         }
     </script>
-
-</head>
-
-
-
-<body>
-    <div class="content-container">
-        <main>
-            {% block content %}
-            {% endblock %}
-        </main>
-    </div>
-    {% block extra_js %}{% endblock %}
-</body>
-
-
-
-
-<footer>
-    <div class="footer-container" id="thefoot">
-        <div class="footer-content">
-        <div class="footer-bottom">
-            <p id="footer-text">Hail Science Trivia © 2025</p>
+    <div class="page-body">
+        <div class="content-container">
+            <main>
+                {% block content %}
+                {% endblock %}
+            </main>
         </div>
     </div>
-</footer>
+    <footer>
+        <div class="footer-container" id="thefoot">
+            <div class="footer-content">
+                <div class="footer-bottom">
+                    <p id="footer-text">Hail Science Trivia © 2025</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+    {% block extra_js %}{% endblock %}
+</body>
 
 </html>
