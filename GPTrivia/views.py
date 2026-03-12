@@ -1107,6 +1107,43 @@ def _build_home_context(selected_presentation, presentation_calendar):
     }
 
 
+def _serialize_home_presentation(selected_presentation, presentation_id=None):
+    if selected_presentation is None:
+        return {
+            "presentation_id": "",
+            "presentation_name": "",
+            "presentation_url": "",
+            "selected_presentation_iso_date": "",
+            "calendar_entry": None,
+        }
+
+    resolved_presentation_id = presentation_id or selected_presentation.presentation_id
+    selected_presentation_date = _parse_presentation_name_date(selected_presentation.name)
+
+    return {
+        "presentation_id": resolved_presentation_id,
+        "presentation_name": selected_presentation.name,
+        "presentation_url": (
+            f"https://docs.google.com/presentation/d/{resolved_presentation_id}/embed"
+        ),
+        "selected_presentation_iso_date": (
+            selected_presentation_date.isoformat() if selected_presentation_date else ""
+        ),
+        "calendar_entry": (
+            {
+                "presentation_id": resolved_presentation_id,
+                "name": selected_presentation.name,
+            }
+            if selected_presentation_date
+            else None
+        ),
+    }
+
+
+def _is_ajax_home_request(request):
+    return request.headers.get("x-requested-with") == "XMLHttpRequest"
+
+
 def _get_selected_home_presentation(selected_presentation_id=None):
     presentations = list(MergedPresentation.objects.order_by("id"))
     latest_presentation = presentations[-1] if presentations else None
@@ -1127,6 +1164,7 @@ def _get_selected_home_presentation(selected_presentation_id=None):
 @login_required
 @ensure_csrf_cookie
 def home(request):
+    ajax_request = _is_ajax_home_request(request)
     selected_presentation_id = (
         request.GET.get("presentation_id") or request.POST.get("selected_presentation_id")
     )
@@ -1140,6 +1178,8 @@ def home(request):
     presentation_name = datetime.date.strftime(datetime.date.today(), '%-m.%d.%Y')
     if request.method == 'POST':
         action = request.POST.get('action')
+        response_presentation = None
+        response_presentation_id = None
         indices = {
             key.rsplit("_", 1)[-1]  # → "0", "1", …
             for key in request.POST
@@ -1165,6 +1205,8 @@ def home(request):
                 }
             # make sure there's at least one round, or else just return
             if not round_order:
+                if ajax_request:
+                    return JsonResponse({"detail": "No rounds selected."}, status=400)
                 return render(request, "GPTrivia/home.html", home_context)
 
             # Sort rounds by order
@@ -1193,7 +1235,7 @@ def home(request):
 
             # new_presentation_id, creators, round_titles, round_links = create_presentation()
 
-            MergedPresentation.objects.create(
+            response_presentation = MergedPresentation.objects.create(
                 name=presentation_name,
                 presentation_id=new_presentation_id,
                 creator_list=creators,
@@ -1205,6 +1247,7 @@ def home(request):
                 notes={},
                 tiebreak_winner="",
             )
+            response_presentation_id = new_presentation_id
             print (new_presentation_id, creators, round_titles)
 
             for round_index in range(len(round_titles)):
@@ -1254,9 +1297,13 @@ def home(request):
 
             if not round_order:
                 # nothing selected → render page without hitting Gmail
+                if ajax_request:
+                    return JsonResponse({"detail": "No rounds selected."}, status=400)
                 return render(request, "GPTrivia/home.html", home_context)
 
             if selected_presentation is None:
+                if ajax_request:
+                    return JsonResponse({"detail": "No presentation selected."}, status=400)
                 return render(request, "GPTrivia/home.html", home_context)
 
             # Sort rounds by order
@@ -1294,14 +1341,14 @@ def home(request):
             selected_presentation = MergedPresentation.objects.get(
                 presentation_id=selected_presentation.presentation_id
             )
+            selected_presentation.presentation_id = updated_presentation_id
             selected_presentation.round_names.extend(round_titles)
             selected_presentation.creator_list.extend(new_creators)
             selected_presentation.save()
 
             print(updated_presentation_id, new_creators, round_titles)
-
-            selected_presentation.creator_list.extend(new_creators)
-            selected_presentation.save()
+            response_presentation = selected_presentation
+            response_presentation_id = updated_presentation_id
 
             for round_index in range(len(round_titles)):
                 new_round = GPTriviaRound()
@@ -1329,10 +1376,14 @@ def home(request):
                 new_round.link = new_links[round_index]
                 new_round.save()
 
-        (links, titles, creators, old_links, shared_dates) = get_round_titles_and_links(processed_senders=[])
-        if action == "update" and selected_presentation is not None:
+        if ajax_request and response_presentation is not None:
+            return JsonResponse(
+                _serialize_home_presentation(response_presentation, response_presentation_id)
+            )
+
+        if action == "update" and response_presentation is not None:
             return redirect(
-                f"{reverse_lazy('home')}?presentation_id={selected_presentation.presentation_id}"
+                f"{reverse_lazy('home')}?presentation_id={response_presentation_id}"
             )
         return redirect("home")
 

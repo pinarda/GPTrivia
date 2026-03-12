@@ -66,40 +66,12 @@
     cursor: not-allowed;
 }
 
-.presentation-summary {
-    width: 90%;
-    margin: 0 auto 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    color: white;
-}
-
-.presentation-summary-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.presentation-summary-label {
-    font-size: 0.8rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.75);
-}
-
-.presentation-summary-value {
-    font-size: 1.2rem;
-    font-weight: bold;
-}
-
 .presentation-actions {
     width: 90%;
     margin: 18px auto 0;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     gap: 16px;
     flex-wrap: wrap;
 }
@@ -107,6 +79,7 @@
 .presentation-action-buttons {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 12px;
     flex-wrap: wrap;
 }
@@ -153,7 +126,6 @@
 .calendar-nav-button,
 .calendar-trigger-button {
     border: none;
-    border-radius: 10px;
     background: #0073cc;
     color: white;
     font-family: YoungSerif;
@@ -168,6 +140,7 @@
     align-items: center;
     justify-content: center;
     font-size: 1rem;
+    border-radius: 10px;
 }
 
 .calendar-close-button:hover,
@@ -300,13 +273,8 @@
     .date_cell {
         display: none;
     }
-    .presentation-summary,
     .presentation-actions {
         width: 95%;
-    }
-    .presentation-summary {
-        align-items: flex-start;
-        flex-direction: column;
     }
 }
 
@@ -424,15 +392,20 @@
 
 <form method="post">
     <div class="container">
-        <div class="presentation-summary">
-            <div class="presentation-summary-copy">
-                <span class="presentation-summary-label">Embedded Presentation</span>
-                <span class="presentation-summary-value">{{ pres_name }}</span>
-            </div>
+        <div id="presentation-frame-slot">
+            {% if presentation_url %}
+                <iframe
+                    id="presentation-frame"
+                    src="{{ presentation_url }}"
+                    width="90%"
+                    height="auto"
+                    frameborder="0"
+                    allowfullscreen="true"
+                    mozallowfullscreen="true"
+                    webkitallowfullscreen="true"
+                ></iframe>
+            {% endif %}
         </div>
-        {% if presentation_url %}
-            <iframe src="{{ presentation_url }}" width="90%" height="auto" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
-        {% endif %}
 
         <div class="table-container">
             <div class="round-selection-table">
@@ -497,7 +470,7 @@
                 </button>
                 <img class="spinner" id="submit-spinner1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
             </div>
-            <div id="msg" style="color: white; display: none">Working... This may take a few minutes.</div>
+            <div id="msg" style="color: white; display: none; width: 100%; text-align: center;">Working... This may take a few minutes.</div>
         </div>
 
     </div>
@@ -534,8 +507,10 @@
 
 
     <script>
+        let homePresentationState = null;
+
         document.addEventListener("DOMContentLoaded", () => {
-          initializePresentationCalendar();
+          homePresentationState = initializePresentationCalendar();
           fetch("/api/collect_rounds/", {credentials: "same-origin"})
             .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
             .then(({rounds}) => {
@@ -633,21 +608,38 @@
             const calendarNext = document.getElementById('calendar-next');
             const calendarClose = document.getElementById('calendar-close');
 
-            if (!calendarDataElement || !calendarButton) {
-                return;
-            }
+            const state = {
+                calendarButton,
+                calendarPopover,
+                calendarOverlay,
+                calendarGrid,
+                calendarMonthLabel,
+                presentationCalendar: calendarDataElement
+                    ? JSON.parse(calendarDataElement.textContent || '{}')
+                    : {},
+                selectedPresentationDate: "{{ selected_presentation_iso_date|escapejs }}",
+                visibleMonth: null,
+                renderCalendar: () => {},
+                setSelectedPresentation: (presentationData) => {
+                    if (!presentationData || !presentationData.selected_presentation_iso_date) {
+                        return;
+                    }
 
-            const presentationCalendar = JSON.parse(calendarDataElement.textContent || '{}');
-            const availableDates = Object.keys(presentationCalendar).sort();
+                    if (presentationData.calendar_entry) {
+                        state.presentationCalendar[presentationData.selected_presentation_iso_date] = presentationData.calendar_entry;
+                    }
 
-            if (availableDates.length === 0) {
-                calendarButton.disabled = true;
-                calendarButton.classList.add('disabled-button');
-                return;
-            }
+                    state.selectedPresentationDate = presentationData.selected_presentation_iso_date;
+                    state.visibleMonth = getCalendarBaseDate(presentationData.selected_presentation_iso_date);
 
-            const selectedPresentationDate = "{{ selected_presentation_iso_date|escapejs }}";
-            let visibleMonth = getCalendarBaseDate(selectedPresentationDate || availableDates[availableDates.length - 1]);
+                    if (state.calendarButton) {
+                        state.calendarButton.disabled = false;
+                        state.calendarButton.classList.remove('disabled-button');
+                    }
+
+                    state.renderCalendar();
+                },
+            };
 
             function getCalendarBaseDate(isoDate) {
                 const [year, month, day] = isoDate.split('-').map(Number);
@@ -659,6 +651,20 @@
                 const month = String(date.getMonth() + 1).padStart(2, '0');
                 const day = String(date.getDate()).padStart(2, '0');
                 return `${year}-${month}-${day}`;
+            }
+
+            const availableDates = Object.keys(state.presentationCalendar).sort();
+
+            if (availableDates.length > 0) {
+                state.visibleMonth = getCalendarBaseDate(
+                    state.selectedPresentationDate || availableDates[availableDates.length - 1]
+                );
+            } else {
+                state.visibleMonth = new Date();
+                if (calendarButton) {
+                    calendarButton.disabled = true;
+                    calendarButton.classList.add('disabled-button');
+                }
             }
 
             function openCalendar() {
@@ -673,7 +679,15 @@
             }
 
             function renderCalendar() {
-                const monthStart = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1);
+                if (!calendarGrid || !calendarMonthLabel) {
+                    return;
+                }
+
+                const monthStart = new Date(
+                    state.visibleMonth.getFullYear(),
+                    state.visibleMonth.getMonth(),
+                    1
+                );
                 const gridStart = new Date(monthStart);
                 gridStart.setDate(monthStart.getDate() - monthStart.getDay());
 
@@ -688,7 +702,7 @@
                     day.setDate(gridStart.getDate() + index);
 
                     const isoDate = toIsoDate(day);
-                    const presentationInfo = presentationCalendar[isoDate];
+                    const presentationInfo = state.presentationCalendar[isoDate];
                     const dayButton = document.createElement('button');
 
                     dayButton.type = 'button';
@@ -699,7 +713,7 @@
                         dayButton.classList.add('outside-month');
                     }
 
-                    if (isoDate === selectedPresentationDate) {
+                    if (isoDate === state.selectedPresentationDate) {
                         dayButton.classList.add('selected');
                     }
 
@@ -719,15 +733,21 @@
                 }
             }
 
+            state.renderCalendar = renderCalendar;
+
+            if (!calendarButton || !calendarPopover || !calendarOverlay || !calendarPrev || !calendarNext || !calendarClose) {
+                return state;
+            }
+
             calendarButton.addEventListener('click', openCalendar);
             calendarClose.addEventListener('click', closeCalendar);
             calendarOverlay.addEventListener('click', closeCalendar);
             calendarPrev.addEventListener('click', () => {
-                visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1);
+                state.visibleMonth = new Date(state.visibleMonth.getFullYear(), state.visibleMonth.getMonth() - 1, 1);
                 renderCalendar();
             });
             calendarNext.addEventListener('click', () => {
-                visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1);
+                state.visibleMonth = new Date(state.visibleMonth.getFullYear(), state.visibleMonth.getMonth() + 1, 1);
                 renderCalendar();
             });
             document.addEventListener('keydown', (event) => {
@@ -735,6 +755,54 @@
                     closeCalendar();
                 }
             });
+
+            return state;
+        }
+
+        function ensurePresentationFrame() {
+            const frameSlot = document.getElementById('presentation-frame-slot');
+            if (!frameSlot) {
+                return null;
+            }
+
+            let frame = document.getElementById('presentation-frame');
+            if (!frame) {
+                frame = document.createElement('iframe');
+                frame.id = 'presentation-frame';
+                frame.width = '90%';
+                frame.height = 'auto';
+                frame.frameBorder = '0';
+                frame.allowFullscreen = true;
+                frame.setAttribute('mozallowfullscreen', 'true');
+                frame.setAttribute('webkitallowfullscreen', 'true');
+                frameSlot.appendChild(frame);
+            }
+
+            return frame;
+        }
+
+        function applyPresentationSelection(presentationData) {
+            if (!presentationData || !presentationData.presentation_id) {
+                return;
+            }
+
+            const presentationFrame = ensurePresentationFrame();
+            if (presentationFrame && presentationData.presentation_url) {
+                presentationFrame.src = presentationData.presentation_url;
+            }
+
+            const selectedPresentationInput = document.querySelector('input[name="selected_presentation_id"]');
+            if (selectedPresentationInput) {
+                selectedPresentationInput.value = presentationData.presentation_id;
+            }
+
+            const nextUrl = new URL(window.location.href);
+            nextUrl.searchParams.set('presentation_id', presentationData.presentation_id);
+            window.history.replaceState({}, '', nextUrl.toString());
+
+            if (homePresentationState) {
+                homePresentationState.setSelectedPresentation(presentationData);
+            }
         }
     
         let currentOrder = 1;
@@ -871,19 +939,23 @@
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRFToken': '{{ csrf_token }}'  // Add CSRF token if using Django
+                'X-CSRFToken': '{{ csrf_token }}',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
             }
         })
-        .then(response => {
-            // If the response is OK, reload the page
+        .then(async (response) => {
+            const payload = await response.json().catch(() => ({}));
+
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error(payload.detail || 'Network response was not ok');
             }
-            return response.text();  // Since we don't need the response, we can just handle it as text
+
+            return payload;
         })
-        .then(() => {
-            // Reload the page after successful form submission
-            window.location.reload();
+        .then((payload) => {
+            applyPresentationSelection(payload);
+            enableButtons();
         })
         .catch((error) => {
             // Handle errors and re-enable buttons
