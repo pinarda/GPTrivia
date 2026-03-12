@@ -66,6 +66,203 @@
     cursor: not-allowed;
 }
 
+.presentation-summary {
+    width: 90%;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: white;
+}
+
+.presentation-summary-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.presentation-summary-label {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.presentation-summary-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.presentation-actions {
+    width: 90%;
+    margin: 18px auto 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.presentation-action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.presentation-calendar-popover {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(420px, calc(100vw - 32px));
+    padding: 18px;
+    border-radius: 16px;
+    background: #0d2644;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+    z-index: 1001;
+    color: white;
+}
+
+.presentation-calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.presentation-calendar-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.presentation-calendar-title strong {
+    font-size: 1.05rem;
+}
+
+.presentation-calendar-title span {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.calendar-close-button,
+.calendar-nav-button,
+.calendar-trigger-button {
+    border: none;
+    border-radius: 10px;
+    background: #0073cc;
+    color: white;
+    font-family: YoungSerif;
+    cursor: pointer;
+}
+
+.calendar-close-button,
+.calendar-nav-button {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.calendar-close-button:hover,
+.calendar-nav-button:hover,
+.calendar-trigger-button:hover {
+    background: #005a99;
+}
+
+.calendar-month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.calendar-month-label {
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.calendar-weekdays {
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.65);
+    text-align: center;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+}
+
+.calendar-day {
+    min-height: 46px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: default;
+    font-family: YoungSerif;
+}
+
+.calendar-day:disabled {
+    opacity: 0.45;
+}
+
+.calendar-day.outside-month {
+    opacity: 0.22;
+}
+
+.calendar-day.has-presentation {
+    background: rgba(0, 115, 204, 0.4);
+    color: white;
+    cursor: pointer;
+    border-color: rgba(96, 191, 255, 0.65);
+}
+
+.calendar-day.has-presentation::after {
+    content: '';
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #9fd8ff;
+}
+
+.calendar-day.selected {
+    outline: 2px solid #ffffff;
+    outline-offset: 1px;
+}
+
+.calendar-legend {
+    margin-top: 14px;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.calendar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(1, 12, 24, 0.58);
+    z-index: 1000;
+}
+
 .creator-cell {
     display: table-cell;
     padding: 5px;
@@ -102,6 +299,14 @@
     }
     .date_cell {
         display: none;
+    }
+    .presentation-summary,
+    .presentation-actions {
+        width: 95%;
+    }
+    .presentation-summary {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }
 
@@ -219,6 +424,12 @@
 
 <form method="post">
     <div class="container">
+        <div class="presentation-summary">
+            <div class="presentation-summary-copy">
+                <span class="presentation-summary-label">Embedded Presentation</span>
+                <span class="presentation-summary-value">{{ pres_name }}</span>
+            </div>
+        </div>
         {% if presentation_url %}
             <iframe src="{{ presentation_url }}" width="90%" height="auto" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
         {% endif %}
@@ -271,17 +482,60 @@
         </div>
 
         {% csrf_token %}
-        <button id="gen-button" type="submit" name="action" value="generate">Generate Slides</button>
-        <button id="up-button" type="submit" name="action" value="update">Update Slides</button>
-        <img class="spinner" id="submit-spinner1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
-        <div id="msg" style="color: white; display: none">Working... This may take a few minutes.</div>
+        <input type="hidden" name="selected_presentation_id" value="{{ selected_presentation_id }}">
+        <div class="presentation-actions">
+            <div class="presentation-action-buttons">
+                <button id="gen-button" type="submit" name="action" value="generate">Generate Slides</button>
+                <button id="up-button" type="submit" name="action" value="update">Update Slides</button>
+                <button
+                    id="calendar-button"
+                    class="calendar-trigger-button{% if not presentation_calendar %} disabled-button{% endif %}"
+                    type="button"
+                    {% if not presentation_calendar %}disabled{% endif %}
+                >
+                    Calendar
+                </button>
+                <img class="spinner" id="submit-spinner1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
+            </div>
+            <div id="msg" style="color: white; display: none">Working... This may take a few minutes.</div>
+        </div>
 
     </div>
 </form>
 
+<div id="calendar-overlay" class="calendar-overlay" hidden></div>
+<div id="presentation-calendar-popover" class="presentation-calendar-popover" hidden>
+    <div class="presentation-calendar-header">
+        <div class="presentation-calendar-title">
+            <strong>Select a saved presentation</strong>
+            <span>Highlighted dates have a presentation you can open.</span>
+        </div>
+        <button id="calendar-close" class="calendar-close-button" type="button" aria-label="Close calendar">×</button>
+    </div>
+    <div class="calendar-month-nav">
+        <button id="calendar-prev" class="calendar-nav-button" type="button" aria-label="Previous month">‹</button>
+        <div id="calendar-month-label" class="calendar-month-label"></div>
+        <button id="calendar-next" class="calendar-nav-button" type="button" aria-label="Next month">›</button>
+    </div>
+    <div class="calendar-weekdays">
+        <span>Sun</span>
+        <span>Mon</span>
+        <span>Tue</span>
+        <span>Wed</span>
+        <span>Thu</span>
+        <span>Fri</span>
+        <span>Sat</span>
+    </div>
+    <div id="calendar-grid" class="calendar-grid"></div>
+    <div class="calendar-legend">Blue dates are available. Selecting one reloads this page with that presentation embedded.</div>
+</div>
+
+{{ presentation_calendar|json_script:"presentation-calendar-data" }}
+
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
+          initializePresentationCalendar();
           fetch("/api/collect_rounds/", {credentials: "same-origin"})
             .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
             .then(({rounds}) => {
@@ -367,6 +621,121 @@
                 "Couldn’t load rounds — try refreshing.";
             });
         });
+
+        function initializePresentationCalendar() {
+            const calendarDataElement = document.getElementById('presentation-calendar-data');
+            const calendarButton = document.getElementById('calendar-button');
+            const calendarPopover = document.getElementById('presentation-calendar-popover');
+            const calendarOverlay = document.getElementById('calendar-overlay');
+            const calendarGrid = document.getElementById('calendar-grid');
+            const calendarMonthLabel = document.getElementById('calendar-month-label');
+            const calendarPrev = document.getElementById('calendar-prev');
+            const calendarNext = document.getElementById('calendar-next');
+            const calendarClose = document.getElementById('calendar-close');
+
+            if (!calendarDataElement || !calendarButton) {
+                return;
+            }
+
+            const presentationCalendar = JSON.parse(calendarDataElement.textContent || '{}');
+            const availableDates = Object.keys(presentationCalendar).sort();
+
+            if (availableDates.length === 0) {
+                calendarButton.disabled = true;
+                calendarButton.classList.add('disabled-button');
+                return;
+            }
+
+            const selectedPresentationDate = "{{ selected_presentation_iso_date|escapejs }}";
+            let visibleMonth = getCalendarBaseDate(selectedPresentationDate || availableDates[availableDates.length - 1]);
+
+            function getCalendarBaseDate(isoDate) {
+                const [year, month, day] = isoDate.split('-').map(Number);
+                return new Date(year, month - 1, day);
+            }
+
+            function toIsoDate(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+            function openCalendar() {
+                renderCalendar();
+                calendarPopover.hidden = false;
+                calendarOverlay.hidden = false;
+            }
+
+            function closeCalendar() {
+                calendarPopover.hidden = true;
+                calendarOverlay.hidden = true;
+            }
+
+            function renderCalendar() {
+                const monthStart = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1);
+                const gridStart = new Date(monthStart);
+                gridStart.setDate(monthStart.getDate() - monthStart.getDay());
+
+                calendarMonthLabel.textContent = monthStart.toLocaleDateString('en-US', {
+                    month: 'long',
+                    year: 'numeric',
+                });
+                calendarGrid.innerHTML = '';
+
+                for (let index = 0; index < 42; index++) {
+                    const day = new Date(gridStart);
+                    day.setDate(gridStart.getDate() + index);
+
+                    const isoDate = toIsoDate(day);
+                    const presentationInfo = presentationCalendar[isoDate];
+                    const dayButton = document.createElement('button');
+
+                    dayButton.type = 'button';
+                    dayButton.className = 'calendar-day';
+                    dayButton.textContent = day.getDate();
+
+                    if (day.getMonth() !== monthStart.getMonth()) {
+                        dayButton.classList.add('outside-month');
+                    }
+
+                    if (isoDate === selectedPresentationDate) {
+                        dayButton.classList.add('selected');
+                    }
+
+                    if (presentationInfo) {
+                        dayButton.classList.add('has-presentation');
+                        dayButton.title = presentationInfo.name;
+                        dayButton.addEventListener('click', () => {
+                            const nextUrl = new URL(window.location.href);
+                            nextUrl.searchParams.set('presentation_id', presentationInfo.presentation_id);
+                            window.location.href = nextUrl.toString();
+                        });
+                    } else {
+                        dayButton.disabled = true;
+                    }
+
+                    calendarGrid.appendChild(dayButton);
+                }
+            }
+
+            calendarButton.addEventListener('click', openCalendar);
+            calendarClose.addEventListener('click', closeCalendar);
+            calendarOverlay.addEventListener('click', closeCalendar);
+            calendarPrev.addEventListener('click', () => {
+                visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1);
+                renderCalendar();
+            });
+            calendarNext.addEventListener('click', () => {
+                visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1);
+                renderCalendar();
+            });
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && !calendarPopover.hidden) {
+                    closeCalendar();
+                }
+            });
+        }
     
         let currentOrder = 1;
         const selectedOrders = {};
@@ -483,14 +852,17 @@
     document.querySelector('form').addEventListener('submit', function(event) {
         event.preventDefault();  // Prevent the default form submission
 
+        if (!event.submitter || event.submitter.type !== 'submit') {
+            return;
+        }
+
         disableButtons();  // Disable buttons and show spinner
 
         // Create a FormData object from the form
         let formData = new FormData(this);
 
         // Get the action value (i.e., the button that was clicked)
-        let clickedButton = document.activeElement;  // Gets the currently active element (the clicked button)
-        formData.append('action', clickedButton.value);  // Add the button's value to the form data
+        formData.set('action', event.submitter.value);
 
         // Get the current page URL as the action
         let actionUrl = window.location.href;  // Current page URL

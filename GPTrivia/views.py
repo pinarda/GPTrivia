@@ -1047,15 +1047,93 @@ async def collect_rounds_api(request):
     data = await _collect_rounds()
     return JsonResponse({"rounds": data})
 
+
+PRESENTATION_NAME_DATE_FORMATS = (
+    "%m.%d.%Y",
+    "%Y-%m-%d",
+    "%m/%d/%Y",
+)
+
+
+def _parse_presentation_name_date(presentation_name):
+    if not presentation_name:
+        return None
+
+    for date_format in PRESENTATION_NAME_DATE_FORMATS:
+        try:
+            return datetime.datetime.strptime(presentation_name, date_format).date()
+        except ValueError:
+            continue
+
+    return None
+
+
+def _build_presentation_calendar(presentations):
+    presentation_calendar = {}
+
+    for presentation in presentations:
+        presentation_date = _parse_presentation_name_date(presentation.name)
+        if presentation_date is None:
+            continue
+
+        presentation_calendar[presentation_date.isoformat()] = {
+            "presentation_id": presentation.presentation_id,
+            "name": presentation.name,
+        }
+
+    return presentation_calendar
+
+
+def _build_home_context(selected_presentation, presentation_calendar):
+    selected_presentation_date = None
+    presentation_url = None
+
+    if selected_presentation is not None:
+        selected_presentation_date = _parse_presentation_name_date(selected_presentation.name)
+        presentation_url = (
+            f"https://docs.google.com/presentation/d/{selected_presentation.presentation_id}/embed"
+        )
+
+    return {
+        "presentation_url": presentation_url,
+        "pres_name": selected_presentation.name if selected_presentation else "None",
+        "selected_presentation_id": (
+            selected_presentation.presentation_id if selected_presentation else ""
+        ),
+        "selected_presentation_iso_date": (
+            selected_presentation_date.isoformat() if selected_presentation_date else ""
+        ),
+        "presentation_calendar": presentation_calendar,
+    }
+
+
+def _get_selected_home_presentation(selected_presentation_id=None):
+    presentations = list(MergedPresentation.objects.order_by("id"))
+    latest_presentation = presentations[-1] if presentations else None
+    selected_presentation = latest_presentation
+
+    if selected_presentation_id:
+        selected_presentation = next(
+            (
+                presentation
+                for presentation in reversed(presentations)
+                if presentation.presentation_id == selected_presentation_id
+            ),
+            latest_presentation,
+        )
+
+    return latest_presentation, selected_presentation, _build_presentation_calendar(presentations)
+
 @login_required
 @ensure_csrf_cookie
 def home(request):
-    try:
-        latest_presentation = MergedPresentation.objects.latest('id')
-        presentation_url = f"https://docs.google.com/presentation/d/{latest_presentation.presentation_id}/embed"
-    except MergedPresentation.DoesNotExist:
-        latest_presentation = None
-        presentation_url = None
+    selected_presentation_id = (
+        request.GET.get("presentation_id") or request.POST.get("selected_presentation_id")
+    )
+    latest_presentation, selected_presentation, presentation_calendar = _get_selected_home_presentation(
+        selected_presentation_id
+    )
+    home_context = _build_home_context(selected_presentation, presentation_calendar)
 
     # (links, titles, creators, old_links, shared_dates) = get_round_titles_and_links(processed_senders=[])
 
@@ -1087,12 +1165,7 @@ def home(request):
                 }
             # make sure there's at least one round, or else just return
             if not round_order:
-                return render(
-                    request,
-                    "GPTrivia/home.html",
-                    {"presentation_url": presentation_url,
-                     "pres_name": latest_presentation.name if latest_presentation else "None"}
-                )
+                return render(request, "GPTrivia/home.html", home_context)
 
             # Sort rounds by order
             ordered_rounds = [round_order[key] for key in sorted(round_order.keys())]
@@ -1133,7 +1206,6 @@ def home(request):
                 tiebreak_winner="",
             )
             print (new_presentation_id, creators, round_titles)
-            presentation_url = f"https://docs.google.com/presentation/d/{new_presentation_id}/embed"
 
             for round_index in range(len(round_titles)):
                 new_round = GPTriviaRound()
@@ -1182,12 +1254,10 @@ def home(request):
 
             if not round_order:
                 # nothing selected → render page without hitting Gmail
-                return render(
-                    request,
-                    "GPTrivia/home.html",
-                    {"presentation_url": presentation_url,
-                     "pres_name": latest_presentation.name if latest_presentation else "None"}
-                )
+                return render(request, "GPTrivia/home.html", home_context)
+
+            if selected_presentation is None:
+                return render(request, "GPTrivia/home.html", home_context)
 
             # Sort rounds by order
             ordered_rounds = [round_order[key] for key in sorted(round_order.keys())]
@@ -1208,22 +1278,30 @@ def home(request):
             #     presentation_name=presentation_name
             # )
 
-            updated_presentation_id, new_creators, round_titles, new_links = update_merged_presentation(latest_presentation.presentation_id,
-                                                                               latest_presentation.creator_list, ordered_titles, ordered_creators, ordered_links, ordered_old_links, coops=ordered_coop)
+            updated_presentation_id, new_creators, round_titles, new_links = update_merged_presentation(
+                selected_presentation.presentation_id,
+                selected_presentation.creator_list,
+                ordered_titles,
+                ordered_creators,
+                ordered_links,
+                ordered_old_links,
+                coops=ordered_coop,
+            )
 
             # update the MergedPresentation object that has the same presentation_id as the latest_presentation
             # by appending the new creators to the creator_list and appending the new round titles to the round_names
 
-            latest_presentation = MergedPresentation.objects.get(presentation_id=latest_presentation.presentation_id)
-            latest_presentation.round_names.extend(round_titles)
-            latest_presentation.creator_list.extend(new_creators)
-            latest_presentation.save()
+            selected_presentation = MergedPresentation.objects.get(
+                presentation_id=selected_presentation.presentation_id
+            )
+            selected_presentation.round_names.extend(round_titles)
+            selected_presentation.creator_list.extend(new_creators)
+            selected_presentation.save()
 
             print(updated_presentation_id, new_creators, round_titles)
 
-            latest_presentation.creator_list.extend(new_creators)
-            latest_presentation.save()
-            presentation_url = f"https://docs.google.com/presentation/d/{updated_presentation_id}/embed"
+            selected_presentation.creator_list.extend(new_creators)
+            selected_presentation.save()
 
             for round_index in range(len(round_titles)):
                 new_round = GPTriviaRound()
@@ -1252,10 +1330,14 @@ def home(request):
                 new_round.save()
 
         (links, titles, creators, old_links, shared_dates) = get_round_titles_and_links(processed_senders=[])
+        if action == "update" and selected_presentation is not None:
+            return redirect(
+                f"{reverse_lazy('home')}?presentation_id={selected_presentation.presentation_id}"
+            )
         return redirect("home")
 
     # return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None", 'avail_links': links, 'avail_titles': titles, 'avail_creators': creators, 'shared_dates': shared_dates, 'avail_coops': [0]*len(titles)})
-    return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None"})
+    return render(request, 'GPTrivia/home.html', home_context)
 
 @login_required
 def scoresheet(request):
