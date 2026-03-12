@@ -6,15 +6,10 @@ from django.db.models import Avg, F, FloatField, Case, When, Sum, Count
 from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
 from django.shortcuts import render
-from .mail import create_presentation, update_merged_presentation, copy_template, share_slides, get_round_titles_and_links
 from datetime import datetime
 from django.core.exceptions import ObjectDoesNotExist
 from django.views.decorators.csrf import csrf_exempt
-from openai import OpenAI
 from django.contrib import admin
-from sklearn.decomposition import PCA
-import pandas as pd
-import numpy as np
 from django.views import View
 from asgiref.sync import sync_to_async
 import os
@@ -22,17 +17,14 @@ from django.contrib import messages
 import string
 from django.views.decorators.csrf import ensure_csrf_cookie
 import random
-from autogen import AssistantAgent, UserProxyAgent
-import autogen
 from django.shortcuts import redirect
 from django.contrib.auth.models import User
 import subprocess
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from scipy.stats import pearsonr
 import pytz
+from functools import lru_cache
 
-import numpy as np
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
@@ -59,26 +51,6 @@ from rest_framework.renderers import JSONRenderer
 from datetime import date
 from django.contrib.postgres.fields import JSONField  # Import this at the top of your file
 from .models import JeopardyQuestion, JeopardyRound, PushSubscription
-import random
-
-
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-
-# config_list = autogen.config_list_from_json(
-#     "OAI_CONFIG_LIST",
-#     filter_dict={
-#         "model": {
-#             "gpt-4",
-#         }
-#     }
-# )
-
-config_list = [
-    {
-        'model': 'o3',
-        'api_key': os.getenv('OPENAI_API_KEY')
-    }
-]
 
 
 gmail_key = '8f35edc691b918094035b22807266a1e468bf5f0'
@@ -111,6 +83,52 @@ VAPID_PRIVATE_KEY = 'sn34CZG_vKbl_AoGObw2aUFo1TV0t2QdGwa-vut-Q70'
 VAPID_CLAIMS = {
     "sub": "mailto:hailsciencetrivia@gmail.com"
 }
+
+
+def create_presentation(*args, **kwargs):
+    from .mail import create_presentation as mail_create_presentation
+
+    return mail_create_presentation(*args, **kwargs)
+
+
+def update_merged_presentation(*args, **kwargs):
+    from .mail import update_merged_presentation as mail_update_merged_presentation
+
+    return mail_update_merged_presentation(*args, **kwargs)
+
+
+def copy_template(*args, **kwargs):
+    from .mail import copy_template as mail_copy_template
+
+    return mail_copy_template(*args, **kwargs)
+
+
+def share_slides(*args, **kwargs):
+    from .mail import share_slides as mail_share_slides
+
+    return mail_share_slides(*args, **kwargs)
+
+
+def get_round_titles_and_links(*args, **kwargs):
+    from .mail import get_round_titles_and_links as mail_get_round_titles_and_links
+
+    return mail_get_round_titles_and_links(*args, **kwargs)
+
+
+@lru_cache(maxsize=1)
+def _get_openai_client():
+    from openai import OpenAI
+
+    return OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+
+def _get_autogen_config_list():
+    return [
+        {
+            'model': 'o3',
+            'api_key': os.getenv('OPENAI_API_KEY')
+        }
+    ]
 
 
 @admin.register(PushSubscription)
@@ -388,6 +406,8 @@ def player_analysis(request):
 
 @login_required
 def player_analysis_legacy(request):
+    import numpy as np
+
     creators = GPTriviaRound.objects.values_list('creator', flat=True).distinct()
 
     player_averages = []
@@ -853,7 +873,12 @@ class GenerateIdeaView(View):
 
 class AutoGenView(View):
     def post(self, request, *args, **kwargs):
-        llm_config = {"config_list": config_list, "seed": random.randint(1, 100000)}
+        try:
+            import autogen
+        except ImportError:
+            return JsonResponse({'error': 'autogen is not installed'}, status=503)
+
+        llm_config = {"config_list": _get_autogen_config_list(), "seed": random.randint(1, 100000)}
         user_proxy = autogen.UserProxyAgent(
             name="User_proxy",
             system_message="""
@@ -897,6 +922,7 @@ class AutoGenView(View):
 class GenerateImageView(View):
     def post(self, request, *args, **kwargs):
         gpt_response = request.POST.get('gpt_text')
+        client = _get_openai_client()
 
         try:
             # Get the conversation history from the session
@@ -936,6 +962,7 @@ class GenerateImageView(View):
 class IconView(View):
     def post(self, request, *args, **kwargs):
         gpt_response = request.POST.get('question_text')
+        client = _get_openai_client()
 
 
         try:
@@ -993,6 +1020,7 @@ class RoundMaker(View):
 
     def post(self, request, *args, **kwargs):
         user_input = request.POST.get('user_input')
+        client = _get_openai_client()
 
 
         # Get the conversation history from the session
@@ -1519,6 +1547,12 @@ class CustomObtainAuthToken(ObtainAuthToken):
             'user_id': user.pk,
             'username': user.username
         })
+
+
+def player_analysis_plot(request, *args, **kwargs):
+    from .analysis import PlayerAnalysisPlot
+
+    return PlayerAnalysisPlot.as_view()(request, *args, **kwargs)
 
 
 SCORESHEET_GROUP_NAME = 'scoresheet_scoresheet_updates'
