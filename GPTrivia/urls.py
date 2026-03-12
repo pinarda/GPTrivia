@@ -30,7 +30,11 @@ from django.forms.models import model_to_dict
 from django.views.decorators.csrf import csrf_exempt
 from .views import RoundMaker, GenerateIdeaView, PreviewView, ShareView, GenerateImageView, AutoGenView, IconView
 from .analysis import PlayerAnalysisPlot
-from debug_toolbar.toolbar import debug_toolbar_urls
+try:
+    from debug_toolbar.toolbar import debug_toolbar_urls
+except ImportError:
+    def debug_toolbar_urls():
+        return []
 from django.views.generic import TemplateView
 
 

@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import GPTriviaRoundForm, ProfilePictureForm
 from .models import GPTriviaRound, MergedPresentation, Profile
+from django.db import transaction
 from django.db.models import Avg, F, FloatField, Case, When, Sum, Count
 from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
@@ -103,7 +104,7 @@ players = [
     'score_dan', 'score_chris', 'score_drew', 'score_tom', 'score_paige']
 
 
-VAPID_PRIVATE_KEY = 'MKOWyxQRCG8kKDaoX4BEME-aQuij50hdO9DfWxna8bo'
+VAPID_PRIVATE_KEY = 'sn34CZG_vKbl_AoGObw2aUFo1TV0t2QdGwa-vut-Q70'
 VAPID_CLAIMS = {
     "sub": "mailto:hailsciencetrivia@gmail.com"
 }
@@ -1145,16 +1146,16 @@ def home(request):
                 new_round.date = datetime.datetime.strptime(presentation_name, "%m.%d.%Y").date().strftime('%Y-%m-%d')
                 new_round.round_number = round_index + 1
                 new_round.max_score = 10
-                new_round.score_alex = 0
-                new_round.score_ichigo = 0
-                new_round.score_megan = 0
-                new_round.score_zach = 0
-                new_round.score_jenny = 0
-                new_round.score_debi = 0
-                new_round.score_dan = 0
-                new_round.score_chris = 0
-                new_round.score_drew = 0
-                new_round.score_tom = 0
+                new_round.score_alex = None
+                new_round.score_ichigo = None
+                new_round.score_megan = None
+                new_round.score_zach = None
+                new_round.score_jenny = None
+                new_round.score_debi = None
+                new_round.score_dan = None
+                new_round.score_chris = None
+                new_round.score_drew = None
+                new_round.score_tom = None
                 new_round.replay = 0
                 # round coop will be 0 if the checkbox is not checked, 1 if it is
                 new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
@@ -1235,16 +1236,16 @@ def home(request):
                 new_round.date = datetime.datetime.strptime(presentation_name, "%m.%d.%Y").date().strftime('%Y-%m-%d')
                 new_round.round_number = round_index + 1
                 new_round.max_score = 10
-                new_round.score_alex = 0
-                new_round.score_ichigo = 0
-                new_round.score_megan = 0
-                new_round.score_zach = 0
-                new_round.score_jenny = 0
-                new_round.score_debi = 0
-                new_round.score_dan = 0
-                new_round.score_chris = 0
-                new_round.score_drew = 0
-                new_round.score_tom = 0
+                new_round.score_alex = None
+                new_round.score_ichigo = None
+                new_round.score_megan = None
+                new_round.score_zach = None
+                new_round.score_jenny = None
+                new_round.score_debi = None
+                new_round.score_dan = None
+                new_round.score_chris = None
+                new_round.score_drew = None
+                new_round.score_tom = None
                 new_round.replay = 0
                 new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
                 new_round.link = new_links[round_index]
@@ -1383,11 +1384,165 @@ class CustomObtainAuthToken(ObtainAuthToken):
             'username': user.username
         })
 
+
+SCORESHEET_GROUP_NAME = 'scoresheet_scoresheet_updates'
+SCORESHEET_ROUND_FIELDS = {
+    'creator', 'title', 'major_category', 'minor_category1', 'minor_category2', 'date',
+    'round_number', 'max_score', 'replay', 'cooperative', 'notes', 'link',
+    'score_alex', 'score_ichigo', 'score_megan', 'score_zach', 'score_jenny', 'score_debi',
+    'score_dan', 'score_chris', 'score_drew', 'score_tom', 'score_jeff', 'score_paige',
+    'score_dillon',
+}
+SCORESHEET_PRESENTATION_FIELDS = {
+    'round_names', 'creator_list', 'joker_round_indices', 'player_list', 'host',
+    'scorekeeper', 'tiebreak_winner', 'notes', 'style_points',
+}
+
+
+def _broadcast_scoresheet_message(message):
+    channel_layer = get_channel_layer()
+    if not channel_layer:
+        return
+
+    async_to_sync(channel_layer.group_send)(
+        SCORESHEET_GROUP_NAME,
+        {
+            'type': 'scoresheet_message',
+            'message': message,
+        }
+    )
+
+
+def _schedule_scoresheet_broadcast(message):
+    transaction.on_commit(lambda: _broadcast_scoresheet_message(message))
+
+
+def _parse_scoresheet_date(date_str):
+    if not date_str:
+        return None
+
+    for fmt in ('%m.%d.%Y', '%Y-%m-%d'):
+        try:
+            return datetime.datetime.strptime(date_str, fmt).date()
+        except ValueError:
+            continue
+
+    return None
+
+
+def _presentation_name_for_date(selected_date):
+    parsed_date = _parse_scoresheet_date(selected_date)
+    if not parsed_date:
+        return None
+    return parsed_date.strftime("%m.%d.%Y")
+
+
+def _get_scoresheet_presentation(presentation_id=None, selected_date=None):
+    if presentation_id:
+        try:
+            return MergedPresentation.objects.get(presentation_id=presentation_id)
+        except ObjectDoesNotExist:
+            return None
+
+    presentation_name = _presentation_name_for_date(selected_date)
+    if not presentation_name:
+        return None
+
+    try:
+        return MergedPresentation.objects.get(name=presentation_name)
+    except ObjectDoesNotExist:
+        return None
+
+
+def _save_scores_patch(data):
+    round_updates = data.get('round_updates', [])
+    presentation_updates = data.get('presentation_updates', {})
+    selected_date = data.get('selected_date')
+    presentation_id = data.get('presentation_id')
+    client_id = data.get('client_id')
+    mutation_id = data.get('mutation_id')
+
+    with transaction.atomic():
+        for update in round_updates:
+            round_id = update.get('id')
+            fields = update.get('fields', {})
+            round_obj = GPTriviaRound.objects.get(id=round_id)
+            dirty_fields = []
+
+            for field, value in fields.items():
+                if field not in SCORESHEET_ROUND_FIELDS:
+                    return JsonResponse({"message": f"Invalid round field: {field}"}, status=400)
+                if field == 'date':
+                    value = _parse_scoresheet_date(value)
+                setattr(round_obj, field, value)
+                dirty_fields.append(field)
+
+            if dirty_fields:
+                round_obj.save(update_fields=dirty_fields)
+
+        presentation = _get_scoresheet_presentation(
+            presentation_id=presentation_id,
+            selected_date=selected_date,
+        )
+
+        if not presentation:
+            presentation_name = _presentation_name_for_date(selected_date)
+            if not presentation_name:
+                return JsonResponse({"message": "Presentation not found."}, status=400)
+
+            presentation = MergedPresentation(
+                name=presentation_name,
+                presentation_id=presentation_id or "",
+            )
+
+        dirty_fields = []
+        for field, value in presentation_updates.items():
+            if field not in SCORESHEET_PRESENTATION_FIELDS:
+                return JsonResponse({"message": f"Invalid presentation field: {field}"}, status=400)
+            setattr(presentation, field, value)
+            dirty_fields.append(field)
+
+        if dirty_fields or presentation.pk is None:
+            presentation.save()
+
+        message = {
+            'action': 'update',
+            'event': 'save_scores',
+            'client_id': client_id,
+            'mutation_id': mutation_id,
+            'presentation_id': presentation.presentation_id,
+            'selected_date': selected_date,
+            'round_updates': round_updates,
+            'presentation_updates': presentation_updates,
+        }
+        _schedule_scoresheet_broadcast(message)
+
+    return JsonResponse({
+        "message": "Data saved successfully!",
+        "presentation_id": presentation.presentation_id,
+    })
+
 @api_view(['POST'])
 def create_round(request, date, number):
     # Logic to create a new round
     print("here")
-    new_round = GPTriviaRound.objects.create(date=date, round_number=number, title=f"Round {number}")  # Update with necessary fields
+    selected_date = _parse_scoresheet_date(date) or date
+    client_id = request.data.get('client_id')
+    mutation_id = request.data.get('mutation_id')
+    with transaction.atomic():
+        new_round = GPTriviaRound.objects.create(
+            date=selected_date,
+            round_number=number,
+            title=f"Round {number}",
+        )
+        _schedule_scoresheet_broadcast({
+            'action': 'update',
+            'event': 'create_round',
+            'client_id': client_id,
+            'mutation_id': mutation_id,
+            'round_id': new_round.id,
+            'selected_date': str(new_round.date),
+        })
     # set the date
     # print(date)
     # try:
@@ -1412,25 +1567,39 @@ def create_round(request, date, number):
 @api_view(['DELETE'])
 def delete_round(request, round_id):
     round_to_delete = GPTriviaRound.objects.get(id=round_id)
+    client_id = request.data.get('client_id')
+    mutation_id = request.data.get('mutation_id')
     # get the date of the round to delete
     thedate = round_to_delete.date
-    round_to_delete.delete()
-    # if there aren't any rounds with the same date left, remove the MergedPresentation object with the same date
-    print("round deleted successfully: " + str(round_id))
-    print ("remaining rounds with date: " + str(thedate) + ": " + str(GPTriviaRound.objects.filter(date=thedate).count()))
-    print ("GPTriviaRound.objects.filter(date=thedate): " + str(GPTriviaRound.objects.filter(date=thedate)))
-    print ("GPTriviaRound.objects.filter(date=thedate).count(): " + str(GPTriviaRound.objects.filter(date=thedate).count()))
-    print ("thedate.strftime: " + thedate.strftime("%m.%d.%Y"))
-    print("MergedPresentation.objects.filter(name=thedate.strftime): " + str(MergedPresentation.objects.filter(name=thedate.strftime("%m.%d.%Y"))))
+    with transaction.atomic():
+        round_to_delete.delete()
+        # if there aren't any rounds with the same date left, remove the MergedPresentation object with the same date
+        print("round deleted successfully: " + str(round_id))
+        print ("remaining rounds with date: " + str(thedate) + ": " + str(GPTriviaRound.objects.filter(date=thedate).count()))
+        print ("GPTriviaRound.objects.filter(date=thedate): " + str(GPTriviaRound.objects.filter(date=thedate)))
+        print ("GPTriviaRound.objects.filter(date=thedate).count(): " + str(GPTriviaRound.objects.filter(date=thedate).count()))
+        print ("thedate.strftime: " + thedate.strftime("%m.%d.%Y"))
+        print("MergedPresentation.objects.filter(name=thedate.strftime): " + str(MergedPresentation.objects.filter(name=thedate.strftime("%m.%d.%Y"))))
 
-    if GPTriviaRound.objects.filter(date=thedate).count() == 0:
-        print("deleting merged presentation with date: " + str(thedate))
-        MergedPresentation.objects.filter(name=thedate.strftime("%m.%d.%Y")).delete()
+        if GPTriviaRound.objects.filter(date=thedate).count() == 0:
+            print("deleting merged presentation with date: " + str(thedate))
+            MergedPresentation.objects.filter(name=thedate.strftime("%m.%d.%Y")).delete()
+
+        _schedule_scoresheet_broadcast({
+            'action': 'update',
+            'event': 'delete_round',
+            'client_id': client_id,
+            'mutation_id': mutation_id,
+            'round_id': round_id,
+            'selected_date': str(thedate),
+        })
     return Response({'message': 'Round deleted successfully'})
 
 @api_view(['POST'])
 def save_scores(request):
     data = request.data
+    if 'round_updates' in data or 'presentation_updates' in data:
+        return _save_scores_patch(data)
     rounds = data.get('rounds', [])
     joker_round_indices = data.get('joker_round_indices', {})
     presentation_id = data.get('presentation_id', None)

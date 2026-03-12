@@ -31,16 +31,6 @@ class ScoresheetConsumer(AsyncWebsocketConsumer):
         message_type = text_data_json.get('type')
         if message_type == 'ping':
             await self.send(text_data=json.dumps({'type': 'pong'}))
-        else:
-            message = text_data_json['message']
-            # Send message to room group
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'scoresheet_message',
-                    'message': message
-                }
-            )
 
     # Receive message from room group
     async def scoresheet_message(self, event):

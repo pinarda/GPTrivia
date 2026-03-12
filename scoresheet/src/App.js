@@ -25,6 +25,17 @@ import { AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from 'dayjs';
 import Badge from '@mui/material/Badge';
 import { motion, useAnimation } from "framer-motion";
+import {
+  applyPatchToPresentationSnapshot,
+  applyPatchToRoundSnapshot,
+  buildScoresheetPatch,
+  createClientId,
+  createMutationId,
+  hasScoresheetChanges,
+  makePresentationSnapshot,
+  makeRoundSnapshot,
+  shouldIgnoreScoresheetMessage,
+} from './sync';
 
     const playerColorMapping = {
         'score_alex': '#D2042D',
@@ -44,6 +55,12 @@ import { motion, useAnimation } from "framer-motion";
         'score_tom': '#000042',
         'unknown': '#333333',
     };
+
+    const DEFAULT_VISIBLE_PLAYERS = [
+      'score_alex','score_megan','score_jenny','score_ichigo',
+      'score_zach','score_debi','score_dan','score_chris'
+    ];
+
 
     const XButton = styled.div`
       width: 20px; // Set the width
@@ -100,6 +117,8 @@ import { motion, useAnimation } from "framer-motion";
 
         return newHexColor;
     }
+
+
 
     const StyledTableCell = styled(TableCell)`
       background-color: #333;
@@ -352,7 +371,7 @@ const PlayerTable = () => {
     const [selectedColumnIndex, setSelectedColumnIndex] = useState(1);
     const [updateFlag, setUpdateFlag] = useState(0); // Update flag
     const [prevUpdateFlag, setPrevUpdateFlag] = useState(0); // Previous update flag
-    const isLocalUpdate = useRef(false);
+    const [saveRequestCount, setSaveRequestCount] = useState(0);
     const [openDatePicker, setOpenDatePicker] = useState(false);
     // ANIMATION STUFF
     const [showPic, setShowPic] = useState(false);
@@ -385,7 +404,21 @@ const PlayerTable = () => {
     let url = "https://hailsciencetrivia.com"
 
     const wsRef = useRef(null);
+    const pingIntervalRef = useRef(null);
+    const clientIdRef = useRef(createClientId());
+    const pendingMutationIdsRef = useRef(new Set());
+    const serverRoundSnapshotRef = useRef({});
+    const serverPresentationSnapshotRef = useRef(makePresentationSnapshot(null));
+    const saveInFlightRef = useRef(false);
+    const saveQueuedRef = useRef(false);
+    const latestStateRef = useRef(null);
     const isVisible = usePageVisibility();
+    const websocketUrl = `${url.replace(/^http/, 'ws')}/ws/scoresheet/`;
+
+    const markDirty = useCallback(() => {
+      setIsSaved(false);
+      setSaveRequestCount(prev => prev + 1);
+    }, []);
 
     function sortPlayers(b, a) {
       const totalScoreA = rounds.reduce((total, round) => total + (round[a] || 0), 0) + (
@@ -543,6 +576,11 @@ const PlayerTable = () => {
                 setDates(uniqueDates);
             }
             json = json.filter(round => round.date === selectedDate);
+            const nextRoundSnapshot = {};
+            json.forEach(round => {
+              nextRoundSnapshot[round.id] = makeRoundSnapshot(round);
+            });
+            serverRoundSnapshotRef.current = nextRoundSnapshot;
           setRounds(json);
 
           // set tempTitles if it hasn't been set yet
@@ -667,6 +705,7 @@ const PlayerTable = () => {
         .then(json => {
             // strip the score_ prefix from the player names
             const selectedPresentation = json.find(presentation => convertDate(presentation.name) === selectedDate)
+            serverPresentationSnapshotRef.current = makePresentationSnapshot(selectedPresentation);
             // const playerList = selectedPresentation.player_list;
 
             // start by setting the playerNames to the default players
@@ -776,6 +815,19 @@ const PlayerTable = () => {
         });
     }, [selectedDate, url, updateFlag]);
 
+    useEffect(() => {
+      if (!rounds || rounds.length === 0) return;
+
+      // “Any score exists” = any score_* field is a number (0 counts as a score)
+      const anyScores = rounds.some(r =>
+        Object.keys(r).some(k => k.startsWith('score_') && Number.isFinite(r[k]))
+      );
+
+      if (!anyScores) {
+        setPlayers(DEFAULT_VISIBLE_PLAYERS);
+      }
+    }, [rounds]);
+
 
     useEffect(() => {
       if (players.length > 0 && rounds.length > 0) {
@@ -822,6 +874,48 @@ const PlayerTable = () => {
        isSavedRef.current = isSaved;
     }, [isSaved]);
 
+    useEffect(() => {
+      latestStateRef.current = {
+        rounds,
+        selectedRounds,
+        roundCreators,
+        scores,
+        players,
+        host,
+        scorekeeper,
+        tiebreakWinner,
+        notes,
+        stylePoints,
+        selectedMajorCategories,
+        selectedMinor1Categories,
+        selectedMinor2Categories,
+        cooperativeStatus,
+        isReplay,
+        maxScores,
+        selectedDate,
+        presID,
+      };
+    }, [
+      cooperativeStatus,
+      host,
+      isReplay,
+      maxScores,
+      notes,
+      players,
+      presID,
+      roundCreators,
+      rounds,
+      scorekeeper,
+      scores,
+      selectedDate,
+      selectedMajorCategories,
+      selectedMinor1Categories,
+      selectedMinor2Categories,
+      selectedRounds,
+      stylePoints,
+      tiebreakWinner,
+    ]);
+
     function usePageVisibility() {
         const [isVisible, setIsVisible] = useState(!document.hidden);
 
@@ -863,14 +957,14 @@ const PlayerTable = () => {
                 setUpdateFlag(prev => prev + 1); // Increment the flag to trigger re-fetch
             }
             if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
-                wsRef.current = new WebSocket('wss://hailsciencetrivia.com/ws/scoresheet/');
-                // replace the above line usinug the url variable
-                // wsRef.current = new WebSocket('ws://localhost:8000/ws/scoresheet/');
+                wsRef.current = new WebSocket(websocketUrl);
 
                 wsRef.current.onopen = () => {
                     console.log('Connected to the WebSocket');
-                    // Send a ping message every 30 seconds
-                    setInterval(() => {
+                    if (pingIntervalRef.current) {
+                        clearInterval(pingIntervalRef.current);
+                    }
+                    pingIntervalRef.current = setInterval(() => {
                         if (wsRef.current.readyState === WebSocket.OPEN) {
                             wsRef.current.send(JSON.stringify({type: 'ping'}));
                         }
@@ -879,13 +973,17 @@ const PlayerTable = () => {
 
                 wsRef.current.onmessage = (event) => {
                     const data = JSON.parse(event.data);
-                    console.log('WebSocket message received:', data.message)
+                    console.log('WebSocket message received:', data.message);
 
-                    console.log('isLocalUpdate value at ', new Date().toLocaleTimeString(), ': ', isLocalUpdate.current);
-                    if (data.message && data.message.action === 'update' && !isLocalUpdate.current) {
+                    if (shouldIgnoreScoresheetMessage(data.message, clientIdRef.current, pendingMutationIdsRef.current)) {
+                        pendingMutationIdsRef.current.delete(data.message.mutation_id);
+                        return;
+                    }
+
+                    if (data.message && data.message.action === 'update') {
                         console.log('Received update message')
                         setUpdateFlag(prev => prev + 1); // Increment the flag to trigger re-fetch
-                        console.log('Update flag incremented to: ', updateFlag)
+                        console.log('Update flag incremented');
                     }
                 };
 
@@ -895,17 +993,26 @@ const PlayerTable = () => {
 
                 wsRef.current.onclose = () => {
                     console.log('Disconnected from the WebSocket');
+                    if (pingIntervalRef.current) {
+                        clearInterval(pingIntervalRef.current);
+                        pingIntervalRef.current = null;
+                    }
                 };
 
                 // Cleanup function for WebSocket
                 return () => {
+                    if (pingIntervalRef.current) {
+                        clearInterval(pingIntervalRef.current);
+                        pingIntervalRef.current = null;
+                    }
                     if (wsRef.current) {
                         wsRef.current.close();
+                        wsRef.current = null;
                     }
                 };
             }
         }
-    }, [isVisible]);
+    }, [isVisible, websocketUrl]);
 
     const handleScoreChange = (event, player, roundTitle, round) => {
         const confirmChange = confirmPastChange()
@@ -937,7 +1044,7 @@ const PlayerTable = () => {
                 [roundTitle]: newScore,
             },
         });
-        setIsSaved(false);
+        markDirty();
     };
 
 
@@ -946,7 +1053,7 @@ const PlayerTable = () => {
         if (!confirmChange) return;
 
       setPlayers(players.filter(player => player !== playerToRemove));
-      setIsSaved(false);
+      markDirty();
     };
 
     const handleChangeDate = (eventOrDate) => {
@@ -1101,7 +1208,7 @@ const PlayerTable = () => {
               return newSelectedRounds;
           });
 
-      setIsSaved(false);
+      markDirty();
     };
 
     const handleAddPlayer = () => {
@@ -1117,7 +1224,7 @@ const PlayerTable = () => {
           alert('Player name already exists!');
         }
       }
-      setIsSaved(false);
+      markDirty();
     };
 
     const transformName = (name) => {
@@ -1135,7 +1242,7 @@ const PlayerTable = () => {
         ...prevState,
         [roundTitle]: newValue,
       }));
-      setIsSaved(false);
+      markDirty();
     };
 
     const handleMinor1CategoryChange = (roundTitle, newValue) => {
@@ -1143,7 +1250,7 @@ const PlayerTable = () => {
             ...prevState,
             [roundTitle]: newValue,
         }));
-      setIsSaved(false);
+      markDirty();
     };
 
     const handleMinor2CategoryChange = (roundTitle, newValue) => {
@@ -1151,7 +1258,7 @@ const PlayerTable = () => {
             ...prevState,
             [roundTitle]: newValue,
         }));
-      setIsSaved(false);
+      markDirty();
     };
 
     const handleLinkChange = (index, newLink) => {
@@ -1165,7 +1272,7 @@ const PlayerTable = () => {
                   return round;
               })
           );
-        setIsSaved(false);
+        markDirty();
     }
 
     const handleCooperativeChange = (roundTitle, isChecked) => {
@@ -1175,7 +1282,7 @@ const PlayerTable = () => {
         ...prevState,
         [roundTitle]: isChecked,
       }));
-      setIsSaved(false);
+      markDirty();
     };
 
     const handleReplayChange = (roundTitle, isChecked) => {
@@ -1183,7 +1290,7 @@ const PlayerTable = () => {
             ...prevState,
             [roundTitle]: isChecked,
         }));
-      setIsSaved(false);
+      markDirty();
     };
 
     useEffect(() => {
@@ -1199,7 +1306,7 @@ const PlayerTable = () => {
             ...prevScores,
             [roundTitle]: newMaxScore
         }));
-        setIsSaved(false);
+        markDirty();
     };
 
     useEffect(() => {
@@ -1207,7 +1314,7 @@ const PlayerTable = () => {
             console.log('scoresheet changed, saving...');
             saveData();
         }
-    }, [isSaved]);
+    }, [isSaved, saveRequestCount]);
 
 
     const handleCreatorChange = (roundTitle, newCreatorName) => {
@@ -1240,68 +1347,92 @@ const PlayerTable = () => {
             }
             return newRounds;
         });
-      setIsSaved(false);
+      markDirty();
     };
 
-    const saveData = () => {
-        const formattedRoundsData = rounds.map((round, index) => formatRoundData(round, index));
-        // replace keys in selectedRounds by removing the score_ prefix and capitalizing the first letter
-        const formattedSelectedRounds = {};
-        for (let key in selectedRounds) {
-            formattedSelectedRounds[key.replace('score_', '').charAt(0).toLowerCase() + key.replace('score_', '').slice(1)] = selectedRounds[key];
+    const saveData = useCallback(() => {
+        if (saveInFlightRef.current) {
+            saveQueuedRef.current = true;
+            return Promise.resolve();
         }
-        // put each round name into an array and pass it to the backend, and do the same for round creators
-        const roundNames = [];
-        const roundCreators = [];
-        for (let round in formattedRoundsData) {
-            roundNames.push(formattedRoundsData[round]["title"]);
-            roundCreators.push(formattedRoundsData[round]["creator"]);
+
+        const currentState = latestStateRef.current;
+        if (!currentState) {
+            return Promise.resolve();
         }
+
+        const patch = buildScoresheetPatch({
+            ...currentState,
+            serverRoundSnapshot: serverRoundSnapshotRef.current,
+            serverPresentationSnapshot: serverPresentationSnapshotRef.current,
+        });
+
+        if (!hasScoresheetChanges(patch)) {
+            setIsSaved(true);
+            return Promise.resolve();
+        }
+
+        const mutationId = createMutationId();
+        saveInFlightRef.current = true;
+        pendingMutationIdsRef.current.add(mutationId);
 
         const payload = {
-            rounds: formattedRoundsData,
-            joker_round_indices: formattedSelectedRounds,  // Add appropriate data here
-            presentation_id: presID,  // Add appropriate data here
-            round_names: roundNames,
-            round_creators: roundCreators,
-            player_list: players,
-
-              // new meta block
-              host,
-              scorekeeper,
-              tiebreak_winner: tiebreakWinner || null,
-              notes,
-              style_points: stylePoints || {},
+            ...patch,
+            client_id: clientIdRef.current,
+            mutation_id: mutationId,
+            presentation_id: currentState.presID || null,
         };
 
-        fetch(url + '/save_scores/', {
+        return fetch(url + '/save_scores/', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-CSRFToken': csrfToken,  // Add the CSRF token here
+              'X-CSRFToken': csrfToken,
               'Authorization': `Token ${localStorage.getItem('token')}`,
             },
             body: JSON.stringify(payload),
         })
-        .then(response => response.json())
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+          }
+          return response.json();
+        })
         .then(data => {
           console.log('Success:', data);
+          serverRoundSnapshotRef.current = applyPatchToRoundSnapshot(
+            serverRoundSnapshotRef.current,
+            patch.round_updates,
+          );
+          serverPresentationSnapshotRef.current = applyPatchToPresentationSnapshot(
+            serverPresentationSnapshotRef.current,
+            patch.presentation_updates,
+          );
+
+          if (data.presentation_id !== undefined && data.presentation_id !== null) {
+            setPresID(data.presentation_id);
+          }
+
+          const remainingPatch = buildScoresheetPatch({
+            ...latestStateRef.current,
+            serverRoundSnapshot: serverRoundSnapshotRef.current,
+            serverPresentationSnapshot: serverPresentationSnapshotRef.current,
+          });
+          setIsSaved(!hasScoresheetChanges(remainingPatch));
         })
         .catch((error) => {
+          pendingMutationIdsRef.current.delete(mutationId);
+          setIsSaved(false);
           console.error('Error:', error);
+        })
+        .finally(() => {
+          saveInFlightRef.current = false;
+          if (saveQueuedRef.current) {
+            saveQueuedRef.current = false;
+            saveData();
+          }
         });
-
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            console.log('Sending update message to WebSocket via React');
-            isLocalUpdate.current = true;
-            console.log ('isLocalUpdate set to true at ', new Date().toLocaleTimeString());
-            wsRef.current.send(JSON.stringify({type: 'scoresheet_message', message: {'action': 'update'}}));
-            setTimeout(() => isLocalUpdate.current = false, 10000); // Reset flag after a short delay
-        } else {
-            console.log('WebSocket is not open. Current state:', wsRef.current.readyState);
-        }
-        setIsSaved(true);
-    };
+    }, [csrfToken, url]);
 
     const formatRoundData = (round, index) => {
       let formattedData = {
@@ -1334,6 +1465,8 @@ const PlayerTable = () => {
     const handleAddColumn = (date, number) => {
         const confirmChange = confirmPastChange()
         if (!confirmChange) return;
+        const mutationId = createMutationId();
+        pendingMutationIdsRef.current.add(mutationId);
 
         fetch(url + `/create_round/${date}/${number}/`, {
             method: 'POST',
@@ -1342,6 +1475,10 @@ const PlayerTable = () => {
                 'X-CSRFToken': csrfToken,
                 'Authorization': `Token ${localStorage.getItem('token')}`,
             },
+            body: JSON.stringify({
+                client_id: clientIdRef.current,
+                mutation_id: mutationId,
+            }),
         })
         .then(response => response.json())
         .then(data => {
@@ -1349,20 +1486,16 @@ const PlayerTable = () => {
             setRounds(prevRounds => [...prevRounds, data]);
             setTempTitles(prevTitles => [...prevTitles, data.title]);
             setTempLinks(prevLinks => [...prevLinks, data.link]);
+            serverRoundSnapshotRef.current = {
+              ...serverRoundSnapshotRef.current,
+              [data.id]: makeRoundSnapshot(data),
+            };
+            markDirty();
         })
         .catch((error) => {
+            pendingMutationIdsRef.current.delete(mutationId);
             console.error('Error:', error);
         });
-
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            console.log('Sending update message to WebSocket via React');
-            isLocalUpdate.current = true;
-            console.log ('isLocalUpdate set to true at ', new Date().toLocaleTimeString());
-            wsRef.current.send(JSON.stringify({type: 'scoresheet_message', message: {'action': 'update'}}));
-            setTimeout(() => isLocalUpdate.current = false, 10000); // Reset flag after a short delay
-        } else {
-            console.log('WebSocket is not open. Current state:', wsRef.current.readyState);
-        }
     }
 
     const handleTempTitleChange = (index, newTitle) => {
@@ -1386,6 +1519,8 @@ const PlayerTable = () => {
         if (!confirmChange) return;
         const confirmDelete = window.confirm("Are you sure you want to delete this round? This action cannot be undone.");
         if (!confirmDelete) return;
+        const mutationId = createMutationId();
+        pendingMutationIdsRef.current.add(mutationId);
 
         fetch(url + `/delete_round/${roundId}/`, {
             method: 'DELETE',
@@ -1393,6 +1528,10 @@ const PlayerTable = () => {
                 'X-CSRFToken': csrfToken,
               'Authorization': `Token ${localStorage.getItem('token')}`,
             },
+            body: JSON.stringify({
+                client_id: clientIdRef.current,
+                mutation_id: mutationId,
+            }),
         })
         .then(response => {
             if (response.ok) {
@@ -1409,20 +1548,16 @@ const PlayerTable = () => {
             const index = rounds.findIndex(round => round.id === roundId);
             // remove the title from tempTitles at the same index
             setTempTitles(prevTitles => prevTitles.filter((title, titleIndex) => titleIndex !== index));
+            setTempLinks(prevLinks => prevLinks.filter((link, linkIndex) => linkIndex !== index));
+            const nextRoundSnapshot = { ...serverRoundSnapshotRef.current };
+            delete nextRoundSnapshot[roundId];
+            serverRoundSnapshotRef.current = nextRoundSnapshot;
+            markDirty();
         })
         .catch((error) => {
+          pendingMutationIdsRef.current.delete(mutationId);
           console.error('Error:', error);
         });
-
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            console.log('Sending update message to WebSocket via React');
-            isLocalUpdate.current = true;
-            console.log ('isLocalUpdate set to true at ', new Date().toLocaleTimeString());
-            wsRef.current.send(JSON.stringify({type: 'scoresheet_message', message: {'action': 'update'}}));
-            setTimeout(() => isLocalUpdate.current = false, 10000); // Reset flag after a short delay
-        } else {
-            console.log('WebSocket is not open. Current state:', wsRef.current.readyState);
-        }
     };
 
 
@@ -1533,22 +1668,22 @@ const PlayerTable = () => {
             <StyledButton variant="contained" color="secondary" onClick={() => handleAddColumn(selectedDate, rounds.length + 1)}>
               Add Round
             </StyledButton>
-              <StyledFormControl>
+              <StyledFormControl sx={{ minWidth: 200, mr: 1 }}>
                   <StyledInputLabel>Host</StyledInputLabel>
                   <StyledSelect
                     value={host}
-                    onChange={(e)=>{ setHost(e.target.value); setIsSaved(false); }}
+                    onChange={(e)=>{ setHost(e.target.value); markDirty(); }}
                   >
                     <MenuItem value="">—</MenuItem>
                     {playerNamesDisplay.map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
                   </StyledSelect>
                 </StyledFormControl>
 
-                <StyledFormControl>
+                <StyledFormControl sx={{ minWidth: 200, mr: 1 }}>
                   <StyledInputLabel>Scorekeeper</StyledInputLabel>
                   <StyledSelect
                     value={scorekeeper}
-                    onChange={(e)=>{ setScorekeeper(e.target.value); setIsSaved(false); }}
+                    onChange={(e)=>{ setScorekeeper(e.target.value); markDirty(); }}
                   >
                     <MenuItem value="">—</MenuItem>
                     {playerNamesDisplay.map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
@@ -1559,7 +1694,7 @@ const PlayerTable = () => {
                   <StyledInputLabel>Tiebreak winner</StyledInputLabel>
                   <StyledSelect
                     value={tiebreakWinner}
-                    onChange={(e)=>{ setTiebreakWinner(e.target.value); setIsSaved(false); }}
+                    onChange={(e)=>{ setTiebreakWinner(e.target.value); markDirty(); }}
                   >
                     <MenuItem value="">—</MenuItem>
                     {playerNamesDisplay.map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
@@ -1568,26 +1703,26 @@ const PlayerTable = () => {
 
                 <StyledTextField
                   value={notes}
-                  onChange={(e)=>{ setNotes(e.target.value); setIsSaved(false); }}
-                  variant="outlined"
-                  placeholder="Notes"
-                  style={{ margin: "0.4rem", minWidth: 240 }}
+                  onChange={e=>{ setNotes(e.target.value); markDirty(); }}
+                  multiline
+                  rows={3}                    // was 1
+                  style={{ margin: "0.4rem", minWidth: 320 }}
                 />
 
             <StyledButton variant="contained" color="primary" onClick={saveData} style={{ backgroundColor: isSaved ? '#1e7662' : '#810e19' }}>
               Save Scoresheet
             </StyledButton>
 
-            <StyledButton
-                variant="outlined"
-                color="primary"
-                onClick={() => setShowPic(true)}
-              >
-                Show Picture
-            </StyledButton>
-            <StyledButton variant="outlined" onClick={pulsePlayer}>
-                Pulse “Player”
-            </StyledButton>
+            {/*<StyledButton*/}
+            {/*    variant="outlined"*/}
+            {/*    color="primary"*/}
+            {/*    onClick={() => setShowPic(true)}*/}
+            {/*  >*/}
+            {/*    Show Picture*/}
+            {/*</StyledButton>*/}
+            {/*<StyledButton variant="outlined" onClick={pulsePlayer}>*/}
+            {/*    Pulse “Player”*/}
+            {/*</StyledButton>*/}
           </Box>
         </Grid>
 
@@ -1697,7 +1832,7 @@ const PlayerTable = () => {
                                     ...selectedRounds,
                                     [player]: event.target.value
                                 });
-                                setIsSaved(false);
+                                markDirty();
                             }} // Update the selected round for this player
                           >
                               <MenuItem value={"Select"}>- Select -</MenuItem>
@@ -2082,7 +2217,7 @@ const PlayerTable = () => {
                       onChange={(e)=>{
                         const v = e.target.value === '' ? undefined : Number(e.target.value);
                         setStylePoints(prev => ({ ...prev, [name]: v }));
-                        setIsSaved(false);
+                        markDirty();
                       }}
                       inputProps={{ step:0.5, min:0, type:'number' }}
                     />
