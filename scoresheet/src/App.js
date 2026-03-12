@@ -408,13 +408,44 @@ import {
       grid-column: 1 / -1;
     `;
 
+    const PlayerNameStack = styled.div`
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+    `;
+
+    const WinnerCrown = styled(motion.div)`
+      width: 20px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
       const GlobalStyle = createGlobalStyle`
           .MuiPopover-root .MuiPaper-root {
             display: block;
           }
     `;
 
-
+function CrownIcon() {
+  return (
+    <svg viewBox="0 0 24 18" width="20" height="16" aria-hidden="true">
+      <path
+        d="M2 15L4.6 5.5L9.2 10.2L12 2.5L14.8 10.2L19.4 5.5L22 15H2Z"
+        fill="#f6c343"
+        stroke="#fff2b2"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <rect x="2.5" y="15" width="19" height="2" rx="1" fill="#fff2b2" />
+      <circle cx="4.6" cy="5.5" r="1.2" fill="#ff8a65" />
+      <circle cx="12" cy="2.5" r="1.2" fill="#7dd3fc" />
+      <circle cx="19.4" cy="5.5" r="1.2" fill="#c084fc" />
+    </svg>
+  );
+}
 
 const PlayerTable = () => {
     const defaultHost = 'Alex';
@@ -468,6 +499,7 @@ const PlayerTable = () => {
     const [tiebreakWinner, setTiebreakWinner] = useState('');
     const [notes, setNotes] = useState('');
     const [stylePoints, setStylePoints] = useState({}); // { Alex: 1.0, Ichigo: 0.5, ... }
+    const [isWinnerCrowned, setIsWinnerCrowned] = useState(false);
 
     const playerNamesDisplay = useMemo(
       () => (players || []).map(p => p.replace('score_',''))
@@ -507,12 +539,19 @@ const PlayerTable = () => {
       setSaveRequestCount(prev => prev + 1);
     }, []);
 
-    function sortPlayers(b, a) {
-      const totalScoreA = getDisplayedFinalTotal(rounds, scores, a, selectedRounds[a], medianScores);
-      const totalScoreB = getDisplayedFinalTotal(rounds, scores, b, selectedRounds[b], medianScores);
+    const sortedPlayersForDisplay = useMemo(
+      () => [...players].sort((b, a) => {
+        const totalScoreA = getDisplayedFinalTotal(rounds, scores, a, selectedRounds[a], medianScores);
+        const totalScoreB = getDisplayedFinalTotal(rounds, scores, b, selectedRounds[b], medianScores);
 
-      return isSortAscending ? totalScoreA - totalScoreB : totalScoreB - totalScoreA;
-    }
+        return isSortAscending ? totalScoreA - totalScoreB : totalScoreB - totalScoreA;
+      }),
+      [players, rounds, scores, selectedRounds, medianScores, isSortAscending],
+    );
+
+    const crownedPlayer = isWinnerCrowned && sortedPlayersForDisplay.length > 0
+      ? sortedPlayersForDisplay[0]
+      : null;
 
     function convertDate(dateStr) {
         const [month, day, year] = dateStr.split('.');
@@ -1361,9 +1400,21 @@ const PlayerTable = () => {
         console.log('roundCreators changed', roundCreators);
       }, [roundCreators]);
 
-      useEffect(() => {
+    useEffect(() => {
         console.log('rounds changed', rounds);
       }, [rounds]);
+
+    useEffect(() => {
+      const handleCrownWinner = () => {
+        setIsWinnerCrowned(true);
+      };
+
+      window.addEventListener('scoresheet:crown-winner', handleCrownWinner);
+
+      return () => {
+        window.removeEventListener('scoresheet:crown-winner', handleCrownWinner);
+      };
+    }, []);
 
     const handleMaxScoreChange = (roundTitle, newMaxScore) => {
                 setMaxScores(prevScores => ({
@@ -1835,16 +1886,27 @@ const PlayerTable = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {[...players].sort(sortPlayers).map((player) => {
+          {sortedPlayersForDisplay.map((player) => {
               return (<TableRow key={player}>
                   <StyledTableCell player={player}>
-                      <a
-                          href={url + `/player_profile/${player.replace('score_', '')}/`}
-                          className="player_name"
-                          data-player={player.replace('score_', '')}
-                      >
-                          {player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1)}
-                      </a>
+                      <PlayerNameStack>
+                          {crownedPlayer === player && (
+                              <WinnerCrown
+                                  initial={{ opacity: 0, y: -6, scale: 0.8 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                              >
+                                  <CrownIcon />
+                              </WinnerCrown>
+                          )}
+                          <a
+                              href={url + `/player_profile/${player.replace('score_', '')}/`}
+                              className="player_name"
+                              data-player={player.replace('score_', '')}
+                          >
+                              {player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1)}
+                          </a>
+                      </PlayerNameStack>
                   </StyledTableCell>
                   <StyledTableCell sx={{maxWidth: '200px'}} className={selectedColumnIndex === 1 ? 'selected-column' : ''}>
                       <StyledFormControl>
