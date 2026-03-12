@@ -4,6 +4,13 @@ import {
   buildScoresheetPatch,
   shouldIgnoreScoresheetMessage,
 } from './sync';
+import {
+  clearCreatorScoreForRound,
+  getDisplayedCreatorBonus,
+  getDisplayedFinalTotal,
+  getDisplayedJokerBonus,
+  getDisplayedRoundScore,
+} from './scoreTotals';
 
 describe('scoresheet sync helpers', () => {
   test('buildScoresheetPatch only includes changed round and presentation fields', () => {
@@ -162,5 +169,67 @@ describe('scoresheet sync helpers', () => {
     });
     expect(nextPresentationSnapshot.host).toBe('Jenny');
     expect(nextPresentationSnapshot.style_points).toEqual({ Alex: 1.5 });
+  });
+});
+
+describe('scoresheet total helpers', () => {
+  test('displayed total matches displayed row values and bonuses', () => {
+    const rounds = [
+      { title: 'Round 1', creator: 'Megan', score_alex: 0.335 },
+      { title: 'Round 2', creator: 'Alex', score_alex: 1.555 },
+      { title: 'Round 3', creator: 'Jenny', score_alex: 2.005 },
+    ];
+    const scores = {
+      score_alex: {
+        'Round 1': 0.335,
+        'Round 2': 1.555,
+        'Round 3': 2.005,
+      },
+    };
+    const medianScores = [0.444, 0.888, 0.111];
+
+    const displayedRoundSum = rounds.reduce(
+      (sum, round) => sum + getDisplayedRoundScore(scores, 'score_alex', round),
+      0,
+    );
+    const displayedJokerBonus = getDisplayedJokerBonus(rounds, scores, 'score_alex', 'Round 3');
+    const displayedCreatorBonus = getDisplayedCreatorBonus(rounds, 'score_alex', 'Round 3', medianScores);
+
+    expect(getDisplayedFinalTotal(rounds, scores, 'score_alex', 'Round 3', medianScores)).toBe(
+      parseFloat((displayedRoundSum + displayedJokerBonus + displayedCreatorBonus).toFixed(2)),
+    );
+  });
+
+  test('duplicate titles still produce a total that matches the visible cells', () => {
+    const rounds = [
+      { title: 'Shared Title', creator: 'Megan', score_alex: 1 },
+      { title: 'Shared Title', creator: 'Jenny', score_alex: 5 },
+    ];
+    const scores = {
+      score_alex: {
+        'Shared Title': 4,
+      },
+    };
+
+    expect(getDisplayedRoundScore(scores, 'score_alex', rounds[0])).toBe(4);
+    expect(getDisplayedRoundScore(scores, 'score_alex', rounds[1])).toBe(4);
+    expect(getDisplayedFinalTotal(rounds, scores, 'score_alex', 'Select', [])).toBe(8);
+  });
+
+  test('creator change clears the transformed creator score for tracked players', () => {
+    expect(
+      clearCreatorScoreForRound(
+        {
+          score_dan: { 'Round 1': 7 },
+          score_alex: { 'Round 1': 5 },
+        },
+        ['score_alex', 'score_dan'],
+        'Round 1',
+        'Dad',
+      ),
+    ).toEqual({
+      score_dan: { 'Round 1': null },
+      score_alex: { 'Round 1': 5 },
+    });
   });
 });

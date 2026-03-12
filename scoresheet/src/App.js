@@ -36,6 +36,13 @@ import {
   makeRoundSnapshot,
   shouldIgnoreScoresheetMessage,
 } from './sync';
+import {
+  clearCreatorScoreForRound,
+  getDisplayedCreatorBonus,
+  getDisplayedFinalTotal,
+  getDisplayedJokerBonus,
+  getDisplayedRoundScore,
+} from './scoreTotals';
 
     const playerColorMapping = {
         'score_alex': '#D2042D',
@@ -421,44 +428,8 @@ const PlayerTable = () => {
     }, []);
 
     function sortPlayers(b, a) {
-      const totalScoreA = rounds.reduce((total, round) => total + (round[a] || 0), 0) + (
-                                                                                    rounds.filter(round => {
-                                                                                          const playerName = a.replace('score_', '').charAt(0).toUpperCase() + a.replace('score_', '').slice(1);
-                                                                                              if (playerName === "Dan") {
-                                                                                                return round.creator === "Dad" || round.creator === "Dan";
-                                                                                              } else if (playerName === 'Debi') {
-                                                                                                return round.creator === 'Mom' || round.creator === 'Debi';
-                                                                                              } else {
-                                                                                                return round.creator === playerName;
-                                                                                              }
-                                                                                            })
-                                                                                        .map(round => {
-                                                                                            if (selectedRounds[a] !== round.title) {
-                                                                                                return medianScores[rounds.indexOf(round)];
-                                                                                            }
-                                                                                            return 0;
-                                                                                        })
-                                                                                        .reduce((acc, score) => acc + (score || 0), 0)
-                                                                                      ) + (scores[a] && scores[a][selectedRounds[a]] ? scores[a][selectedRounds[a]] : 0);
-      const totalScoreB = rounds.reduce((total, round) => total + (round[b] || 0), 0) + (
-                                                                                    rounds.filter(round => {
-                                                                                          const playerName = b.replace('score_', '').charAt(0).toUpperCase() + b.replace('score_', '').slice(1);
-                                                                                              if (playerName === "Dan") {
-                                                                                                return round.creator === "Dad" || round.creator === "Dan";
-                                                                                              } else if (playerName === 'Debi') {
-                                                                                                return round.creator === 'Mom' || round.creator === 'Debi';
-                                                                                              } else {
-                                                                                                return round.creator === playerName;
-                                                                                              }
-                                                                                            })
-                                                                                        .map(round => {
-                                                                                            if (selectedRounds[b] !== round.title) {
-                                                                                                return medianScores[rounds.indexOf(round)];
-                                                                                            }
-                                                                                            return 0;
-                                                                                        })
-                                                                                        .reduce((acc, score) => acc + (score || 0), 0)
-                                                                                      ) + (scores[b] && scores[b][selectedRounds[b]] ? scores[b][selectedRounds[b]] : 0);
+      const totalScoreA = getDisplayedFinalTotal(rounds, scores, a, selectedRounds[a], medianScores);
+      const totalScoreB = getDisplayedFinalTotal(rounds, scores, b, selectedRounds[b], medianScores);
 
       return isSortAscending ? totalScoreA - totalScoreB : totalScoreB - totalScoreA;
     }
@@ -973,6 +944,15 @@ const PlayerTable = () => {
 
                 wsRef.current.onmessage = (event) => {
                     const data = JSON.parse(event.data);
+                    if (data.type === 'pong') {
+                        return;
+                    }
+
+                    if (!data.message) {
+                        console.log('WebSocket message received with no payload:', data);
+                        return;
+                    }
+
                     console.log('WebSocket message received:', data.message);
 
                     if (shouldIgnoreScoresheetMessage(data.message, clientIdRef.current, pendingMutationIdsRef.current)) {
@@ -1325,16 +1305,7 @@ const PlayerTable = () => {
 
 
       setScores(prevScores => {
-        const newScores = { ...prevScores };
-        const transformedCreatorName = transformName(newCreatorName);
-        const formattedName = `score_${transformedCreatorName.charAt(0).toLowerCase() + transformedCreatorName.slice(1)}`;
-
-        // Iterate over rounds and remove the new creator's score from the respective round
-          if (formattedName in players) {
-            newScores[formattedName][roundTitle] = null;
-        }
-
-        return newScores;
+        return clearCreatorScoreForRound(prevScores, players, roundTitle, newCreatorName);
       });
 
       //call setRounds to trigger the useEffect to recompute medians
@@ -1342,8 +1313,9 @@ const PlayerTable = () => {
             const newRounds = [...prevRounds];
             const roundIndex = newRounds.findIndex(round => round.title === roundTitle);
             if (roundIndex !== -1) {
+                const transformedCreatorName = transformName(newCreatorName);
                 newRounds[roundIndex].creator = newCreatorName;
-                newRounds[roundIndex][`score_${newCreatorName.charAt(0).toLowerCase() + newCreatorName.slice(1)}`] = null;
+                newRounds[roundIndex][`score_${transformedCreatorName.charAt(0).toLowerCase() + transformedCreatorName.slice(1)}`] = null;
             }
             return newRounds;
         });
@@ -1861,83 +1833,21 @@ const PlayerTable = () => {
                           }}
                           onBlur={(event) => handleScoreChange(event, player, round.title, round)}
                       >
-                          {(() => {
-                                const cellValue = scores[player] && scores[player][round.title]
-                                                  ? scores[player][round.title]
-                                                  : round[player];
-
-                                return (typeof cellValue === 'number')
-                                       ? parseFloat(cellValue.toFixed(2))
-                                       : cellValue;
-                            })()}
+                          {getDisplayedRoundScore(scores, player, round)}
                       </StyledTableCell>
                   ))}
                   <StyledTableCell>
                   <div className={"textCell"}>
-                    {(() => {
-                      const roundScore = scores[player] && scores[player][selectedRounds[player]];
-                      return (typeof roundScore === 'number') ? parseFloat(roundScore.toFixed(2)) : roundScore;
-                    })()}
+                    {getDisplayedJokerBonus(rounds, scores, player, selectedRounds[player])}
                   </div>
                 </StyledTableCell>
-                  <StyledTableCell><div className={"textCell"}>{(() => {
-                      const playerName = player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1);
-
-                      const total = rounds
-                        .filter(round => {
-                          if (playerName === "Dan") {
-                            return round.creator === "Dad" || round.creator === "Dan";
-                          } else if (playerName === 'Debi') {
-                            return round.creator === 'Mom' || round.creator === 'Debi';
-                          } else {
-                            return round.creator === playerName;
-                          }
-                        })
-                        .map(round => {
-                            if (selectedRounds[player] !== round.title) {
-                                return medianScores[rounds.indexOf(round)];
-                            }
-                            return 0;
-                        })
-                        .reduce((acc, score) => acc + (score || 0), 0);
-
-                      return (typeof total === 'number') ? parseFloat(total.toFixed(2)) : total;
-
-                    })()}
+                  <StyledTableCell><div className={"textCell"}>
+                    {getDisplayedCreatorBonus(rounds, player, selectedRounds[player], medianScores)}
                   </div></StyledTableCell>
 
                   <StyledTableCell>
                       <div className={"textCell"}>
-                        {(() => {
-                          const playerName = player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1);
-
-                          const roundTotal = rounds.reduce((total, round) => total + (round[player] || 0), 0);
-
-                          const creatorBonus = rounds
-                            .filter(round => {
-                              if (playerName === "Dan") {
-                                return round.creator === "Dad" || round.creator === "Dan";
-                              } else if (playerName === 'Debi') {
-                                return round.creator === 'Mom' || round.creator === 'Debi';
-                              } else {
-                                return round.creator === playerName;
-                              }
-                            })
-                            .map(round => {
-                                if (selectedRounds[player] !== round.title) {
-                                    return medianScores[rounds.indexOf(round)];
-                                }
-                                return 0;
-                            })
-                            .reduce((acc, score) => acc + (score || 0), 0);
-
-                          const selectedRoundScore = scores[player] && scores[player][selectedRounds[player]] ? scores[player][selectedRounds[player]] : 0;
-
-                          const finalTotal = roundTotal + creatorBonus + selectedRoundScore;
-
-                          return (typeof finalTotal === 'number') ? parseFloat(finalTotal.toFixed(2)) : finalTotal;
-
-                        })()}
+                        {getDisplayedFinalTotal(rounds, scores, player, selectedRounds[player], medianScores)}
                       </div>
                     </StyledTableCell>
                       <StyledTableCell>
