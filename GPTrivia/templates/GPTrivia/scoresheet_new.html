@@ -6,7 +6,46 @@
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/scoresheet.css' %}">
   <link rel="stylesheet" href="{% static 'scoresheet/build/static/css/main.e6c13ad2.css' %}">
-    <link rel="preload" as="image" href="/static/img/snake_silhouette.png">
+  <link rel="preload" as="image" href="/static/img/snake_silhouette.png">
+  <style>
+    .scoresheet-animation-controls {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 0 12px 24px;
+      margin: 0 auto;
+    }
+
+    .scoresheet-animation-button {
+      background-color: #1e7662;
+      border: none;
+      color: #fff;
+      padding: 5px 12px;
+      text-align: center;
+      text-decoration: none;
+      font-size: 1rem;
+      box-sizing: border-box;
+      font-family: "Monaco", monospace;
+      cursor: pointer;
+    }
+
+    .scoresheet-animation-button:hover {
+      background-color: #185e4f;
+    }
+
+    @media (max-width: 919px) {
+      .scoresheet-animation-controls {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .scoresheet-animation-button {
+        width: min(100%, 320px);
+      }
+    }
+  </style>
 {% endblock %}
 
 {% block extra_meta %}
@@ -31,12 +70,15 @@
 
     <div id="react-scoresheet"></div>
 
-    <script src="{% static 'scoresheet/build/static/js/main.bae8f91a.js' %}"></script>
-    <button id="animate-btn">Animate</button>
+    <script src="{% static 'scoresheet/build/static/js/main.6906ed5a.js' %}"></script>
     <audio id="snake-hiss" src="/static/img/snake-hissing-6092.mp3" preload="auto"></audio>
 
-
-    <button id="magic-button">Click me!</button>
+    <div class="scoresheet-animation-controls">
+      <button id="animate-btn" class="scoresheet-animation-button">Animate</button>
+      <button id="magic-button" class="scoresheet-animation-button">Click me!</button>
+      <button id="let-snake-go" class="scoresheet-animation-button">Swoop!</button>
+      <button id="let-snakes-go" class="scoresheet-animation-button">Release the snakes</button>
+    </div>
     <div id="star-overlay"></div>
     
     <div id="elephant-track">
@@ -50,12 +92,6 @@
         <div id="snakey"></div>
       </div>
     </div>
-    
-{#    <button id="let-elephant-go">Swoop!</button>#}
-    <button id="let-snake-go">Swoop!</button>
-    <button id="let-snakes-go">Release the snakes</button>
-
-    
     <script>
 
 

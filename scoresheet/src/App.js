@@ -386,8 +386,14 @@ import {
         font-size: 0.9rem;
         line-height: 1.4;
         padding: 0.7rem 0.85rem;
-        text-align: left;
+        text-align: center;
         white-space: pre-wrap;
+      }
+
+      && textarea::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+        opacity: 1;
+        text-align: center;
       }
     `;
 
@@ -411,6 +417,7 @@ import {
 
 
 const PlayerTable = () => {
+    const defaultHost = 'Alex';
     const defaultPlayers = useMemo(() => {
       // The initial calculation of defaultPlayers goes here
       return ["score_alex", "score_dan", "score_debi", "score_jenny", "score_megan", "score_ichigo", "score_chris", "score_zach", "score_tom", "score_paige", "score_drew", "score_dillon", "score_jeff"];
@@ -456,8 +463,8 @@ const PlayerTable = () => {
     // ANIMATION STUFF
     const [showPic, setShowPic] = useState(false);
     const playerControls = useAnimation();
-    const [host, setHost] = useState('');
-    const [scorekeeper, setScorekeeper] = useState('');
+    const [host, setHost] = useState(defaultHost);
+    const [scorekeeper, setScorekeeper] = useState(defaultHost);
     const [tiebreakWinner, setTiebreakWinner] = useState('');
     const [notes, setNotes] = useState('');
     const [stylePoints, setStylePoints] = useState({}); // { Alex: 1.0, Ichigo: 0.5, ... }
@@ -814,8 +821,8 @@ const PlayerTable = () => {
                 setPresID(ID);
 
                 // hydrate meta
-                setHost(selectedPresentation.host || '');
-                setScorekeeper(selectedPresentation.scorekeeper || '');
+                setHost(selectedPresentation.host || defaultHost);
+                setScorekeeper(selectedPresentation.scorekeeper || defaultHost);
                 setTiebreakWinner(selectedPresentation.tiebreak_winner || '');
                 setNotes(selectedPresentation.notes || '');
 
@@ -850,6 +857,10 @@ const PlayerTable = () => {
                 setSelectedRounds(initialSelectedRoundsWithPrefix);
             } else {
                 console.log("No presentation found for date: ", selectedDate);
+                setHost(defaultHost);
+                setScorekeeper(defaultHost);
+                setTiebreakWinner('');
+                setNotes('');
                 setSelectedRounds(playerNames.reduce((acc, curr) => ({...acc, [curr]: "Select"}), {}));
                 setPresID(0);
             }
@@ -857,7 +868,7 @@ const PlayerTable = () => {
         .catch(error => {
             console.error('Error fetching presentations:', error);
         });
-    }, [selectedDate, url, updateFlag]);
+    }, [defaultHost, selectedDate, url, updateFlag]);
 
     useEffect(() => {
       if (!rounds || rounds.length === 0) return;
@@ -2245,7 +2256,6 @@ const PlayerTable = () => {
           </MetadataField>
 
           <MetadataNotesFieldWrapper>
-            <MetadataFieldLabel>Notes</MetadataFieldLabel>
             <MetadataNotesField
               value={notes}
               onChange={(e) => {
@@ -2254,6 +2264,7 @@ const PlayerTable = () => {
               }}
               multiline
               rows={isSmallScreen ? 4 : 3}
+              placeholder="Enter Nightly Notes"
             />
           </MetadataNotesFieldWrapper>
         </MetadataGrid>
