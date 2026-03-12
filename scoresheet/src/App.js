@@ -329,6 +329,79 @@ import {
       }
     `;
 
+    const MetadataSection = styled.div`
+      display: flex;
+      justify-content: center;
+      padding: 1rem 0 1.25rem;
+    `;
+
+    const MetadataGrid = styled.div`
+      width: min(100%, 960px);
+      display: grid;
+      grid-template-columns: repeat(3, minmax(180px, 220px));
+      justify-content: center;
+      gap: 0.85rem;
+      padding: 0 0.75rem;
+
+      @media (max-width: 919px) {
+        grid-template-columns: minmax(0, 1fr);
+        width: min(100%, 24rem);
+      }
+    `;
+
+    const MetadataField = styled.div`
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+    `;
+
+    const MetadataFieldLabel = styled.div`
+      color: #fff;
+      text-align: center;
+      font-family: Monaco;
+      font-size: 0.8rem;
+      margin-bottom: 0.35rem;
+    `;
+
+    const MetadataNotesField = styled(TextField)`
+      && {
+        width: 100%;
+      }
+
+      && .MuiInputBase-root {
+        background-color: #333;
+        color: #fff;
+        font-family: "Monaco";
+        border-radius: 0;
+      }
+
+      && .MuiOutlinedInput-notchedOutline {
+        border: none;
+      }
+
+      && textarea {
+        color: #fff;
+        font-family: "Monaco";
+        font-size: 0.9rem;
+        line-height: 1.4;
+        padding: 0.7rem 0.85rem;
+        text-align: left;
+        white-space: pre-wrap;
+      }
+    `;
+
+    const MetadataFormControl = styled(StyledFormControl)`
+      && {
+        width: 100%;
+        max-width: none;
+      }
+    `;
+
+    const MetadataNotesFieldWrapper = styled(MetadataField)`
+      grid-column: 1 / -1;
+    `;
+
       const GlobalStyle = createGlobalStyle`
           .MuiPopover-root .MuiPaper-root {
             display: block;
@@ -1541,14 +1614,16 @@ const PlayerTable = () => {
       <Grid container alignItems="center" spacing={1}>
 
         {/* Left Section */}
-        <Grid item xs={4}>
+        <Grid item xs={12} md={4}>
           <Box
           display="flex"
           alignItems="center"
-          justifyContent = "flex-start"
+          justifyContent={isSmallScreen ? 'center' : 'flex-start'}
           flexDirection={isSmallScreen ? 'column' : 'row'}
+          flexWrap="wrap"
+          gap={isSmallScreen ? 1 : 0}
           padding={isSmallScreen ? '0.4rem' : '0.2rem'}
-          marginLeft={isSmallScreen ? '0.4rem' : '0.2rem'}>
+          marginLeft={isSmallScreen ? '0' : '0.2rem'}>
             {/*<StyledFormControl>*/}
             {/*  <Select*/}
             {/*    value={selectedDate}*/}
@@ -1606,7 +1681,11 @@ const PlayerTable = () => {
               onChange={(e) => setNewPlayerName(e.target.value)}
               variant="outlined"
               placeholder="Enter player"
-            style={{ margin: "0.4rem" }}
+              style={{
+                margin: "0.4rem",
+                width: isSmallScreen ? '100%' : undefined,
+                maxWidth: isSmallScreen ? '18rem' : undefined,
+              }}
             />
 
             <StyledButton variant="contained" color="secondary" onClick={() => handleAddPlayer(prevState => !prevState)}>
@@ -1632,54 +1711,21 @@ const PlayerTable = () => {
         </Grid>
 
         {/* Right Section */}
-        <Grid item xs={8}>
-          <Box display="flex" justifyContent="flex-end" alignItems="center"  flexDirection={isSmallScreen ? 'column' : 'row'}>
+        <Grid item xs={12} md={8}>
+          <Box
+            display="flex"
+            justifyContent={isSmallScreen ? 'center' : 'flex-end'}
+            alignItems="center"
+            flexDirection={isSmallScreen ? 'column' : 'row'}
+            flexWrap="wrap"
+            gap={isSmallScreen ? 1 : 0}
+          >
             <StyledButton variant="contained" color="secondary" onClick={() => setIsBottomRowVisible(prevState => !prevState)}>
               Toggle Details
             </StyledButton>
             <StyledButton variant="contained" color="secondary" onClick={() => handleAddColumn(selectedDate, rounds.length + 1)}>
               Add Round
             </StyledButton>
-              <StyledFormControl sx={{ minWidth: 200, mr: 1 }}>
-                  <StyledInputLabel>Host</StyledInputLabel>
-                  <StyledSelect
-                    value={host}
-                    onChange={(e)=>{ setHost(e.target.value); markDirty(); }}
-                  >
-                    <MenuItem value="">—</MenuItem>
-                    {playerNamesDisplay.map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
-                  </StyledSelect>
-                </StyledFormControl>
-
-                <StyledFormControl sx={{ minWidth: 200, mr: 1 }}>
-                  <StyledInputLabel>Scorekeeper</StyledInputLabel>
-                  <StyledSelect
-                    value={scorekeeper}
-                    onChange={(e)=>{ setScorekeeper(e.target.value); markDirty(); }}
-                  >
-                    <MenuItem value="">—</MenuItem>
-                    {playerNamesDisplay.map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
-                  </StyledSelect>
-                </StyledFormControl>
-
-                <StyledFormControl sx={{ minWidth: 160 }}>
-                  <StyledInputLabel>Tiebreak winner</StyledInputLabel>
-                  <StyledSelect
-                    value={tiebreakWinner}
-                    onChange={(e)=>{ setTiebreakWinner(e.target.value); markDirty(); }}
-                  >
-                    <MenuItem value="">—</MenuItem>
-                    {playerNamesDisplay.map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
-                  </StyledSelect>
-                </StyledFormControl>
-
-                <StyledTextField
-                  value={notes}
-                  onChange={e=>{ setNotes(e.target.value); markDirty(); }}
-                  multiline
-                  rows={3}                    // was 1
-                  style={{ margin: "0.4rem", minWidth: 320 }}
-                />
 
             <StyledButton variant="contained" color="primary" onClick={saveData} style={{ backgroundColor: isSaved ? '#1e7662' : '#810e19' }}>
               Save Scoresheet
@@ -2139,6 +2185,79 @@ const PlayerTable = () => {
         )}
         </TableBody>
       </StyledTable>
+      <MetadataSection>
+        <MetadataGrid>
+          <MetadataField>
+            <MetadataFieldLabel>Host</MetadataFieldLabel>
+            <MetadataFormControl>
+              <StyledSelect
+                displayEmpty
+                value={host}
+                onChange={(e) => {
+                  setHost(e.target.value);
+                  markDirty();
+                }}
+              >
+                <MenuItem value="">—</MenuItem>
+                {playerNamesDisplay.map((name) => (
+                  <MenuItem key={name} value={name}>{name}</MenuItem>
+                ))}
+              </StyledSelect>
+            </MetadataFormControl>
+          </MetadataField>
+
+          <MetadataField>
+            <MetadataFieldLabel>Scorekeeper</MetadataFieldLabel>
+            <MetadataFormControl>
+              <StyledSelect
+                displayEmpty
+                value={scorekeeper}
+                onChange={(e) => {
+                  setScorekeeper(e.target.value);
+                  markDirty();
+                }}
+              >
+                <MenuItem value="">—</MenuItem>
+                {playerNamesDisplay.map((name) => (
+                  <MenuItem key={name} value={name}>{name}</MenuItem>
+                ))}
+              </StyledSelect>
+            </MetadataFormControl>
+          </MetadataField>
+
+          <MetadataField>
+            <MetadataFieldLabel>Tiebreak Winner</MetadataFieldLabel>
+            <MetadataFormControl>
+              <StyledSelect
+                displayEmpty
+                value={tiebreakWinner}
+                onChange={(e) => {
+                  setTiebreakWinner(e.target.value);
+                  markDirty();
+                }}
+              >
+                <MenuItem value="">—</MenuItem>
+                {playerNamesDisplay.map((name) => (
+                  <MenuItem key={name} value={name}>{name}</MenuItem>
+                ))}
+              </StyledSelect>
+            </MetadataFormControl>
+          </MetadataField>
+
+          <MetadataNotesFieldWrapper>
+            <MetadataFieldLabel>Notes</MetadataFieldLabel>
+            <MetadataNotesField
+              value={notes}
+              onChange={(e) => {
+                setNotes(e.target.value);
+                markDirty();
+              }}
+              multiline
+              rows={isSmallScreen ? 4 : 3}
+            />
+          </MetadataNotesFieldWrapper>
+        </MetadataGrid>
+      </MetadataSection>
     </StyledTableContainer>
     </>
   );
