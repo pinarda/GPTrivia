@@ -55,6 +55,7 @@ from .player_scores import (
     FIXED_SCORE_FIELDS,
     MIN_ANALYSIS_ROUNDS,
     build_player_color_mapping,
+    build_profile_color_override_mapping,
     build_player_text_mapping,
     collect_player_fields,
     display_name_for_player_field,
@@ -385,17 +386,19 @@ def player_analysis_legacy(request):
     return redirect('player_analysis')
 
 
+@login_required
 def upload_profile_picture(request):
+    profile, created = Profile.objects.get_or_create(user=request.user)
     if request.method == 'POST':
-        # Get or create the profile instance
-        profile, created = Profile.objects.get_or_create(user=request.user)
         form = ProfilePictureForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
             form.save()
             return redirect('player_profile', player_name=request.user.username)
     else:
-        form = ProfilePictureForm(instance=request.user.profile)
-    return render(request, 'your_template.html', {'form': form})
+        form = ProfilePictureForm(instance=profile)
+
+    context = player_profile_dict(request, request.user.username, form=form)
+    return render(request, 'GPTrivia/player_profile.html', context)
 
 
 def _build_player_icon_map():
@@ -422,8 +425,12 @@ def _build_player_icon_map():
 
     return icon_map
 
+
+def _build_player_color_override_map():
+    return build_profile_color_override_mapping()
+
 @login_required
-def player_profile_dict(request, player_name):
+def player_profile_dict(request, player_name, form=None, include_form=False):
     player_name = display_name_for_player_field(player_name)
     score_field = player_field_for_name(player_name)
 
@@ -583,12 +590,19 @@ def player_profile_dict(request, player_name):
         max_bias_avg_value = "0.00"
         min_bias_avg_value = "0.00"
 
-    form = ProfilePictureForm()
     profile_user = User.objects.filter(username__iexact=player_name).first()
+    if form is None and include_form:
+        form = ProfilePictureForm(instance=profile_user.profile if profile_user else None)
     profile_picture_url = profile_user.profile.profile_picture.url if profile_user else '/media/default.jpg'
+    is_own_profile = bool(
+        profile_user
+        and request.user.is_authenticated
+        and request.user.pk == profile_user.pk
+    )
 
     context = {
         'profile_user': profile_user,
+        'is_own_profile': is_own_profile,
         'profile_picture_url': profile_picture_url,
         'player_name': player_name,
         'created_rounds_cat': created_rounds_cat_list,
@@ -605,8 +619,10 @@ def player_profile_dict(request, player_name):
         'max_cat_avg': max_creator_avg,
         'min_cat_avg': min_creator_avg,
         'created_rounds_count': created_rounds_count,
-        'form': form,
     }
+
+    if include_form or form is not None:
+        context['form'] = form
 
     return context
 
@@ -839,7 +855,7 @@ class RoundMaker(View):
 
 @login_required
 def player_profile(request, player_name):
-    context = player_profile_dict(request, player_name)
+    context = player_profile_dict(request, player_name, include_form=True)
     return render(request, 'GPTrivia/player_profile.html', context)
 
 
@@ -1203,6 +1219,7 @@ def buzzer_page(request):
 def scoresheet_new(request):
     return render(request, 'GPTrivia/scoresheet_new.html', {
         'player_icon_map': _build_player_icon_map(),
+        'player_color_map': _build_player_color_override_map(),
     })
 
 ## API stuff

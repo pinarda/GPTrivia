@@ -26,6 +26,9 @@ import {
   readPlayerIconMap,
 } from './playerIcons';
 import {
+  readPlayerColorMap,
+} from './playerColors';
+import {
   extractPlayersFromRounds,
   getDisplayNameForPlayerField,
   getRoundExtraScores,
@@ -410,6 +413,17 @@ describe('scoresheet player icon helpers', () => {
     expect(getPlayerIconUrl(iconMap, 'score_alex')).toBe('/media/profile_icons/alex_icon.png');
     expect(getPlayerIconUrl(iconMap, 'Alex')).toBe('/media/profile_icons/alex_icon.png');
     expect(getPlayerIconUrl(iconMap, 'score_unknown')).toBe('');
+  });
+});
+
+describe('scoresheet player color helpers', () => {
+  test('reads the embedded player color map from the DOM script tag', () => {
+    document.body.innerHTML = '<script id="scoresheet-player-colors" type="application/json">{"Alex":"#123abc","score_alex":"#123abc"}</script>';
+
+    expect(readPlayerColorMap()).toEqual({
+      Alex: '#123abc',
+      score_alex: '#123abc',
+    });
   });
 });
 

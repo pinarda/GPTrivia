@@ -26,21 +26,72 @@
                 <h2>Creator Information:</h2>
                 <button class="expand-collapse-button" id="toggleTable" onclick="toggleCreatedRounds()">Created Round Category Counts</button>
                 <button class="expand-collapse-button" id="roundsButton" onclick="toggleRounds()">Show/Hide Created Rounds</button>
-                {% if profile_user and user.is_authenticated and user.username == player_name %}
-                <div>
-                    <form method="post" action="{% url 'upload_profile_picture' %}" enctype="multipart/form-data">
+                {% if is_own_profile %}
+                <div class="profile-settings-panel">
+                    <h2>Profile Appearance:</h2>
+                    <form
+                        id="profile-settings-form"
+                        class="profile-settings-form"
+                        method="post"
+                        action="{% url 'upload_profile_picture' %}"
+                        enctype="multipart/form-data"
+                    >
                         {% csrf_token %}
-                        {{ form }}
-                        <button class="expand-collapse-button" type="submit">Upload</button>
+                        <div class="profile-settings-group">
+                            <label class="profile-settings-label" for="{{ form.profile_picture.id_for_label }}">
+                                Select Photo
+                            </label>
+                            {{ form.profile_picture }}
+                            {% for error in form.profile_picture.errors %}
+                                <p class="profile-settings-error">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+
+                        <div id="profile-crop-editor" class="profile-crop-editor profile-crop-editor--hidden">
+                            <div class="profile-crop-editor-header">
+                                <span>Square Crop</span>
+                                <span class="profile-crop-helper">Drag to reposition</span>
+                            </div>
+                            <div id="profile-crop-frame" class="profile-crop-frame">
+                                <img id="profile-crop-image" class="profile-crop-image" alt="Crop preview">
+                            </div>
+                            <div class="profile-crop-zoom-row">
+                                <label class="profile-settings-label" for="profile-crop-zoom">Zoom</label>
+                                <input id="profile-crop-zoom" type="range" min="100" max="280" step="1" value="100">
+                            </div>
+                        </div>
+
+                        <div class="profile-settings-group profile-color-group">
+                            <label class="profile-settings-label" for="{{ form.profile_color.id_for_label }}">
+                                Profile Color
+                            </label>
+                            <div class="profile-color-input-row">
+                                {{ form.profile_color }}
+                                <span id="profile-color-value" class="profile-color-value">{{ form.profile_color.value|default_if_none:'' }}</span>
+                            </div>
+                            {% for error in form.profile_color.errors %}
+                                <p class="profile-settings-error">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+
+                        {{ form.crop_x }}
+                        {{ form.crop_y }}
+                        {{ form.crop_size }}
+
+                        {% for error in form.non_field_errors %}
+                            <p class="profile-settings-error">{{ error }}</p>
+                        {% endfor %}
+
+                        <button class="expand-collapse-button" type="submit">Save Appearance</button>
                     </form>
                 </div>
                 {% endif %}
-                {% if profile_user and user.is_authenticated and user.username == player_name %}
+                {% if is_own_profile %}
                     <form action={% url 'password_change' %}>
                         <button class="expand-collapse-button" id="passwordbtn">Change Password</button>
                     </form>
                 {% endif %}
-                {% if profile_user and user.is_authenticated and user.username == player_name %}
+                {% if is_own_profile %}
                     <button class="expand-collapse-button" id="notificationbtn">Enable Notifications</button>
                 {% endif %}
             </div>
@@ -369,6 +420,192 @@
                 }
             });
         });
+
+        (function initializeProfileAppearanceEditor() {
+            const fileInput = document.getElementById('profile-picture-input');
+            const cropEditor = document.getElementById('profile-crop-editor');
+            const cropFrame = document.getElementById('profile-crop-frame');
+            const cropImage = document.getElementById('profile-crop-image');
+            const zoomInput = document.getElementById('profile-crop-zoom');
+            const cropXInput = document.getElementById('id_crop_x');
+            const cropYInput = document.getElementById('id_crop_y');
+            const cropSizeInput = document.getElementById('id_crop_size');
+            const colorInput = document.getElementById('profile-color-input');
+            const colorValue = document.getElementById('profile-color-value');
+
+            if (!fileInput || !cropEditor || !cropFrame || !cropImage || !zoomInput || !cropXInput || !cropYInput || !cropSizeInput) {
+                return;
+            }
+
+            const cropState = {
+                objectUrl: null,
+                naturalWidth: 0,
+                naturalHeight: 0,
+                baseScale: 1,
+                zoom: 1,
+                offsetX: 0,
+                offsetY: 0,
+                dragPointerId: null,
+                dragStartX: 0,
+                dragStartY: 0,
+                startOffsetX: 0,
+                startOffsetY: 0,
+            };
+
+            function viewportSize() {
+                return cropFrame.getBoundingClientRect().width || 260;
+            }
+
+            function resetCropFields() {
+                cropXInput.value = '';
+                cropYInput.value = '';
+                cropSizeInput.value = '';
+            }
+
+            function setCropVisibility(visible) {
+                cropEditor.classList.toggle('profile-crop-editor--hidden', !visible);
+            }
+
+            function clampOffsets() {
+                const viewport = viewportSize();
+                const scaledWidth = cropState.naturalWidth * cropState.baseScale * cropState.zoom;
+                const scaledHeight = cropState.naturalHeight * cropState.baseScale * cropState.zoom;
+                const minOffsetX = Math.min(0, viewport - scaledWidth);
+                const minOffsetY = Math.min(0, viewport - scaledHeight);
+
+                cropState.offsetX = Math.min(0, Math.max(minOffsetX, cropState.offsetX));
+                cropState.offsetY = Math.min(0, Math.max(minOffsetY, cropState.offsetY));
+            }
+
+            function updateHiddenCropInputs() {
+                const currentScale = cropState.baseScale * cropState.zoom;
+                const viewport = viewportSize();
+                cropXInput.value = Math.max(0, (-cropState.offsetX) / currentScale).toFixed(2);
+                cropYInput.value = Math.max(0, (-cropState.offsetY) / currentScale).toFixed(2);
+                cropSizeInput.value = (viewport / currentScale).toFixed(2);
+            }
+
+            function renderCropState() {
+                if (!cropState.naturalWidth || !cropState.naturalHeight) {
+                    return;
+                }
+
+                clampOffsets();
+                const currentScale = cropState.baseScale * cropState.zoom;
+                cropImage.style.width = `${cropState.naturalWidth}px`;
+                cropImage.style.height = `${cropState.naturalHeight}px`;
+                cropImage.style.transform = `translate(${cropState.offsetX}px, ${cropState.offsetY}px) scale(${currentScale})`;
+                updateHiddenCropInputs();
+            }
+
+            function initializeCropState() {
+                const viewport = viewportSize();
+                cropState.baseScale = Math.max(
+                    viewport / cropState.naturalWidth,
+                    viewport / cropState.naturalHeight,
+                );
+                cropState.zoom = Number(zoomInput.value) / 100;
+
+                const scaledWidth = cropState.naturalWidth * cropState.baseScale * cropState.zoom;
+                const scaledHeight = cropState.naturalHeight * cropState.baseScale * cropState.zoom;
+                cropState.offsetX = (viewport - scaledWidth) / 2;
+                cropState.offsetY = (viewport - scaledHeight) / 2;
+                renderCropState();
+            }
+
+            cropImage.addEventListener('load', () => {
+                cropState.naturalWidth = cropImage.naturalWidth;
+                cropState.naturalHeight = cropImage.naturalHeight;
+                initializeCropState();
+            });
+
+            zoomInput.addEventListener('input', () => {
+                if (!cropState.naturalWidth || !cropState.naturalHeight) {
+                    return;
+                }
+
+                const previousScale = cropState.baseScale * cropState.zoom;
+                const viewport = viewportSize();
+                const cropCenterX = (viewport / 2 - cropState.offsetX) / previousScale;
+                const cropCenterY = (viewport / 2 - cropState.offsetY) / previousScale;
+
+                cropState.zoom = Number(zoomInput.value) / 100;
+                const nextScale = cropState.baseScale * cropState.zoom;
+                cropState.offsetX = (viewport / 2) - (cropCenterX * nextScale);
+                cropState.offsetY = (viewport / 2) - (cropCenterY * nextScale);
+                renderCropState();
+            });
+
+            cropFrame.addEventListener('pointerdown', event => {
+                if (!cropState.naturalWidth || !cropState.naturalHeight) {
+                    return;
+                }
+
+                cropState.dragPointerId = event.pointerId;
+                cropState.dragStartX = event.clientX;
+                cropState.dragStartY = event.clientY;
+                cropState.startOffsetX = cropState.offsetX;
+                cropState.startOffsetY = cropState.offsetY;
+                cropFrame.setPointerCapture(event.pointerId);
+            });
+
+            cropFrame.addEventListener('pointermove', event => {
+                if (cropState.dragPointerId !== event.pointerId) {
+                    return;
+                }
+
+                cropState.offsetX = cropState.startOffsetX + (event.clientX - cropState.dragStartX);
+                cropState.offsetY = cropState.startOffsetY + (event.clientY - cropState.dragStartY);
+                renderCropState();
+            });
+
+            function stopDragging(event) {
+                if (cropState.dragPointerId !== event.pointerId) {
+                    return;
+                }
+
+                cropState.dragPointerId = null;
+                cropFrame.releasePointerCapture(event.pointerId);
+            }
+
+            cropFrame.addEventListener('pointerup', stopDragging);
+            cropFrame.addEventListener('pointercancel', stopDragging);
+            cropFrame.addEventListener('pointerleave', event => {
+                if (cropState.dragPointerId === event.pointerId && event.buttons === 0) {
+                    stopDragging(event);
+                }
+            });
+
+            fileInput.addEventListener('change', event => {
+                const file = event.target.files && event.target.files[0];
+                if (!file) {
+                    if (cropState.objectUrl) {
+                        URL.revokeObjectURL(cropState.objectUrl);
+                        cropState.objectUrl = null;
+                    }
+                    setCropVisibility(false);
+                    resetCropFields();
+                    return;
+                }
+
+                if (cropState.objectUrl) {
+                    URL.revokeObjectURL(cropState.objectUrl);
+                }
+
+                cropState.objectUrl = URL.createObjectURL(file);
+                cropImage.src = cropState.objectUrl;
+                zoomInput.value = '100';
+                setCropVisibility(true);
+            });
+
+            if (colorInput && colorValue) {
+                const syncColorValue = () => {
+                    colorValue.textContent = (colorInput.value || '').toUpperCase();
+                };
+                syncColorValue();
+                colorInput.addEventListener('input', syncColorValue);
+            }
+        })();
 
 
 

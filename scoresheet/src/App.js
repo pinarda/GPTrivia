@@ -70,6 +70,9 @@ import {
   readPlayerIconMap,
 } from './playerIcons';
 import {
+  readPlayerColorMap,
+} from './playerColors';
+import {
     extractPlayersFromRounds,
     FIXED_SCORE_FIELDS,
     getDisplayNameForPlayerField,
@@ -107,8 +110,10 @@ import {
         'unknown': '#333333',
     };
 
+    let activePlayerColorMapping = basePlayerColorMapping;
+
     function resolvePlayerColor(playerField) {
-      return getPlayerColor(playerField, basePlayerColorMapping);
+      return getPlayerColor(playerField, activePlayerColorMapping);
     }
 
     const XButton = styled.div`
@@ -753,6 +758,14 @@ const PlayerTable = () => {
       [players]
     );
     const playerIconMap = useMemo(() => readPlayerIconMap(), []);
+    const playerColorMap = useMemo(
+      () => ({
+        ...basePlayerColorMapping,
+        ...readPlayerColorMap(),
+      }),
+      [],
+    );
+    activePlayerColorMapping = playerColorMap;
 
     const creatorOptions = useMemo(
       () => [...new Set([...(allPlayers || []), ...playerNamesDisplay])].sort((left, right) => left.localeCompare(right)),

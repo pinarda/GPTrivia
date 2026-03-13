@@ -66,6 +66,13 @@ def _clean_player_name(value):
     return cleaned.strip()
 
 
+def normalize_profile_color(color_value):
+    color = str(color_value or '').strip().lower()
+    if re.fullmatch(r'#[0-9a-f]{6}', color):
+        return color
+    return ''
+
+
 def display_name_for_player_field(player_field):
     name = str(player_field or '')
     if name.startswith('score_'):
@@ -304,10 +311,47 @@ def _hsl_to_hex(hue, saturation, lightness):
     )
 
 
-def get_player_color(player_name):
+def _get_profile_color_overrides():
+    from .models import Profile
+
+    overrides = {}
+    for profile in Profile.objects.select_related('user').exclude(profile_color=''):
+        if not profile.user_id:
+            continue
+
+        normalized_color = normalize_profile_color(profile.profile_color)
+        if not normalized_color:
+            continue
+
+        display_name = display_name_for_player_field(profile.user.username)
+        if not display_name:
+            continue
+
+        overrides[display_name] = normalized_color
+
+    return overrides
+
+
+def build_profile_color_override_mapping():
+    overrides = {}
+    for display_name, color in _get_profile_color_overrides().items():
+        overrides[display_name] = color
+        player_field = player_field_for_name(display_name)
+        if player_field:
+            overrides[player_field] = color
+    return overrides
+
+
+def get_player_color(player_name, profile_color_overrides=None):
     display_name = display_name_for_player_field(player_name)
     if not display_name:
         return KNOWN_PLAYER_COLOR_MAPPING['Unknown']
+
+    if profile_color_overrides is None:
+        profile_color_overrides = _get_profile_color_overrides()
+
+    if display_name in profile_color_overrides:
+        return profile_color_overrides[display_name]
 
     if display_name in KNOWN_PLAYER_COLOR_MAPPING:
         return KNOWN_PLAYER_COLOR_MAPPING[display_name]
@@ -319,23 +363,31 @@ def get_player_color(player_name):
 
 def build_player_color_mapping(player_names):
     mapping = {'Unknown': KNOWN_PLAYER_COLOR_MAPPING['Unknown']}
+    profile_color_overrides = _get_profile_color_overrides()
 
     for player_name in player_names or []:
         display_name = display_name_for_player_field(player_name)
         if not display_name:
             continue
-        mapping[display_name] = get_player_color(display_name)
+        mapping[display_name] = get_player_color(
+            display_name,
+            profile_color_overrides=profile_color_overrides,
+        )
 
     return mapping
 
 
 def build_player_text_mapping(player_names):
     text_mapping = {}
+    profile_color_overrides = _get_profile_color_overrides()
     for player_name in player_names or []:
         display_name = display_name_for_player_field(player_name)
         if not display_name:
             continue
-        player_color = get_player_color(display_name)
+        player_color = get_player_color(
+            display_name,
+            profile_color_overrides=profile_color_overrides,
+        )
         brightness = (
             int(player_color[1:3], 16) +
             int(player_color[3:5], 16) +
