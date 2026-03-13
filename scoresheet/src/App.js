@@ -593,6 +593,7 @@ const PlayerTable = () => {
     const saveInFlightRef = useRef(false);
     const saveQueuedRef = useRef(false);
     const latestStateRef = useRef(null);
+    const presentationHydrationKeyRef = useRef('');
     const isVisible = usePageVisibility();
     const websocketUrl = `${url.replace(/^http/, 'ws')}/ws/scoresheet/`;
 
@@ -846,6 +847,16 @@ const PlayerTable = () => {
     }, [selectedDate, defaultPlayers, dates.length, tempTitles.length, tempLinks.length, url, updateFlag]);
 
     useEffect(() => {
+        const hydrationKey = `${selectedDate}:${updateFlag}`;
+        const shouldHydrateFromServer =
+          isSavedRef.current || presentationHydrationKeyRef.current !== hydrationKey;
+
+        if (!shouldHydrateFromServer) {
+            return undefined;
+        }
+
+        let isCancelled = false;
+
         fetch(url + '/api/v1/presentations/', {
             headers: {
                 'Authorization': `Token ${localStorage.getItem('token')}`,
@@ -859,6 +870,14 @@ const PlayerTable = () => {
           return response.json();
         })
         .then(json => {
+            if (isCancelled) {
+                return;
+            }
+            if (!isSavedRef.current && presentationHydrationKeyRef.current === hydrationKey) {
+                return;
+            }
+
+            presentationHydrationKeyRef.current = hydrationKey;
             setPresentations(json);
             // strip the score_ prefix from the player names
             const selectedPresentation = json.find(presentation => convertDate(presentation.name) === selectedDate)
@@ -949,9 +968,16 @@ const PlayerTable = () => {
             }
         })
         .catch(error => {
+            if (isCancelled) {
+                return;
+            }
             console.error('Error fetching presentations:', error);
         });
-    }, [defaultHost, selectedDate, url, updateFlag, rounds]);
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [defaultHost, selectedDate, updateFlag, url]);
 
     useEffect(() => {
       if (players.length > 0 && rounds.length > 0) {
