@@ -257,7 +257,8 @@ function launchStar(cx, cy, surfaces) {
   let vx = (Math.random() - 0.5) * 8;     // sideways
   let vy = (Math.random() - 1.2) * 12;    // upward
   let angle = Math.random() * 360;
-  let angularVelocity = (Math.random() - 0.5) * 20;
+  const initialSpinMagnitude = 10 + (Math.random() * 18);
+  let angularVelocity = (Math.random() < 0.5 ? -1 : 1) * initialSpinMagnitude;
 
   let last = performance.now();
   let restingTime = 0;        // frames spent almost still
