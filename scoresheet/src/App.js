@@ -1636,10 +1636,11 @@ const PlayerTable = () => {
         roundTitles,
         finalIndex,
         {
-          fullCycles: 2,
           minDelay: 35,
-          maxDelay: 960,
-          easingPower: 2.05,
+          maxDelay: 820,
+          easingPower: 1.9,
+          fastDurationMs: 1500,
+          slowdownCycles: 1,
         },
       );
 

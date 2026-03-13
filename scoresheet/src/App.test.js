@@ -405,28 +405,25 @@ describe('scoresheet joker roulette helpers', () => {
     const sequence = buildJokerRouletteSequence(
       ['Round 1', 'Round 2', 'Round 3'],
       1,
-      { fullCycles: 2, minDelay: 50, maxDelay: 200 },
+      { minDelay: 50, maxDelay: 200, fastDurationMs: 150, slowdownCycles: 1 },
     );
 
-    expect(sequence.map(step => step.title)).toEqual([
+    expect(sequence.slice(0, 3).map(step => step.title)).toEqual([
       'Round 1',
       'Round 2',
       'Round 3',
-      'Round 1',
-      'Round 2',
-      'Round 3',
-      'Round 1',
-      'Round 2',
     ]);
+    expect(sequence.slice(0, 3).every(step => step.delay === 50)).toBe(true);
     expect(sequence[0].delay).toBeLessThan(sequence[sequence.length - 1].delay);
     expect(sequence[sequence.length - 1].title).toBe('Round 2');
   });
 
-  test('default roulette timing starts fast and ends near one second per move', () => {
+  test('default roulette timing stays rapid up front and ends near one second per move', () => {
     const sequence = buildJokerRouletteSequence(['Round 1', 'Round 2', 'Round 3'], 2);
 
-    expect(sequence[0].delay).toBeLessThanOrEqual(40);
-    expect(sequence[sequence.length - 1].delay).toBeGreaterThanOrEqual(900);
+    expect(sequence.slice(0, 40).every(step => step.delay <= 40)).toBe(true);
+    expect(sequence[sequence.length - 1].delay).toBeGreaterThanOrEqual(760);
+    expect(sequence[sequence.length - 1].delay).toBeLessThanOrEqual(840);
     expect(sequence[sequence.length - 1].title).toBe('Round 3');
   });
 });
