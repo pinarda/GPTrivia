@@ -5,6 +5,8 @@ import {
   shouldIgnoreScoresheetMessage,
 } from './sync';
 import {
+  getCrownBurstParticles,
+  getCrownStreak,
   getDisplayNameForPlayer,
   getInheritedCrownedWinner,
   getPlayerFieldForName,
@@ -200,6 +202,41 @@ describe('scoresheet crown helpers', () => {
   test('matches crowned winners to score fields case-insensitively', () => {
     expect(getPlayerFieldForName(['score_alex', 'score_megan'], 'mEgAn')).toBe('score_megan');
     expect(getDisplayNameForPlayer('score_alex')).toBe('Alex');
+  });
+
+  test('shows the inherited streak before the current night is crowned', () => {
+    expect(
+      getCrownStreak(
+        [
+          { name: '03.10.2026', crowned_winner: 'Megan' },
+          { name: '03.11.2026', crowned_winner: 'Megan' },
+          { name: '03.12.2026', crowned_winner: '' },
+        ],
+        '2026-03-12',
+        'Megan',
+        '',
+      ),
+    ).toBe(2);
+  });
+
+  test('extends the streak once the current night is explicitly crowned', () => {
+    expect(
+      getCrownStreak(
+        [
+          { name: '03.10.2026', crowned_winner: 'Megan' },
+          { name: '03.11.2026', crowned_winner: 'Megan' },
+          { name: '03.12.2026', crowned_winner: 'Megan' },
+        ],
+        '2026-03-12',
+        'Megan',
+        'Megan',
+      ),
+    ).toBe(3);
+  });
+
+  test('returns a stable set of falling star particles for the crown burst', () => {
+    expect(getCrownBurstParticles()).toHaveLength(8);
+    expect(getCrownBurstParticles().every(particle => particle.y > 0)).toBe(true);
   });
 });
 

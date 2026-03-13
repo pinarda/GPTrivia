@@ -44,7 +44,9 @@ import {
   getDisplayedRoundScore,
 } from './scoreTotals';
 import {
+  getCrownBurstParticles,
   getDisplayNameForPlayer,
+  getCrownStreak,
   getInheritedCrownedWinner,
   getPlayerFieldForName,
 } from './crown';
@@ -439,13 +441,43 @@ import {
       z-index: 1;
     `;
 
+    const CrownBurstLayer = styled.div`
+      position: absolute;
+      top: -0.2rem;
+      right: -0.2rem;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 2;
+    `;
+
+    const CrownBurstStar = styled(motion.span)`
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 8px;
+      height: 8px;
+      background: #ffe27a;
+      clip-path: polygon(
+        50% 0%, 61% 35%, 98% 35%,
+        68% 57%, 79% 91%, 50% 70%,
+        21% 91%, 32% 57%, 2% 35%,
+        39% 35%
+      );
+      box-shadow: 0 0 5px rgba(255, 226, 122, 0.7);
+      transform-origin: center;
+    `;
+
       const GlobalStyle = createGlobalStyle`
           .MuiPopover-root .MuiPaper-root {
             display: block;
           }
     `;
 
-function CrownIcon() {
+function CrownIcon({ streak }) {
+  const displayStreak = streak > 99 ? '99+' : String(streak);
+
   return (
     <svg viewBox="0 0 24 18" width="20" height="16" aria-hidden="true">
       <path
@@ -459,6 +491,22 @@ function CrownIcon() {
       <circle cx="4.6" cy="5.5" r="1.2" fill="#ff8a65" />
       <circle cx="12" cy="2.5" r="1.2" fill="#7dd3fc" />
       <circle cx="19.4" cy="5.5" r="1.2" fill="#c084fc" />
+      {streak > 0 && (
+        <text
+          x="12"
+          y="11.1"
+          textAnchor="middle"
+          fontSize={displayStreak.length > 2 ? '4.2' : '5.5'}
+          fontFamily="Monaco, monospace"
+          fontWeight="700"
+          fill="#2d1800"
+          stroke="#fff7cf"
+          strokeWidth="0.35"
+          paintOrder="stroke"
+        >
+          {displayStreak}
+        </text>
+      )}
     </svg>
   );
 }
@@ -514,6 +562,8 @@ const PlayerTable = () => {
     const [tiebreakWinner, setTiebreakWinner] = useState('');
     const [crownedWinner, setCrownedWinner] = useState('');
     const [inheritedCrownedWinner, setInheritedCrownedWinner] = useState('');
+    const [crownBurstCount, setCrownBurstCount] = useState(0);
+    const [presentations, setPresentations] = useState([]);
     const [notes, setNotes] = useState('');
     const [stylePoints, setStylePoints] = useState({}); // { Alex: 1.0, Ichigo: 0.5, ... }
 
@@ -569,6 +619,18 @@ const PlayerTable = () => {
       const activeCrownedWinner = crownedWinner || inheritedCrownedWinner;
       return getPlayerFieldForName(players, activeCrownedWinner);
     }, [crownedWinner, inheritedCrownedWinner, players]);
+
+    const crownStreak = useMemo(
+      () => getCrownStreak(
+        presentations,
+        selectedDate,
+        crownedWinner || inheritedCrownedWinner,
+        crownedWinner,
+      ),
+      [crownedWinner, inheritedCrownedWinner, presentations, selectedDate],
+    );
+
+    const crownBurstParticles = useMemo(() => getCrownBurstParticles(), []);
 
     function convertDate(dateStr) {
         const [month, day, year] = dateStr.split('.');
@@ -810,6 +872,7 @@ const PlayerTable = () => {
           return response.json();
         })
         .then(json => {
+            setPresentations(json);
             // strip the score_ prefix from the player names
             const selectedPresentation = json.find(presentation => convertDate(presentation.name) === selectedDate)
             serverPresentationSnapshotRef.current = makePresentationSnapshot(selectedPresentation);
@@ -1422,12 +1485,12 @@ const PlayerTable = () => {
         }
 
         const nextWinnerName = getDisplayNameForPlayer(nextWinnerField);
-        if (nextWinnerName === crownedWinner) {
-          return;
-        }
+        setCrownBurstCount(prev => prev + 1);
 
-        setCrownedWinner(nextWinnerName);
-        markDirty();
+        if (nextWinnerName !== crownedWinner) {
+          setCrownedWinner(nextWinnerName);
+          markDirty();
+        }
       };
 
       window.addEventListener('scoresheet:crown-winner', handleCrownWinner);
@@ -1913,13 +1976,44 @@ const PlayerTable = () => {
                       <PlayerNameStack>
                           <PlayerNameAnchor>
                               {crownedPlayer === player && (
-                                  <WinnerCrown
-                                      initial={{ opacity: 0, y: -5, rotate: 6, scale: 0.8 }}
-                                      animate={{ opacity: 1, y: 0, rotate: 22, scale: 1 }}
-                                      transition={{ duration: 0.35, ease: 'easeOut' }}
-                                  >
-                                      <CrownIcon />
-                                  </WinnerCrown>
+                                  <>
+                                      <WinnerCrown
+                                          initial={{ opacity: 0, y: -5, rotate: 6, scale: 0.8 }}
+                                          animate={{ opacity: 1, y: 0, rotate: 22, scale: 1 }}
+                                          transition={{ duration: 0.35, ease: 'easeOut' }}
+                                      >
+                                          <CrownIcon streak={crownStreak} />
+                                      </WinnerCrown>
+                                      {crownBurstCount > 0 && (
+                                          <CrownBurstLayer key={`${player}-${crownBurstCount}`}>
+                                              {crownBurstParticles.map((particle, index) => (
+                                                  <CrownBurstStar
+                                                      key={`${player}-${crownBurstCount}-${index}`}
+                                                      initial={{
+                                                          opacity: 0,
+                                                          x: 0,
+                                                          y: 0,
+                                                          scale: 0.45,
+                                                          rotate: 0,
+                                                      }}
+                                                      animate={{
+                                                          opacity: [0, 1, 1, 0],
+                                                          x: particle.x,
+                                                          y: particle.y,
+                                                          scale: [0.45, particle.scale, particle.scale * 0.9],
+                                                          rotate: particle.rotate,
+                                                      }}
+                                                      transition={{
+                                                          duration: 1.15,
+                                                          ease: 'easeOut',
+                                                          times: [0, 0.12, 0.75, 1],
+                                                          delay: particle.delay,
+                                                      }}
+                                                  />
+                                              ))}
+                                          </CrownBurstLayer>
+                                      )}
+                                  </>
                               )}
                               <a
                                   href={url + `/player_profile/${player.replace('score_', '')}/`}
