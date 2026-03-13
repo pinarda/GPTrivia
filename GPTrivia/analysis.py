@@ -8,8 +8,10 @@ from GPTrivia.models import GPTriviaRound, MergedPresentation
 from django.views import View
 from django.db.models import Q
 from .player_scores import (
+    MIN_ANALYSIS_ROUNDS,
     display_name_for_player_field,
     flatten_round_for_analysis,
+    get_eligible_player_fields,
     get_player_color,
     player_field_for_name,
 )
@@ -52,9 +54,12 @@ class PlayerAnalysisPlot(View):
             return pd.DataFrame()
         return pd.DataFrame(records)
 
-    @staticmethod
-    def _score_columns(df):
-        return [col for col in df.columns if str(col).startswith('score_')]
+    def _score_columns(self, df):
+        eligible_player_fields = getattr(self, 'eligible_player_fields', set())
+        return [
+            col for col in df.columns
+            if str(col).startswith('score_') and (not eligible_player_fields or col in eligible_player_fields)
+        ]
 
     def get(self, request):
         creator = request.GET.get('creator', '')
@@ -64,6 +69,14 @@ class PlayerAnalysisPlot(View):
         chart_type = request.GET.get('chart_type', '')
         dadj = request.GET.get('dadj', '')
         queryset_rounds_1 = GPTriviaRound.objects.all()
+        self.eligible_player_fields = set(
+            get_eligible_player_fields(list(queryset_rounds_1), min_rounds=MIN_ANALYSIS_ROUNDS)
+        )
+        if player and player_field_for_name(player) not in self.eligible_player_fields:
+            return JsonResponse(
+                {'error': f'Player {player} has not played enough rounds for analysis'},
+                status=400,
+            )
         queryset_rounds = self.filter_data(queryset_rounds_1, creator, category, player, misc)
         filtered_rounds = self._records_with_scores(self._queryset_to_records(queryset_rounds))
         all_rounds = self._records_with_scores(self._queryset_to_records(queryset_rounds_1))
@@ -713,7 +726,7 @@ class PlayerAnalysisPlot(View):
                 return JsonResponse({'error': f'Score column for player {player} not found'}, status=400)
 
             # Filter the DataFrame to include only the relevant player's score column and date
-            score_columns = [col for col in df.columns if col.startswith('score_') and col != player_column]
+            score_columns = [col for col in self._score_columns(df) if col != player_column]
             player_data = df[['date', 'title', player_column, 'max_score', 'cooperative', 'creator'] + score_columns]
             player_data = player_data.dropna(subset=[player_column])
             # also drop any rows whose value in the cooperative column is True
@@ -789,7 +802,7 @@ class PlayerAnalysisPlot(View):
             return JsonResponse({'error': 'No rounds found'}, status=400)
 
         # Filter columns
-        score_columns = [col for col in df.columns if col.startswith('score_')]
+        score_columns = self._score_columns(df)
 
         # Sort DataFrame by date
         df = df.sort_values(by='date')

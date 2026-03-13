@@ -1,6 +1,7 @@
 import os
 os.environ['OPENAI_API_KEY'] = 'sk-'
 import inspect
+from unittest.mock import patch
 
 from django.test import TestCase, RequestFactory
 from GPTrivia.models import GPTriviaRound
@@ -28,6 +29,10 @@ from django.urls import reverse
 class PlayerAnalysisPlotTests(TestCase):
 
     def setUp(self):
+        self.analysis_threshold_patcher = patch('GPTrivia.analysis.MIN_ANALYSIS_ROUNDS', 1)
+        self.analysis_threshold_patcher.start()
+        self.addCleanup(self.analysis_threshold_patcher.stop)
+
         sample_round = GPTriviaRound.objects.create(
             creator="Megan",
             title="Test Title",
@@ -229,6 +234,10 @@ class PlayerAnalysisPlotTests(TestCase):
         self.assertIn('mean_values', response.json())
 class PlayerAnalysisViewTests(TestCase):
     def setUp(self):
+        self.views_threshold_patcher = patch('GPTrivia.views.MIN_ANALYSIS_ROUNDS', 1)
+        self.views_threshold_patcher.start()
+        self.addCleanup(self.views_threshold_patcher.stop)
+
         self.user = User.objects.create_user(username='Alex', password='Rapt0rpusia')
         self.client.force_login(self.user)
 

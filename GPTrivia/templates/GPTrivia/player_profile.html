@@ -115,10 +115,34 @@
             <p>Number of Rounds Created: {{ created_rounds_count }}</p>
             <p>Strongest Category: {{ max_avg }}</p>
             <p>Weakest Category: {{ min_avg }}</p>
-            <p>Easiest Creator: <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a> </p>
-            <p>Hardest Creator: <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a></p>
-            <p>Most biased toward {{ player_name }}: <a href="{% url 'player_profile' player_name=max_bias_avg %}" class="player_name" data-player="{{ max_bias_avg }}">{{ max_bias_avg }}</a> ({{ max_bias_avg_value }}) </p>
-            <p>Most biased against {{ player_name }}: <a href="{% url 'player_profile' player_name=min_bias_avg %}" class="player_name" data-player="{{ min_bias_avg }}">{{ min_bias_avg }}</a> ({{ min_bias_avg_value }}) </p>
+            <p>Easiest Creator:
+                {% if max_cat_avg %}
+                    <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a>
+                {% else %}
+                    N/A
+                {% endif %}
+            </p>
+            <p>Hardest Creator:
+                {% if min_cat_avg %}
+                    <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a>
+                {% else %}
+                    N/A
+                {% endif %}
+            </p>
+            <p>Most biased toward {{ player_name }}:
+                {% if max_bias_avg %}
+                    <a href="{% url 'player_profile' player_name=max_bias_avg %}" class="player_name" data-player="{{ max_bias_avg }}">{{ max_bias_avg }}</a> ({{ max_bias_avg_value }})
+                {% else %}
+                    N/A
+                {% endif %}
+            </p>
+            <p>Most biased against {{ player_name }}:
+                {% if min_bias_avg %}
+                    <a href="{% url 'player_profile' player_name=min_bias_avg %}" class="player_name" data-player="{{ min_bias_avg }}">{{ min_bias_avg }}</a> ({{ min_bias_avg_value }})
+                {% else %}
+                    N/A
+                {% endif %}
+            </p>
         </div>
 
     </div>

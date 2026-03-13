@@ -225,6 +225,7 @@ class ScoresheetSyncTests(TestCase):
             },
         )
 
+    @patch("GPTrivia.views.MIN_ANALYSIS_ROUNDS", 1)
     def test_analysis_views_include_dynamic_players(self):
         self.round.extra_scores = {"score_guest": 9}
         self.round.save(update_fields=["extra_scores"])

@@ -20,6 +20,8 @@ FIXED_SCORE_FIELDS = (
     'score_tom',
 )
 
+MIN_ANALYSIS_ROUNDS = 50
+
 ROUND_BASE_FIELDS = (
     'id',
     'creator',
@@ -231,6 +233,37 @@ def get_all_player_fields(round_queryset, presentation_queryset):
         presentations=list(presentation_queryset),
         include_fixed=True,
     )
+
+
+def get_player_round_counts(rounds):
+    counts = {}
+
+    for round_obj in rounds or []:
+        if isinstance(round_obj, dict):
+            score_map = {
+                key: value
+                for key, value in round_obj.items()
+                if str(key).startswith('score_') and value is not None
+            }
+        else:
+            score_map = get_round_score_map(round_obj, include_null_fixed=False)
+
+        for player_field, value in score_map.items():
+            if value is None:
+                continue
+            counts[player_field] = counts.get(player_field, 0) + 1
+
+    return counts
+
+
+def get_eligible_player_fields(rounds, min_rounds=MIN_ANALYSIS_ROUNDS):
+    round_counts = get_player_round_counts(rounds)
+    eligible_fields = [
+        player_field
+        for player_field, count in round_counts.items()
+        if count >= min_rounds
+    ]
+    return sort_player_fields(eligible_fields)
 
 
 def get_all_player_display_names(round_queryset, presentation_queryset):
