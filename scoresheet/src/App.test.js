@@ -25,6 +25,8 @@ import {
 } from './playerScores';
 import {
   getNormalizedStylePoints,
+  getStylePointTheme,
+  getStylePointTier,
   hasStylePointAward,
   incrementStylePoint,
   setStylePointValue,
@@ -406,6 +408,16 @@ describe('scoresheet style point helpers', () => {
     const withoutAward = setStylePointValue(withAward, 'Alex', '');
     expect(withoutAward).toEqual({});
     expect(hasStylePointAward(withoutAward, 'score_alex')).toBe(false);
+  });
+
+  test('maps style point totals to red, gold, and on-fire sunglasses tiers', () => {
+    expect(getStylePointTier(1)).toBe('red');
+    expect(getStylePointTier(2)).toBe('gold');
+    expect(getStylePointTier(3)).toBe('fire');
+
+    expect(getStylePointTheme({ Alex: 1 }, 'score_alex').frameFill).toBe('#d91e35');
+    expect(getStylePointTheme({ Alex: 2 }, 'score_alex').frameFill).toBe('#e9bb35');
+    expect(getStylePointTheme({ Alex: 3 }, 'score_alex').flame).toBe(true);
   });
 });
 

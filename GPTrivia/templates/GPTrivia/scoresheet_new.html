@@ -70,7 +70,7 @@
 
     <div id="react-scoresheet"></div>
 
-    <script src="{% static 'scoresheet/build/static/js/main.11934126.js' %}"></script>
+    <script src="{% static 'scoresheet/build/static/js/main.82e4c158.js' %}"></script>
     <audio id="snake-hiss" src="/static/img/snake-hissing-6092.mp3" preload="auto"></audio>
 
     <div class="scoresheet-animation-controls">
@@ -127,7 +127,7 @@
     }
     function rand(min, max){ return min + Math.random()*(max-min); }
 
-    function launchFleet(count=12){
+    function launchFleet(count=50){
       const sky = ensureSky();
       for (let i=0; i<count; i++){
         const s = document.createElement('div');
@@ -151,7 +151,7 @@
     }
 
     window.addEventListener('scoresheet:release-snakes', () => {
-      launchFleet(20); // pick your fleet size
+      launchFleet(50); // pick your fleet size
     });
 
     {#document.getElementById('let-elephant-go').addEventListener('click', () => {#}
@@ -177,7 +177,7 @@
       }
       pendingCrownSwoopTimeout = window.setTimeout(() => {
         window.dispatchEvent(new Event('scoresheet:single-snake-swoop'));
-      }, 5000);
+      }, 6000);
     });
 
     document.getElementById('award-style-point-btn').addEventListener('click', () => {

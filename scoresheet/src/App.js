@@ -11,11 +11,11 @@ import {
     FormControl,
     InputLabel,
     TextField,
-    Input,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
+  Input,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
 } from "@mui/material";
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
@@ -72,6 +72,7 @@ import {
     removePlayerFromRound,
 } from './playerScores';
 import {
+    getStylePointTheme,
     getNormalizedStylePoints,
     hasStylePointAward,
     incrementStylePoint,
@@ -468,14 +469,14 @@ import {
     `;
 
     const StylePointShades = styled(motion.div)`
-      width: 22px;
-      height: 14px;
+      width: 28px;
+      height: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
       position: absolute;
-      top: -0.58rem;
-      left: -0.68rem;
+      top: -0.22rem;
+      left: -0.8rem;
       pointer-events: none;
       transform-origin: center;
       z-index: 1;
@@ -524,23 +525,38 @@ function CrownIcon({ streak }) {
   );
 }
 
-function SunglassesIcon() {
+function SunglassesIcon({ theme }) {
   return (
-    <svg viewBox="0 0 30 18" width="22" height="14" aria-hidden="true">
-      <path
-        d="M4 5.5C4.6 3.6 6.3 2.4 8.4 2.4H11.8C13.9 2.4 15.6 3.6 16.2 5.5L16.4 6H13.9L13.7 5.5C13.4 4.6 12.7 4 11.8 4H8.4C7.5 4 6.8 4.6 6.5 5.5L5.8 8C5.6 8.8 5.8 9.7 6.3 10.3C6.8 11 7.6 11.3 8.4 11.3H11.3C12.6 11.3 13.7 10.4 14 9.1L14.2 8.1H16.1L16.3 9.1C16.6 10.4 17.7 11.3 19 11.3H21.9C22.7 11.3 23.5 11 24 10.3C24.5 9.7 24.7 8.8 24.5 8L23.8 5.5C23.5 4.6 22.8 4 21.9 4H18.5C17.6 4 16.9 4.6 16.6 5.5L16.4 6H13.8L13.6 5.5C13 3.6 11.3 2.4 9.2 2.4H8.4Z"
-        fill="#d9142d"
-        stroke="#7d0013"
-        strokeWidth="1.1"
-        strokeLinejoin="round"
-      />
-      <path d="M2.4 5.5L6 6.5" stroke="#7d0013" strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M24 6.5L27.6 5.5" stroke="#7d0013" strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M14.2 6.8H16" stroke="#7d0013" strokeWidth="1.2" strokeLinecap="round" />
-      <rect x="6.2" y="4.8" width="7.2" height="5.4" rx="1.9" fill="#280205" opacity="0.88" />
-      <rect x="16.6" y="4.8" width="7.2" height="5.4" rx="1.9" fill="#280205" opacity="0.88" />
-      <path d="M7.2 6H9.3" stroke="#ff6b7f" strokeWidth="0.9" strokeLinecap="round" opacity="0.75" />
-      <path d="M17.6 6H19.7" stroke="#ff6b7f" strokeWidth="0.9" strokeLinecap="round" opacity="0.75" />
+    <svg viewBox="0 0 34 22" width="28" height="18" aria-hidden="true">
+      {theme?.flame && (
+        <>
+          <path
+            d="M10.4 9.6C9.2 8 9.4 6.2 10.8 5.1C11.3 6.1 12.2 6.7 12.8 7.8C13.5 9.1 13.2 10.6 11.8 11.2C11.1 11 10.6 10.4 10.4 9.6Z"
+            fill={theme.flameOuter}
+          />
+          <path
+            d="M14.6 7.5C14.1 5.4 15.4 3.6 17.1 2.8C17.3 4 18 4.9 18.2 6.2C18.5 8.1 17.4 9.8 15.5 10.2C14.9 9.5 14.7 8.6 14.6 7.5Z"
+            fill={theme.flameOuter}
+          />
+          <path
+            d="M20.8 9.4C20.4 7.6 21.4 6.1 23 5.3C23.2 6.4 23.9 7.2 24.1 8.4C24.3 10.1 23.4 11.5 21.8 11.8C21.2 11.2 21 10.4 20.8 9.4Z"
+            fill={theme.flameOuter}
+          />
+          <path
+            d="M16.7 7.6C16.3 6.6 16.6 5.5 17.3 4.8C17.6 5.5 18.1 5.9 18.3 6.7C18.6 7.7 18 8.7 17.1 8.9C16.9 8.5 16.8 8.1 16.7 7.6Z"
+            fill={theme.flameCore}
+          />
+        </>
+      )}
+      <path d="M2.8 8.1L6.6 10.4" stroke={theme.frameStroke} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M27.4 10.4L31.2 8.1" stroke={theme.frameStroke} strokeWidth="1.8" strokeLinecap="round" />
+      <rect x="6.4" y="8" width="9.6" height="6.8" rx="2.2" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.3" />
+      <rect x="18" y="8" width="9.6" height="6.8" rx="2.2" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.3" />
+      <rect x="7.5" y="9" width="7.4" height="4.8" rx="1.6" fill={theme.lensFill} />
+      <rect x="19.1" y="9" width="7.4" height="4.8" rx="1.6" fill={theme.lensFill} />
+      <path d="M16 10.5H18" stroke={theme.frameStroke} strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M8.2 9.9H10.5" stroke={theme.highlight} strokeWidth="0.95" strokeLinecap="round" opacity="0.82" />
+      <path d="M19.8 9.9H22.1" stroke={theme.highlight} strokeWidth="0.95" strokeLinecap="round" opacity="0.82" />
     </svg>
   );
 }
@@ -2235,6 +2251,7 @@ const PlayerTable = () => {
         </TableHead>
         <TableBody>
           {sortedPlayersForDisplay.map((player) => {
+              const stylePointTheme = getStylePointTheme(stylePoints, player);
               return (<TableRow key={player}>
                   <StyledTableCell player={player}>
                       <PlayerNameStack>
@@ -2255,7 +2272,7 @@ const PlayerTable = () => {
                                       animate={{ opacity: 1, y: 0, rotate: -18, scale: 1 }}
                                       transition={{ duration: 0.28, ease: 'easeOut' }}
                                   >
-                                      <SunglassesIcon />
+                                      <SunglassesIcon theme={stylePointTheme} />
                                   </StylePointShades>
                               )}
                               <a
@@ -2695,17 +2712,59 @@ const PlayerTable = () => {
         onClose={() => setIsStylePointDialogOpen(false)}
         fullWidth
         maxWidth="xs"
+        PaperProps={{
+          sx: {
+            backgroundColor: '#333',
+            color: '#fff',
+            borderRadius: 0,
+            border: '1px solid #1e7662',
+            boxShadow: '0 16px 36px rgba(0, 0, 0, 0.45)',
+          },
+        }}
       >
-        <DialogTitle sx={{ fontFamily: 'Monaco, monospace' }}>Award Style Point</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ fontFamily: 'Monaco, monospace', color: '#fff' }}>Award Style Point</DialogTitle>
+        <DialogContent sx={{ color: '#fff' }}>
           <Box sx={{ pt: 1 }}>
-            <FormControl fullWidth>
+            <FormControl
+              fullWidth
+              sx={{
+                '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.72)', fontFamily: 'Monaco, monospace' },
+                '& .MuiInputLabel-root.Mui-focused': { color: '#fff' },
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: '#333',
+                  color: '#fff',
+                  fontFamily: 'Monaco, monospace',
+                },
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#1e7662',
+                },
+                '& .MuiSvgIcon-root': { color: '#fff' },
+              }}
+            >
               <InputLabel id="style-point-player-label">Player</InputLabel>
               <Select
                 labelId="style-point-player-label"
                 value={selectedStylePointPlayer}
                 label="Player"
                 onChange={(event) => setSelectedStylePointPlayer(event.target.value)}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      backgroundColor: '#333',
+                      color: '#fff',
+                      border: '1px solid #1e7662',
+                      '& .MuiMenuItem-root': {
+                        fontFamily: 'Monaco, monospace',
+                      },
+                      '& .MuiMenuItem-root.Mui-selected': {
+                        backgroundColor: '#1e7662',
+                      },
+                      '& .MuiMenuItem-root:hover': {
+                        backgroundColor: '#185e4f',
+                      },
+                    },
+                  },
+                }}
               >
                 {sortedPlayersForDisplay.map((playerField) => (
                   <MenuItem key={playerField} value={playerField}>

@@ -58,6 +58,68 @@ export function hasStylePointAward(stylePoints, playerField) {
   return value !== null && value > 0;
 }
 
+export function getStylePointTier(value) {
+  const normalizedValue = normalizeStylePointValue(value);
+  if (normalizedValue === null || normalizedValue <= 0) {
+    return null;
+  }
+
+  if (normalizedValue >= 3) {
+    return 'fire';
+  }
+
+  if (normalizedValue >= 2) {
+    return 'gold';
+  }
+
+  return 'red';
+}
+
+export function getStylePointTheme(stylePoints, playerField) {
+  const value = getStylePointValue(stylePoints, playerField);
+  const tier = getStylePointTier(value);
+
+  if (tier === 'fire') {
+    return {
+      tier,
+      value,
+      frameFill: '#ff9b1c',
+      frameStroke: '#7f2300',
+      lensFill: '#230307',
+      highlight: '#ffd77a',
+      flame: true,
+      flameCore: '#ffe88f',
+      flameOuter: '#ff5d1f',
+    };
+  }
+
+  if (tier === 'gold') {
+    return {
+      tier,
+      value,
+      frameFill: '#e9bb35',
+      frameStroke: '#7b5513',
+      lensFill: '#251809',
+      highlight: '#fff0a8',
+      flame: false,
+      flameCore: '',
+      flameOuter: '',
+    };
+  }
+
+  return {
+    tier: 'red',
+    value,
+    frameFill: '#d91e35',
+    frameStroke: '#6c0012',
+    lensFill: '#240409',
+    highlight: '#ff7f92',
+    flame: false,
+    flameCore: '',
+    flameOuter: '',
+  };
+}
+
 export function setStylePointValue(stylePoints, playerName, value) {
   const normalized = getNormalizedStylePoints(stylePoints);
   const normalizedKey = normalizeStylePointKey(playerName);
