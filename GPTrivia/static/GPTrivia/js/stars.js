@@ -7,8 +7,9 @@ const FLOOR_BOUNCE = 0.72;
 const SURFACE_BOUNCE = 0.78;
 const SURFACE_VERTICAL_DRAG = 0.96;
 const AIR_DRAG = 0.997;
-const SPIN_DRAG = 0.986;
-const SPIN_TRANSFER = 0.42;
+const SPIN_DRAG = 0.994;
+const SPIN_TRANSFER = 1.15;
+const COLLISION_SPIN_CARRY = 0.94;
 
 const overlay = document.getElementById("star-overlay");
 const MAX_SPEED = 25; // px/frame at which color hits "max"
@@ -212,14 +213,14 @@ function resolveSurfaceCollision(previousX, previousY, nextX, nextY, vx, vy, ang
   const nextTangentSpeed = tangentSpeed * SURFACE_VERTICAL_DRAG;
   const nextVx = (normalX * bouncedNormalSpeed) + (tangentX * nextTangentSpeed);
   const nextVy = (normalY * bouncedNormalSpeed) + (tangentY * nextTangentSpeed);
-  const spinKick = clamp(tangentSpeed * SPIN_TRANSFER, -14, 14);
+  const spinKick = clamp(tangentSpeed * SPIN_TRANSFER, -36, 36);
 
   return {
     x: correctedX,
     y: correctedY,
     vx: nextVx,
     vy: nextVy,
-    angularVelocity: (angularVelocity * 0.82) + spinKick,
+    angularVelocity: (angularVelocity * COLLISION_SPIN_CARRY) + spinKick,
     resting:
       Math.abs(bouncedNormalSpeed) < 0.8 &&
       Math.abs(nextTangentSpeed) < 1.5 &&
@@ -257,7 +258,7 @@ function launchStar(cx, cy, surfaces) {
   let vx = (Math.random() - 0.5) * 8;     // sideways
   let vy = (Math.random() - 1.2) * 12;    // upward
   let angle = Math.random() * 360;
-  const initialSpinMagnitude = 10 + (Math.random() * 18);
+  const initialSpinMagnitude = 30 + (Math.random() * 40);
   let angularVelocity = (Math.random() < 0.5 ? -1 : 1) * initialSpinMagnitude;
 
   let last = performance.now();
@@ -297,7 +298,7 @@ function launchStar(cx, cy, surfaces) {
       if (collision.resting) {
         vy = 0;
         vx *= 0.982;
-        angularVelocity *= 0.9;
+        angularVelocity *= 0.96;
         restingTime += dt;
         if (restingTime > 40) {
           fadeOutAndRemove(s);
