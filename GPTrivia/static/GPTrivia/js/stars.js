@@ -10,6 +10,7 @@ const SURFACE_VERTICAL_DRAG = 0.96;
 const overlay = document.getElementById("star-overlay");
 const MAX_SPEED = 25; // px/frame at which color hits "max"
 const STAR_RADIUS = 5;
+const HORIZONTAL_COLLISION_PADDING = 1;
 
 function fadeOutAndRemove(elem){
   elem.style.transition = `opacity ${FADE_MS}ms`;
@@ -150,8 +151,8 @@ function collectRicochetSurfaces() {
 
 function resolveSurfaceCollision(previousX, previousY, nextX, nextY, vx, vy, surface) {
   const expanded = {
-    left: surface.left - STAR_RADIUS,
-    right: surface.right + STAR_RADIUS,
+    left: surface.left - HORIZONTAL_COLLISION_PADDING,
+    right: surface.right + HORIZONTAL_COLLISION_PADDING,
     top: surface.top - STAR_RADIUS,
     bottom: surface.bottom + STAR_RADIUS,
   };
