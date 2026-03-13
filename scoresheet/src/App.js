@@ -1512,7 +1512,7 @@ const PlayerTable = () => {
       return () => {
         window.cancelAnimationFrame(frameId);
       };
-    }, [crownBurstCount, crownedPlayer]);
+    }, [crownBurstCount]);
 
     useEffect(() => {
       if (!openDatePicker) {

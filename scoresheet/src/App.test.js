@@ -235,6 +235,23 @@ describe('scoresheet crown helpers', () => {
     ).toBe(3);
   });
 
+  test('computes the streak for an explicitly crowned past night so the historic crown tier matches', () => {
+    const streak = getCrownStreak(
+      [
+        { name: '03.10.2026', crowned_winner: 'Alex' },
+        { name: '03.11.2026', crowned_winner: 'Alex' },
+        { name: '03.12.2026', crowned_winner: 'Alex' },
+        { name: '03.13.2026', crowned_winner: '' },
+      ],
+      '2026-03-12',
+      'Alex',
+      'Alex',
+    );
+
+    expect(streak).toBe(3);
+    expect(getCrownTheme(streak).fill).toBe('#f6c343');
+  });
+
   test('maps streak tiers to bronze, silver, gold, and diamond crown themes', () => {
     expect(getCrownTheme(1).fill).toBe('#d39a6a');
     expect(getCrownTheme(1).textFill).toBe('#111111');
