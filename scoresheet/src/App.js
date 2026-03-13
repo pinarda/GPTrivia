@@ -410,9 +410,15 @@ import {
 
     const PlayerNameStack = styled.div`
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.2rem;
+      justify-content: center;
+    `;
+
+    const PlayerNameAnchor = styled.span`
+      position: relative;
+      display: inline-flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 0.1rem;
     `;
 
     const WinnerCrown = styled(motion.div)`
@@ -421,6 +427,12 @@ import {
       display: flex;
       align-items: center;
       justify-content: center;
+      position: absolute;
+      top: -0.7rem;
+      right: -0.75rem;
+      pointer-events: none;
+      transform-origin: left bottom;
+      z-index: 1;
     `;
 
       const GlobalStyle = createGlobalStyle`
@@ -549,9 +561,17 @@ const PlayerTable = () => {
       [players, rounds, scores, selectedRounds, medianScores, isSortAscending],
     );
 
-    const crownedPlayer = isWinnerCrowned && sortedPlayersForDisplay.length > 0
-      ? sortedPlayersForDisplay[0]
-      : null;
+    const crownedPlayer = useMemo(() => {
+      if (!isWinnerCrowned || sortedPlayersForDisplay.length === 0) {
+        return null;
+      }
+
+      const tiebreakWinnerPlayer = players.find((player) => (
+        player.replace('score_', '').toLowerCase() === tiebreakWinner.toLowerCase()
+      ));
+
+      return tiebreakWinnerPlayer || sortedPlayersForDisplay[0];
+    }, [isWinnerCrowned, players, sortedPlayersForDisplay, tiebreakWinner]);
 
     function convertDate(dateStr) {
         const [month, day, year] = dateStr.split('.');
@@ -1890,22 +1910,24 @@ const PlayerTable = () => {
               return (<TableRow key={player}>
                   <StyledTableCell player={player}>
                       <PlayerNameStack>
-                          {crownedPlayer === player && (
-                              <WinnerCrown
-                                  initial={{ opacity: 0, y: -6, scale: 0.8 }}
-                                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                          <PlayerNameAnchor>
+                              {crownedPlayer === player && (
+                                  <WinnerCrown
+                                      initial={{ opacity: 0, y: -5, rotate: 6, scale: 0.8 }}
+                                      animate={{ opacity: 1, y: 0, rotate: 22, scale: 1 }}
+                                      transition={{ duration: 0.35, ease: 'easeOut' }}
+                                  >
+                                      <CrownIcon />
+                                  </WinnerCrown>
+                              )}
+                              <a
+                                  href={url + `/player_profile/${player.replace('score_', '')}/`}
+                                  className="player_name"
+                                  data-player={player.replace('score_', '')}
                               >
-                                  <CrownIcon />
-                              </WinnerCrown>
-                          )}
-                          <a
-                              href={url + `/player_profile/${player.replace('score_', '')}/`}
-                              className="player_name"
-                              data-player={player.replace('score_', '')}
-                          >
-                              {player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1)}
-                          </a>
+                                  {player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1)}
+                              </a>
+                          </PlayerNameAnchor>
                       </PlayerNameStack>
                   </StyledTableCell>
                   <StyledTableCell sx={{maxWidth: '200px'}} className={selectedColumnIndex === 1 ? 'selected-column' : ''}>
