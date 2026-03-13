@@ -70,14 +70,9 @@
 
     <div id="react-scoresheet"></div>
 
-    <script src="{% static 'scoresheet/build/static/js/main.5ef37aed.js' %}"></script>
+    <script src="{% static 'scoresheet/build/static/js/main.439367f5.js' %}"></script>
     <audio id="snake-hiss" src="/static/img/snake-hissing-6092.mp3" preload="auto"></audio>
 
-    <div class="scoresheet-animation-controls">
-      <button id="animate-btn" class="scoresheet-animation-button">Animate</button>
-      <button id="crown-winner-btn" class="scoresheet-animation-button">Crown the Winner</button>
-      <button id="award-style-point-btn" class="scoresheet-animation-button">Award Style Point</button>
-    </div>
     <div id="star-overlay"></div>
     
     <div id="elephant-track">
@@ -169,19 +164,14 @@
     });
 
     let pendingCrownSwoopTimeout = null;
-    document.getElementById('crown-winner-btn').addEventListener('click', () => {
-      window.dispatchEvent(new Event('scoresheet:crown-winner'));
+    window.addEventListener('scoresheet:crown-winner', () => {
       window.dispatchEvent(new Event('scoresheet:release-snakes'));
       if (pendingCrownSwoopTimeout) {
         window.clearTimeout(pendingCrownSwoopTimeout);
       }
       pendingCrownSwoopTimeout = window.setTimeout(() => {
         window.dispatchEvent(new Event('scoresheet:single-snake-swoop'));
-      }, 6000);
-    });
-
-    document.getElementById('award-style-point-btn').addEventListener('click', () => {
-      window.dispatchEvent(new Event('scoresheet:award-style-point'));
+      }, 8000);
     });
     </script>
 
@@ -203,17 +193,20 @@
       a.play();                       // user gesture required
     }
 
-    document.getElementById('animate-btn').addEventListener('click', () => {
-      const toMs = 400, backMs = 1600, total = toMs + backMs;
+    const animateButton = document.getElementById('animate-btn');
+    if (animateButton) {
+      animateButton.addEventListener('click', () => {
+        const toMs = 400, backMs = 1600, total = toMs + backMs;
 
-      // start both on the same frame
-      requestAnimationFrame(() => {
-        playHiss(0.7);
-        flashBigSnake({ duration: total, src: '/static/img/snake_silhouette.png' });
+        // start both on the same frame
+        requestAnimationFrame(() => {
+          playHiss(0.7);
+          flashBigSnake({ duration: total, src: '/static/img/snake_silhouette.png' });
+        });
+
+        chaosColors({ selector: 'html, body, body *', toMs, backMs });
       });
-
-      chaosColors({ selector: 'html, body, body *', toMs, backMs });
-    });
+    }
 
 
     function randomColor(){

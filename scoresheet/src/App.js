@@ -439,6 +439,30 @@ import {
 
     const MetadataNotesFieldWrapper = styled(MetadataField)`
       grid-column: 1 / -1;
+      justify-self: center;
+      width: min(100%, 760px);
+    `;
+
+    const MetadataActionField = styled(MetadataField)`
+      grid-column: 1 / -1;
+      align-items: center;
+    `;
+
+    const MetadataActionRow = styled.div`
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    `;
+
+    const MetadataActionButtons = styled.div`
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.55rem;
+      flex-wrap: wrap;
     `;
 
     const PlayerNameStack = styled.div`
@@ -461,7 +485,7 @@ import {
       align-items: center;
       justify-content: center;
       position: absolute;
-      top: -0.46rem;
+      top: -0.56rem;
       right: -0.75rem;
       pointer-events: none;
       transform-origin: left bottom;
@@ -2642,6 +2666,53 @@ const PlayerTable = () => {
         {isBottomRowVisible && (
           <StyledTableRow>
             <TableCell colSpan={2}>
+              <div className="textCell"><strong>Night Roles</strong></div>
+            </TableCell>
+            <TableCell colSpan={rounds.length + 4}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 220px))', gap: '10px', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ color: '#fff', fontFamily: 'Monaco', fontSize: '0.85rem' }}>Host</span>
+                  <MetadataFormControl>
+                    <StyledSelect
+                      displayEmpty
+                      value={host}
+                      onChange={(e) => {
+                        setHost(e.target.value);
+                        markDirty();
+                      }}
+                    >
+                      <MenuItem value="">—</MenuItem>
+                      {playerNamesDisplay.map((name) => (
+                        <MenuItem key={name} value={name}>{name}</MenuItem>
+                      ))}
+                    </StyledSelect>
+                  </MetadataFormControl>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ color: '#fff', fontFamily: 'Monaco', fontSize: '0.85rem' }}>Scorekeeper</span>
+                  <MetadataFormControl>
+                    <StyledSelect
+                      displayEmpty
+                      value={scorekeeper}
+                      onChange={(e) => {
+                        setScorekeeper(e.target.value);
+                        markDirty();
+                      }}
+                    >
+                      <MenuItem value="">—</MenuItem>
+                      {playerNamesDisplay.map((name) => (
+                        <MenuItem key={name} value={name}>{name}</MenuItem>
+                      ))}
+                    </StyledSelect>
+                  </MetadataFormControl>
+                </div>
+              </div>
+            </TableCell>
+          </StyledTableRow>
+        )}
+        {isBottomRowVisible && (
+          <StyledTableRow>
+            <TableCell colSpan={2}>
               <div className="textCell"><strong>Style points</strong></div>
             </TableCell>
             <TableCell colSpan={rounds.length + 4}>
@@ -2667,62 +2738,34 @@ const PlayerTable = () => {
       </StyledTable>
       <MetadataSection>
         <MetadataGrid>
-          <MetadataField>
-            <MetadataFieldLabel>Host</MetadataFieldLabel>
-            <MetadataFormControl>
-              <StyledSelect
-                displayEmpty
-                value={host}
-                onChange={(e) => {
-                  setHost(e.target.value);
-                  markDirty();
-                }}
-              >
-                <MenuItem value="">—</MenuItem>
-                {playerNamesDisplay.map((name) => (
-                  <MenuItem key={name} value={name}>{name}</MenuItem>
-                ))}
-              </StyledSelect>
-            </MetadataFormControl>
-          </MetadataField>
-
-          <MetadataField>
-            <MetadataFieldLabel>Scorekeeper</MetadataFieldLabel>
-            <MetadataFormControl>
-              <StyledSelect
-                displayEmpty
-                value={scorekeeper}
-                onChange={(e) => {
-                  setScorekeeper(e.target.value);
-                  markDirty();
-                }}
-              >
-                <MenuItem value="">—</MenuItem>
-                {playerNamesDisplay.map((name) => (
-                  <MenuItem key={name} value={name}>{name}</MenuItem>
-                ))}
-              </StyledSelect>
-            </MetadataFormControl>
-          </MetadataField>
-
-          <MetadataField>
+          <MetadataActionField>
             <MetadataFieldLabel>Tiebreak Winner</MetadataFieldLabel>
-            <MetadataFormControl>
-              <StyledSelect
-                displayEmpty
-                value={tiebreakWinner}
-                onChange={(e) => {
-                  setTiebreakWinner(e.target.value);
-                  markDirty();
-                }}
-              >
-                <MenuItem value="">—</MenuItem>
-                {playerNamesDisplay.map((name) => (
-                  <MenuItem key={name} value={name}>{name}</MenuItem>
-                ))}
-              </StyledSelect>
-            </MetadataFormControl>
-          </MetadataField>
+            <MetadataActionRow>
+              <MetadataFormControl sx={{ width: 'min(100%, 240px)' }}>
+                <StyledSelect
+                  displayEmpty
+                  value={tiebreakWinner}
+                  onChange={(e) => {
+                    setTiebreakWinner(e.target.value);
+                    markDirty();
+                  }}
+                >
+                  <MenuItem value="">—</MenuItem>
+                  {playerNamesDisplay.map((name) => (
+                    <MenuItem key={name} value={name}>{name}</MenuItem>
+                  ))}
+                </StyledSelect>
+              </MetadataFormControl>
+              <MetadataActionButtons>
+                <StyledButton type="button" onClick={() => window.dispatchEvent(new Event('scoresheet:crown-winner'))}>
+                  Crown Winner
+                </StyledButton>
+                <StyledButton type="button" onClick={() => window.dispatchEvent(new Event('scoresheet:award-style-point'))}>
+                  Award Style Point
+                </StyledButton>
+              </MetadataActionButtons>
+            </MetadataActionRow>
+          </MetadataActionField>
 
           <MetadataNotesFieldWrapper>
             <MetadataNotesField
@@ -2732,7 +2775,7 @@ const PlayerTable = () => {
                 markDirty();
               }}
               multiline
-              rows={isSmallScreen ? 4 : 3}
+              rows={isSmallScreen ? 3 : 2}
               placeholder="Enter Nightly Notes"
             />
           </MetadataNotesFieldWrapper>
