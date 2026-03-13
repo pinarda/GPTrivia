@@ -475,7 +475,7 @@ import {
       align-items: center;
       justify-content: center;
       position: absolute;
-      top: -0.34rem;
+      top: -0.46rem;
       left: -0.8rem;
       pointer-events: none;
       transform-origin: center;
@@ -531,42 +531,42 @@ function SunglassesIcon({ theme }) {
       {theme?.flame && (
         <>
           <path
-            d="M5.6 10.1C5.3 7.5 7 5.3 9.1 4.2C9.3 5.8 10 6.9 10.4 8.4C10.8 10.3 9.7 11.9 7.9 12.4C6.7 12 5.8 11.2 5.6 10.1Z"
+            d="M4.7 12.4C3.8 8.9 6 5.9 8.8 4.3C9.4 6.3 10.6 7.7 11 9.5C11.4 11.8 10.1 13.8 7.8 14.5C6.3 14.1 5.1 13.4 4.7 12.4Z"
             fill={theme.flameOuter}
             opacity="0.92"
           />
           <path
-            d="M11.7 7.8C11.2 4.6 13.2 2.1 15.8 1.1C16.1 3 17 4.4 17.3 6.2C17.7 8.9 16.1 11.1 13.5 11.7C12.4 10.6 11.9 9.4 11.7 7.8Z"
+            d="M10.8 8.2C10 4.3 12.5 1.3 15.8 0.4C16.4 2.8 17.7 4.6 18.1 6.7C18.6 9.8 16.8 12.2 13.8 12.8C12.4 11.7 11.3 10.1 10.8 8.2Z"
             fill={theme.flameOuter}
             opacity="0.98"
           />
           <path
-            d="M18.4 6.9C18.1 4.3 19.7 2.2 22 1.2C22.2 2.8 23 4.1 23.3 5.6C23.7 8 22.4 10 20.1 10.7C19.1 9.7 18.6 8.7 18.4 6.9Z"
+            d="M18.1 7.3C17.5 4 19.6 1.6 22.6 0.8C23 3 24.2 4.7 24.7 6.5C25.3 9.3 23.8 11.7 21 12.3C19.7 11.3 18.7 9.6 18.1 7.3Z"
             fill={theme.flameOuter}
             opacity="0.96"
           />
           <path
-            d="M24.6 9.8C24.4 7.4 25.9 5.5 27.9 4.4C28.2 5.9 28.9 7 29.3 8.3C29.6 10.2 28.5 11.8 26.8 12.3C25.6 11.9 24.8 10.9 24.6 9.8Z"
+            d="M25 12C24.4 9.1 26.1 6.5 28.8 5.2C29.3 7 30.2 8.5 30.6 10C31 12.2 29.6 14.1 27.4 14.6C26.2 14.1 25.4 13.1 25 12Z"
             fill={theme.flameOuter}
             opacity="0.9"
           />
           <path
-            d="M14.9 7.2C14.7 5.7 15.5 4.4 16.8 3.7C17 4.6 17.5 5.4 17.7 6.3C17.9 7.6 17.2 8.7 15.9 9C15.3 8.6 15 8 14.9 7.2Z"
+            d="M13.9 8C13.7 6.2 14.6 4.8 16 4.1C16.4 5.2 17 6.1 17.2 7.2C17.5 8.8 16.6 10 15 10.3C14.4 9.7 14 9 13.9 8Z"
             fill={theme.flameCore}
           />
           <path
-            d="M22 6.5C21.8 5.1 22.6 4 23.8 3.5C24.1 4.3 24.5 4.9 24.6 5.8C24.9 7.1 24.2 8.1 23 8.3C22.5 7.9 22.2 7.3 22 6.5Z"
+            d="M21.8 7.2C21.5 5.6 22.4 4.3 23.7 3.7C24 4.8 24.6 5.6 24.9 6.6C25.2 8 24.4 9.1 23 9.4C22.5 8.8 22 8.1 21.8 7.2Z"
             fill={theme.flameCore}
           />
         </>
       )}
-      <rect x="4.8" y="9.5" width="10.9" height="7.1" rx="2.4" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.4" />
-      <rect x="18.3" y="9.5" width="10.9" height="7.1" rx="2.4" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.4" />
-      <rect x="6.1" y="10.7" width="8.3" height="4.7" rx="1.5" fill={theme.lensFill} />
-      <rect x="19.6" y="10.7" width="8.3" height="4.7" rx="1.5" fill={theme.lensFill} />
-      <rect x="15.2" y="11.5" width="3.6" height="1.6" rx="0.8" fill={theme.frameStroke} />
-      <path d="M6.9 11.5H9.6" stroke={theme.highlight} strokeWidth="1" strokeLinecap="round" opacity="0.85" />
-      <path d="M20.4 11.5H23.1" stroke={theme.highlight} strokeWidth="1" strokeLinecap="round" opacity="0.85" />
+      <path d="M3.8 12.1L6.9 13.6" stroke={theme.frameStroke} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M27.1 13.6L30.2 12.1" stroke={theme.frameStroke} strokeWidth="1.8" strokeLinecap="round" />
+      <rect x="6.3" y="10.6" width="10.2" height="7.2" rx="2.5" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.35" />
+      <rect x="17.5" y="10.6" width="10.2" height="7.2" rx="2.5" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.35" />
+      <rect x="7.2" y="11.3" width="8.4" height="5.8" rx="1.8" fill="#050505" />
+      <rect x="18.4" y="11.3" width="8.4" height="5.8" rx="1.8" fill="#050505" />
+      <rect x="15.7" y="12.3" width="2.7" height="1.8" rx="0.9" fill={theme.frameStroke} />
     </svg>
   );
 }
@@ -622,8 +622,6 @@ const PlayerTable = () => {
     const [tiebreakWinner, setTiebreakWinner] = useState('');
     const [crownedWinner, setCrownedWinner] = useState('');
     const [inheritedCrownedWinner, setInheritedCrownedWinner] = useState('');
-    const [stylePointBurstToken, setStylePointBurstToken] = useState('');
-    const [stylePointBurstPlayer, setStylePointBurstPlayer] = useState('');
     const [presentations, setPresentations] = useState([]);
     const [notes, setNotes] = useState('');
     const [stylePoints, setStylePoints] = useState({}); // { Alex: 1.0, Ichigo: 0.5, ... }
@@ -661,7 +659,7 @@ const PlayerTable = () => {
     const pendingMutationIdsRef = useRef(new Set());
     const serverRoundSnapshotRef = useRef({});
     const serverPresentationSnapshotRef = useRef(makePresentationSnapshot(null));
-    const stylePointBurstAnchorRef = useRef(null);
+    const stylePointAnchorRefs = useRef({});
     const newPlayerInputRef = useRef(null);
     const datePickerFieldRef = useRef(null);
     const saveInFlightRef = useRef(false);
@@ -1624,26 +1622,6 @@ const PlayerTable = () => {
     }, [players, sortedPlayersForDisplay]);
 
     useEffect(() => {
-      if (!stylePointBurstToken || !stylePointBurstAnchorRef.current) {
-        return;
-      }
-
-      const frameId = window.requestAnimationFrame(() => {
-        const rect = stylePointBurstAnchorRef.current.getBoundingClientRect();
-        window.dispatchEvent(new CustomEvent('scoresheet:burst-stars', {
-          detail: {
-            x: rect.left + rect.width / 2,
-            y: rect.top + rect.height / 2,
-          },
-        }));
-      });
-
-      return () => {
-        window.cancelAnimationFrame(frameId);
-      };
-    }, [stylePointBurstToken]);
-
-    useEffect(() => {
       if (!openDatePicker) {
         return undefined;
       }
@@ -1682,18 +1660,46 @@ const PlayerTable = () => {
         markDirty();
     };
 
+    const setStylePointAnchor = useCallback((playerField, node) => {
+      if (node) {
+        stylePointAnchorRefs.current[playerField] = node;
+        return;
+      }
+
+      delete stylePointAnchorRefs.current[playerField];
+    }, []);
+
+    const triggerStylePointBurst = useCallback((playerField) => {
+      const anchorNode = stylePointAnchorRefs.current[playerField];
+      if (!anchorNode) {
+        return;
+      }
+
+      const rect = anchorNode.getBoundingClientRect();
+      window.dispatchEvent(new CustomEvent('scoresheet:burst-stars', {
+        detail: {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        },
+      }));
+    }, []);
+
     const handleAwardStylePoint = () => {
       if (!selectedStylePointPlayer) {
         return;
       }
 
+      const awardedPlayerField = selectedStylePointPlayer;
       setStylePoints(prevStylePoints => (
-        incrementStylePoint(prevStylePoints, selectedStylePointPlayer)
+        incrementStylePoint(prevStylePoints, awardedPlayerField)
       ));
-      setStylePointBurstPlayer(selectedStylePointPlayer);
-      setStylePointBurstToken(createMutationId());
       setIsStylePointDialogOpen(false);
       markDirty();
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          triggerStylePointBurst(awardedPlayerField);
+        });
+      });
     };
 
     useEffect(() => {
@@ -2277,7 +2283,7 @@ const PlayerTable = () => {
                               )}
                               {hasStylePointAward(stylePoints, player) && (
                                   <StylePointShades
-                                      ref={stylePointBurstPlayer === player ? stylePointBurstAnchorRef : null}
+                                      ref={(node) => setStylePointAnchor(player, node)}
                                       initial={{ opacity: 0, y: -3, rotate: -30, scale: 0.8 }}
                                       animate={{ opacity: 1, y: 0, rotate: -18, scale: 1 }}
                                       transition={{ duration: 0.28, ease: 'easeOut' }}
