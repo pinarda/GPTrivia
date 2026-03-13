@@ -954,20 +954,6 @@ const PlayerTable = () => {
     }, [defaultHost, selectedDate, url, updateFlag]);
 
     useEffect(() => {
-      if (!rounds || rounds.length === 0) return;
-
-      // “Any score exists” = any score_* field is a number (0 counts as a score)
-      const anyScores = rounds.some(r =>
-        Object.keys(r).some(k => k.startsWith('score_') && Number.isFinite(r[k]))
-      );
-
-      if (!anyScores) {
-        setPlayers(DEFAULT_VISIBLE_PLAYERS);
-      }
-    }, [rounds]);
-
-
-    useEffect(() => {
       if (players.length > 0 && rounds.length > 0) {
 
         // Compute median scores

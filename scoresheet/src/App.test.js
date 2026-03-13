@@ -287,6 +287,15 @@ describe('scoresheet player defaults', () => {
       resolveJokerRoundIndices({ alex: 'Round 1', megan: 'Round 2' }),
     ).toEqual({ alex: 'Round 1', megan: 'Round 2' });
   });
+
+  test('preserves a saved empty-night roster instead of restoring default players', () => {
+    expect(
+      resolvePresentationPlayers(
+        { score_alex: 'score_alex', score_megan: 'score_megan' },
+        DEFAULT_VISIBLE_PLAYERS,
+      ),
+    ).toEqual(['score_alex', 'score_megan']);
+  });
 });
 
 describe('scoresheet total helpers', () => {
