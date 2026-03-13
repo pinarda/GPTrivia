@@ -209,7 +209,11 @@ form {
 
 #profpic_reg {
     display: block;
-    width:400px;
+    width: 320px;
+    height: 320px;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 18px;
 }
 
 #picdiv_mob {
@@ -218,7 +222,11 @@ form {
 
 #profpic_reg {
     display: block;
-    width:400px;
+    width: 320px;
+    height: 320px;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 18px;
     margin-left: 10px;
 }
 
@@ -239,7 +247,11 @@ form {
 
     #profpic_mob {
         display: block;
-        width: 70%;
+        width: min(100%, 280px);
+        height: min(100vw - 32px, 280px);
+        object-fit: cover;
+        object-position: center;
+        border-radius: 16px;
     }
 
     #picdiv_mob div {
@@ -270,7 +282,11 @@ form {
 @media screen and (max-width: 600px) {
     #profpic_mob {
         display: block;
-        width: 100%;
+        width: min(100%, 260px);
+        height: min(100vw - 24px, 260px);
+        object-fit: cover;
+        object-position: center;
+        border-radius: 16px;
     }
 
     #picdiv_mob {
