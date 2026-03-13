@@ -211,23 +211,36 @@ import {
   `
 
     const StyledSelect = styled(Select)`
-        background-color: #333;
-        color: #fff;
-      
-        && * {
-            font-size: 0.8rem;
-            font-family: "Monaco";
-            color: #fff;
-          margin: 0;
-          padding: 0.15rem;
+        && .MuiOutlinedInput-root {
+          background-color: #333;
+          color: #fff;
+          border-radius: 0;
+          font-family: "Monaco";
         }
-      
-      .textCell {
-        color: #fff;
-        text-align: center;
-        font-family: "Monaco";
-        margin: 0;
-      }
+
+        && .MuiOutlinedInput-notchedOutline {
+          border-color: #1e7662;
+        }
+
+        &&:hover .MuiOutlinedInput-notchedOutline {
+          border-color: #2c9d84;
+        }
+
+        &&.Mui-focused .MuiOutlinedInput-notchedOutline,
+        && .Mui-focused .MuiOutlinedInput-notchedOutline {
+          border-color: #2c9d84;
+        }
+
+        && .MuiSelect-select {
+          color: #fff;
+          font-size: 0.8rem;
+          font-family: "Monaco";
+          padding: 0.45rem 1.9rem 0.45rem 0.7rem;
+        }
+
+        && .MuiSvgIcon-root {
+          color: #fff;
+        }
     `;
 
     const StyledFormControl = styled(FormControl)`
@@ -440,7 +453,7 @@ import {
     const MetadataNotesFieldWrapper = styled(MetadataField)`
       grid-column: 1 / -1;
       justify-self: center;
-      width: min(100%, 760px);
+      width: min(100%, 680px);
     `;
 
     const MetadataActionField = styled(MetadataField)`
@@ -465,6 +478,11 @@ import {
       flex-wrap: wrap;
     `;
 
+    const MetadataActionPrimaryButton = styled(StyledButton)`
+      margin: 0;
+      min-width: 210px;
+    `;
+
     const PlayerNameStack = styled.div`
       display: flex;
       justify-content: center;
@@ -486,7 +504,7 @@ import {
       justify-content: center;
       position: absolute;
       top: -0.56rem;
-      right: -0.75rem;
+      right: -0.58rem;
       pointer-events: none;
       transform-origin: left bottom;
       z-index: 1;
@@ -666,6 +684,8 @@ const PlayerTable = () => {
     const [stylePoints, setStylePoints] = useState({}); // { Alex: 1.0, Ichigo: 0.5, ... }
     const [isStylePointDialogOpen, setIsStylePointDialogOpen] = useState(false);
     const [selectedStylePointPlayer, setSelectedStylePointPlayer] = useState('');
+    const [isTiebreakDialogOpen, setIsTiebreakDialogOpen] = useState(false);
+    const [selectedTiebreakPlayer, setSelectedTiebreakPlayer] = useState('');
 
     const playerNamesDisplay = useMemo(
       () => (players || []).map(getDisplayNameForPlayerField),
@@ -1641,26 +1661,6 @@ const PlayerTable = () => {
     }, [crownedWinner, markDirty, players, sortedPlayersForDisplay, tiebreakWinner]);
 
     useEffect(() => {
-      const handleOpenStylePointDialog = () => {
-        const defaultRecipient = sortedPlayersForDisplay[0] || players[0] || '';
-        if (!defaultRecipient) {
-          return;
-        }
-
-        setSelectedStylePointPlayer(currentSelection => (
-          currentSelection && players.includes(currentSelection) ? currentSelection : defaultRecipient
-        ));
-        setIsStylePointDialogOpen(true);
-      };
-
-      window.addEventListener('scoresheet:award-style-point', handleOpenStylePointDialog);
-
-      return () => {
-        window.removeEventListener('scoresheet:award-style-point', handleOpenStylePointDialog);
-      };
-    }, [players, sortedPlayersForDisplay]);
-
-    useEffect(() => {
       if (!openDatePicker) {
         return undefined;
       }
@@ -1723,6 +1723,35 @@ const PlayerTable = () => {
       }));
     }, []);
 
+    const openStylePointDialog = useCallback(() => {
+      const defaultRecipient = sortedPlayersForDisplay[0] || players[0] || '';
+      if (!defaultRecipient) {
+        return;
+      }
+
+      setSelectedStylePointPlayer(currentSelection => (
+        currentSelection && players.includes(currentSelection) ? currentSelection : defaultRecipient
+      ));
+      setIsStylePointDialogOpen(true);
+    }, [players, sortedPlayersForDisplay]);
+
+    const openTiebreakDialog = useCallback(() => {
+      const defaultRecipient =
+        getScoreFieldForName(tiebreakWinner) ||
+        sortedPlayersForDisplay[0] ||
+        players[0] ||
+        '';
+
+      if (!defaultRecipient) {
+        return;
+      }
+
+      setSelectedTiebreakPlayer(currentSelection => (
+        currentSelection && players.includes(currentSelection) ? currentSelection : defaultRecipient
+      ));
+      setIsTiebreakDialogOpen(true);
+    }, [players, sortedPlayersForDisplay, tiebreakWinner]);
+
     const handleAwardStylePoint = () => {
       if (!selectedStylePointPlayer) {
         return;
@@ -1739,6 +1768,13 @@ const PlayerTable = () => {
           triggerStylePointBurst(awardedPlayerField);
         });
       });
+    };
+
+    const handleSetTiebreakWinner = () => {
+      const displayName = getDisplayNameForPlayerField(selectedTiebreakPlayer);
+      setTiebreakWinner(displayName);
+      setIsTiebreakDialogOpen(false);
+      markDirty();
     };
 
     useEffect(() => {
@@ -2739,28 +2775,15 @@ const PlayerTable = () => {
       <MetadataSection>
         <MetadataGrid>
           <MetadataActionField>
-            <MetadataFieldLabel>Tiebreak Winner</MetadataFieldLabel>
             <MetadataActionRow>
-              <MetadataFormControl sx={{ width: 'min(100%, 240px)' }}>
-                <StyledSelect
-                  displayEmpty
-                  value={tiebreakWinner}
-                  onChange={(e) => {
-                    setTiebreakWinner(e.target.value);
-                    markDirty();
-                  }}
-                >
-                  <MenuItem value="">—</MenuItem>
-                  {playerNamesDisplay.map((name) => (
-                    <MenuItem key={name} value={name}>{name}</MenuItem>
-                  ))}
-                </StyledSelect>
-              </MetadataFormControl>
               <MetadataActionButtons>
+                <MetadataActionPrimaryButton type="button" onClick={openTiebreakDialog}>
+                  {tiebreakWinner ? `Tiebreak: ${tiebreakWinner}` : 'Set Tiebreak Winner'}
+                </MetadataActionPrimaryButton>
                 <StyledButton type="button" onClick={() => window.dispatchEvent(new Event('scoresheet:crown-winner'))}>
                   Crown Winner
                 </StyledButton>
-                <StyledButton type="button" onClick={() => window.dispatchEvent(new Event('scoresheet:award-style-point'))}>
+                <StyledButton type="button" onClick={openStylePointDialog}>
                   Award Style Point
                 </StyledButton>
               </MetadataActionButtons>
@@ -2855,6 +2878,96 @@ const PlayerTable = () => {
           </StyledButton>
           <StyledButton type="button" onClick={handleAwardStylePoint}>
             Award
+          </StyledButton>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={isTiebreakDialogOpen}
+        onClose={() => setIsTiebreakDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            backgroundColor: '#333',
+            color: '#fff',
+            borderRadius: 0,
+            border: '1px solid #1e7662',
+            boxShadow: '0 16px 36px rgba(0, 0, 0, 0.45)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Monaco, monospace', color: '#fff' }}>Set Tiebreak Winner</DialogTitle>
+        <DialogContent sx={{ color: '#fff' }}>
+          <Box sx={{ pt: 1 }}>
+            <FormControl
+              fullWidth
+              sx={{
+                '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.72)', fontFamily: 'Monaco, monospace' },
+                '& .MuiInputLabel-root.Mui-focused': { color: '#fff' },
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: '#333',
+                  color: '#fff',
+                  fontFamily: 'Monaco, monospace',
+                },
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#1e7662',
+                },
+                '& .MuiSvgIcon-root': { color: '#fff' },
+              }}
+            >
+              <InputLabel id="tiebreak-player-label">Player</InputLabel>
+              <Select
+                labelId="tiebreak-player-label"
+                value={selectedTiebreakPlayer}
+                label="Player"
+                onChange={(event) => setSelectedTiebreakPlayer(event.target.value)}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      backgroundColor: '#333',
+                      color: '#fff',
+                      border: '1px solid #1e7662',
+                      '& .MuiMenuItem-root': {
+                        fontFamily: 'Monaco, monospace',
+                      },
+                      '& .MuiMenuItem-root.Mui-selected': {
+                        backgroundColor: '#1e7662',
+                      },
+                      '& .MuiMenuItem-root:hover': {
+                        backgroundColor: '#185e4f',
+                      },
+                    },
+                  },
+                }}
+              >
+                <MenuItem value="">— None —</MenuItem>
+                {sortedPlayersForDisplay.map((playerField) => (
+                  <MenuItem key={playerField} value={playerField}>
+                    {getDisplayNameForPlayerField(playerField)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <StyledButton type="button" onClick={() => setIsTiebreakDialogOpen(false)}>
+            Cancel
+          </StyledButton>
+          <StyledButton
+            type="button"
+            onClick={() => {
+              if (!selectedTiebreakPlayer) {
+                setTiebreakWinner('');
+                setIsTiebreakDialogOpen(false);
+                markDirty();
+                return;
+              }
+
+              handleSetTiebreakWinner();
+            }}
+          >
+            Save
           </StyledButton>
         </DialogActions>
       </Dialog>
