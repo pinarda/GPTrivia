@@ -69,7 +69,7 @@ function isRicochetColor(color) {
     return false;
   }
 
-  return (hue >= 95 && hue <= 165) || hue <= 22 || hue >= 338;
+  return (hue >= 90 && hue <= 190) || hue <= 22 || hue >= 338;
 }
 
 function collectRicochetSurfaces() {
