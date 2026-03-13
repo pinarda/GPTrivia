@@ -18,7 +18,7 @@
         <div class="profile-actions-container">
             <div id="picdiv_mob">
                 <div>
-                    <img id="profpic_mob" src="{{ profile_user.profile.profile_picture.url }}" alt="{{ player_name }}'s Profile Picture">
+                    <img id="profpic_mob" src="{{ profile_picture_url }}" alt="{{ player_name }}'s Profile Picture">
                 </div>
             </div>
 
@@ -26,7 +26,7 @@
                 <h2>Creator Information:</h2>
                 <button class="expand-collapse-button" id="toggleTable" onclick="toggleCreatedRounds()">Created Round Category Counts</button>
                 <button class="expand-collapse-button" id="roundsButton" onclick="toggleRounds()">Show/Hide Created Rounds</button>
-                {% if user.is_authenticated and user.username == player_name %}
+                {% if profile_user and user.is_authenticated and user.username == player_name %}
                 <div>
                     <form method="post" action="{% url 'upload_profile_picture' %}" enctype="multipart/form-data">
                         {% csrf_token %}
@@ -35,19 +35,19 @@
                     </form>
                 </div>
                 {% endif %}
-                {% if user.is_authenticated and user.username == player_name %}
+                {% if profile_user and user.is_authenticated and user.username == player_name %}
                     <form action={% url 'password_change' %}>
                         <button class="expand-collapse-button" id="passwordbtn">Change Password</button>
                     </form>
                 {% endif %}
-                {% if user.is_authenticated and user.username == player_name %}
+                {% if profile_user and user.is_authenticated and user.username == player_name %}
                     <button class="expand-collapse-button" id="notificationbtn">Enable Notifications</button>
                 {% endif %}
             </div>
 
             <div id="picdiv_reg">
                 <div>
-                    <img id="profpic_reg" src="{{ profile_user.profile.profile_picture.url }}" alt="{{ player_name }}'s Profile Picture">
+                    <img id="profpic_reg" src="{{ profile_picture_url }}" alt="{{ player_name }}'s Profile Picture">
                 </div>
             </div>
 

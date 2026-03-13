@@ -1,3 +1,8 @@
+import {
+  getDisplayNameForPlayerField,
+  getPlayerFieldForName as getPlayerFieldForNameFromScores,
+} from './playerScores';
+
 function normalizePlayerName(name) {
   return String(name || '')
     .replace(/^score_/, '')
@@ -20,21 +25,16 @@ function parsePresentationDate(presentation) {
 }
 
 export function getDisplayNameForPlayer(playerField) {
-  const name = String(playerField || '').replace(/^score_/, '');
-  if (!name) {
-    return '';
-  }
-
-  return name.charAt(0).toUpperCase() + name.slice(1);
+  return getDisplayNameForPlayerField(playerField);
 }
 
 export function getPlayerFieldForName(players, playerName) {
-  const normalizedPlayerName = normalizePlayerName(playerName);
-  if (!normalizedPlayerName) {
+  const playerField = getPlayerFieldForNameFromScores(playerName);
+  if (!playerField) {
     return null;
   }
 
-  return (players || []).find(player => normalizePlayerName(player) === normalizedPlayerName) || null;
+  return (players || []).find(player => normalizePlayerName(player) === normalizePlayerName(playerField)) || null;
 }
 
 export function getInheritedCrownedWinner(presentations, selectedDate) {

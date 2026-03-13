@@ -1,3 +1,9 @@
+import {
+  getDisplayNameForPlayerField,
+  getPlayerFieldForName,
+  getRoundScoreValue,
+} from './playerScores';
+
 function roundToDisplay(value) {
   return typeof value === 'number' ? parseFloat(value.toFixed(2)) : value;
 }
@@ -18,14 +24,11 @@ function normalizeCreatorName(name) {
 
 function getScoreFieldForCreator(name) {
   const normalizedName = normalizeCreatorName(name || '');
-  if (!normalizedName) {
-    return '';
-  }
-  return `score_${normalizedName.charAt(0).toLowerCase()}${normalizedName.slice(1)}`;
+  return getPlayerFieldForName(normalizedName);
 }
 
 function playerMatchesCreator(roundCreator, player) {
-  const playerName = player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1);
+  const playerName = getDisplayNameForPlayerField(player);
   if (playerName === 'Dan') {
     return roundCreator === 'Dad' || roundCreator === 'Dan';
   }
@@ -40,7 +43,7 @@ export function getEffectiveRoundScore(scores, player, round) {
   if (scoreMap && Object.prototype.hasOwnProperty.call(scoreMap, round.title)) {
     return scoreMap[round.title];
   }
-  return round[player] ?? null;
+  return getRoundScoreValue(round, player);
 }
 
 export function getDisplayedRoundScore(scores, player, round) {

@@ -6,8 +6,13 @@ from sklearn.decomposition import PCA
 
 from GPTrivia.models import GPTriviaRound, MergedPresentation
 from django.views import View
-from .views import playerColorMapping
 from django.db.models import Q
+from .player_scores import (
+    display_name_for_player_field,
+    flatten_round_for_analysis,
+    get_player_color,
+    player_field_for_name,
+)
 
 
 
@@ -25,6 +30,32 @@ def calculate_pvalues(df):
 
 class PlayerAnalysisPlot(View):
 
+    @staticmethod
+    def _queryset_to_records(queryset):
+        return [flatten_round_for_analysis(round_obj) for round_obj in queryset]
+
+    @staticmethod
+    def _records_with_scores(records):
+        scored_records = []
+        for record in records:
+            if any(
+                value is not None
+                for key, value in record.items()
+                if str(key).startswith('score_')
+            ):
+                scored_records.append(record)
+        return scored_records
+
+    @staticmethod
+    def _records_to_df(records):
+        if not records:
+            return pd.DataFrame()
+        return pd.DataFrame(records)
+
+    @staticmethod
+    def _score_columns(df):
+        return [col for col in df.columns if str(col).startswith('score_')]
+
     def get(self, request):
         creator = request.GET.get('creator', '')
         category = request.GET.get('category', '')
@@ -33,60 +64,42 @@ class PlayerAnalysisPlot(View):
         chart_type = request.GET.get('chart_type', '')
         dadj = request.GET.get('dadj', '')
         queryset_rounds_1 = GPTriviaRound.objects.all()
-        # remove any rounds where all the scores are nan
-        score_fields = [
-            'score_alex', 'score_ichigo', 'score_megan', 'score_zach', 'score_jenny',
-            'score_debi', 'score_dan', 'score_chris', 'score_drew', 'score_jeff',
-            'score_dillon', 'score_paige', 'score_tom'
-        ]
-        score_filter = Q()
-        for field in score_fields:
-            score_filter |= ~Q(**{field: None})
-        queryset_rounds = queryset_rounds_1.filter(score_filter)
-
-        filtered_rounds = self.filter_data(queryset_rounds, creator, category, player, misc)
-        # for each round, scale the scores to be out of 10 by dividing by the max score
-        for round_data in filtered_rounds:
-            max_score = round_data.max_score
-            if max_score:  # Ensure max_score is not None or 0 to avoid division errors
-                for field in score_fields:
-                    score_value = getattr(round_data, field)
-                    if score_value is not None:  # Ensure score_value is not None
-                        adjusted_score = (score_value / max_score) * 10
-                        setattr(round_data, field, adjusted_score)
+        queryset_rounds = self.filter_data(queryset_rounds_1, creator, category, player, misc)
+        filtered_rounds = self._records_with_scores(self._queryset_to_records(queryset_rounds))
+        all_rounds = self._records_with_scores(self._queryset_to_records(queryset_rounds_1))
 
         if chart_type == 'chart1':
-            return self.get_chart1_data(filtered_rounds, queryset_rounds, creator, category, player, misc)
+            return self.get_chart1_data(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'bar':
-            return self.get_bar_data(filtered_rounds, queryset_rounds, creator, category, player, misc)
+            return self.get_bar_data(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'violin':
-            return self.get_violin_data(filtered_rounds, queryset_rounds, creator, category, player, misc)
+            return self.get_violin_data(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'pca':
-            return self.get_pca_data(filtered_rounds, queryset_rounds, creator, category, player, misc)
+            return self.get_pca_data(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'corr':
-            return self.get_correlation_matrix(filtered_rounds, queryset_rounds, creator, category, player, misc)
+            return self.get_correlation_matrix(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'category_bar':
-            return self.category_bar_chart(filtered_rounds, queryset_rounds, creator, category, player, misc)
+            return self.category_bar_chart(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'creator_bar':
-            return self.category_bar_chart(filtered_rounds, queryset_rounds, creator, "None", player, misc)
+            return self.category_bar_chart(filtered_rounds, all_rounds, creator, "None", player, misc)
         if chart_type == 'player_bar':
-            return self.category_bar_chart(filtered_rounds, queryset_rounds, creator, category, player, misc)
+            return self.category_bar_chart(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'player_cat_bar':
-            return self.category_bar_chart(filtered_rounds, queryset_rounds, creator, "None", player, misc)
+            return self.category_bar_chart(filtered_rounds, all_rounds, creator, "None", player, misc)
         if chart_type == 'player_violin':
-            return self.category_violin_chart(filtered_rounds, queryset_rounds, creator, category, player, misc)
+            return self.category_violin_chart(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'creator_violin':
-            return self.category_violin_chart(filtered_rounds, queryset_rounds, creator, "None", player, misc)
+            return self.category_violin_chart(filtered_rounds, all_rounds, creator, "None", player, misc)
         if chart_type == 'time_series_creator':
-            return self.time_series_creator(filtered_rounds, queryset_rounds, creator, category, player, misc)
+            return self.time_series_creator(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'rounds_table':
             return self.get_table_data(filtered_rounds, creator, category, player, misc)
         if chart_type == 'bias_chart':
-            return self.get_bias_chart_data(filtered_rounds, queryset_rounds, creator, category, player, misc, dadj)
+            return self.get_bias_chart_data(filtered_rounds, all_rounds, creator, category, player, misc, dadj)
         if chart_type == 'trivia_night_streak':
-            return self.trivia_night_streak(filtered_rounds, queryset_rounds_1, creator, category, player, misc)
+            return self.trivia_night_streak(filtered_rounds, self._queryset_to_records(queryset_rounds_1), creator, category, player, misc)
         if chart_type == 'joker_percentage':
-            return self.joker_percentage(filtered_rounds, queryset_rounds, creator, category, player, misc)
+            return self.joker_percentage(filtered_rounds, all_rounds, creator, category, player, misc)
         else:
             return JsonResponse({'error': 'Invalid chart type'}, status=400)
 
@@ -100,13 +113,16 @@ class PlayerAnalysisPlot(View):
         return queryset
 
     def get_table_data(self, rounds, creator, category, player, misc):
-        score_columns = [col for col in rounds.values()[0].keys() if col.startswith('score_')]
-        rounds_list = list(
-            rounds.values('title', 'date', 'major_category', 'max_score', 'round_number', 'cooperative', 'link',
-                          'creator', *score_columns))
+        if not rounds:
+            return JsonResponse({'columns': [], 'rounds': []})
+
+        df = self._records_to_df(rounds)
+        score_columns = self._score_columns(df)
+        rounds_list = df[['title', 'date', 'major_category', 'max_score', 'round_number', 'cooperative', 'link',
+                          'creator', *score_columns]].to_dict(orient='records')
 
         if player:
-            player_column = f'score_{player.lower()}'
+            player_column = player_field_for_name(player)
             if player_column not in score_columns:
                 return JsonResponse({'error': f'Score column for player {player} not found'}, status=400)
             for round_data in rounds_list:
@@ -149,10 +165,10 @@ class PlayerAnalysisPlot(View):
 
     def get_chart1_data(self, rounds, unfiltered_rounds, creator, category, player, misc):
         # Create a DataFrame from the queryset
-        df = pd.DataFrame(list(rounds.values()))
+        df = self._records_to_df(rounds)
 
         # Filter columns that start with "score_"
-        score_columns = [col for col in df.columns if col.startswith('score_')]
+        score_columns = self._score_columns(df)
         if not score_columns:
             return JsonResponse({'error': 'No score columns found'}, status=400)
 
@@ -193,25 +209,26 @@ class PlayerAnalysisPlot(View):
             return JsonResponse({'error': str(e)}, status=500)
 
     def get_bar_data(self, rounds, unfiltered_rounds, creator, category, player, misc):
-        df = pd.DataFrame(list(rounds.values()))
-        score_columns = [col for col in df.columns if col.startswith('score_')]
+        df = self._records_to_df(rounds)
+        unfiltered_df = self._records_to_df(unfiltered_rounds)
+        score_columns = self._score_columns(df)
         if not score_columns:
             return JsonResponse({'error': 'No score columns found'}, status=400)
         mean_scores = df[score_columns].mean(skipna=True)
-        unfiltered_mean_scores = pd.DataFrame(list(unfiltered_rounds.values()))[score_columns].mean(skipna=True)
-        players = [col.replace('score_', '') for col in score_columns]
+        unfiltered_mean_scores = unfiltered_df[score_columns].mean(skipna=True)
+        players = [display_name_for_player_field(col) for col in score_columns]
         plot_values = mean_scores - unfiltered_mean_scores
         # turn the plot values into a list, and use the playernames as the x-axis
         plot_values = plot_values.tolist()
 
-        colors = [playerColorMapping.get(player.capitalize(), '#333333') for player in players]
+        colors = [get_player_color(player) for player in players]
         # omit the player name that is equal to the creator
-        plot_values = [plot_values[i] for i, player in enumerate(players) if player != creator.lower()]
+        plot_values = [plot_values[i] for i, player_name in enumerate(players) if player_name.lower() != creator.lower()]
         plot_values = [0 if np.isnan(value) else value for value in plot_values]
 
-        colors = [color for i, color in enumerate(colors) if players[i] != creator.lower()]
+        colors = [color for i, color in enumerate(colors) if players[i].lower() != creator.lower()]
 
-        if creator.lower() in players:
+        if creator and any(player_name.lower() == creator.lower() for player_name in players):
             name = f'{creator.capitalize()}\'s'
         else:
             name = f'All'
@@ -221,13 +238,11 @@ class PlayerAnalysisPlot(View):
         else:
             cat = ''
 
-        players = [player for player in players if player != creator.lower()]
+        players = [player_name for player_name in players if player_name.lower() != creator.lower()]
         # sort the scores in descending order, (and the players accordingly, and also the colors)
         plot_values, players, colors = zip(*sorted(zip(plot_values, players, colors), reverse=True))
         #replace all nan plot values with 0
 
-        # capitolize the player names
-        players = [player.capitalize() for player in players]
         try:
             response_data = {
                 'players': players,
@@ -242,14 +257,14 @@ class PlayerAnalysisPlot(View):
             return JsonResponse({'error': str(e)}, status=500)
 
     def get_violin_data(self, rounds, unfiltered_rounds, creator, category, player, misc):
-        df = pd.DataFrame(list(rounds.values()))
-        unfiltered_df = pd.DataFrame(list(unfiltered_rounds.values()))
-        score_columns = [col for col in df.columns if col.startswith('score_')]
+        df = self._records_to_df(rounds)
+        unfiltered_df = self._records_to_df(unfiltered_rounds)
+        score_columns = self._score_columns(df)
         if not score_columns:
             return JsonResponse({'error': 'No score columns found'}, status=400)
 
-        players = [col.replace('score_', '').capitalize() for col in score_columns]
-        colors = [playerColorMapping.get(player.capitalize(), '#333333') for player in players]
+        players = [display_name_for_player_field(col) for col in score_columns]
+        colors = [get_player_color(player_name) for player_name in players]
 
         data = []
 
@@ -299,12 +314,13 @@ class PlayerAnalysisPlot(View):
 
     def get_pca_data(self, rounds, unfiltered_rounds, creator, category, player, misc):
         # Create a DataFrame from the queryset
-        df = pd.DataFrame(list(rounds.values()))
+        df = self._records_to_df(rounds)
 
         # Filter columns that start with "score_"
-        score_columns = [col for col in df.columns if col.startswith('score_')]
+        score_columns = self._score_columns(df)
         # remove the column that is equal to the creator
-        score_columns = [col for col in score_columns if col != f'score_{creator.lower()}']
+        creator_field = player_field_for_name(creator) if creator else ''
+        score_columns = [col for col in score_columns if col != creator_field]
         if not score_columns:
             return JsonResponse({'error': 'No score columns found'}, status=400)
 
@@ -339,7 +355,7 @@ class PlayerAnalysisPlot(View):
         extreme_titles_pc2 = get_extreme_titles('PC2')
         extreme_titles_pc3 = get_extreme_titles('PC3')
 
-        players = [col.replace('score_', '').capitalize() for col in score_columns]
+        players = [display_name_for_player_field(col) for col in score_columns]
         if creator:
             name = f'{creator.capitalize()}\'s'
         else:
@@ -350,9 +366,9 @@ class PlayerAnalysisPlot(View):
         else:
             cat = ''
 
-        colors = [playerColorMapping.get(player.capitalize(), '#333333') for player in players]
+        colors = [get_player_color(player_name) for player_name in players]
 
-        c = [col.replace('score_', '').capitalize() for col in score_columns]
+        c = [display_name_for_player_field(col) for col in score_columns]
         # Prepare the data for JSON response
         result = {
             'PC1': principal_components[:, 0].tolist(),
@@ -377,10 +393,10 @@ class PlayerAnalysisPlot(View):
 
     def get_correlation_matrix(self, filtered_rounds, queryset_rounds, creator, category, player, misc):
         # Create a DataFrame from the queryset
-        df = pd.DataFrame(list(filtered_rounds.values()))
+        df = self._records_to_df(filtered_rounds)
 
         # Filter columns that start with "score_"
-        score_columns = [col for col in df.columns if col.startswith('score_')]
+        score_columns = self._score_columns(df)
         if not score_columns:
             return JsonResponse({'error': 'No score columns found'}, status=400)
 
@@ -422,7 +438,7 @@ class PlayerAnalysisPlot(View):
         else:
             cat = ''
 
-        c = [col.replace('score_', '').capitalize() for col in score_columns]
+        c = [display_name_for_player_field(col) for col in score_columns]
 
 
         return JsonResponse({
@@ -435,10 +451,10 @@ class PlayerAnalysisPlot(View):
 
     def get_bias_chart_data(self, filtered_rounds, queryset_rounds, creator, category, player, misc, dadj):
         # Create a DataFrame from the queryset
-        df = pd.DataFrame(list(filtered_rounds.values()))
+        df = self._records_to_df(filtered_rounds)
 
         # Filter columns that start with "score_"
-        score_columns = [col for col in df.columns if col.startswith('score_')]
+        score_columns = self._score_columns(df)
         if not score_columns:
             return JsonResponse({'error': 'No score columns found'}, status=400)
 
@@ -498,7 +514,7 @@ class PlayerAnalysisPlot(View):
         else:
             cat = ''
 
-        c = [col.replace('score_', '').capitalize() for col in score_columns]
+        c = [display_name_for_player_field(col) for col in score_columns]
 
 
 
@@ -509,13 +525,13 @@ class PlayerAnalysisPlot(View):
         })
 
     def category_bar_chart(self, rounds, unfiltered_rounds, creator, category, player, misc):
-        df = pd.DataFrame(list(rounds.values()))
-        score_columns = [col for col in df.columns if col.startswith('score_')]
+        df = self._records_to_df(rounds)
+        score_columns = self._score_columns(df)
         if not score_columns:
             return JsonResponse({'error': 'No score columns found'}, status=400)
         # filter the dataframe for each unique major category and compute the mean scores
         if player:
-            player_column = f'score_{player.lower()}'
+            player_column = player_field_for_name(player)
             if player_column not in df.columns:
                 return JsonResponse({'error': f'Score column for player {player} not found'}, status=400)
             if category == "":
@@ -525,7 +541,7 @@ class PlayerAnalysisPlot(View):
                 mean_scores = mean_scores - df[player_column].mean()
                 cat_name = "Category"
             elif creator == "":
-                mean_scores = df.groupby('creator')[f'score_{player.lower()}'].mean()
+                mean_scores = df.groupby('creator')[player_column].mean()
                 # subtract the mean score of the player from the mean score of the category
                 mean_scores = mean_scores - df[player_column].mean()
                 cat_name = "Creator"
@@ -545,7 +561,7 @@ class PlayerAnalysisPlot(View):
 
 
         # unfiltered_mean_scores = pd.DataFrame(list(unfiltered_rounds.values()))[score_columns].mean(skipna=True)
-        players = [col.replace('score_', '') for col in score_columns]
+        players = [display_name_for_player_field(col) for col in score_columns]
         # plot_values = mean_scores - unfiltered_mean_scores
         # turn the plot values into a list, and use the playernames as the x-axis
         plot_values = mean_scores.tolist()
@@ -556,7 +572,7 @@ class PlayerAnalysisPlot(View):
 
         # colors = [color for i, color in enumerate(colors) if players[i] != creator.lower()]
 
-        if creator.lower() in players:
+        if creator and any(player_name.lower() == creator.lower() for player_name in players):
             name = f'{creator.capitalize()}\'s'
         else:
             name = f'All'
@@ -568,14 +584,12 @@ class PlayerAnalysisPlot(View):
         else:
             cat = ''
 
-        players = [player for player in players if player != creator.lower()]
+        players = [player_name for player_name in players if player_name.lower() != creator.lower()]
         # sort the scores in descending order, (and the players accordingly, and also the colors)
         plot_values, categories = zip(*sorted(zip(plot_values, categories), reverse=True))
         #replace all nan plot values with 0
 
-        # capitalize the player names
-        players = [player.capitalize() for player in players]
-        colors = [playerColorMapping.get(player.capitalize(), '#FFFFFF') for player in categories]
+        colors = [get_player_color(category_name) for category_name in categories]
 
         try:
             response_data = {
@@ -591,20 +605,20 @@ class PlayerAnalysisPlot(View):
             return JsonResponse({'error': str(e)}, status=500)
 
     def category_violin_chart(self, rounds, unfiltered_rounds, creator, category, player, misc):
-        df = pd.DataFrame(list(rounds.values()))
-        score_columns = [col for col in df.columns if col.startswith('score_')]
+        df = self._records_to_df(rounds)
+        score_columns = self._score_columns(df)
         if not score_columns:
             return JsonResponse({'error': 'No score columns found'}, status=400)
 
         # Ensure player column is available if specified
         if player:
-            player_column = f'score_{player.lower()}'
+            player_column = player_field_for_name(player)
             if player_column not in df.columns:
                 return JsonResponse({'error': f'Score column for player {player} not found'}, status=400)
 
         # Prepare data for violin plot
         if player:
-            player_column = f'score_{player.lower()}'
+            player_column = player_field_for_name(player)
             if category == "":
 
                 data = df.groupby('major_category')[player_column].apply(list).reset_index(name='scores')
@@ -664,7 +678,7 @@ class PlayerAnalysisPlot(View):
         plot_data = data.iloc[:, 1].tolist()
         hover_texts = data['hover_text'].tolist()
 
-        colors = [playerColorMapping.get(player.capitalize(), '#FFFFFF') for player in categories]
+        colors = [get_player_color(category_name) for category_name in categories]
 
         try:
             response_data = {
@@ -681,7 +695,7 @@ class PlayerAnalysisPlot(View):
             return JsonResponse({'error': str(e)}, status=500)
 
     def time_series_creator(self, rounds, unfiltered_rounds, creator, category, player, misc):
-        df = pd.DataFrame(list(rounds.values()))
+        df = self._records_to_df(rounds)
 
         if creator:
             name = f'{creator.capitalize()}\'s'
@@ -694,7 +708,7 @@ class PlayerAnalysisPlot(View):
             cat = ''
 
         if player:
-            player_column = f'score_{player.lower()}'
+            player_column = player_field_for_name(player)
             if player_column not in df.columns:
                 return JsonResponse({'error': f'Score column for player {player} not found'}, status=400)
 
@@ -756,7 +770,7 @@ class PlayerAnalysisPlot(View):
                     'titles': plot_values['title'].tolist(),
                     'creators': plot_values['creator'].tolist(),
                     'adjusted_scores': plot_values['adjusted_final_score'].tolist(),
-                    'colors': playerColorMapping.get(player.capitalize(), '#FFFFFF'),
+                    'colors': get_player_color(player),
                     'title': f'Performance ({span}-Round Halflife EWMA) on {name}{cat} Rounds',
                     'xaxis': "Week",
                     'yaxis': 'Mean Score Adjustment'
@@ -769,7 +783,7 @@ class PlayerAnalysisPlot(View):
 
     def trivia_night_streak(self, rounds, unfiltered_rounds, creator, category, player, misc):
         # Create a DataFrame from the queryset
-        df = pd.DataFrame(list(unfiltered_rounds.values()))
+        df = self._records_to_df(unfiltered_rounds)
 
         if df.empty:
             return JsonResponse({'error': 'No rounds found'}, status=400)
@@ -824,7 +838,7 @@ class PlayerAnalysisPlot(View):
 
         # Prepare the dataframe for analysis
         merged_df = pd.DataFrame(merged_data)
-        rounds_df = pd.DataFrame(list(trivia_rounds.values()))
+        rounds_df = self._records_to_df(self._queryset_to_records(trivia_rounds))
 
         # Convert the 'date' column to datetime
         rounds_df['date'] = pd.to_datetime(rounds_df['date'])
@@ -850,7 +864,7 @@ class PlayerAnalysisPlot(View):
 
             # Iterate over each player's jokered round
             for player, joker_round_name in joker_indices.items():
-                player_column = f'score_{player.lower()}'
+                player_column = player_field_for_name(player)
 
                 if player_column not in rounds_on_date.columns:
                     continue

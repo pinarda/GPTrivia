@@ -17,6 +17,12 @@ import {
   resolvePresentationPlayers,
 } from './presentationData';
 import {
+  extractPlayersFromRounds,
+  getDisplayNameForPlayerField,
+  getPlayerStorageKey,
+  removePlayerFromRound,
+} from './playerScores';
+import {
   clearCreatorScoreForRound,
   getDisplayedCreatorBonus,
   getDisplayedFinalTotal,
@@ -93,6 +99,7 @@ describe('scoresheet sync helpers', () => {
           score_jeff: null,
           score_paige: null,
           score_dillon: null,
+          extra_scores: {},
         },
       },
       serverPresentationSnapshot: {
@@ -288,6 +295,15 @@ describe('scoresheet player defaults', () => {
     ).toEqual({ alex: 'Round 1', megan: 'Round 2' });
   });
 
+  test('normalizes saved arbitrary player names into score fields', () => {
+    expect(
+      resolvePresentationPlayers(
+        { 'Sam Guest': 'Sam Guest', score_alex: 'score_alex' },
+        DEFAULT_VISIBLE_PLAYERS,
+      ),
+    ).toEqual(['score_sam guest', 'score_alex']);
+  });
+
   test('preserves a saved empty-night roster instead of restoring default players', () => {
     expect(
       resolvePresentationPlayers(
@@ -295,6 +311,54 @@ describe('scoresheet player defaults', () => {
         DEFAULT_VISIBLE_PLAYERS,
       ),
     ).toEqual(['score_alex', 'score_megan']);
+  });
+
+  test('only infers players from rounds when they actually have stored scores', () => {
+    expect(
+      extractPlayersFromRounds([
+        { title: 'Round 1', score_alex: null, score_guest: null },
+        { title: 'Round 2', score_alex: 5, extra_scores: { score_guest: 8 } },
+      ]),
+    ).toEqual(['score_alex', 'score_guest']);
+  });
+
+  test('removing a player clears their stored scores for the night', () => {
+    expect(
+      removePlayerFromRound(
+        {
+          title: 'Round 1',
+          score_alex: 6,
+          score_guest: 9,
+          extra_scores: { score_guest: 9 },
+        },
+        'score_guest',
+      ),
+    ).toEqual({
+      title: 'Round 1',
+      score_alex: 6,
+      extra_scores: {},
+    });
+
+    expect(
+      removePlayerFromRound(
+        {
+          title: 'Round 1',
+          score_alex: 6,
+          extra_scores: {},
+        },
+        'score_alex',
+      ),
+    ).toEqual({
+      title: 'Round 1',
+      score_alex: null,
+      extra_scores: {},
+    });
+  });
+
+  test('uses the same player storage keys for joker hydration as save payloads', () => {
+    expect(getPlayerStorageKey('score_alex')).toBe('alex');
+    expect(getPlayerStorageKey('score_sam guest')).toBe('sam guest');
+    expect(getDisplayNameForPlayerField('score_sam guest')).toBe('Sam Guest');
   });
 });
 

@@ -1,3 +1,5 @@
+import { getPlayerFieldForName } from './playerScores';
+
 export function parsePresentationJson(value, fallback) {
   if (value === null || value === undefined || value === '') {
     return fallback;
@@ -30,7 +32,9 @@ export function resolvePresentationPlayers(playerList, defaultPlayers) {
     return [...defaultPlayers];
   }
 
-  return Object.keys(parsedPlayerList);
+  return Object.keys(parsedPlayerList)
+    .map(player => getPlayerFieldForName(player))
+    .filter(Boolean);
 }
 
 export function resolveJokerRoundIndices(jokerRoundIndices) {

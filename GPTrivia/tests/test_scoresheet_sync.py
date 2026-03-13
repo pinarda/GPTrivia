@@ -131,6 +131,119 @@ class ScoresheetSyncTests(TestCase):
         self.assertEqual(callbacks, [])
         broadcast.assert_not_called()
 
+    def test_patch_save_persists_dynamic_player_scores_in_extra_scores(self):
+        payload = {
+            "presentation_id": self.presentation.presentation_id,
+            "selected_date": "2026-03-12",
+            "client_id": "client-1",
+            "mutation_id": "mutation-dynamic-save",
+            "round_updates": [
+                {
+                    "id": self.round.id,
+                    "fields": {
+                        "extra_scores": {
+                            "score_guest": 9,
+                        },
+                    },
+                }
+            ],
+            "presentation_updates": {
+                "player_list": {
+                    "score_alex": "score_alex",
+                    "score_megan": "score_megan",
+                    "score_guest": "score_guest",
+                },
+            },
+        }
+
+        response = self.client.post(
+            reverse("save_scores"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.round.refresh_from_db()
+        self.presentation.refresh_from_db()
+        self.assertEqual(self.round.extra_scores, {"score_guest": 9})
+        self.assertEqual(
+            self.presentation.player_list,
+            {
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+                "score_guest": "score_guest",
+            },
+        )
+
+    def test_patch_save_removes_deleted_dynamic_player_scores(self):
+        self.round.extra_scores = {"score_guest": 9}
+        self.round.save(update_fields=["extra_scores"])
+        self.presentation.player_list = {
+            "score_alex": "score_alex",
+            "score_megan": "score_megan",
+            "score_guest": "score_guest",
+        }
+        self.presentation.save(update_fields=["player_list"])
+
+        payload = {
+            "presentation_id": self.presentation.presentation_id,
+            "selected_date": "2026-03-12",
+            "client_id": "client-1",
+            "mutation_id": "mutation-dynamic-remove",
+            "round_updates": [
+                {
+                    "id": self.round.id,
+                    "fields": {
+                        "extra_scores": {},
+                    },
+                }
+            ],
+            "presentation_updates": {
+                "player_list": {
+                    "score_alex": "score_alex",
+                    "score_megan": "score_megan",
+                },
+            },
+        }
+
+        response = self.client.post(
+            reverse("save_scores"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.round.refresh_from_db()
+        self.presentation.refresh_from_db()
+        self.assertEqual(self.round.extra_scores, {})
+        self.assertEqual(
+            self.presentation.player_list,
+            {
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+            },
+        )
+
+    def test_analysis_views_include_dynamic_players(self):
+        self.round.extra_scores = {"score_guest": 9}
+        self.round.save(update_fields=["extra_scores"])
+        self.presentation.player_list = {
+            "score_alex": "score_alex",
+            "score_megan": "score_megan",
+            "score_guest": "score_guest",
+        }
+        self.presentation.save(update_fields=["player_list"])
+
+        analysis_response = self.client.get(reverse("player_analysis"))
+        rounds_response = self.client.get(reverse("rounds_list"))
+
+        self.assertEqual(analysis_response.status_code, 200)
+        self.assertIn("Guest", analysis_response.context["players"])
+        self.assertEqual(analysis_response.context["mapping"]["Guest"], "score_guest")
+
+        self.assertEqual(rounds_response.status_code, 200)
+        self.assertIn("score_guest", rounds_response.context["player_fields"])
+
     def test_create_round_broadcasts_identity_after_commit(self):
         with patch("GPTrivia.views._broadcast_scoresheet_message") as broadcast:
             with self.captureOnCommitCallbacks(execute=False) as callbacks:

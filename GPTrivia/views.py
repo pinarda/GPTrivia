@@ -49,32 +49,23 @@ from django.http import JsonResponse
 from django.core import serializers
 from rest_framework.renderers import JSONRenderer
 from datetime import date
-from django.contrib.postgres.fields import JSONField  # Import this at the top of your file
 from .models import JeopardyQuestion, JeopardyRound, PushSubscription
+from .player_scores import (
+    FIXED_SCORE_FIELDS,
+    build_player_color_mapping,
+    build_player_text_mapping,
+    collect_player_fields,
+    display_name_for_player_field,
+    flatten_round_for_analysis,
+    get_all_player_fields,
+    get_player_color,
+    get_round_score_map,
+    player_field_for_name,
+    set_round_score_map,
+)
 
 
 gmail_key = '8f35edc691b918094035b22807266a1e468bf5f0'
-
-playerColorMapping = {
-            'Alex': '#D2042D',
-            'Ichigo': '#ff7f0e',
-            'Megan': '#8e4585',
-            'Zach': '#A020F0',
-            'Jenny': '#ffef00',
-            'Debi': '#8551ff',
-            'Dan': '#560000',
-            'Chris': '#005427',
-            'Drew': '#8c564b',
-            'Jeff': '#66FF66',
-            'Paige': '#FF6666',
-            'Dillon': '#0000FF',
-            'Tom': '#000042',
-            'Unknown': '#333333',
-        };
-
-players = [
-    'score_alex', 'score_ichigo', 'score_megan', 'score_zach', 'score_jenny', 'score_debi',
-    'score_dan', 'score_chris', 'score_drew', 'score_tom', 'score_paige']
 
 TRIVIA_TIMEZONE = pytz.timezone('America/Los_Angeles')
 
@@ -323,79 +314,62 @@ def rounds_list(request):
     # can we reverse the order of the rounds
     rounds = rounds[::-1]
 
+    player_fields = _get_global_player_fields()
+    player_names = [display_name_for_player_field(field) for field in player_fields]
+    player_color_mapping = build_player_color_mapping(player_names)
     text_color = {}
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom", "Paige"]
-    for player in players:
-        # grab the player's hex color from the playerColorMapping dictionary
-        player_color = playerColorMapping[player]
-        # convert the hex color to a measure of brightness
+    for player in player_names:
+        player_color = player_color_mapping[player]
         brightness = (0.7 * int(player_color[1:3], 16)) + int(player_color[3:5], 16) + (0.3 * int(player_color[5:7], 16))
-        # if the brightness is less than 384, use white text, otherwise use black text
-        if brightness < 300:
-            text_color[player] = 'white'
-        else:
-            text_color[player] = 'black'
-    context = {'rounds': rounds,
-               'playerColorMapping': playerColorMapping,
-               'text_color_mapping': text_color}
+        text_color[player] = 'white' if brightness < 300 else 'black'
+
+    context = {
+        'player_fields': player_fields,
+        'player_names': player_names,
+        'round_rows': _build_round_rows(rounds, player_fields),
+        'playerColorMapping': player_color_mapping,
+        'text_color_mapping': text_color,
+    }
 
     return render(request, 'GPTrivia/rounds_list.html', context)
 
 @login_required
 def player_analysis(request):
     queryset_rounds = GPTriviaRound.objects.all()
+    player_fields = _get_global_player_fields()
+    player_names = [display_name_for_player_field(field) for field in player_fields]
+    player_name_mapping = {
+        player_name: player_field
+        for player_name, player_field in zip(player_names, player_fields)
+    }
 
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom", "Paige"]
+    creators = sorted({
+        round_obj.creator for round_obj in queryset_rounds if round_obj.creator
+    })
+    categories = sorted({
+        round_obj.major_category for round_obj in queryset_rounds if round_obj.major_category
+    })
 
-    # a dicitonary that maps the player name to the string score_playername
-    player_name_mapping = {"Alex": "score_alex", "Ichigo": "score_ichigo", "Megan": "score_megan", "Zach": "score_zach",
-                            "Jenny": "score_jenny", "Debi": "score_debi", "Dan": "score_dan", "Chris": "score_chris", "Drew": "score_drew", "Tom": "score_tom", "Paige": "score_paige"}
+    rounds = []
+    for round_obj in queryset_rounds:
+        round_data = flatten_round_for_analysis(round_obj)
+        round_data['date'] = round_obj.date.strftime("%m/%d/%Y")
+        round_data['replay'] = str(round_obj.replay).lower()
+        round_data['cooperative'] = str(round_obj.cooperative).lower()
+        for player_field in player_fields:
+            if round_data.get(player_field) is None:
+                round_data[player_field] = ''
+        rounds.append(round_data)
 
-
-    creators = set()
-    categories = set()
-
-    for round in queryset_rounds:
-        creators.add(round.creator)
-        categories.add(round.major_category)
-
-    rounds = [{
-        'creator': round.creator,
-        'title': round.title,
-        'major_category': round.major_category,
-        'minor_category1': round.minor_category1,
-        'minor_category2': round.minor_category2,
-        # convert date to string
-        'date': round.date.strftime("%m/%d/%Y"),
-        'round_number': round.round_number,
-        'max_score': round.max_score,
-        # if the player_score is None, replace with empty string
-        'score_alex': round.score_alex if round.score_alex is not None else '',
-        'score_ichigo': round.score_ichigo if round.score_ichigo is not None else '',
-        'score_megan': round.score_megan if round.score_megan is not None else '',
-        'score_zach': round.score_zach if round.score_zach is not None else '',
-        'score_jenny': round.score_jenny if round.score_jenny is not None else '',
-        'score_debi': round.score_debi if round.score_debi is not None else '',
-        'score_dan': round.score_dan if round.score_dan is not None else '',
-        'score_chris': round.score_chris if round.score_chris is not None else '',
-        'score_drew': round.score_drew if round.score_drew is not None else '',
-        'score_tom': round.score_tom if round.score_tom is not None else '',
-        'replay': str(round.replay).lower(),
-        'cooperative': str(round.cooperative).lower(),
-    } for round in queryset_rounds]
-
-    # set the player text mapping
-    # for each player, grab the player's hex color from the playerColorMapping dictionary
-    # convert the hex color to a measure of brightness
-    # if the brightness is less than 384, use white text, otherwise use black text
-    player_text_mapping = {player: 'white' if int(playerColorMapping[player][1:3], 16) + int(playerColorMapping[player][3:5], 16) + int(playerColorMapping[player][5:7], 16) < 480 else 'black' for player in players}
+    player_color_mapping = build_player_color_mapping(player_names)
+    player_text_mapping = build_player_text_mapping(player_names)
 
     context = {
         'rounds': rounds,
-        'playerColorMapping': playerColorMapping,
-        'creators': list(creators),
-        'categories': list(categories),
-        'players': players,
+        'playerColorMapping': player_color_mapping,
+        'creators': creators,
+        'categories': categories,
+        'players': player_names,
         "mapping": player_name_mapping,
         "player_text_mapping": player_text_mapping,
     }
@@ -406,146 +380,7 @@ def player_analysis(request):
 
 @login_required
 def player_analysis_legacy(request):
-    import numpy as np
-
-    creators = GPTriviaRound.objects.values_list('creator', flat=True).distinct()
-
-    player_averages = []
-    player_cat_averages = []
-    player_scores = []
-    player_cat_scores = []
-
-
-    #aggregate the average score regardless of creator
-    player_aggregates_ind = {
-        f"{player}__avg": Avg(
-            Case(When(**{f"{player}__isnull": True}, then=None), default=F(player)), output_field=FloatField()
-        ) for player in players
-    }
-
-    # Calculate player averages
-    averages_ind = GPTriviaRound.objects.aggregate(**player_aggregates_ind)
-    # filter out None values, replace with 0
-
-    filtered_averages_ind = {k: v or 0 for k, v in averages_ind.items()}
-
-    for creator in creators:
-        queryset = GPTriviaRound.objects.filter(creator=creator)
-
-        # Create a dictionary for aggregating player averages
-        player_aggregates = {
-            f"{player}__avg": Avg(
-                Case(When(**{f"{player}__isnull": True}, then=None), default=F(player)), output_field=FloatField()
-            ) for player in players
-        }
-
-        # Get all scores for each creator and filter out None values
-        scores = queryset.values(*players)
-        filtered_scores = []
-        for score in scores:
-            filtered_score = {key: value for key, value in score.items() if value is not None}
-            filtered_scores.append(filtered_score)
-
-        # Calculate the mean for each creator
-        means = {player: np.mean([score[player] for score in filtered_scores if player in score]) for player in players}
-
-        # Normalize the scores by subtracting the player's average over all rounds
-        normalized_scores = []
-        for score in filtered_scores:
-            normalized_score = {player: value - averages_ind[f"{player}__avg"] for player, value in score.items()}
-            normalized_scores.append(normalized_score)
-
-        # convert the creator name to a lowercase string and prepend score_ to the beginning
-        # unless the creator is Dad or Mom, in which case call them score_dan and score_debi
-        if creator == "Dad":
-            creator = "Dan"
-        elif creator == "Mom":
-            creator = "Debi"
-
-        score_c = f"score_{creator.lower()}"
-        # Then check the means dictionary for this score_c key and if it exists, delete it
-        if score_c in means:
-            del means[score_c]
-
-        player_scores.append({"creator": creator, "scores": normalized_scores, "means": means})
-
-        # Sort player_scores by the mean in descending order
-        player_scores.sort(key=lambda x: np.mean(list(x['means'].values())), reverse=True)
-        # Calculate player averages
-        averages = queryset.aggregate(**player_aggregates)
-
-     # Filter out None values, replace with 0
-        filtered_averages = {k: v or 0 for k, v in averages.items()}
-
-        #subtract the average score for each player regardless of creator from the average score for each player for the given creator
-        # unless the average score for the given creator is 0, in which case the average score for the given creator is used
-        filtered_normalized_averages = {k: v - filtered_averages_ind[k] if v != 0 else v for k, v in filtered_averages.items()}
-
-        # Add creator to the dictionary and append it to the list
-        filtered_normalized_averages['creator'] = creator
-        player_averages.append(filtered_normalized_averages)
-
-
-        # Round Category filtering
-
-        categories = GPTriviaRound.objects.values_list('major_category', flat=True).distinct()
-
-    for cat in categories:
-        queryset = GPTriviaRound.objects.filter(major_category=cat)
-
-        # Create a dictionary for aggregating player averages
-        #
-        player_cat_aggregates = {
-            f"{player}__avg": Avg(
-                Case(When(**{f"{player}__isnull": True}, then=None), default=F(player)), output_field=FloatField()
-            ) for player in players
-        }
-
-        # Get all scores for each category and filter out None values
-        scores = queryset.values(*players)
-        filtered_scores = []
-        for score in scores:
-            filtered_score = {key: value for key, value in score.items() if value is not None}
-            filtered_scores.append(filtered_score)
-
-        # Calculate player averages
-        averages = queryset.aggregate(**player_cat_aggregates)
-
-        # Calculate the mean for each creator
-        means = {player: np.mean([score[player] for score in filtered_scores if player in score]) for player in players}
-
-        # Normalize the scores by subtracting the player's average over all rounds
-        normalized_scores = []
-        for score in filtered_scores:
-            normalized_score = {player: value - averages_ind[f"{player}__avg"] for player, value in score.items()}
-            normalized_scores.append(normalized_score)
-
-
-
-        # Filter out None values, replace with 0
-        filtered_cat_averages = {k: v or 0 for k, v in averages.items()}
-
-        filtered_normalized_cat_averages = {k: v - filtered_averages_ind[k] if v != 0 else v for k, v in
-                                        filtered_cat_averages.items()}
-
-
-        # Add category to the dictionary and append it to the list
-        filtered_normalized_cat_averages['category'] = cat
-        player_cat_averages.append(filtered_normalized_cat_averages)
-
-        player_cat_scores.append({"category": cat, "scores": normalized_scores, "means": means})
-
-
-
-    return render(request, 'GPTrivia/player_analysis_legacy.html', {
-        'player_averages': player_averages,
-        'player_cat_averages': player_cat_averages,
-        'creators': creators,
-        'categories': categories,
-        'player_scores': player_scores,
-        'player_cat_scores': player_cat_scores,
-        'player_color_mapping': playerColorMapping,
-    })
+    return redirect('player_analysis')
 
 
 def upload_profile_picture(request):
@@ -562,256 +397,173 @@ def upload_profile_picture(request):
 
 @login_required
 def player_profile_dict(request, player_name):
-    # Ensure the player_name is in the correct format (e.g., title case)
-    player_name = player_name.title()
+    player_name = display_name_for_player_field(player_name)
+    score_field = player_field_for_name(player_name)
 
-    # convert the player name to a lowercase string and prepend score_ to the beginning
-    # unless the player is Dad or Mom, in which case call them score_dan and score_debi
-    if player_name == "Dad":
-        player_name = "Dan"
-    elif player_name == "Mom":
-        player_name = "Debi"
+    all_rounds = list(GPTriviaRound.objects.all().order_by('-date', 'round_number'))
+    flattened_rounds = [
+        {
+            **flatten_round_for_analysis(round_obj),
+            'normalized_creator': display_name_for_player_field(round_obj.creator),
+        }
+        for round_obj in all_rounds
+    ]
 
-    # creator name should be equal to the player name
-    # unless the player is Dan or Debi, in which case call them Dad and Mom
-    creator_name = player_name
-
-    score_p = f"score_{player_name.lower()}"
-
-    # Fetch the created round categories for the given player and sum the number of rounds in each category
-    # and call it num_rounds and order by the number of rounds in descending order
-    created_rounds_cat = (
-        GPTriviaRound.objects
-        .filter(creator=creator_name)
-        .values('major_category')
-        .annotate(num_rounds=Count('major_category'))
-        .order_by('-num_rounds')
-    )
-
-    zero_rounds_cat = (
-        GPTriviaRound.objects.values('major_category')
-    )
-
-    # Assuming created_rounds_cat and zero_rounds_cat are lists after evaluating the queryset:
-    created_rounds_cat_list = list(created_rounds_cat)
-    zero_rounds_cat_list = list(zero_rounds_cat)
-
-    # Create a set of existing major categories in created_rounds_cat for faster lookup
-    existing_categories = set([item['major_category'] for item in created_rounds_cat_list])
-
-    # Check each category in zero_rounds_cat_list
-    for item in zero_rounds_cat_list:
-        if item['major_category'] not in existing_categories:
-            created_rounds_cat_list.append({
-                'major_category': item['major_category'],
-                'num_rounds': 0
-            })
-            existing_categories.add(item['major_category'])  # update the set
-
-    # now if there's a category that the player has not created a round for, add it to the created_rounds_cat
-
-
-    # also add zeros for any categories that the player has not created a round for
-    # GPTriviaRound.objects.values('major_category').annotate(num_rounds=0).exclude(major_category__in=created_rounds_cat)
-    # then append the zeros to the created_rounds_cat
-
-
-    # Fetch the created round names for the given player, and order by creation date
-    created_rounds = (
-        GPTriviaRound.objects
-        .filter(creator=creator_name)
-        .order_by('-date')
-    )
-
-    # grab the player's hex color from the playerColorMapping dictionary
-    player_color = playerColorMapping[player_name]
-    # convert the hex color to a measure of brightness
+    global_player_names = _get_global_player_names()
+    player_color = get_player_color(player_name)
     brightness = (0.5 * int(player_color[1:3], 16)) + int(player_color[3:5], 16) + (0.25 * int(player_color[5:7], 16))
-    # if the brightness is less than 384, use white text, otherwise use black text
-    if brightness < 300:
-        text_color = 'white'
-    else:
-        text_color = 'black'
+    text_color = 'white' if brightness < 300 else 'black'
 
-    # compute the player's average score over all rounds
-    player_avg = GPTriviaRound.objects.aggregate(
-        avg_score=Avg(
-            Case(When(**{f"{score_p}__isnull": True}, then=None), default=F(score_p)), output_field=FloatField()
-        )
-    )['avg_score']
+    created_rounds = [
+        round_obj for round_obj in all_rounds
+        if display_name_for_player_field(round_obj.creator) == player_name
+    ]
+    created_rounds_count = len(created_rounds)
 
+    all_categories = sorted({
+        round_data['major_category']
+        for round_data in flattened_rounds
+        if round_data['major_category']
+    })
+    created_category_counts = {
+        category: 0
+        for category in all_categories
+    }
+    for round_obj in created_rounds:
+        if round_obj.major_category:
+            created_category_counts[round_obj.major_category] = created_category_counts.get(round_obj.major_category, 0) + 1
+    created_rounds_cat_list = [
+        {'major_category': category, 'num_rounds': created_category_counts.get(category, 0)}
+        for category in all_categories
+    ]
 
-    # compute the players average score for each category
-    category_averages = GPTriviaRound.objects.values('major_category').annotate(
-        avg_score=Avg(
-            Case(When(**{f"{score_p}__isnull": True}, then=None), default=F(score_p)), output_field=FloatField()
-        )
-    ).order_by('-avg_score', 'major_category')
+    player_values = [
+        round_data.get(score_field)
+        for round_data in flattened_rounds
+        if round_data.get(score_field) is not None
+    ]
+    player_avg = (sum(player_values) / len(player_values)) if player_values else None
+    total_rounds = len(player_values)
 
-    # subtract the category average from the player's average score
-    # this will be used to determine the relative position of the player's average score
-    # in the category
-    for cat_avg in category_averages:
-        if cat_avg['avg_score'] is not None:
-            cat_avg['avg_score'] = cat_avg['avg_score'] - player_avg
-        else:
-            cat_avg['avg_score'] = 0
+    category_averages = []
+    for category in all_categories:
+        values = [
+            round_data.get(score_field)
+            for round_data in flattened_rounds
+            if round_data['major_category'] == category and round_data.get(score_field) is not None
+        ]
+        avg_score = (sum(values) / len(values)) if values else None
+        category_averages.append({
+            'major_category': category,
+            'avg_score': (avg_score - player_avg) if avg_score is not None and player_avg is not None else 0,
+        })
+    category_averages = sorted(category_averages, key=lambda item: item['avg_score'], reverse=True)
 
-    # sort the category averages by the average score
-    category_averages = sorted(category_averages, key=lambda k: k['avg_score'], reverse=True)
+    max_avg = category_averages[0]['major_category'] if category_averages else ''
+    min_avg = category_averages[-1]['major_category'] if category_averages else ''
 
+    normalized_creators = sorted({
+        round_data['normalized_creator']
+        for round_data in flattened_rounds
+        if round_data['normalized_creator']
+    })
 
-    # save category of the round with the highest and lowest average score for the player
-    max_avg = category_averages[0]['major_category']
-    min_avg = category_averages[len(category_averages) - 1]['major_category']
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom", "Paige"]
+    creator_averages = []
+    for creator_name in normalized_creators:
+        values = [
+            round_data.get(score_field)
+            for round_data in flattened_rounds
+            if round_data['normalized_creator'] == creator_name and round_data.get(score_field) is not None
+        ]
+        avg_score = (sum(values) / len(values)) if values else None
+        if creator_name == player_name:
+            continue
+        creator_averages.append({
+            'creator': creator_name,
+            'avg_score': (avg_score - player_avg) if avg_score is not None and player_avg is not None else None,
+        })
+    creator_averages = sorted(
+        creator_averages,
+        key=lambda item: item['avg_score'] if item['avg_score'] is not None else float('-inf'),
+        reverse=True,
+    )
 
-    # count the total number of rounds the player has a score for
-    total_rounds = GPTriviaRound.objects.filter(**{f"{score_p}__isnull": False}).count()
+    eligible_creator_averages = [
+        creator_avg
+        for creator_avg in creator_averages
+        if creator_avg['creator'] in global_player_names and creator_avg['creator'] != player_name and creator_avg['avg_score'] is not None
+    ]
+    max_creator_avg = eligible_creator_averages[0]['creator'] if eligible_creator_averages else ''
+    min_creator_avg = eligible_creator_averages[-1]['creator'] if eligible_creator_averages else ''
 
-    # compute the players average score for each creator
-    creator_averages = GPTriviaRound.objects.values('creator').annotate(
-        avg_score=Avg(
-            Case(When(**{f"{score_p}__isnull": True}, then=None), default=F(score_p)), output_field=FloatField()
-        )
-    ).order_by('-avg_score', 'creator')
-
-    # remove the player's average score from the list of creator averages
-    creator_averages = [creator_avg for creator_avg in creator_averages if creator_avg['creator'] != creator_name]
-
-
-    # subtract the player's average score from the average score for each creator
-    # this will be used to determine the relative position of the player's average score
-    # in the creator
-    # but make sure we don't try to subtract a None from a float
-    for creator_avg in creator_averages:
-        if creator_avg['avg_score'] is not None:
-            creator_avg['avg_score'] = creator_avg['avg_score'] - player_avg
-
-
-    # save creator of the round with the highest and lowest average score for the player
-    # but make sure the player isn't the creator of the round with the highest or lowest average score
-    # max_creator_avg = creator_averages[0]['creator']
-    # min_creator_avg = creator_averages[len(creator_averages) - 1]['creator']
-    # if max_creator_avg == player_name:
-    #     max_creator_avg = creator_averages[1]['creator']
-    # if min_creator_avg == player_name:
-    #     min_creator_avg = creator_averages[len(creator_averages) - 2]['creator']
-    # # if the max_creator_avg or min_creator_avg is an empty string
-    # # choose the next highest or lowest average score
-    # if max_creator_avg == "":
-    #     max_creator_avg = creator_averages[2]['creator']
-    # if min_creator_avg == "":
-    #     min_creator_avg = creator_averages[len(creator_averages) - 3]['creator']
-
-    # if the max_creator_avg or min_creator_avg is not in the list of players
-    # continue until we find a player that is in the list of players and is not the player
-    max_creator_avg = creator_averages[0]['creator']
-    min_creator_avg = creator_averages[len(creator_averages) - 1]['creator']
-    i = 0
-    while max_creator_avg not in players or max_creator_avg == player_name:
-        i=i+1
-        max_creator_avg = creator_averages[i]['creator']
-    i = 0
-    while min_creator_avg not in players or min_creator_avg == player_name:
-        i=i+1
-        min_creator_avg = creator_averages[len(creator_averages) - 1 - i]['creator']
-
-
-
-
-
-    # let's count the number of rounds that the player has created
-    created_rounds_count = created_rounds.count()
-
-    # Initialize the final result dictionary
     final_results = {}
-
-    for i in range(len(players)):
-        creator_username = players[i]
+    for creator_name in global_player_names:
+        creator_records = [
+            round_data for round_data in flattened_rounds
+            if round_data['normalized_creator'] == creator_name
+        ]
         player_scores = {}
-
-        for py in players:
-            name = f"score_{py.lower()}"
-
-            # Calculate the average score for each player for the current creator
-            avg_score = GPTriviaRound.objects.filter(creator=creator_username).aggregate(
-                avg_score=Avg(
-                    Case(
-                        When(**{f"{name}__isnull": False}, then=F(name)),
-                        default=None,
-                        output_field=FloatField()
-                    )
-                )
-            )['avg_score']
-
-            player_scores[py] = avg_score
-
-        # Assign the player scores to the corresponding creator
-        final_results[creator_username] = player_scores
+        for other_player in global_player_names:
+            other_field = player_field_for_name(other_player)
+            values = [
+                round_data.get(other_field)
+                for round_data in creator_records
+                if round_data.get(other_field) is not None
+            ]
+            player_scores[other_player] = (sum(values) / len(values)) if values else None
+        final_results[creator_name] = player_scores
 
     final_averages = {}
+    for creator_name, score_map in final_results.items():
+        values = [avg_score for avg_score in score_map.values() if avg_score is not None]
+        final_averages[creator_name] = (sum(values) / len(values)) if values else None
 
-    for creator, scores in final_results.items():
-        total_score = 0
-        count = 0
-
-        for player, avg_score in scores.items():
-            if avg_score is not None:  # Only include non-null averages
-                total_score += avg_score
-                count += 1
-
-        if count > 0:
-            final_averages[creator] = total_score / count
-        else:
-            final_averages[creator] = None  # or some default value, if no scores are available
-
-    # Subtract final average for each creator from their respective score in the list
     biases = {}
     for item in creator_averages:
-        creator = item['creator']
-        if creator in final_averages:
-            if final_averages[creator] is not None and item['avg_score'] is not None:
-                biases[creator] = item['avg_score'] - final_averages[creator]
-            else:
-                biases[creator] = 0
+        creator_name = item['creator']
+        if creator_name not in final_averages:
+            continue
+        if final_averages[creator_name] is not None and item['avg_score'] is not None:
+            biases[creator_name] = item['avg_score'] - final_averages[creator_name]
+        else:
+            biases[creator_name] = 0
 
-    # add the player_averages back to each entry in biases
     sumb = 0
-    for entry in biases:
+    for entry in list(biases.keys()):
         if biases[entry] is not None and player_avg is not None:
             biases[entry] = biases[entry] + player_avg
             sumb += biases[entry]
         else:
             biases[entry] = 0
 
-    for entry in biases:
-        if biases[entry] is not None:
-            biases[entry] = biases[entry] - (sumb / len(biases))
-        else:
-            biases[entry] = 0
+    if biases:
+        mean_bias = sumb / len(biases)
+        for entry in list(biases.keys()):
+            if biases[entry] is not None:
+                biases[entry] = biases[entry] - mean_bias
+            else:
+                biases[entry] = 0
+        max_bias_avg = max(biases, key=biases.get)
+        min_bias_avg = min(biases, key=biases.get)
+        max_bias_avg_value = "{:.2f}".format(biases[max_bias_avg])
+        min_bias_avg_value = "{:.2f}".format(biases[min_bias_avg])
+    else:
+        max_bias_avg = ''
+        min_bias_avg = ''
+        max_bias_avg_value = "0.00"
+        min_bias_avg_value = "0.00"
 
-    max_bias_avg = max(biases, key=biases.get)
-    min_bias_avg = min(biases, key=biases.get)
-
-    # get the numeric value of the max_bias_avg and min_bias_avg
-    max_bias_avg_value = biases[max_bias_avg]
-    min_bias_avg_value = biases[min_bias_avg]
-
-    # truncate the numeric value to 2 decimal places
-    max_bias_avg_value = "{:.2f}".format(max_bias_avg_value)
-    min_bias_avg_value = "{:.2f}".format(min_bias_avg_value)
-
-    form = ProfilePictureForm()  # Create an instance of the form
-
-    profile_user = get_object_or_404(User, username=player_name)
+    form = ProfilePictureForm()
+    profile_user = User.objects.filter(username__iexact=player_name).first()
+    profile_picture_url = profile_user.profile.profile_picture.url if profile_user else '/media/default.jpg'
 
     context = {
         'profile_user': profile_user,
+        'profile_picture_url': profile_picture_url,
         'player_name': player_name,
         'created_rounds_cat': created_rounds_cat_list,
         'created_rounds': created_rounds,
-        'player_color_mapping': playerColorMapping,
+        'player_color_mapping': build_player_color_mapping(global_player_names),
         'text_color': text_color,
         'max_avg': max_avg,
         'min_avg': min_avg,
@@ -1292,16 +1044,7 @@ def home(request):
                 new_round.date = datetime.datetime.strptime(presentation_name, "%m.%d.%Y").date().strftime('%Y-%m-%d')
                 new_round.round_number = round_index + 1
                 new_round.max_score = 10
-                new_round.score_alex = None
-                new_round.score_ichigo = None
-                new_round.score_megan = None
-                new_round.score_zach = None
-                new_round.score_jenny = None
-                new_round.score_debi = None
-                new_round.score_dan = None
-                new_round.score_chris = None
-                new_round.score_drew = None
-                new_round.score_tom = None
+                set_round_score_map(new_round, {})
                 new_round.replay = 0
                 # round coop will be 0 if the checkbox is not checked, 1 if it is
                 new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
@@ -1392,16 +1135,7 @@ def home(request):
                 new_round.date = datetime.datetime.strptime(presentation_name, "%m.%d.%Y").date().strftime('%Y-%m-%d')
                 new_round.round_number = round_index + 1
                 new_round.max_score = 10
-                new_round.score_alex = None
-                new_round.score_ichigo = None
-                new_round.score_megan = None
-                new_round.score_zach = None
-                new_round.score_jenny = None
-                new_round.score_debi = None
-                new_round.score_dan = None
-                new_round.score_chris = None
-                new_round.score_drew = None
-                new_round.score_tom = None
+                set_round_score_map(new_round, {})
                 new_round.replay = 0
                 new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
                 new_round.link = new_links[round_index]
@@ -1423,77 +1157,7 @@ def home(request):
 
 @login_required
 def scoresheet(request):
-    players = ["Alex", "Ichigo", "Megan", "Zach", "Jenny", "Debi", "Dan", "Chris", "Drew", "Tom", "Paige"]
-    # for the round titles, we will query the database for the MergePresentation object with the latest id
-    # and get the round_names attribute
-    try:
-        latest_presentation = MergedPresentation.objects.latest('id')
-    except MergedPresentation.DoesNotExist:
-        latest_presentation = None
-    if latest_presentation:
-        round_titles = latest_presentation.round_names
-        joker_round_indices = latest_presentation.joker_round_indices
-        if joker_round_indices is None:
-            # the joker round indices are a dictionary with the player name as the key and the index of the joker round as the value
-            # if it is none, default to 0 for all players
-            joker_round_indices = {player: 0 for player in players}
-
-        creators = latest_presentation.creator_list
-        # also get the presentation name
-        presentation_name = latest_presentation.name
-
-        pres_date = datetime.datetime.strptime(presentation_name, '%m.%d.%Y').date()
-        existing_rounds = GPTriviaRound.objects.filter(date=pres_date, title__in=round_titles)
-
-        # change the boolean values to strings
-        for round in existing_rounds:
-            # the boolean columns are replay and cooperative
-            if round.replay:
-                round.replay = "true"
-            else:
-                round.replay = "false"
-            if round.cooperative:
-                round.cooperative = "true"
-            else:
-                round.cooperative = "false"
-
-        # Serialize the queryset into a JSON string and then parse it into a list of dictionaries
-        existing_rounds_json = serializers.serialize('json', existing_rounds)
-        existing_rounds_list = json.loads(existing_rounds_json)
-
-        # Replace None values with null
-        for round_dict in existing_rounds_list:
-            for key, value in round_dict['fields'].items():
-                if value is None:
-                    round_dict['fields'][key] = "null"
-
-
-        print(joker_round_indices)
-        context = {
-            'players': players,
-            'round_titles': round_titles,
-            'creators': creators,
-            'player_color_mapping': playerColorMapping,
-            'pres_name': presentation_name,
-            'existing_rounds': existing_rounds_list,
-            'joker_round_indices': joker_round_indices,
-            'presentation_id': latest_presentation.presentation_id,
-        }
-
-    else:
-        context = {
-            'players': players,
-            'round_titles': [],
-            'creators': [],
-            'player_color_mapping': playerColorMapping,
-            'pres_name': "None",
-            'existing_rounds': [],
-            'joker_round_indices': 0,
-            'presentation_id': "",
-        }
-
-
-    return render(request, 'GPTrivia/scoresheet.html', context)
+    return redirect('scoresheet_new')
 
 
 def buzzer_page(request):
@@ -1558,10 +1222,8 @@ def player_analysis_plot(request, *args, **kwargs):
 SCORESHEET_GROUP_NAME = 'scoresheet_scoresheet_updates'
 SCORESHEET_ROUND_FIELDS = {
     'creator', 'title', 'major_category', 'minor_category1', 'minor_category2', 'date',
-    'round_number', 'max_score', 'replay', 'cooperative', 'notes', 'link',
-    'score_alex', 'score_ichigo', 'score_megan', 'score_zach', 'score_jenny', 'score_debi',
-    'score_dan', 'score_chris', 'score_drew', 'score_tom', 'score_jeff', 'score_paige',
-    'score_dillon',
+    'round_number', 'max_score', 'replay', 'cooperative', 'notes', 'link', 'extra_scores',
+    *FIXED_SCORE_FIELDS,
 }
 SCORESHEET_PRESENTATION_FIELDS = {
     'round_names', 'creator_list', 'joker_round_indices', 'player_list', 'host',
@@ -1611,6 +1273,27 @@ def _current_trivia_date():
     return datetime.datetime.now(TRIVIA_TIMEZONE).date()
 
 
+def _get_global_player_fields():
+    return get_all_player_fields(
+        GPTriviaRound.objects.all(),
+        MergedPresentation.objects.all(),
+    )
+
+
+def _get_global_player_names():
+    return [display_name_for_player_field(field) for field in _get_global_player_fields()]
+
+
+def _build_round_rows(round_queryset, player_fields):
+    round_rows = []
+    for trivia_round in round_queryset:
+        round_rows.append({
+            'round': trivia_round,
+            'score_values': get_round_score_map(trivia_round),
+        })
+    return round_rows
+
+
 def _get_scoresheet_presentation(presentation_id=None, selected_date=None):
     if presentation_id:
         try:
@@ -1642,14 +1325,35 @@ def _save_scores_patch(data):
             fields = update.get('fields', {})
             round_obj = GPTriviaRound.objects.get(id=round_id)
             dirty_fields = []
+            score_fields_updated = False
+            score_map = get_round_score_map(round_obj)
 
             for field, value in fields.items():
                 if field not in SCORESHEET_ROUND_FIELDS:
                     return JsonResponse({"message": f"Invalid round field: {field}"}, status=400)
                 if field == 'date':
                     value = _parse_scoresheet_date(value)
+                if field in FIXED_SCORE_FIELDS:
+                    score_map[field] = value
+                    score_fields_updated = True
+                    continue
+                if field == 'extra_scores':
+                    replacement_scores = {}
+                    for key, score_value in (value or {}).items():
+                        replacement_scores[key] = score_value
+                    score_map = {
+                        fixed_field: score_map.get(fixed_field)
+                        for fixed_field in FIXED_SCORE_FIELDS
+                    }
+                    score_map.update(replacement_scores)
+                    score_fields_updated = True
+                    continue
                 setattr(round_obj, field, value)
                 dirty_fields.append(field)
+
+            if score_fields_updated:
+                set_round_score_map(round_obj, score_map)
+                dirty_fields.extend([*FIXED_SCORE_FIELDS, 'extra_scores'])
 
             if dirty_fields:
                 round_obj.save(update_fields=dirty_fields)
@@ -1839,19 +1543,15 @@ def save_scores(request):
         trivia_round.date = newdate
         trivia_round.round_number = round_data.get('round_number')
         trivia_round.max_score = round_data.get('max_score')
-        trivia_round.score_alex = round_data.get('score_alex')
-        trivia_round.score_ichigo = round_data.get('score_ichigo')
-        trivia_round.score_megan = round_data.get('score_megan')
-        trivia_round.score_zach = round_data.get('score_zach')
-        trivia_round.score_jenny = round_data.get('score_jenny')
-        trivia_round.score_debi = round_data.get('score_debi')
-        trivia_round.score_dan = round_data.get('score_dan')
-        trivia_round.score_chris = round_data.get('score_chris')
-        trivia_round.score_drew = round_data.get('score_drew')
-        trivia_round.score_tom = round_data.get('score_tom')
-        trivia_round.score_jeff = round_data.get('score_jeff')
-        trivia_round.score_paige = round_data.get('score_paige')
-        trivia_round.score_dillon = round_data.get('score_dillon')
+        score_map = {}
+        for field in FIXED_SCORE_FIELDS:
+            score_map[field] = round_data.get(field)
+        for key, value in (round_data.get('extra_scores') or {}).items():
+            score_map[key] = value
+        for key, value in round_data.items():
+            if key.startswith('score_') and key not in FIXED_SCORE_FIELDS:
+                score_map[key] = value
+        set_round_score_map(trivia_round, score_map)
         trivia_round.replay = round_data.get('replay', False)
         trivia_round.cooperative = round_data.get('cooperative', False)
         trivia_round.link = round_data.get('link')

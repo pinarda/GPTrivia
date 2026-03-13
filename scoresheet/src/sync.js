@@ -1,18 +1,12 @@
-const SCORE_FIELDS = [
-  'score_alex',
-  'score_ichigo',
-  'score_megan',
-  'score_zach',
-  'score_jenny',
-  'score_debi',
-  'score_dan',
-  'score_chris',
-  'score_drew',
-  'score_tom',
-  'score_jeff',
-  'score_paige',
-  'score_dillon',
-];
+import {
+  buildRoundScorePayload,
+  FIXED_SCORE_FIELDS,
+  getPlayerFieldForName,
+  getPlayerStorageKey,
+  getRoundExtraScores,
+} from './playerScores';
+
+const SCORE_FIELDS = FIXED_SCORE_FIELDS;
 
 const ROUND_FIELDS = [
   'creator',
@@ -27,6 +21,7 @@ const ROUND_FIELDS = [
   'cooperative',
   'notes',
   'link',
+  'extra_scores',
   ...SCORE_FIELDS,
 ];
 
@@ -112,8 +107,13 @@ export function normalizeSelectedRounds(selectedRounds) {
       return;
     }
 
-    const playerName = player.replace('score_', '');
-    normalized[playerName.charAt(0).toLowerCase() + playerName.slice(1)] = roundTitle;
+    const playerField = getPlayerFieldForName(player);
+    const playerKey = getPlayerStorageKey(playerField);
+    if (!playerKey) {
+      return;
+    }
+
+    normalized[playerKey] = roundTitle;
   });
 
   return normalized;
@@ -123,7 +123,10 @@ export function normalizePlayerList(players) {
   const normalized = {};
 
   (players || []).forEach(player => {
-    normalized[player] = player;
+    const playerField = getPlayerFieldForName(player);
+    if (playerField) {
+      normalized[playerField] = playerField;
+    }
   });
 
   return normalized;
@@ -133,6 +136,10 @@ function resolveScoreValue(scoreField, roundTitle, scores, round) {
   const scoreMap = scores?.[scoreField];
   if (scoreMap && Object.prototype.hasOwnProperty.call(scoreMap, roundTitle)) {
     return scoreMap[roundTitle];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(getRoundExtraScores(round), scoreField)) {
+    return getRoundExtraScores(round)[scoreField];
   }
 
   return round[scoreField] ?? null;
@@ -155,11 +162,14 @@ export function buildRoundState(round, index, state) {
     cooperative: state.cooperativeStatus?.[roundTitle] ?? round.cooperative ?? false,
     notes: round.notes || '',
     link: round.link || '',
+    extra_scores: {},
   };
 
+  const scorePayload = buildRoundScorePayload(round, state.scores, state.players);
   SCORE_FIELDS.forEach(scoreField => {
-    roundState[scoreField] = resolveScoreValue(scoreField, roundTitle, state.scores, round);
+    roundState[scoreField] = scorePayload[scoreField] ?? resolveScoreValue(scoreField, roundTitle, state.scores, round);
   });
+  roundState.extra_scores = scorePayload.extra_scores || {};
 
   return roundState;
 }
@@ -183,6 +193,10 @@ export function makeRoundSnapshot(round) {
   const snapshot = {};
 
   ROUND_FIELDS.forEach(field => {
+    if (field === 'extra_scores') {
+      snapshot[field] = round[field] ?? {};
+      return;
+    }
     snapshot[field] = round[field] ?? null;
   });
 

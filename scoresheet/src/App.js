@@ -56,8 +56,18 @@ import {
   resolveJokerRoundIndices,
   resolvePresentationPlayers,
 } from './presentationData';
+import {
+    extractPlayersFromRounds,
+    FIXED_SCORE_FIELDS,
+    getDisplayNameForPlayerField,
+    getMergedRoundScoreMap,
+    getPlayerColor,
+    getPlayerStorageKey,
+    getPlayerFieldForName as getScoreFieldForName,
+    removePlayerFromRound,
+} from './playerScores';
 
-    const playerColorMapping = {
+    const basePlayerColorMapping = {
         'score_alex': '#D2042D',
         'score_ichigo': '#ff7f0e',
         'score_megan': '#8e4585',
@@ -76,18 +86,22 @@ import {
         'unknown': '#333333',
     };
 
+    function resolvePlayerColor(playerField) {
+      return getPlayerColor(playerField, basePlayerColorMapping);
+    }
+
     const XButton = styled.div`
       width: 20px; // Set the width
       height: 20px; // Set the height
-      background-color: ${props => playerColorMapping[props.player] || '#000'}; // Dynamic background color
-      color: ${props => playerTextColor(playerColorMapping[props.player] || '#000000')};  // Set the text color, depending on the background color brightness
+      background-color: ${props => resolvePlayerColor(props.player) || '#000'}; // Dynamic background color
+      color: ${props => playerTextColor(resolvePlayerColor(props.player) || '#000000')};  // Set the text color, depending on the background color brightness
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       
       &:hover {
-        background-color: ${props => darkenBackground(playerColorMapping[props.player] || '#000')};// Darken the background color on hover
+        background-color: ${props => darkenBackground(resolvePlayerColor(props.player) || '#000')};// Darken the background color on hover
       }
     `;
 
@@ -157,7 +171,7 @@ import {
         font-family: Monaco;
         font-size: 1rem;
         &:hover {
-          color: ${props => playerColorMapping[props.player] || '#000'};
+          color: ${props => resolvePlayerColor(props.player) || '#000'};
         }
       }
     `;
@@ -542,9 +556,13 @@ const PlayerTable = () => {
     const [stylePoints, setStylePoints] = useState({}); // { Alex: 1.0, Ichigo: 0.5, ... }
 
     const playerNamesDisplay = useMemo(
-      () => (players || []).map(p => p.replace('score_',''))
-                           .map(n => n.charAt(0).toUpperCase()+n.slice(1)),
+      () => (players || []).map(getDisplayNameForPlayerField),
       [players]
+    );
+
+    const creatorOptions = useMemo(
+      () => [...new Set([...(allPlayers || []), ...playerNamesDisplay])].sort((left, right) => left.localeCompare(right)),
+      [allPlayers, playerNamesDisplay],
     );
 
 
@@ -692,7 +710,7 @@ const PlayerTable = () => {
             const majorCategoryValues = json.map(item => item.major_category);
             const minor1CategoryValues = json.map(item => item.minor_category1);
             const minor2CategoryValues = json.map(item => item.minor_category2);
-            const allPlayers = json.map(item => item.creator);
+            const allPlayers = json.map(item => getDisplayNameForPlayerField(item.creator));
             // Get unique values by converting to a Set and then back to an Array
             const uniqueMajorCategories = [...new Set(majorCategoryValues)];
             // let the minor categories include the major categories as well
@@ -806,14 +824,7 @@ const PlayerTable = () => {
             setRoundCreators(roundCreators);
 
           // start by setting the playerNames to the default players
-            let playerNames = [...defaultPlayers];
-            for (let round of json) {
-                for (let key of Object.keys(round)) {
-                    if (key.startsWith('score_') && round[key] !== 0 && round[key] !== null) {
-                        playerNames.push(key);
-                    }
-                }
-            }
+            let playerNames = [...defaultPlayers, ...extractPlayersFromRounds(json)];
 
           // Get unique player names
           playerNames = [...new Set(playerNames)];
@@ -823,7 +834,7 @@ const PlayerTable = () => {
           playerNames.forEach(player => {
             initialScores[player] = {};
             json.forEach(round => {
-              initialScores[player][round.title] = round[player];
+              initialScores[player][round.title] = getMergedRoundScoreMap(round)[player] ?? null;
             });
           });
           setScores(initialScores);
@@ -879,15 +890,15 @@ const PlayerTable = () => {
             // so we need to extract the keys from the object i.e. "Alex", "Dan", etc.
             // start by converting player_list from a string to an object
 
-            let playerNames = [];
-
             let plist = null;
             if(selectedPresentation) {
                 plist = selectedPresentation.player_list;
             }
-            const resolvedPlayers = resolvePresentationPlayers(plist, defaultPlayers);
+            const resolvedPlayers = [...new Set([
+                ...resolvePresentationPlayers(plist, defaultPlayers),
+                ...extractPlayersFromRounds(rounds),
+            ])];
             setPlayers(resolvedPlayers);
-            playerNames = resolvedPlayers.map(player => player.replace('score_', ''));
 
 
             if(selectedPresentation) {
@@ -915,25 +926,13 @@ const PlayerTable = () => {
                 setStylePoints(sp || {});
 
 
-                const newJokerRounds = playerNames.reduce((acc, player) => {
-                    // remember to lower case the player name
-                    if (jokerRoundIndices[player]) {
-                        acc[player] = jokerRoundIndices[player];
+                const initialSelectedRoundsWithPrefix = resolvedPlayers.reduce((acc, playerField) => {
+                    const playerKey = getPlayerStorageKey(playerField);
+                    if (playerKey && jokerRoundIndices[playerKey]) {
+                        acc[playerField] = jokerRoundIndices[playerKey];
                     }
                     return acc;
                 }, {});
-
-                const initialSelectedRounds = playerNames.reduce((acc, curr) => {
-                    acc[curr] = newJokerRounds[curr] || "Select";
-                    return acc;
-                }, {});
-
-                //add score_ prefix back to the player names
-                const initialSelectedRoundsWithPrefix = {};
-                for (let key in initialSelectedRounds) {
-                    if(initialSelectedRounds[key] !== "Select")
-                        initialSelectedRoundsWithPrefix['score_' + key] = initialSelectedRounds[key];
-                }
 
                 setSelectedRounds(initialSelectedRoundsWithPrefix);
             } else {
@@ -944,14 +943,14 @@ const PlayerTable = () => {
                 setCrownedWinner('');
                 setInheritedCrownedWinner(getInheritedCrownedWinner(json, selectedDate));
                 setNotes('');
-                setSelectedRounds(playerNames.reduce((acc, curr) => ({...acc, [curr]: "Select"}), {}));
+                setSelectedRounds(resolvedPlayers.reduce((acc, curr) => ({...acc, [curr]: "Select"}), {}));
                 setPresID(0);
             }
         })
         .catch(error => {
             console.error('Error fetching presentations:', error);
         });
-    }, [defaultHost, selectedDate, url, updateFlag]);
+    }, [defaultHost, selectedDate, url, updateFlag, rounds]);
 
     useEffect(() => {
       if (players.length > 0 && rounds.length > 0) {
@@ -959,11 +958,11 @@ const PlayerTable = () => {
         // Compute median scores
         const medianScores = rounds.map(round => {
             const transformedCreatorName = transformName(round.creator);
-            const formattedName = `score_${transformedCreatorName.charAt(0).toLowerCase() + transformedCreatorName.slice(1)}`;
+            const formattedName = getScoreFieldForName(transformedCreatorName);
             if (players.includes(formattedName)) {
-                const scores = Object.keys(round)
-                  .filter(key => key.startsWith('score_') && typeof round[key] === 'number' && formattedName !== key)
-                  .map(scoreKey => round[scoreKey]);
+                const scores = Object.entries(getMergedRoundScoreMap(round))
+                  .filter(([scoreKey, scoreValue]) => formattedName !== scoreKey && typeof scoreValue === 'number')
+                  .map(([, scoreValue]) => scoreValue);
 
                 scores.sort((a, b) => a - b);
 
@@ -1168,6 +1167,15 @@ const PlayerTable = () => {
             const roundIndex = updatedRounds.findIndex(r => r.id === round.id);
             if (roundIndex !== -1) {
                 updatedRounds[roundIndex][player] = newScore;
+                if (!FIXED_SCORE_FIELDS.includes(player)) {
+                    const nextExtraScores = { ...(updatedRounds[roundIndex].extra_scores || {}) };
+                    if (newScore === null) {
+                        delete nextExtraScores[player];
+                    } else {
+                        nextExtraScores[player] = newScore;
+                    }
+                    updatedRounds[roundIndex].extra_scores = nextExtraScores;
+                }
                 setRounds(updatedRounds);
             }
         }
@@ -1187,7 +1195,29 @@ const PlayerTable = () => {
         const confirmChange = confirmPastChange()
         if (!confirmChange) return;
 
-      setPlayers(players.filter(player => player !== playerToRemove));
+      const displayName = getDisplayNameForPlayerField(playerToRemove);
+
+      setPlayers(prevPlayers => prevPlayers.filter(player => player !== playerToRemove));
+      setRounds(prevRounds => prevRounds.map(round => removePlayerFromRound(round, playerToRemove)));
+      setScores(prevScores => {
+        const nextScores = { ...prevScores };
+        delete nextScores[playerToRemove];
+        return nextScores;
+      });
+      setSelectedRounds(prevSelectedRounds => {
+        const nextSelectedRounds = { ...prevSelectedRounds };
+        delete nextSelectedRounds[playerToRemove];
+        return nextSelectedRounds;
+      });
+      setStylePoints(prevStylePoints => {
+        if (!displayName || !Object.prototype.hasOwnProperty.call(prevStylePoints || {}, displayName)) {
+          return prevStylePoints;
+        }
+
+        const nextStylePoints = { ...(prevStylePoints || {}) };
+        delete nextStylePoints[displayName];
+        return nextStylePoints;
+      });
       markDirty();
     };
 
@@ -1366,7 +1396,7 @@ const PlayerTable = () => {
 
       const trimmedName = newPlayerName.trim();
       if (trimmedName) {
-        const formattedName = `score_${trimmedName.toLowerCase()}`;
+        const formattedName = getScoreFieldForName(trimmedName);
         if (!players.includes(formattedName)) {
           setPlayers([...players, formattedName]);
           setNewPlayerName('');
@@ -1564,8 +1594,16 @@ const PlayerTable = () => {
             const roundIndex = newRounds.findIndex(round => round.title === roundTitle);
             if (roundIndex !== -1) {
                 const transformedCreatorName = transformName(newCreatorName);
+                const creatorField = getScoreFieldForName(transformedCreatorName);
                 newRounds[roundIndex].creator = newCreatorName;
-                newRounds[roundIndex][`score_${transformedCreatorName.charAt(0).toLowerCase() + transformedCreatorName.slice(1)}`] = null;
+                if (creatorField) {
+                    newRounds[roundIndex][creatorField] = null;
+                    if (newRounds[roundIndex].extra_scores && Object.prototype.hasOwnProperty.call(newRounds[roundIndex].extra_scores, creatorField)) {
+                        const nextExtraScores = { ...newRounds[roundIndex].extra_scores };
+                        delete nextExtraScores[creatorField];
+                        newRounds[roundIndex].extra_scores = nextExtraScores;
+                    }
+                }
             }
             return newRounds;
         });
@@ -2064,11 +2102,11 @@ const PlayerTable = () => {
                                   </WinnerCrown>
                               )}
                               <a
-                                  href={url + `/player_profile/${player.replace('score_', '')}/`}
+                                  href={url + `/player_profile/${getDisplayNameForPlayerField(player)}/`}
                                   className="player_name"
-                                  data-player={player.replace('score_', '')}
+                                  data-player={getDisplayNameForPlayerField(player)}
                               >
-                                  {player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1)}
+                                  {getDisplayNameForPlayerField(player)}
                               </a>
                           </PlayerNameAnchor>
                       </PlayerNameStack>
@@ -2108,7 +2146,7 @@ const PlayerTable = () => {
                               backgroundColor:
                                   selectedRounds[player] === round.title
                                       ? '#1e7662'
-                                      : roundCreators[round.title] === player.replace('score_', '').charAt(0).toUpperCase() + player.replace('score_', '').slice(1)
+                                      : roundCreators[round.title] === getDisplayNameForPlayerField(player)
                                           ? '#810e19'
                                           : '#333',
                               color: 'white',
@@ -2242,7 +2280,7 @@ const PlayerTable = () => {
                             onChange={(e) => handleCreatorChange(round.title, e.target.value)}
                         >
                             <MenuItem value="">Unknown</MenuItem> {/* Added "None" option */}
-                            {allPlayers.map((player, index) => (
+                            {creatorOptions.map((player, index) => (
                                 <MenuItem key={index} value={player}>
                                     {player}
                                 </MenuItem>
