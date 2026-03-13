@@ -137,7 +137,7 @@ export function getCrownTheme(streak) {
     leftGem: '#ffe0c7',
     centerGem: '#fff0e3',
     rightGem: '#f5c29a',
-    textFill: '#ffffff',
+    textFill: '#111111',
     textStroke: '#9a5f34',
   };
 }

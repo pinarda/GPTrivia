@@ -569,6 +569,7 @@ const PlayerTable = () => {
     const serverRoundSnapshotRef = useRef({});
     const serverPresentationSnapshotRef = useRef(makePresentationSnapshot(null));
     const crownedPlayerAnchorRef = useRef(null);
+    const newPlayerInputRef = useRef(null);
     const saveInFlightRef = useRef(false);
     const saveQueuedRef = useRef(false);
     const latestStateRef = useRef(null);
@@ -1204,6 +1205,14 @@ const PlayerTable = () => {
     };
 
     const handleChangeDate = (eventOrDate) => {
+        const nextDate =
+          typeof eventOrDate === 'string'
+            ? eventOrDate
+            : eventOrDate?.target?.value;
+
+        if (!nextDate) {
+            return;
+        }
 
         // console.log('sortedDates:', sortedDates);
 
@@ -1212,24 +1221,24 @@ const PlayerTable = () => {
             if (!confirmChange) return;
         }
 
-        if (eventOrDate instanceof Event || eventOrDate.target.value !== selectedDate) {
+        if (nextDate !== selectedDate) {
             // check if the eventOrDate.target.value exists in the sorted dates array
             // and if it doesn't run:
             //  setSelectedDate(todayStr);
             //  setTempTitles([]);
             //  setPresID(0);
 
-            if (!sortedDates.includes(eventOrDate.target.value)) {
+            if (!sortedDates.includes(nextDate)) {
                 // setDates(prevDates => [...prevDates, eventOrDate.target.value]);
-                setSelectedDate(eventOrDate.target.value);
+                setSelectedDate(nextDate);
                 setTempTitles([]);
                 setTempLinks([]);
                 setPresID(0);
                 return;
             }
 
-            setSelectedDate(eventOrDate.target.value);
-            const filteredRounds = rounds.filter(round => round.date === eventOrDate.target.value);
+            setSelectedDate(nextDate);
+            const filteredRounds = rounds.filter(round => round.date === nextDate);
             setRounds(filteredRounds);
             let initialTempTitles = [];
             filteredRounds.forEach(round => {
@@ -1358,20 +1367,31 @@ const PlayerTable = () => {
       markDirty();
     };
 
+    const focusNewPlayerInput = () => {
+      if (newPlayerInputRef.current) {
+        newPlayerInputRef.current.focus();
+      }
+    };
+
     const handleAddPlayer = () => {
         const confirmChange = confirmPastChange()
         if (!confirmChange) return;
 
-      if (newPlayerName.trim()) {
-        const formattedName = `score_${newPlayerName.trim().toLowerCase()}`;
+      const trimmedName = newPlayerName.trim();
+      if (trimmedName) {
+        const formattedName = `score_${trimmedName.toLowerCase()}`;
         if (!players.includes(formattedName)) {
           setPlayers([...players, formattedName]);
           setNewPlayerName('');
+          window.requestAnimationFrame(focusNewPlayerInput);
+          markDirty();
         } else {
           alert('Player name already exists!');
+          window.requestAnimationFrame(focusNewPlayerInput);
         }
+      } else {
+        window.requestAnimationFrame(focusNewPlayerInput);
       }
-      markDirty();
     };
 
     const transformName = (name) => {
@@ -1786,10 +1806,11 @@ const PlayerTable = () => {
                     open={openDatePicker}
                     value={selectedDate ? dayjs(selectedDate) : null}
                       onChange={(newValue) => {
-                         const formattedDate = dayjs(newValue).format('YYYY-MM-DD');                        // Create a synthetic event with the new date in event.target.value
-                        const syntheticEvent = { target: { value: formattedDate } };
-
-                        handleChangeDate(syntheticEvent); // Pass the synthetic event to handleChangeDate
+                        if (!newValue) {
+                          return;
+                        }
+                        const formattedDate = dayjs(newValue).format('YYYY-MM-DD');
+                        handleChangeDate(formattedDate);
                         setOpenDatePicker(false); // Close the DatePicker after selection
                       }}
                     onClose={() => setOpenDatePicker(false)}
@@ -1806,6 +1827,39 @@ const PlayerTable = () => {
                         day: CustomDay,
                     }}
                     slotProps={{
+                      textField: {
+                        onClick: () => setOpenDatePicker(true),
+                        onFocus: () => setOpenDatePicker(true),
+                        placeholder: 'Select date',
+                        inputProps: {
+                          readOnly: true,
+                          style: {
+                            cursor: 'pointer',
+                          },
+                        },
+                        sx: {
+                          minWidth: isSmallScreen ? '100%' : '9.25rem',
+                          maxWidth: isSmallScreen ? '18rem' : '11rem',
+                          margin: '0.4rem',
+                          '& .MuiInputBase-root': {
+                            backgroundColor: '#333',
+                            color: '#fff',
+                            fontFamily: 'Monaco',
+                            borderRadius: 0,
+                            cursor: 'pointer',
+                          },
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            border: 'none',
+                          },
+                          '& input': {
+                            color: '#fff',
+                            fontFamily: 'Monaco',
+                            textAlign: 'center',
+                            padding: '8px 12px',
+                            cursor: 'pointer',
+                          },
+                        },
+                      },
                       day: {
                         sortedDates,
                       },
@@ -1816,8 +1870,15 @@ const PlayerTable = () => {
 
 
             <StyledTextField
+              inputRef={newPlayerInputRef}
               value={newPlayerName}
               onChange={(e) => setNewPlayerName(e.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  handleAddPlayer();
+                }
+              }}
               variant="outlined"
               placeholder="Enter player"
               style={{
@@ -1827,8 +1888,8 @@ const PlayerTable = () => {
               }}
             />
 
-            <StyledButton variant="contained" color="secondary" onClick={() => handleAddPlayer(prevState => !prevState)}>
-              +
+            <StyledButton variant="contained" color="secondary" onClick={handleAddPlayer}>
+              Add
             </StyledButton>
               <StyledFormControl>
                 <StyledInputLabel className={"showonsmall"}>Round</StyledInputLabel>
