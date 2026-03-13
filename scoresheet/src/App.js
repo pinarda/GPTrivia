@@ -533,7 +533,7 @@ import {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 0.35rem;
+      gap: 0.7rem;
     `;
 
     const PlayerNameLabel = styled.span`
@@ -550,6 +550,7 @@ import {
       border-radius: 50%;
       object-fit: cover;
       flex-shrink: 0;
+      margin-left: 0.15rem;
       border: 1px solid rgba(255, 255, 255, 0.22);
       box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
     `;
