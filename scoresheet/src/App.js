@@ -570,6 +570,7 @@ const PlayerTable = () => {
     const serverPresentationSnapshotRef = useRef(makePresentationSnapshot(null));
     const crownedPlayerAnchorRef = useRef(null);
     const newPlayerInputRef = useRef(null);
+    const datePickerFieldRef = useRef(null);
     const saveInFlightRef = useRef(false);
     const saveQueuedRef = useRef(false);
     const latestStateRef = useRef(null);
@@ -1513,6 +1514,37 @@ const PlayerTable = () => {
       };
     }, [crownBurstCount, crownedPlayer]);
 
+    useEffect(() => {
+      if (!openDatePicker) {
+        return undefined;
+      }
+
+      const handleDatePickerClickAway = (event) => {
+        const target = event.target;
+        if (!(target instanceof Node)) {
+          return;
+        }
+
+        if (datePickerFieldRef.current?.contains(target)) {
+          return;
+        }
+
+        if (target.closest('.MuiPickersPopper-root, .MuiDialog-root')) {
+          return;
+        }
+
+        setOpenDatePicker(false);
+      };
+
+      document.addEventListener('mousedown', handleDatePickerClickAway, true);
+      document.addEventListener('touchstart', handleDatePickerClickAway, true);
+
+      return () => {
+        document.removeEventListener('mousedown', handleDatePickerClickAway, true);
+        document.removeEventListener('touchstart', handleDatePickerClickAway, true);
+      };
+    }, [openDatePicker]);
+
     const handleMaxScoreChange = (roundTitle, newMaxScore) => {
                 setMaxScores(prevScores => ({
             ...prevScores,
@@ -1799,9 +1831,6 @@ const PlayerTable = () => {
 
             <StyledFormControl>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <StyledButton variant="contained" color="secondary" onClick={() => setOpenDatePicker(true)}>
-                        Calendar
-                    </StyledButton>
                     <DatePicker
                     open={openDatePicker}
                     value={selectedDate ? dayjs(selectedDate) : null}
@@ -1828,8 +1857,8 @@ const PlayerTable = () => {
                     }}
                     slotProps={{
                       textField: {
+                        ref: datePickerFieldRef,
                         onClick: () => setOpenDatePicker(true),
-                        onFocus: () => setOpenDatePicker(true),
                         placeholder: 'Select date',
                         inputProps: {
                           readOnly: true,
@@ -1838,8 +1867,8 @@ const PlayerTable = () => {
                           },
                         },
                         sx: {
-                          minWidth: isSmallScreen ? '100%' : '9.25rem',
-                          maxWidth: isSmallScreen ? '18rem' : '11rem',
+                          minWidth: isSmallScreen ? '100%' : '8.75rem',
+                          maxWidth: isSmallScreen ? '18rem' : '9.5rem',
                           margin: '0.4rem',
                           '& .MuiInputBase-root': {
                             backgroundColor: '#333',
@@ -1847,6 +1876,9 @@ const PlayerTable = () => {
                             fontFamily: 'Monaco',
                             borderRadius: 0,
                             cursor: 'pointer',
+                          },
+                          '& .MuiInputAdornment-root': {
+                            display: 'none',
                           },
                           '& .MuiOutlinedInput-notchedOutline': {
                             border: 'none',
