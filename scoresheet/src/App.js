@@ -1635,7 +1635,12 @@ const PlayerTable = () => {
       const sequence = buildJokerRouletteSequence(
         roundTitles,
         finalIndex,
-        { fullCycles: 2 + Math.floor(Math.random() * 2) },
+        {
+          fullCycles: 2,
+          minDelay: 35,
+          maxDelay: 960,
+          easingPower: 2.05,
+        },
       );
 
       clearJokerRouletteForPlayer(player);
@@ -2555,15 +2560,15 @@ const PlayerTable = () => {
                               onChange={(event) => handleJokerSelectionChange(player, event.target.value)}
                           >
                               <MenuItem value={"Select"}>- Select -</MenuItem>
+                              {rounds.map((round, index) => (
+                                  <MenuItem value={round.title} key={index}>{round.title}</MenuItem>
+                              ))}
                               <MenuItem
                                   value={JOKER_RANDOMIZE_VALUE}
                                   sx={{ color: '#f6c343 !important', fontWeight: 700 }}
                               >
                                   Randomize
                               </MenuItem>
-                              {rounds.map((round, index) => (
-                                  <MenuItem value={round.title} key={index}>{round.title}</MenuItem>
-                              ))}
                           </StyledSelect>
                       </StyledFormControl>
                   </StyledTableCell>

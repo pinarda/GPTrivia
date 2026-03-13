@@ -421,6 +421,14 @@ describe('scoresheet joker roulette helpers', () => {
     expect(sequence[0].delay).toBeLessThan(sequence[sequence.length - 1].delay);
     expect(sequence[sequence.length - 1].title).toBe('Round 2');
   });
+
+  test('default roulette timing starts fast and ends near one second per move', () => {
+    const sequence = buildJokerRouletteSequence(['Round 1', 'Round 2', 'Round 3'], 2);
+
+    expect(sequence[0].delay).toBeLessThanOrEqual(40);
+    expect(sequence[sequence.length - 1].delay).toBeGreaterThanOrEqual(900);
+    expect(sequence[sequence.length - 1].title).toBe('Round 3');
+  });
 });
 
 describe('scoresheet style point helpers', () => {

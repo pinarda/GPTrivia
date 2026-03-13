@@ -12,7 +12,12 @@ export function pickJokerRouletteIndex(roundTitles, randomFn = Math.random) {
 export function buildJokerRouletteSequence(
   roundTitles,
   finalIndex,
-  { fullCycles = 2, minDelay = 70, maxDelay = 340 } = {},
+  {
+    fullCycles = 2,
+    minDelay = 35,
+    maxDelay = 960,
+    easingPower = 2.05,
+  } = {},
 ) {
   if (!Array.isArray(roundTitles) || roundTitles.length === 0 || finalIndex == null) {
     return [];
@@ -23,7 +28,7 @@ export function buildJokerRouletteSequence(
 
   return Array.from({ length: totalSteps }, (_, stepIndex) => {
     const progress = totalSteps <= 1 ? 1 : stepIndex / (totalSteps - 1);
-    const easedProgress = Math.pow(progress, 1.8);
+    const easedProgress = Math.pow(progress, easingPower);
 
     return {
       title: roundTitles[stepIndex % roundTitles.length],
