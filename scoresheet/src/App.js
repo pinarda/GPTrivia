@@ -45,6 +45,7 @@ import {
   getSortableFinalTotal,
 } from './scoreTotals';
 import {
+  getCrownTheme,
   getDisplayNameForPlayer,
   getCrownStreak,
   getInheritedCrownedWinner,
@@ -449,30 +450,31 @@ import {
 
 function CrownIcon({ streak }) {
   const displayStreak = streak > 99 ? '99+' : String(streak);
+  const theme = getCrownTheme(Math.max(streak, 1));
 
   return (
     <svg viewBox="0 0 24 18" width="20" height="16" aria-hidden="true">
       <path
         d="M2 15L4.6 5.5L9.2 10.2L12 2.5L14.8 10.2L19.4 5.5L22 15H2Z"
-        fill="#f6c343"
-        stroke="#fff2b2"
+        fill={theme.fill}
+        stroke={theme.stroke}
         strokeWidth="1.2"
         strokeLinejoin="round"
       />
-      <rect x="2.5" y="15" width="19" height="2" rx="1" fill="#fff2b2" />
-      <circle cx="4.6" cy="5.5" r="1.2" fill="#ff8a65" />
-      <circle cx="12" cy="2.5" r="1.2" fill="#7dd3fc" />
-      <circle cx="19.4" cy="5.5" r="1.2" fill="#c084fc" />
+      <rect x="2.5" y="15" width="19" height="2" rx="1" fill={theme.base} />
+      <circle cx="4.6" cy="5.5" r="1.2" fill={theme.leftGem} />
+      <circle cx="12" cy="2.5" r="1.2" fill={theme.centerGem} />
+      <circle cx="19.4" cy="5.5" r="1.2" fill={theme.rightGem} />
       {streak > 0 && (
         <text
           x="12"
           y="11.1"
           textAnchor="middle"
-          fontSize={displayStreak.length > 2 ? '5.3' : '6.9'}
+          fontSize={displayStreak.length > 2 ? '5.9' : '7.5'}
           fontFamily="Monaco, monospace"
           fontWeight="700"
-          fill="#2d1800"
-          stroke="#fff7cf"
+          fill={theme.textFill}
+          stroke={theme.textStroke}
           strokeWidth="0.35"
           paintOrder="stroke"
         >

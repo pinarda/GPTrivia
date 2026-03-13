@@ -89,3 +89,55 @@ export function getCrownStreak(
 
   return streak;
 }
+
+export function getCrownTheme(streak) {
+  if (streak >= 4) {
+    return {
+      fill: '#8fe3ff',
+      stroke: '#f4fdff',
+      base: '#dff8ff',
+      leftGem: '#ffffff',
+      centerGem: '#d8f7ff',
+      rightGem: '#b9ecff',
+      textFill: '#17313f',
+      textStroke: '#f7feff',
+    };
+  }
+
+  if (streak === 3) {
+    return {
+      fill: '#f6c343',
+      stroke: '#fff2b2',
+      base: '#fff2b2',
+      leftGem: '#ff8a65',
+      centerGem: '#7dd3fc',
+      rightGem: '#c084fc',
+      textFill: '#2d1800',
+      textStroke: '#fff7cf',
+    };
+  }
+
+  if (streak === 2) {
+    return {
+      fill: '#d7dee8',
+      stroke: '#f6f9fc',
+      base: '#eef3f8',
+      leftGem: '#b7c8d8',
+      centerGem: '#ffffff',
+      rightGem: '#a9b7c8',
+      textFill: '#233241',
+      textStroke: '#f7fbff',
+    };
+  }
+
+  return {
+    fill: '#d39a6a',
+    stroke: '#f5d6bd',
+    base: '#edd1b7',
+    leftGem: '#ffe0c7',
+    centerGem: '#fff0e3',
+    rightGem: '#f5c29a',
+    textFill: '#ffffff',
+    textStroke: '#9a5f34',
+  };
+}
