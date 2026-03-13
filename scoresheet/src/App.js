@@ -217,6 +217,7 @@ import {
           color: #fff;
           border-radius: 0;
           font-family: "Monaco";
+          min-height: 30px;
         }
 
         && .MuiOutlinedInput-notchedOutline {
@@ -234,15 +235,42 @@ import {
 
         && .MuiSelect-select {
           color: #fff;
-          font-size: 0.8rem;
+          font-size: 0.75rem;
           font-family: "Monaco";
-          padding: 0.45rem 1.9rem 0.45rem 0.7rem;
+          padding: 0.16rem 1.45rem 0.16rem 0.45rem;
+          min-height: unset;
         }
 
         && .MuiSvgIcon-root {
           color: #fff;
+          font-size: 1.05rem;
         }
     `;
+
+    const dropdownMenuProps = {
+      PaperProps: {
+        sx: {
+          backgroundColor: '#333',
+          color: '#fff',
+          border: '1px solid #1e7662',
+          borderRadius: 0,
+          boxShadow: '0 12px 26px rgba(0, 0, 0, 0.35)',
+          '& .MuiMenuItem-root': {
+            fontFamily: 'Monaco, monospace',
+            fontSize: '0.8rem',
+          },
+          '& .MuiMenuItem-root.Mui-selected': {
+            backgroundColor: '#1e7662',
+          },
+          '& .MuiMenuItem-root.Mui-selected:hover': {
+            backgroundColor: '#185e4f',
+          },
+          '& .MuiMenuItem-root:hover': {
+            backgroundColor: '#185e4f',
+          },
+        },
+      },
+    };
 
     const StyledFormControl = styled(FormControl)`
         background-color: #333;
@@ -379,7 +407,7 @@ import {
     const MetadataSection = styled.div`
       display: flex;
       justify-content: center;
-      padding: 0.45rem 0 0.95rem;
+      padding: 0.08rem 0 0.9rem;
     `;
 
     const MetadataGrid = styled.div`
@@ -454,7 +482,7 @@ import {
     const MetadataNotesFieldWrapper = styled(MetadataField)`
       grid-column: 1 / -1;
       justify-self: center;
-      width: min(100%, 340px);
+      width: min(100%, 680px);
     `;
 
     const MetadataActionField = styled(MetadataField)`
@@ -2214,6 +2242,7 @@ const PlayerTable = () => {
                   <StyledSelect
                     className={"showonsmall"}
                     value={selectedColumnIndex.toString()}
+                    MenuProps={dropdownMenuProps}
                     onChange={e => {
                         const value = parseInt(e.target.value, 10);
                         setSelectedColumnIndex(value);
@@ -2380,7 +2409,9 @@ const PlayerTable = () => {
                   <StyledTableCell sx={{maxWidth: '200px'}} className={selectedColumnIndex === 1 ? 'selected-column' : ''}>
                       <StyledFormControl>
                           <InputLabel id="demo-simple-select-label"></InputLabel>
-                          <StyledSelect sx={{maxWidth: '150px'}}
+                          <StyledSelect
+                              sx={{maxWidth: '150px'}}
+                              MenuProps={dropdownMenuProps}
                               labelId="demo-simple-select-label"
                               id="demo-simple-select"
                               value={selectedRounds[player] || "Select"} // Access the selected round for this player
