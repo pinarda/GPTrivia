@@ -12,6 +12,10 @@ import {
     InputLabel,
     TextField,
     Input,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
 } from "@mui/material";
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
@@ -67,6 +71,12 @@ import {
     getPlayerFieldForName as getScoreFieldForName,
     removePlayerFromRound,
 } from './playerScores';
+import {
+    getNormalizedStylePoints,
+    hasStylePointAward,
+    incrementStylePoint,
+    setStylePointValue,
+} from './stylePoints';
 
     const basePlayerColorMapping = {
         'score_alex': '#D2042D',
@@ -457,6 +467,20 @@ import {
       z-index: 1;
     `;
 
+    const StylePointShades = styled(motion.div)`
+      width: 22px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      top: -0.58rem;
+      left: -0.68rem;
+      pointer-events: none;
+      transform-origin: center;
+      z-index: 1;
+    `;
+
       const GlobalStyle = createGlobalStyle`
           .MuiPopover-root .MuiPaper-root {
             display: block;
@@ -496,6 +520,27 @@ function CrownIcon({ streak }) {
           {displayStreak}
         </text>
       )}
+    </svg>
+  );
+}
+
+function SunglassesIcon() {
+  return (
+    <svg viewBox="0 0 30 18" width="22" height="14" aria-hidden="true">
+      <path
+        d="M4 5.5C4.6 3.6 6.3 2.4 8.4 2.4H11.8C13.9 2.4 15.6 3.6 16.2 5.5L16.4 6H13.9L13.7 5.5C13.4 4.6 12.7 4 11.8 4H8.4C7.5 4 6.8 4.6 6.5 5.5L5.8 8C5.6 8.8 5.8 9.7 6.3 10.3C6.8 11 7.6 11.3 8.4 11.3H11.3C12.6 11.3 13.7 10.4 14 9.1L14.2 8.1H16.1L16.3 9.1C16.6 10.4 17.7 11.3 19 11.3H21.9C22.7 11.3 23.5 11 24 10.3C24.5 9.7 24.7 8.8 24.5 8L23.8 5.5C23.5 4.6 22.8 4 21.9 4H18.5C17.6 4 16.9 4.6 16.6 5.5L16.4 6H13.8L13.6 5.5C13 3.6 11.3 2.4 9.2 2.4H8.4Z"
+        fill="#d9142d"
+        stroke="#7d0013"
+        strokeWidth="1.1"
+        strokeLinejoin="round"
+      />
+      <path d="M2.4 5.5L6 6.5" stroke="#7d0013" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M24 6.5L27.6 5.5" stroke="#7d0013" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M14.2 6.8H16" stroke="#7d0013" strokeWidth="1.2" strokeLinecap="round" />
+      <rect x="6.2" y="4.8" width="7.2" height="5.4" rx="1.9" fill="#280205" opacity="0.88" />
+      <rect x="16.6" y="4.8" width="7.2" height="5.4" rx="1.9" fill="#280205" opacity="0.88" />
+      <path d="M7.2 6H9.3" stroke="#ff6b7f" strokeWidth="0.9" strokeLinecap="round" opacity="0.75" />
+      <path d="M17.6 6H19.7" stroke="#ff6b7f" strokeWidth="0.9" strokeLinecap="round" opacity="0.75" />
     </svg>
   );
 }
@@ -551,10 +596,13 @@ const PlayerTable = () => {
     const [tiebreakWinner, setTiebreakWinner] = useState('');
     const [crownedWinner, setCrownedWinner] = useState('');
     const [inheritedCrownedWinner, setInheritedCrownedWinner] = useState('');
-    const [crownBurstCount, setCrownBurstCount] = useState(0);
+    const [stylePointBurstCount, setStylePointBurstCount] = useState(0);
+    const [stylePointBurstPlayer, setStylePointBurstPlayer] = useState('');
     const [presentations, setPresentations] = useState([]);
     const [notes, setNotes] = useState('');
     const [stylePoints, setStylePoints] = useState({}); // { Alex: 1.0, Ichigo: 0.5, ... }
+    const [isStylePointDialogOpen, setIsStylePointDialogOpen] = useState(false);
+    const [selectedStylePointPlayer, setSelectedStylePointPlayer] = useState('');
 
     const playerNamesDisplay = useMemo(
       () => (players || []).map(getDisplayNameForPlayerField),
@@ -587,7 +635,7 @@ const PlayerTable = () => {
     const pendingMutationIdsRef = useRef(new Set());
     const serverRoundSnapshotRef = useRef({});
     const serverPresentationSnapshotRef = useRef(makePresentationSnapshot(null));
-    const crownedPlayerAnchorRef = useRef(null);
+    const stylePointBurstAnchorRef = useRef(null);
     const newPlayerInputRef = useRef(null);
     const datePickerFieldRef = useRef(null);
     const saveInFlightRef = useRef(false);
@@ -943,7 +991,7 @@ const PlayerTable = () => {
                 try {
                   if (typeof sp === 'string' && sp.trim()) sp = JSON.parse(sp.replace(/'/g,'"'));
                 } catch(e){ sp = {}; }
-                setStylePoints(sp || {});
+                setStylePoints(getNormalizedStylePoints(sp || {}));
 
 
                 const initialSelectedRoundsWithPrefix = resolvedPlayers.reduce((acc, playerField) => {
@@ -963,6 +1011,7 @@ const PlayerTable = () => {
                 setCrownedWinner('');
                 setInheritedCrownedWinner(getInheritedCrownedWinner(json, selectedDate));
                 setNotes('');
+                setStylePoints({});
                 setSelectedRounds(resolvedPlayers.reduce((acc, curr) => ({...acc, [curr]: "Select"}), {}));
                 setPresID(0);
             }
@@ -1236,15 +1285,7 @@ const PlayerTable = () => {
         delete nextSelectedRounds[playerToRemove];
         return nextSelectedRounds;
       });
-      setStylePoints(prevStylePoints => {
-        if (!displayName || !Object.prototype.hasOwnProperty.call(prevStylePoints || {}, displayName)) {
-          return prevStylePoints;
-        }
-
-        const nextStylePoints = { ...(prevStylePoints || {}) };
-        delete nextStylePoints[displayName];
-        return nextStylePoints;
-      });
+      setStylePoints(prevStylePoints => setStylePointValue(prevStylePoints, displayName, ''));
       markDirty();
     };
 
@@ -1522,7 +1563,6 @@ const PlayerTable = () => {
         }
 
         const nextWinnerName = getDisplayNameForPlayer(nextWinnerField);
-        setCrownBurstCount(prev => prev + 1);
 
         if (nextWinnerName !== crownedWinner) {
           setCrownedWinner(nextWinnerName);
@@ -1538,13 +1578,33 @@ const PlayerTable = () => {
     }, [crownedWinner, markDirty, players, sortedPlayersForDisplay, tiebreakWinner]);
 
     useEffect(() => {
-      if (crownBurstCount === 0 || !crownedPlayerAnchorRef.current) {
+      const handleOpenStylePointDialog = () => {
+        const defaultRecipient = sortedPlayersForDisplay[0] || players[0] || '';
+        if (!defaultRecipient) {
+          return;
+        }
+
+        setSelectedStylePointPlayer(currentSelection => (
+          currentSelection && players.includes(currentSelection) ? currentSelection : defaultRecipient
+        ));
+        setIsStylePointDialogOpen(true);
+      };
+
+      window.addEventListener('scoresheet:award-style-point', handleOpenStylePointDialog);
+
+      return () => {
+        window.removeEventListener('scoresheet:award-style-point', handleOpenStylePointDialog);
+      };
+    }, [players, sortedPlayersForDisplay]);
+
+    useEffect(() => {
+      if (stylePointBurstCount === 0 || !stylePointBurstAnchorRef.current) {
         return;
       }
 
       const frameId = window.requestAnimationFrame(() => {
-        const rect = crownedPlayerAnchorRef.current.getBoundingClientRect();
-        window.dispatchEvent(new CustomEvent('scoresheet:crown-stars', {
+        const rect = stylePointBurstAnchorRef.current.getBoundingClientRect();
+        window.dispatchEvent(new CustomEvent('scoresheet:burst-stars', {
           detail: {
             x: rect.left + rect.width / 2,
             y: rect.top + rect.height / 2,
@@ -1555,7 +1615,7 @@ const PlayerTable = () => {
       return () => {
         window.cancelAnimationFrame(frameId);
       };
-    }, [crownBurstCount]);
+    }, [stylePointBurstCount]);
 
     useEffect(() => {
       if (!openDatePicker) {
@@ -1594,6 +1654,20 @@ const PlayerTable = () => {
             [roundTitle]: newMaxScore
         }));
         markDirty();
+    };
+
+    const handleAwardStylePoint = () => {
+      if (!selectedStylePointPlayer) {
+        return;
+      }
+
+      setStylePoints(prevStylePoints => (
+        incrementStylePoint(prevStylePoints, selectedStylePointPlayer)
+      ));
+      setStylePointBurstPlayer(selectedStylePointPlayer);
+      setStylePointBurstCount(prev => prev + 1);
+      setIsStylePointDialogOpen(false);
+      markDirty();
     };
 
     useEffect(() => {
@@ -2167,13 +2241,22 @@ const PlayerTable = () => {
                           <PlayerNameAnchor>
                               {crownedPlayer === player && (
                                   <WinnerCrown
-                                      ref={crownedPlayerAnchorRef}
                                       initial={{ opacity: 0, y: -5, rotate: 6, scale: 0.8 }}
                                       animate={{ opacity: 1, y: 0, rotate: 22, scale: 1 }}
                                       transition={{ duration: 0.35, ease: 'easeOut' }}
                                   >
                                       <CrownIcon streak={crownStreak} />
                                   </WinnerCrown>
+                              )}
+                              {hasStylePointAward(stylePoints, player) && (
+                                  <StylePointShades
+                                      ref={stylePointBurstPlayer === player ? stylePointBurstAnchorRef : null}
+                                      initial={{ opacity: 0, y: -3, rotate: -30, scale: 0.8 }}
+                                      animate={{ opacity: 1, y: 0, rotate: -18, scale: 1 }}
+                                      transition={{ duration: 0.28, ease: 'easeOut' }}
+                                  >
+                                      <SunglassesIcon />
+                                  </StylePointShades>
                               )}
                               <a
                                   href={url + `/player_profile/${getDisplayNameForPlayerField(player)}/`}
@@ -2521,8 +2604,7 @@ const PlayerTable = () => {
                     <Input
                       value={stylePoints?.[name] ?? ''}
                       onChange={(e)=>{
-                        const v = e.target.value === '' ? undefined : Number(e.target.value);
-                        setStylePoints(prev => ({ ...prev, [name]: v }));
+                        setStylePoints(prev => setStylePointValue(prev, name, e.target.value));
                         markDirty();
                       }}
                       inputProps={{ step:0.5, min:0, type:'number' }}
@@ -2608,6 +2690,41 @@ const PlayerTable = () => {
           </MetadataNotesFieldWrapper>
         </MetadataGrid>
       </MetadataSection>
+      <Dialog
+        open={isStylePointDialogOpen}
+        onClose={() => setIsStylePointDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle sx={{ fontFamily: 'Monaco, monospace' }}>Award Style Point</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel id="style-point-player-label">Player</InputLabel>
+              <Select
+                labelId="style-point-player-label"
+                value={selectedStylePointPlayer}
+                label="Player"
+                onChange={(event) => setSelectedStylePointPlayer(event.target.value)}
+              >
+                {sortedPlayersForDisplay.map((playerField) => (
+                  <MenuItem key={playerField} value={playerField}>
+                    {getDisplayNameForPlayerField(playerField)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <StyledButton type="button" onClick={() => setIsStylePointDialogOpen(false)}>
+            Cancel
+          </StyledButton>
+          <StyledButton type="button" onClick={handleAwardStylePoint}>
+            Award
+          </StyledButton>
+        </DialogActions>
+      </Dialog>
     </StyledTableContainer>
     </>
   );

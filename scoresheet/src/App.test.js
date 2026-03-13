@@ -24,6 +24,12 @@ import {
   removePlayerFromRound,
 } from './playerScores';
 import {
+  getNormalizedStylePoints,
+  hasStylePointAward,
+  incrementStylePoint,
+  setStylePointValue,
+} from './stylePoints';
+import {
   clearCreatorScoreForRound,
   getDisplayedCreatorBonus,
   getDisplayedFinalTotal,
@@ -370,6 +376,36 @@ describe('scoresheet player defaults', () => {
     expect(getPlayerStorageKey('score_alex')).toBe('alex');
     expect(getPlayerStorageKey('score_sam guest')).toBe('sam guest');
     expect(getDisplayNameForPlayerField('score_sam guest')).toBe('Sam Guest');
+  });
+});
+
+describe('scoresheet style point helpers', () => {
+  test('normalizes stored style points to display names and numbers', () => {
+    expect(
+      getNormalizedStylePoints({
+        'score_alex': '1',
+        'bobo the dodo': '2.5',
+        Unknown: '',
+      }),
+    ).toEqual({
+      Alex: 1,
+      'Bobo The Dodo': 2.5,
+    });
+  });
+
+  test('incrementing a style point awards and preserves the running total', () => {
+    expect(incrementStylePoint({ Alex: 1 }, 'score_alex')).toEqual({ Alex: 2 });
+    expect(incrementStylePoint({}, 'bobo the dodo')).toEqual({ 'Bobo The Dodo': 1 });
+  });
+
+  test('setting and clearing style point values keeps award visibility in sync', () => {
+    const withAward = setStylePointValue({}, 'score_alex', '1.5');
+    expect(withAward).toEqual({ Alex: 1.5 });
+    expect(hasStylePointAward(withAward, 'score_alex')).toBe(true);
+
+    const withoutAward = setStylePointValue(withAward, 'Alex', '');
+    expect(withoutAward).toEqual({});
+    expect(hasStylePointAward(withoutAward, 'score_alex')).toBe(false);
   });
 });
 

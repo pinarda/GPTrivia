@@ -70,14 +70,13 @@
 
     <div id="react-scoresheet"></div>
 
-    <script src="{% static 'scoresheet/build/static/js/main.7d0eda66.js' %}"></script>
+    <script src="{% static 'scoresheet/build/static/js/main.11934126.js' %}"></script>
     <audio id="snake-hiss" src="/static/img/snake-hissing-6092.mp3" preload="auto"></audio>
 
     <div class="scoresheet-animation-controls">
       <button id="animate-btn" class="scoresheet-animation-button">Animate</button>
       <button id="crown-winner-btn" class="scoresheet-animation-button">Crown the Winner</button>
-      <button id="let-snake-go" class="scoresheet-animation-button">Swoop!</button>
-      <button id="let-snakes-go" class="scoresheet-animation-button">Release the snakes</button>
+      <button id="award-style-point-btn" class="scoresheet-animation-button">Award Style Point</button>
     </div>
     <div id="star-overlay"></div>
     
@@ -151,7 +150,7 @@
       }
     }
 
-    document.getElementById('let-snakes-go').addEventListener('click', () => {
+    window.addEventListener('scoresheet:release-snakes', () => {
       launchFleet(20); // pick your fleet size
     });
 
@@ -162,15 +161,27 @@
     {#  wrap.style.animation = 'walk-x 12s linear 1 forwards';#}
     {#});#}
 
-    document.getElementById('let-snake-go').addEventListener('click', () => {
+    window.addEventListener('scoresheet:single-snake-swoop', () => {
       const wrap = document.getElementById('snake-wrapper');
       wrap.style.animation = 'none';     // reset
       void wrap.offsetWidth;             // force reflow
       wrap.style.animation = 'walk-x 3s linear 1 forwards';
     });
 
+    let pendingCrownSwoopTimeout = null;
     document.getElementById('crown-winner-btn').addEventListener('click', () => {
       window.dispatchEvent(new Event('scoresheet:crown-winner'));
+      window.dispatchEvent(new Event('scoresheet:release-snakes'));
+      if (pendingCrownSwoopTimeout) {
+        window.clearTimeout(pendingCrownSwoopTimeout);
+      }
+      pendingCrownSwoopTimeout = window.setTimeout(() => {
+        window.dispatchEvent(new Event('scoresheet:single-snake-swoop'));
+      }, 5000);
+    });
+
+    document.getElementById('award-style-point-btn').addEventListener('click', () => {
+      window.dispatchEvent(new Event('scoresheet:award-style-point'));
     });
     </script>
 

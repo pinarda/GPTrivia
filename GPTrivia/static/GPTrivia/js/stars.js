@@ -339,7 +339,7 @@ function launchStar(cx, cy, surfaces) {
 }
 
 
-window.addEventListener("scoresheet:crown-stars", (event) => {
+window.addEventListener("scoresheet:burst-stars", (event) => {
   const x = event?.detail?.x;
   const y = event?.detail?.y;
 
