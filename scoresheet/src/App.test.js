@@ -265,15 +265,18 @@ describe('scoresheet crown helpers', () => {
     );
 
     expect(streak).toBe(3);
-    expect(getCrownTheme(streak).fill).toBe('#f6c343');
+    expect(getCrownTheme(streak).fill).toBe('#f3bc34');
   });
 
   test('maps streak tiers to bronze, silver, gold, and diamond crown themes', () => {
     expect(getCrownTheme(1).fill).toBe('#d39a6a');
     expect(getCrownTheme(1).textFill).toBe('#111111');
-    expect(getCrownTheme(2).fill).toBe('#d7dee8');
-    expect(getCrownTheme(3).fill).toBe('#f6c343');
-    expect(getCrownTheme(4).fill).toBe('#8fe3ff');
+    expect(getCrownTheme(2).fill).toBe('#d6e9f5');
+    expect(getCrownTheme(2).trim).toBe('#ffffff');
+    expect(getCrownTheme(3).fill).toBe('#f3bc34');
+    expect(getCrownTheme(3).trim).toBe('#fff6c8');
+    expect(getCrownTheme(4).fill).toBe('#7edcff');
+    expect(getCrownTheme(4).sparkle).toBe('#ffffff');
   });
 });
 

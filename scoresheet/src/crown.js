@@ -93,12 +93,15 @@ export function getCrownStreak(
 export function getCrownTheme(streak) {
   if (streak >= 4) {
     return {
-      fill: '#8fe3ff',
-      stroke: '#f4fdff',
-      base: '#dff8ff',
-      leftGem: '#ffffff',
-      centerGem: '#d8f7ff',
-      rightGem: '#b9ecff',
+      fill: '#7edcff',
+      stroke: '#f5fdff',
+      base: '#ddf7ff',
+      leftGem: '#fefeff',
+      centerGem: '#ffffff',
+      rightGem: '#ccf5ff',
+      trim: '#f2feff',
+      accent: '#9ce8ff',
+      sparkle: '#ffffff',
       textFill: '#17313f',
       textStroke: '#f7feff',
     };
@@ -106,12 +109,15 @@ export function getCrownTheme(streak) {
 
   if (streak === 3) {
     return {
-      fill: '#f6c343',
-      stroke: '#fff2b2',
-      base: '#fff2b2',
-      leftGem: '#ff8a65',
-      centerGem: '#7dd3fc',
-      rightGem: '#c084fc',
+      fill: '#f3bc34',
+      stroke: '#fff1ad',
+      base: '#ffeaa1',
+      leftGem: '#ff9f5e',
+      centerGem: '#fff2be',
+      rightGem: '#d89dff',
+      trim: '#fff6c8',
+      accent: '#ffd86e',
+      sparkle: '#fffbe4',
       textFill: '#2d1800',
       textStroke: '#fff7cf',
     };
@@ -119,12 +125,15 @@ export function getCrownTheme(streak) {
 
   if (streak === 2) {
     return {
-      fill: '#d7dee8',
-      stroke: '#f6f9fc',
-      base: '#eef3f8',
-      leftGem: '#b7c8d8',
+      fill: '#d6e9f5',
+      stroke: '#f8fdff',
+      base: '#edf7ff',
+      leftGem: '#b7d9ef',
       centerGem: '#ffffff',
-      rightGem: '#a9b7c8',
+      rightGem: '#d8efff',
+      trim: '#ffffff',
+      accent: '#bfe5ff',
+      sparkle: '#ffffff',
       textFill: '#233241',
       textStroke: '#f7fbff',
     };
@@ -137,6 +146,9 @@ export function getCrownTheme(streak) {
     leftGem: '#ffe0c7',
     centerGem: '#fff0e3',
     rightGem: '#f5c29a',
+    trim: '#f7e0ce',
+    accent: '#edbf95',
+    sparkle: '#fff3ea',
     textFill: '#111111',
     textStroke: '#9a5f34',
   };

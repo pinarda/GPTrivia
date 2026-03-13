@@ -461,7 +461,7 @@ import {
       align-items: center;
       justify-content: center;
       position: absolute;
-      top: -0.7rem;
+      top: -0.46rem;
       right: -0.75rem;
       pointer-events: none;
       transform-origin: left bottom;
@@ -489,7 +489,6 @@ import {
     `;
 
 function CrownIcon({ streak }) {
-  const displayStreak = streak > 99 ? '99+' : String(streak);
   const theme = getCrownTheme(Math.max(streak, 1));
 
   return (
@@ -502,24 +501,32 @@ function CrownIcon({ streak }) {
         strokeLinejoin="round"
       />
       <rect x="2.5" y="15" width="19" height="2" rx="1" fill={theme.base} />
+      <path d="M4.1 13.6H19.9" stroke={theme.trim} strokeWidth="1" strokeLinecap="round" opacity="0.95" />
       <circle cx="4.6" cy="5.5" r="1.2" fill={theme.leftGem} />
       <circle cx="12" cy="2.5" r="1.2" fill={theme.centerGem} />
       <circle cx="19.4" cy="5.5" r="1.2" fill={theme.rightGem} />
-      {streak > 0 && (
-        <text
-          x="12"
-          y="11.9"
-          textAnchor="middle"
-          fontSize={displayStreak.length > 2 ? '5.9' : '7.5'}
-          fontFamily="Monaco, monospace"
-          fontWeight="700"
-          fill={theme.textFill}
-          stroke={theme.textStroke}
-          strokeWidth="0.35"
-          paintOrder="stroke"
-        >
-          {displayStreak}
-        </text>
+      {streak === 2 && (
+        <>
+          <path d="M6.2 4.5L6.9 5.6L8.1 5.9L7.2 6.8L7.3 8.1L6.2 7.5L5 8.1L5.2 6.8L4.3 5.9L5.5 5.6Z" fill={theme.sparkle} opacity="0.95" />
+          <path d="M17.8 4.2L18.4 5.1L19.4 5.4L18.6 6.2L18.8 7.3L17.8 6.8L16.8 7.3L17 6.2L16.2 5.4L17.2 5.1Z" fill={theme.sparkle} opacity="0.92" />
+          <path d="M8.1 14.5L9.5 13.2" stroke={theme.accent} strokeWidth="0.9" strokeLinecap="round" />
+          <path d="M15.9 14.5L14.5 13.2" stroke={theme.accent} strokeWidth="0.9" strokeLinecap="round" />
+        </>
+      )}
+      {streak >= 3 && (
+        <>
+          <path d="M6.1 11.8H17.9" stroke={theme.accent} strokeWidth="1" strokeLinecap="round" opacity="0.95" />
+          <circle cx="8.7" cy="9.2" r="0.85" fill={theme.leftGem} />
+          <circle cx="15.3" cy="9.2" r="0.85" fill={theme.rightGem} />
+        </>
+      )}
+      {streak >= 4 && (
+        <>
+          <path d="M12 0.9L13.1 2.4L14.7 2.9L13.5 4.1L13.8 5.8L12 4.9L10.2 5.8L10.5 4.1L9.3 2.9L10.9 2.4Z" fill={theme.sparkle} opacity="0.98" />
+          <path d="M5.7 4.7L6.3 5.6L7.4 5.9L6.6 6.7L6.7 7.8L5.7 7.3L4.7 7.8L4.8 6.7L4 5.9L5.1 5.6Z" fill={theme.sparkle} opacity="0.95" />
+          <path d="M18.3 4.7L18.9 5.6L20 5.9L19.2 6.7L19.3 7.8L18.3 7.3L17.3 7.8L17.4 6.7L16.6 5.9L17.7 5.6Z" fill={theme.sparkle} opacity="0.95" />
+          <path d="M7.1 12.6L12 8.8L16.9 12.6" stroke={theme.trim} strokeWidth="0.85" strokeLinecap="round" opacity="0.9" />
+        </>
       )}
     </svg>
   );
@@ -564,9 +571,17 @@ function SunglassesIcon({ theme }) {
       <path d="M27.1 13.6L30.2 12.1" stroke={theme.frameStroke} strokeWidth="1.8" strokeLinecap="round" />
       <rect x="6.3" y="10.6" width="10.2" height="7.2" rx="2.5" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.35" />
       <rect x="17.5" y="10.6" width="10.2" height="7.2" rx="2.5" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.35" />
+      <rect x="6.3" y="10.6" width="10.2" height="7.2" rx="2.5" fill="none" stroke={theme.rimHighlight} strokeWidth="0.65" opacity="0.95" />
+      <rect x="17.5" y="10.6" width="10.2" height="7.2" rx="2.5" fill="none" stroke={theme.rimHighlight} strokeWidth="0.65" opacity="0.95" />
       <rect x="7.2" y="11.3" width="8.4" height="5.8" rx="1.8" fill="#050505" />
       <rect x="18.4" y="11.3" width="8.4" height="5.8" rx="1.8" fill="#050505" />
       <rect x="15.7" y="12.3" width="2.7" height="1.8" rx="0.9" fill={theme.frameStroke} />
+      {theme?.sparkle && (
+        <>
+          <path d="M8.6 9.7L9.1 10.8L10.3 11.1L9.4 11.9L9.6 13.1L8.6 12.5L7.5 13.1L7.7 11.9L6.8 11.1L8 10.8Z" fill={theme.sparkleColor} opacity="0.9" />
+          <path d="M24.7 9L25.2 10L26.2 10.3L25.4 11L25.6 12L24.7 11.5L23.8 12L24 11L23.2 10.3L24.2 10Z" fill={theme.sparkleColor} opacity="0.85" />
+        </>
+      )}
     </svg>
   );
 }
