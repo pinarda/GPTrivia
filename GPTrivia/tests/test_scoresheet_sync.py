@@ -41,6 +41,7 @@ class ScoresheetSyncTests(TestCase):
             style_points={"Alex": 1},
             notes="Old presentation notes",
             tiebreak_winner="Alex",
+            crowned_winner="Jenny",
         )
 
     def test_patch_save_updates_only_changed_fields_and_broadcasts_after_commit(self):
@@ -61,6 +62,7 @@ class ScoresheetSyncTests(TestCase):
             "presentation_updates": {
                 "host": "Jenny",
                 "notes": "Updated presentation notes",
+                "crowned_winner": "Megan",
             },
         }
 
@@ -87,6 +89,7 @@ class ScoresheetSyncTests(TestCase):
             self.assertEqual(self.presentation.host, "Jenny")
             self.assertEqual(self.presentation.notes, "Updated presentation notes")
             self.assertEqual(self.presentation.scorekeeper, "Megan")
+            self.assertEqual(self.presentation.crowned_winner, "Megan")
             self.assertEqual(self.presentation.round_names, ["Round 1"])
 
             callbacks[0]()

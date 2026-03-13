@@ -38,6 +38,7 @@ const EMPTY_PRESENTATION_STATE = {
   host: '',
   scorekeeper: '',
   tiebreak_winner: '',
+  crowned_winner: '',
   notes: '',
   style_points: {},
 };
@@ -172,6 +173,7 @@ export function buildPresentationState(state) {
     host: state.host || '',
     scorekeeper: state.scorekeeper || '',
     tiebreak_winner: state.tiebreakWinner || '',
+    crowned_winner: state.crownedWinner || '',
     notes: state.notes || '',
     style_points: normalizeStylePoints(state.stylePoints),
   };
@@ -200,6 +202,7 @@ export function makePresentationSnapshot(selectedPresentation) {
     host: selectedPresentation.host || '',
     scorekeeper: selectedPresentation.scorekeeper || '',
     tiebreak_winner: selectedPresentation.tiebreak_winner || '',
+    crowned_winner: selectedPresentation.crowned_winner || '',
     notes: selectedPresentation.notes || '',
     style_points: normalizeStylePoints(selectedPresentation.style_points),
   };

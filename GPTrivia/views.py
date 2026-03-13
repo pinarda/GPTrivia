@@ -1565,7 +1565,7 @@ SCORESHEET_ROUND_FIELDS = {
 }
 SCORESHEET_PRESENTATION_FIELDS = {
     'round_names', 'creator_list', 'joker_round_indices', 'player_list', 'host',
-    'scorekeeper', 'tiebreak_winner', 'notes', 'style_points',
+    'scorekeeper', 'tiebreak_winner', 'crowned_winner', 'notes', 'style_points',
 }
 
 

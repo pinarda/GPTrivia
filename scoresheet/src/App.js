@@ -43,6 +43,12 @@ import {
   getDisplayedJokerBonus,
   getDisplayedRoundScore,
 } from './scoreTotals';
+import {
+  getDisplayNameForPlayer,
+  getInheritedCrownedWinner,
+  getPlayerFieldForName,
+} from './crown';
+import { DEFAULT_VISIBLE_PLAYERS } from './defaultPlayers';
 
     const playerColorMapping = {
         'score_alex': '#D2042D',
@@ -62,12 +68,6 @@ import {
         'score_tom': '#000042',
         'unknown': '#333333',
     };
-
-    const DEFAULT_VISIBLE_PLAYERS = [
-      'score_alex','score_megan','score_jenny','score_ichigo',
-      'score_zach','score_debi','score_dan','score_chris'
-    ];
-
 
     const XButton = styled.div`
       width: 20px; // Set the width
@@ -462,8 +462,7 @@ function CrownIcon() {
 const PlayerTable = () => {
     const defaultHost = 'Alex';
     const defaultPlayers = useMemo(() => {
-      // The initial calculation of defaultPlayers goes here
-      return ["score_alex", "score_dan", "score_debi", "score_jenny", "score_megan", "score_ichigo", "score_chris", "score_zach", "score_tom", "score_paige", "score_drew", "score_dillon", "score_jeff"];
+      return [...DEFAULT_VISIBLE_PLAYERS];
     }, []);
 
     const [rounds, setRounds] = useState([]);
@@ -509,9 +508,10 @@ const PlayerTable = () => {
     const [host, setHost] = useState(defaultHost);
     const [scorekeeper, setScorekeeper] = useState(defaultHost);
     const [tiebreakWinner, setTiebreakWinner] = useState('');
+    const [crownedWinner, setCrownedWinner] = useState('');
+    const [inheritedCrownedWinner, setInheritedCrownedWinner] = useState('');
     const [notes, setNotes] = useState('');
     const [stylePoints, setStylePoints] = useState({}); // { Alex: 1.0, Ichigo: 0.5, ... }
-    const [isWinnerCrowned, setIsWinnerCrowned] = useState(false);
 
     const playerNamesDisplay = useMemo(
       () => (players || []).map(p => p.replace('score_',''))
@@ -562,16 +562,9 @@ const PlayerTable = () => {
     );
 
     const crownedPlayer = useMemo(() => {
-      if (!isWinnerCrowned || sortedPlayersForDisplay.length === 0) {
-        return null;
-      }
-
-      const tiebreakWinnerPlayer = players.find((player) => (
-        player.replace('score_', '').toLowerCase() === tiebreakWinner.toLowerCase()
-      ));
-
-      return tiebreakWinnerPlayer || sortedPlayersForDisplay[0];
-    }, [isWinnerCrowned, players, sortedPlayersForDisplay, tiebreakWinner]);
+      const activeCrownedWinner = crownedWinner || inheritedCrownedWinner;
+      return getPlayerFieldForName(players, activeCrownedWinner);
+    }, [crownedWinner, inheritedCrownedWinner, players]);
 
     function convertDate(dateStr) {
         const [month, day, year] = dateStr.split('.');
@@ -883,6 +876,8 @@ const PlayerTable = () => {
                 setHost(selectedPresentation.host || defaultHost);
                 setScorekeeper(selectedPresentation.scorekeeper || defaultHost);
                 setTiebreakWinner(selectedPresentation.tiebreak_winner || '');
+                setCrownedWinner(selectedPresentation.crowned_winner || '');
+                setInheritedCrownedWinner(getInheritedCrownedWinner(json, selectedDate));
                 setNotes(selectedPresentation.notes || '');
 
                 // style_points may arrive as object or stringified JSON
@@ -919,6 +914,8 @@ const PlayerTable = () => {
                 setHost(defaultHost);
                 setScorekeeper(defaultHost);
                 setTiebreakWinner('');
+                setCrownedWinner('');
+                setInheritedCrownedWinner(getInheritedCrownedWinner(json, selectedDate));
                 setNotes('');
                 setSelectedRounds(playerNames.reduce((acc, curr) => ({...acc, [curr]: "Select"}), {}));
                 setPresID(0);
@@ -998,6 +995,7 @@ const PlayerTable = () => {
         host,
         scorekeeper,
         tiebreakWinner,
+        crownedWinner,
         notes,
         stylePoints,
         selectedMajorCategories,
@@ -1028,6 +1026,7 @@ const PlayerTable = () => {
       selectedRounds,
       stylePoints,
       tiebreakWinner,
+      crownedWinner,
     ]);
 
     function usePageVisibility() {
@@ -1426,7 +1425,20 @@ const PlayerTable = () => {
 
     useEffect(() => {
       const handleCrownWinner = () => {
-        setIsWinnerCrowned(true);
+        const nextWinnerField =
+          getPlayerFieldForName(players, tiebreakWinner) || sortedPlayersForDisplay[0] || null;
+
+        if (!nextWinnerField) {
+          return;
+        }
+
+        const nextWinnerName = getDisplayNameForPlayer(nextWinnerField);
+        if (nextWinnerName === crownedWinner) {
+          return;
+        }
+
+        setCrownedWinner(nextWinnerName);
+        markDirty();
       };
 
       window.addEventListener('scoresheet:crown-winner', handleCrownWinner);
@@ -1434,7 +1446,7 @@ const PlayerTable = () => {
       return () => {
         window.removeEventListener('scoresheet:crown-winner', handleCrownWinner);
       };
-    }, []);
+    }, [crownedWinner, markDirty, players, sortedPlayersForDisplay, tiebreakWinner]);
 
     const handleMaxScoreChange = (roundTitle, newMaxScore) => {
                 setMaxScores(prevScores => ({

@@ -5,6 +5,12 @@ import {
   shouldIgnoreScoresheetMessage,
 } from './sync';
 import {
+  getDisplayNameForPlayer,
+  getInheritedCrownedWinner,
+  getPlayerFieldForName,
+} from './crown';
+import { DEFAULT_VISIBLE_PLAYERS } from './defaultPlayers';
+import {
   clearCreatorScoreForRound,
   getDisplayedCreatorBonus,
   getDisplayedFinalTotal,
@@ -90,6 +96,7 @@ describe('scoresheet sync helpers', () => {
         host: 'Alex',
         scorekeeper: 'Megan',
         tiebreak_winner: '',
+        crowned_winner: '',
         notes: '',
         style_points: {},
       },
@@ -169,6 +176,41 @@ describe('scoresheet sync helpers', () => {
     });
     expect(nextPresentationSnapshot.host).toBe('Jenny');
     expect(nextPresentationSnapshot.style_points).toEqual({ Alex: 1.5 });
+  });
+});
+
+describe('scoresheet crown helpers', () => {
+  test('uses the immediately previous presentation for the inherited crown', () => {
+    expect(
+      getInheritedCrownedWinner(
+        [
+          { name: '03.10.2026', crowned_winner: 'Alex' },
+          { name: '03.11.2026', crowned_winner: 'Megan' },
+          { name: '03.12.2026', crowned_winner: '' },
+        ],
+        '2026-03-12',
+      ),
+    ).toBe('Megan');
+  });
+
+  test('matches crowned winners to score fields case-insensitively', () => {
+    expect(getPlayerFieldForName(['score_alex', 'score_megan'], 'mEgAn')).toBe('score_megan');
+    expect(getDisplayNameForPlayer('score_alex')).toBe('Alex');
+  });
+});
+
+describe('scoresheet player defaults', () => {
+  test('only shows the default eight players before saved data expands the roster', () => {
+    expect(DEFAULT_VISIBLE_PLAYERS).toEqual([
+      'score_alex',
+      'score_ichigo',
+      'score_megan',
+      'score_zach',
+      'score_jenny',
+      'score_debi',
+      'score_dan',
+      'score_chris',
+    ]);
   });
 });
 

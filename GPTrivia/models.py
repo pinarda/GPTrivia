@@ -72,6 +72,7 @@ class MergedPresentation(models.Model):
     style_points = jsonfield.JSONField(null=True, blank=True)
     notes = models.TextField(blank=True)
     tiebreak_winner = models.CharField(max_length=100, blank=True)
+    crowned_winner = models.CharField(max_length=100, blank=True, default='')
 
 
     def __str__(self):
