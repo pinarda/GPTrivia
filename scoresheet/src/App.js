@@ -1867,8 +1867,8 @@ const PlayerTable = () => {
                           },
                         },
                         sx: {
-                          minWidth: isSmallScreen ? '100%' : '8.75rem',
-                          maxWidth: isSmallScreen ? '18rem' : '9.5rem',
+                          minWidth: isSmallScreen ? '100%' : '9.5rem',
+                          maxWidth: isSmallScreen ? '18rem' : '10.25rem',
                           margin: '0.4rem',
                           '& .MuiInputBase-root': {
                             backgroundColor: '#333',
@@ -1878,7 +1878,12 @@ const PlayerTable = () => {
                             cursor: 'pointer',
                           },
                           '& .MuiInputAdornment-root': {
-                            display: 'none',
+                            marginLeft: 0,
+                            marginRight: '0.2rem',
+                          },
+                          '& .MuiIconButton-root': {
+                            color: '#fff',
+                            padding: '4px',
                           },
                           '& .MuiOutlinedInput-notchedOutline': {
                             border: 'none',
@@ -1887,7 +1892,7 @@ const PlayerTable = () => {
                             color: '#fff',
                             fontFamily: 'Monaco',
                             textAlign: 'center',
-                            padding: '8px 12px',
+                            padding: '8px 8px 8px 12px',
                             cursor: 'pointer',
                           },
                         },
@@ -1912,9 +1917,10 @@ const PlayerTable = () => {
                 }
               }}
               variant="outlined"
-              placeholder="Enter player"
+              placeholder="Add player"
               style={{
                 margin: "0.4rem",
+                marginLeft: isSmallScreen ? "0.4rem" : "1rem",
                 width: isSmallScreen ? '100%' : undefined,
                 maxWidth: isSmallScreen ? '18rem' : undefined,
               }}
