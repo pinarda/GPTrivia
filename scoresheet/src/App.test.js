@@ -19,6 +19,7 @@ import {
 import {
   extractPlayersFromRounds,
   getDisplayNameForPlayerField,
+  getRoundExtraScores,
   getPlayerStorageKey,
   removePlayerFromRound,
 } from './playerScores';
@@ -320,6 +321,16 @@ describe('scoresheet player defaults', () => {
         { title: 'Round 2', score_alex: 5, extra_scores: { score_guest: 8 } },
       ]),
     ).toEqual(['score_alex', 'score_guest']);
+  });
+
+  test('parses stringified extra_scores and ignores invalid ghost keys', () => {
+    expect(
+      getRoundExtraScores({
+        extra_scores: "{'score_bobo the dodo': 8, '0': '{', '1': '}'}",
+      }),
+    ).toEqual({
+      'score_bobo the dodo': 8,
+    });
   });
 
   test('removing a player clears their stored scores for the night', () => {

@@ -22,12 +22,39 @@ function titleCaseWords(value) {
     .join(' ');
 }
 
+function hasAlphabeticCharacter(value) {
+  return /[a-z]/i.test(String(value || ''));
+}
+
+function parseMaybeJsonObject(value) {
+  if (!value) {
+    return {};
+  }
+
+  if (typeof value === 'object') {
+    return value;
+  }
+
+  if (typeof value !== 'string') {
+    return {};
+  }
+
+  try {
+    return JSON.parse(value.replace(/'/g, '"'));
+  } catch (error) {
+    return {};
+  }
+}
+
 export function getPlayerFieldForName(name) {
   const normalized = String(name || '')
     .trim()
     .replace(/^score_/, '')
     .replace(/[_\s]+/g, ' ');
   if (!normalized) {
+    return '';
+  }
+  if (!hasAlphabeticCharacter(normalized)) {
     return '';
   }
 
@@ -69,10 +96,7 @@ export function getPlayerStorageKey(playerField) {
 }
 
 export function getRoundExtraScores(round) {
-  const extraScores = round?.extra_scores;
-  if (!extraScores || typeof extraScores !== 'object') {
-    return {};
-  }
+  const extraScores = parseMaybeJsonObject(round?.extra_scores);
 
   const normalized = {};
   Object.entries(extraScores).forEach(([playerField, value]) => {

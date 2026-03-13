@@ -60,6 +60,7 @@ import {
     extractPlayersFromRounds,
     FIXED_SCORE_FIELDS,
     getDisplayNameForPlayerField,
+    getRoundExtraScores,
     getMergedRoundScoreMap,
     getPlayerColor,
     getPlayerStorageKey,
@@ -1168,7 +1169,7 @@ const PlayerTable = () => {
             if (roundIndex !== -1) {
                 updatedRounds[roundIndex][player] = newScore;
                 if (!FIXED_SCORE_FIELDS.includes(player)) {
-                    const nextExtraScores = { ...(updatedRounds[roundIndex].extra_scores || {}) };
+                    const nextExtraScores = { ...getRoundExtraScores(updatedRounds[roundIndex]) };
                     if (newScore === null) {
                         delete nextExtraScores[player];
                     } else {
@@ -1576,6 +1577,33 @@ const PlayerTable = () => {
         }
     }, [isSaved, saveRequestCount]);
 
+    const buildCurrentSavePayload = useCallback(() => {
+        const currentState = latestStateRef.current;
+        if (!currentState) {
+            return null;
+        }
+
+        const patch = buildScoresheetPatch({
+            ...currentState,
+            serverRoundSnapshot: serverRoundSnapshotRef.current,
+            serverPresentationSnapshot: serverPresentationSnapshotRef.current,
+        });
+
+        if (!hasScoresheetChanges(patch)) {
+            return null;
+        }
+
+        return {
+            patch,
+            payload: {
+                ...patch,
+                client_id: clientIdRef.current,
+                mutation_id: createMutationId(),
+                presentation_id: currentState.presID || null,
+            },
+        };
+    }, []);
+
 
     const handleCreatorChange = (roundTitle, newCreatorName) => {
       setRoundCreators(prevRoundCreators => ({
@@ -1598,8 +1626,9 @@ const PlayerTable = () => {
                 newRounds[roundIndex].creator = newCreatorName;
                 if (creatorField) {
                     newRounds[roundIndex][creatorField] = null;
-                    if (newRounds[roundIndex].extra_scores && Object.prototype.hasOwnProperty.call(newRounds[roundIndex].extra_scores, creatorField)) {
-                        const nextExtraScores = { ...newRounds[roundIndex].extra_scores };
+                    const currentExtraScores = getRoundExtraScores(newRounds[roundIndex]);
+                    if (Object.prototype.hasOwnProperty.call(currentExtraScores, creatorField)) {
+                        const nextExtraScores = { ...currentExtraScores };
                         delete nextExtraScores[creatorField];
                         newRounds[roundIndex].extra_scores = nextExtraScores;
                     }
@@ -1616,32 +1645,17 @@ const PlayerTable = () => {
             return Promise.resolve();
         }
 
-        const currentState = latestStateRef.current;
-        if (!currentState) {
-            return Promise.resolve();
-        }
-
-        const patch = buildScoresheetPatch({
-            ...currentState,
-            serverRoundSnapshot: serverRoundSnapshotRef.current,
-            serverPresentationSnapshot: serverPresentationSnapshotRef.current,
-        });
-
-        if (!hasScoresheetChanges(patch)) {
+        const saveRequest = buildCurrentSavePayload();
+        if (!saveRequest) {
             setIsSaved(true);
             return Promise.resolve();
         }
 
-        const mutationId = createMutationId();
+        const { patch, payload } = saveRequest;
+
+        const mutationId = payload.mutation_id;
         saveInFlightRef.current = true;
         pendingMutationIdsRef.current.add(mutationId);
-
-        const payload = {
-            ...patch,
-            client_id: clientIdRef.current,
-            mutation_id: mutationId,
-            presentation_id: currentState.presID || null,
-        };
 
         return fetch(url + '/save_scores/', {
             method: 'POST',
@@ -1650,6 +1664,7 @@ const PlayerTable = () => {
               'X-CSRFToken': csrfToken,
               'Authorization': `Token ${localStorage.getItem('token')}`,
             },
+            keepalive: true,
             body: JSON.stringify(payload),
         })
         .then(response => {
@@ -1692,7 +1707,40 @@ const PlayerTable = () => {
             saveData();
           }
         });
-    }, [csrfToken, url]);
+    }, [buildCurrentSavePayload, csrfToken, url]);
+
+    useEffect(() => {
+      const flushPendingSave = () => {
+        const saveRequest = buildCurrentSavePayload();
+        if (!saveRequest) {
+          return;
+        }
+
+        const body = JSON.stringify(saveRequest.payload);
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(
+            `${url}/save_scores/`,
+            new Blob([body], { type: 'application/json' }),
+          );
+          return;
+        }
+
+        fetch(`${url}/save_scores/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      };
+
+      window.addEventListener('pagehide', flushPendingSave);
+
+      return () => {
+        window.removeEventListener('pagehide', flushPendingSave);
+      };
+    }, [buildCurrentSavePayload, url]);
 
     const formatRoundData = (round, index) => {
       let formattedData = {

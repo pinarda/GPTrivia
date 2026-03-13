@@ -7,6 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from GPTrivia.models import GPTriviaRound, MergedPresentation
+from GPTrivia.player_scores import get_round_score_map
 
 
 class ScoresheetSyncTests(TestCase):
@@ -243,6 +244,15 @@ class ScoresheetSyncTests(TestCase):
 
         self.assertEqual(rounds_response.status_code, 200)
         self.assertIn("score_guest", rounds_response.context["player_fields"])
+
+    def test_extra_score_helper_ignores_corrupted_numeric_keys(self):
+        self.round.extra_scores = "{'score_bobo the dodo': 8, '0': '{', '1': '}'}"
+
+        score_map = get_round_score_map(self.round)
+
+        self.assertEqual(score_map["score_bobo the dodo"], 8)
+        self.assertNotIn("score_0", score_map)
+        self.assertNotIn("score_1", score_map)
 
     def test_create_round_broadcasts_identity_after_commit(self):
         with patch("GPTrivia.views._broadcast_scoresheet_message") as broadcast:

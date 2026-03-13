@@ -1,5 +1,7 @@
 import hashlib
+import json
 import re
+import ast
 
 
 FIXED_SCORE_FIELDS = (
@@ -87,6 +89,8 @@ def player_field_for_name(name):
     display_name = display_name_for_player_field(name)
     if not display_name:
         return ''
+    if not re.search(r'[A-Za-z]', display_name):
+        return ''
     return f"score_{display_name.lower()}"
 
 
@@ -123,6 +127,14 @@ def normalize_player_list(player_list):
 
 def iter_round_extra_score_fields(round_obj):
     extra_scores = getattr(round_obj, 'extra_scores', None) or {}
+    if isinstance(extra_scores, str):
+        try:
+            extra_scores = json.loads(extra_scores.replace("'", '"'))
+        except Exception:
+            try:
+                extra_scores = ast.literal_eval(extra_scores)
+            except Exception:
+                extra_scores = {}
     if not isinstance(extra_scores, dict):
         return {}
 
