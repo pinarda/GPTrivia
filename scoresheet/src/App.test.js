@@ -418,12 +418,15 @@ describe('scoresheet joker roulette helpers', () => {
     expect(sequence[sequence.length - 1].title).toBe('Round 2');
   });
 
-  test('default roulette timing stays rapid up front and ends near one second per move', () => {
+  test('default roulette timing keeps a short fast phase and then slows down gradually', () => {
     const sequence = buildJokerRouletteSequence(['Round 1', 'Round 2', 'Round 3'], 2);
 
-    expect(sequence.slice(0, 40).every(step => step.delay <= 40)).toBe(true);
-    expect(sequence[sequence.length - 1].delay).toBeGreaterThanOrEqual(760);
-    expect(sequence[sequence.length - 1].delay).toBeLessThanOrEqual(840);
+    expect(sequence.slice(0, 14).every(step => step.delay <= 40)).toBe(true);
+    const firstSlowdownStep = sequence.find(step => step.delay > 35);
+    expect(firstSlowdownStep).toBeDefined();
+    expect(firstSlowdownStep.delay).toBeLessThan(160);
+    expect(sequence[sequence.length - 1].delay).toBeGreaterThanOrEqual(700);
+    expect(sequence[sequence.length - 1].delay).toBeLessThanOrEqual(780);
     expect(sequence[sequence.length - 1].title).toBe('Round 3');
   });
 });

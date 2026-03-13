@@ -1637,10 +1637,10 @@ const PlayerTable = () => {
         finalIndex,
         {
           minDelay: 35,
-          maxDelay: 820,
-          easingPower: 1.9,
-          fastDurationMs: 1500,
-          slowdownCycles: 1,
+          maxDelay: 760,
+          easingPower: 1.2,
+          fastDurationMs: 500,
+          slowdownCycles: 1.8,
         },
       );
 
