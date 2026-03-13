@@ -1638,9 +1638,9 @@ const PlayerTable = () => {
         {
           minDelay: 35,
           maxDelay: 760,
-          easingPower: 1.2,
+          easingPower: 1.08,
           fastDurationMs: 500,
-          slowdownCycles: 1.8,
+          slowdownCycles: 5,
         },
       );
 

@@ -425,6 +425,7 @@ describe('scoresheet joker roulette helpers', () => {
     const firstSlowdownStep = sequence.find(step => step.delay > 35);
     expect(firstSlowdownStep).toBeDefined();
     expect(firstSlowdownStep.delay).toBeLessThan(160);
+    expect(sequence.length).toBeGreaterThan(28);
     expect(sequence[sequence.length - 1].delay).toBeGreaterThanOrEqual(700);
     expect(sequence[sequence.length - 1].delay).toBeLessThanOrEqual(780);
     expect(sequence[sequence.length - 1].title).toBe('Round 3');
