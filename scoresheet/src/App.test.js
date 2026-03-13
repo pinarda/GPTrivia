@@ -21,6 +21,7 @@ import {
   getDisplayedFinalTotal,
   getDisplayedJokerBonus,
   getDisplayedRoundScore,
+  getSortableFinalTotal,
 } from './scoreTotals';
 
 describe('scoresheet sync helpers', () => {
@@ -288,6 +289,38 @@ describe('scoresheet total helpers', () => {
     expect(getDisplayedFinalTotal(rounds, scores, 'score_alex', 'Round 3', medianScores)).toBe(
       parseFloat((displayedRoundSum + displayedJokerBonus + displayedCreatorBonus).toFixed(2)),
     );
+  });
+
+  test('blank nights stay blank in creator bonus and total cells', () => {
+    const rounds = [
+      { title: 'Round 1', creator: 'Megan', score_alex: null },
+      { title: 'Round 2', creator: 'Jenny', score_alex: null },
+    ];
+    const scores = {
+      score_alex: {
+        'Round 1': null,
+        'Round 2': null,
+      },
+    };
+
+    expect(getDisplayedCreatorBonus(rounds, 'score_alex', 'Select', [null, null])).toBeNull();
+    expect(getDisplayedFinalTotal(rounds, scores, 'score_alex', 'Select', [null, null])).toBeNull();
+    expect(getSortableFinalTotal(rounds, scores, 'score_alex', 'Select', [null, null])).toBe(0);
+  });
+
+  test('actual entered zeroes still display as zero', () => {
+    const rounds = [
+      { title: 'Round 1', creator: 'Alex', score_alex: 0 },
+    ];
+    const scores = {
+      score_alex: {
+        'Round 1': 0,
+      },
+    };
+
+    expect(getDisplayedCreatorBonus(rounds, 'score_alex', 'Select', [0])).toBe(0);
+    expect(getDisplayedJokerBonus(rounds, scores, 'score_alex', 'Round 1')).toBe(0);
+    expect(getDisplayedFinalTotal(rounds, scores, 'score_alex', 'Round 1', [0])).toBe(0);
   });
 
   test('duplicate titles still produce a total that matches the visible cells', () => {

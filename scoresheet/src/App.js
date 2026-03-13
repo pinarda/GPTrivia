@@ -42,6 +42,7 @@ import {
   getDisplayedFinalTotal,
   getDisplayedJokerBonus,
   getDisplayedRoundScore,
+  getSortableFinalTotal,
 } from './scoreTotals';
 import {
   getDisplayNameForPlayer,
@@ -467,7 +468,7 @@ function CrownIcon({ streak }) {
           x="12"
           y="11.1"
           textAnchor="middle"
-          fontSize={displayStreak.length > 2 ? '4.8' : '6.3'}
+          fontSize={displayStreak.length > 2 ? '5.3' : '6.9'}
           fontFamily="Monaco, monospace"
           fontWeight="700"
           fill="#2d1800"
@@ -579,8 +580,8 @@ const PlayerTable = () => {
 
     const sortedPlayersForDisplay = useMemo(
       () => [...players].sort((b, a) => {
-        const totalScoreA = getDisplayedFinalTotal(rounds, scores, a, selectedRounds[a], medianScores);
-        const totalScoreB = getDisplayedFinalTotal(rounds, scores, b, selectedRounds[b], medianScores);
+        const totalScoreA = getSortableFinalTotal(rounds, scores, a, selectedRounds[a], medianScores);
+        const totalScoreB = getSortableFinalTotal(rounds, scores, b, selectedRounds[b], medianScores);
 
         return isSortAscending ? totalScoreA - totalScoreB : totalScoreB - totalScoreA;
       }),

@@ -2,6 +2,10 @@ function roundToDisplay(value) {
   return typeof value === 'number' ? parseFloat(value.toFixed(2)) : value;
 }
 
+function isNumericScore(value) {
+  return typeof value === 'number' && !Number.isNaN(value);
+}
+
 function normalizeCreatorName(name) {
   if (name === 'Dad') {
     return 'Dan';
@@ -54,34 +58,80 @@ export function getDisplayedJokerBonus(rounds, scores, player, selectedRoundTitl
   }
 
   const score = getEffectiveRoundScore(scores, player, selectedRound);
-  return typeof score === 'number' ? roundToDisplay(score) : null;
+  return isNumericScore(score) ? roundToDisplay(score) : null;
 }
 
-export function getDisplayedCreatorBonus(rounds, player, selectedRoundTitle, medianScores) {
-  const total = (rounds || [])
+function getCreatorBonusState(rounds, player, selectedRoundTitle, medianScores) {
+  let total = 0;
+  let hasValue = false;
+
+  (rounds || [])
     .filter(round => playerMatchesCreator(round.creator, player))
-    .reduce((sum, round) => {
+    .forEach(round => {
       if (selectedRoundTitle === round.title) {
-        return sum;
+        return;
       }
 
       const medianScore = medianScores?.[rounds.indexOf(round)];
-      return sum + (medianScore || 0);
-    }, 0);
+      if (isNumericScore(medianScore)) {
+        total += medianScore;
+        hasValue = true;
+      }
+    });
 
-  return roundToDisplay(total) || 0;
+  return { total, hasValue };
 }
 
-export function getDisplayedFinalTotal(rounds, scores, player, selectedRoundTitle, medianScores) {
+export function getDisplayedCreatorBonus(rounds, player, selectedRoundTitle, medianScores) {
+  const { total, hasValue } = getCreatorBonusState(rounds, player, selectedRoundTitle, medianScores);
+  return hasValue ? roundToDisplay(total) : null;
+}
+
+function getDisplayedRoundTotalState(rounds, scores, player) {
+  let total = 0;
+  let hasValue = false;
+
+  (rounds || []).forEach(round => {
+    const score = getDisplayedRoundScore(scores, player, round);
+    if (isNumericScore(score)) {
+      total += score;
+      hasValue = true;
+    }
+  });
+
+  return { total, hasValue };
+}
+
+export function getSortableFinalTotal(rounds, scores, player, selectedRoundTitle, medianScores) {
   const displayedRoundTotal = (rounds || []).reduce((sum, round) => {
     const score = getDisplayedRoundScore(scores, player, round);
-    return sum + (typeof score === 'number' ? score : 0);
+    return sum + (isNumericScore(score) ? score : 0);
   }, 0);
 
   const creatorBonus = getDisplayedCreatorBonus(rounds, player, selectedRoundTitle, medianScores);
   const jokerBonus = getDisplayedJokerBonus(rounds, scores, player, selectedRoundTitle);
 
-  return roundToDisplay(displayedRoundTotal + creatorBonus + (typeof jokerBonus === 'number' ? jokerBonus : 0)) || 0;
+  return roundToDisplay(
+    displayedRoundTotal +
+    (isNumericScore(creatorBonus) ? creatorBonus : 0) +
+    (isNumericScore(jokerBonus) ? jokerBonus : 0)
+  ) || 0;
+}
+
+export function getDisplayedFinalTotal(rounds, scores, player, selectedRoundTitle, medianScores) {
+  const roundTotalState = getDisplayedRoundTotalState(rounds, scores, player);
+  const creatorBonusState = getCreatorBonusState(rounds, player, selectedRoundTitle, medianScores);
+  const jokerBonus = getDisplayedJokerBonus(rounds, scores, player, selectedRoundTitle);
+
+  if (!roundTotalState.hasValue && !creatorBonusState.hasValue && !isNumericScore(jokerBonus)) {
+    return null;
+  }
+
+  return roundToDisplay(
+    roundTotalState.total +
+    creatorBonusState.total +
+    (isNumericScore(jokerBonus) ? jokerBonus : 0)
+  );
 }
 
 export function clearCreatorScoreForRound(scores, players, roundTitle, newCreatorName) {
