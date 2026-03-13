@@ -211,7 +211,8 @@ import {
   `
 
     const StyledSelect = styled(Select)`
-        && .MuiOutlinedInput-root {
+        &&.MuiInputBase-root,
+        &&.MuiOutlinedInput-root {
           background-color: #333;
           color: #fff;
           border-radius: 0;
@@ -378,7 +379,7 @@ import {
     const MetadataSection = styled.div`
       display: flex;
       justify-content: center;
-      padding: 1rem 0 1.25rem;
+      padding: 0.45rem 0 0.95rem;
     `;
 
     const MetadataGrid = styled.div`
@@ -453,7 +454,7 @@ import {
     const MetadataNotesFieldWrapper = styled(MetadataField)`
       grid-column: 1 / -1;
       justify-self: center;
-      width: min(100%, 680px);
+      width: min(100%, 340px);
     `;
 
     const MetadataActionField = styled(MetadataField)`
@@ -2379,7 +2380,7 @@ const PlayerTable = () => {
                   <StyledTableCell sx={{maxWidth: '200px'}} className={selectedColumnIndex === 1 ? 'selected-column' : ''}>
                       <StyledFormControl>
                           <InputLabel id="demo-simple-select-label"></InputLabel>
-                          <Select sx={{maxWidth: '150px'}}
+                          <StyledSelect sx={{maxWidth: '150px'}}
                               labelId="demo-simple-select-label"
                               id="demo-simple-select"
                               value={selectedRounds[player] || "Select"} // Access the selected round for this player
@@ -2398,7 +2399,7 @@ const PlayerTable = () => {
                               {rounds.map((round, index) => (
                                   <MenuItem value={round.title} key={index}>{round.title}</MenuItem>
                               ))}
-                          </Select>
+                          </StyledSelect>
                       </StyledFormControl>
                   </StyledTableCell>
                   {rounds.map((round, index) => (
@@ -2798,7 +2799,7 @@ const PlayerTable = () => {
                 markDirty();
               }}
               multiline
-              rows={isSmallScreen ? 3 : 2}
+              rows={isSmallScreen ? 2 : 1}
               placeholder="Enter Nightly Notes"
             />
           </MetadataNotesFieldWrapper>
