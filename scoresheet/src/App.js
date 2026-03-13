@@ -449,6 +449,7 @@ import {
         color: #fff;
         font-family: "Monaco";
         border-radius: 0;
+        padding: 0;
       }
 
       && .MuiOutlinedInput-notchedOutline {
@@ -460,7 +461,7 @@ import {
         font-family: "Monaco";
         font-size: 0.9rem;
         line-height: 1.4;
-        padding: 0.7rem 0.85rem;
+        padding: 0.35rem 0.55rem;
         text-align: center;
         white-space: pre-wrap;
       }
@@ -483,6 +484,7 @@ import {
       grid-column: 1 / -1;
       justify-self: center;
       width: min(100%, 680px);
+      margin-top: -0.15rem;
     `;
 
     const MetadataActionField = styled(MetadataField)`
