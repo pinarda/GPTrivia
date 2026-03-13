@@ -44,7 +44,6 @@ import {
   getDisplayedRoundScore,
 } from './scoreTotals';
 import {
-  getCrownBurstParticles,
   getDisplayNameForPlayer,
   getCrownStreak,
   getInheritedCrownedWinner,
@@ -441,34 +440,6 @@ import {
       z-index: 1;
     `;
 
-    const CrownBurstLayer = styled.div`
-      position: absolute;
-      top: -0.2rem;
-      right: -0.2rem;
-      width: 0;
-      height: 0;
-      pointer-events: none;
-      overflow: visible;
-      z-index: 2;
-    `;
-
-    const CrownBurstStar = styled(motion.span)`
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 8px;
-      height: 8px;
-      background: #ffe27a;
-      clip-path: polygon(
-        50% 0%, 61% 35%, 98% 35%,
-        68% 57%, 79% 91%, 50% 70%,
-        21% 91%, 32% 57%, 2% 35%,
-        39% 35%
-      );
-      box-shadow: 0 0 5px rgba(255, 226, 122, 0.7);
-      transform-origin: center;
-    `;
-
       const GlobalStyle = createGlobalStyle`
           .MuiPopover-root .MuiPaper-root {
             display: block;
@@ -594,6 +565,7 @@ const PlayerTable = () => {
     const pendingMutationIdsRef = useRef(new Set());
     const serverRoundSnapshotRef = useRef({});
     const serverPresentationSnapshotRef = useRef(makePresentationSnapshot(null));
+    const crownedPlayerAnchorRef = useRef(null);
     const saveInFlightRef = useRef(false);
     const saveQueuedRef = useRef(false);
     const latestStateRef = useRef(null);
@@ -629,8 +601,6 @@ const PlayerTable = () => {
       ),
       [crownedWinner, inheritedCrownedWinner, presentations, selectedDate],
     );
-
-    const crownBurstParticles = useMemo(() => getCrownBurstParticles(), []);
 
     function convertDate(dateStr) {
         const [month, day, year] = dateStr.split('.');
@@ -1500,6 +1470,26 @@ const PlayerTable = () => {
       };
     }, [crownedWinner, markDirty, players, sortedPlayersForDisplay, tiebreakWinner]);
 
+    useEffect(() => {
+      if (crownBurstCount === 0 || !crownedPlayerAnchorRef.current) {
+        return;
+      }
+
+      const frameId = window.requestAnimationFrame(() => {
+        const rect = crownedPlayerAnchorRef.current.getBoundingClientRect();
+        window.dispatchEvent(new CustomEvent('scoresheet:crown-stars', {
+          detail: {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          },
+        }));
+      });
+
+      return () => {
+        window.cancelAnimationFrame(frameId);
+      };
+    }, [crownBurstCount, crownedPlayer]);
+
     const handleMaxScoreChange = (roundTitle, newMaxScore) => {
                 setMaxScores(prevScores => ({
             ...prevScores,
@@ -1976,44 +1966,14 @@ const PlayerTable = () => {
                       <PlayerNameStack>
                           <PlayerNameAnchor>
                               {crownedPlayer === player && (
-                                  <>
-                                      <WinnerCrown
-                                          initial={{ opacity: 0, y: -5, rotate: 6, scale: 0.8 }}
-                                          animate={{ opacity: 1, y: 0, rotate: 22, scale: 1 }}
-                                          transition={{ duration: 0.35, ease: 'easeOut' }}
-                                      >
-                                          <CrownIcon streak={crownStreak} />
-                                      </WinnerCrown>
-                                      {crownBurstCount > 0 && (
-                                          <CrownBurstLayer key={`${player}-${crownBurstCount}`}>
-                                              {crownBurstParticles.map((particle, index) => (
-                                                  <CrownBurstStar
-                                                      key={`${player}-${crownBurstCount}-${index}`}
-                                                      initial={{
-                                                          opacity: 0,
-                                                          x: 0,
-                                                          y: 0,
-                                                          scale: 0.45,
-                                                          rotate: 0,
-                                                      }}
-                                                      animate={{
-                                                          opacity: [0, 1, 1, 0],
-                                                          x: particle.x,
-                                                          y: particle.y,
-                                                          scale: [0.45, particle.scale, particle.scale * 0.9],
-                                                          rotate: particle.rotate,
-                                                      }}
-                                                      transition={{
-                                                          duration: 1.15,
-                                                          ease: 'easeOut',
-                                                          times: [0, 0.12, 0.75, 1],
-                                                          delay: particle.delay,
-                                                      }}
-                                                  />
-                                              ))}
-                                          </CrownBurstLayer>
-                                      )}
-                                  </>
+                                  <WinnerCrown
+                                      ref={crownedPlayerAnchorRef}
+                                      initial={{ opacity: 0, y: -5, rotate: 6, scale: 0.8 }}
+                                      animate={{ opacity: 1, y: 0, rotate: 22, scale: 1 }}
+                                      transition={{ duration: 0.35, ease: 'easeOut' }}
+                                  >
+                                      <CrownIcon streak={crownStreak} />
+                                  </WinnerCrown>
                               )}
                               <a
                                   href={url + `/player_profile/${player.replace('score_', '')}/`}

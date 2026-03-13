@@ -70,7 +70,7 @@
 
     <div id="react-scoresheet"></div>
 
-    <script src="{% static 'scoresheet/build/static/js/main.cd1e1205.js' %}"></script>
+    <script src="{% static 'scoresheet/build/static/js/main.1da247c8.js' %}"></script>
     <audio id="snake-hiss" src="/static/img/snake-hissing-6092.mp3" preload="auto"></audio>
 
     <div class="scoresheet-animation-controls">
@@ -79,6 +79,7 @@
       <button id="let-snake-go" class="scoresheet-animation-button">Swoop!</button>
       <button id="let-snakes-go" class="scoresheet-animation-button">Release the snakes</button>
     </div>
+    <div id="star-overlay"></div>
     
     <div id="elephant-track">
       <div id="elephant-wrapper">
@@ -173,6 +174,7 @@
     });
     </script>
 
+    <script src="{% static 'GPTrivia/js/stars.js' %}"></script>
     <script>
     {#// Run on click#}
     {#document.getElementById('animate-btn').addEventListener('click', () => {#}

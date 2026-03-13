@@ -5,7 +5,6 @@ import {
   shouldIgnoreScoresheetMessage,
 } from './sync';
 import {
-  getCrownBurstParticles,
   getCrownStreak,
   getDisplayNameForPlayer,
   getInheritedCrownedWinner,
@@ -232,11 +231,6 @@ describe('scoresheet crown helpers', () => {
         'Megan',
       ),
     ).toBe(3);
-  });
-
-  test('returns a stable set of falling star particles for the crown burst', () => {
-    expect(getCrownBurstParticles()).toHaveLength(8);
-    expect(getCrownBurstParticles().every(particle => particle.y > 0)).toBe(true);
   });
 });
 

@@ -4,8 +4,7 @@
 const GRAVITY = 0.45;          // px per frame²
 const FADE_MS = 300;           // fade-out time
 
-const overlay     = document.getElementById("star-overlay");
-const magicButton = document.getElementById("magic-button");
+const overlay = document.getElementById("star-overlay");
 let FOOTER = null;        // declare it at module scope
 const MAX_SPEED = 25; // px/frame at which color hits "max"
 
@@ -18,6 +17,16 @@ function fadeOutAndRemove(elem){
   elem.style.transition = `opacity ${FADE_MS}ms`;
   elem.style.opacity = 0;
   setTimeout(() => elem.remove(), FADE_MS);
+}
+
+function burstStarsAt(cx, cy, count = 12) {
+  if (!overlay) {
+    return;
+  }
+
+  for (let i = 0; i < count; i += 1) {
+    launchStar(cx, cy);
+  }
 }
 
 // Launch one star at (x0, y0) in viewport coordinates
@@ -102,13 +111,13 @@ function launchStar(cx, cy) {
 }
 
 
-// ─────────────────────────────────────────────
-//  click handler – fire a burst of stars
-// ─────────────────────────────────────────────
-magicButton.addEventListener("click", () => {
-  const { left, top, width, height } = magicButton.getBoundingClientRect();
-  const cx = left + width  / 2;
-  const cy = top  + height / 2;
+window.addEventListener("scoresheet:crown-stars", (event) => {
+  const x = event?.detail?.x;
+  const y = event?.detail?.y;
 
-  for (let i = 0; i < 12; i++) launchStar(cx, cy);
+  if (typeof x !== 'number' || typeof y !== 'number') {
+    return;
+  }
+
+  burstStarsAt(x, y);
 });
