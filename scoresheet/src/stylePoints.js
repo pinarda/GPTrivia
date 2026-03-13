@@ -83,13 +83,13 @@ export function getStylePointTheme(stylePoints, playerField) {
     return {
       tier,
       value,
-      frameFill: '#ff9b1c',
-      frameStroke: '#7f2300',
+      frameFill: '#ffb21f',
+      frameStroke: '#7a1a00',
       lensFill: '#230307',
-      highlight: '#ffd77a',
+      highlight: '#fff1a8',
       flame: true,
-      flameCore: '#ffe88f',
-      flameOuter: '#ff5d1f',
+      flameCore: '#fff5a8',
+      flameOuter: '#ff4a1a',
     };
   }
 

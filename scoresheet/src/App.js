@@ -475,7 +475,7 @@ import {
       align-items: center;
       justify-content: center;
       position: absolute;
-      top: -0.22rem;
+      top: -0.34rem;
       left: -0.8rem;
       pointer-events: none;
       transform-origin: center;
@@ -527,36 +527,46 @@ function CrownIcon({ streak }) {
 
 function SunglassesIcon({ theme }) {
   return (
-    <svg viewBox="0 0 34 22" width="28" height="18" aria-hidden="true">
+    <svg viewBox="0 0 34 24" width="28" height="18" aria-hidden="true">
       {theme?.flame && (
         <>
           <path
-            d="M10.4 9.6C9.2 8 9.4 6.2 10.8 5.1C11.3 6.1 12.2 6.7 12.8 7.8C13.5 9.1 13.2 10.6 11.8 11.2C11.1 11 10.6 10.4 10.4 9.6Z"
+            d="M5.6 10.1C5.3 7.5 7 5.3 9.1 4.2C9.3 5.8 10 6.9 10.4 8.4C10.8 10.3 9.7 11.9 7.9 12.4C6.7 12 5.8 11.2 5.6 10.1Z"
             fill={theme.flameOuter}
+            opacity="0.92"
           />
           <path
-            d="M14.6 7.5C14.1 5.4 15.4 3.6 17.1 2.8C17.3 4 18 4.9 18.2 6.2C18.5 8.1 17.4 9.8 15.5 10.2C14.9 9.5 14.7 8.6 14.6 7.5Z"
+            d="M11.7 7.8C11.2 4.6 13.2 2.1 15.8 1.1C16.1 3 17 4.4 17.3 6.2C17.7 8.9 16.1 11.1 13.5 11.7C12.4 10.6 11.9 9.4 11.7 7.8Z"
             fill={theme.flameOuter}
+            opacity="0.98"
           />
           <path
-            d="M20.8 9.4C20.4 7.6 21.4 6.1 23 5.3C23.2 6.4 23.9 7.2 24.1 8.4C24.3 10.1 23.4 11.5 21.8 11.8C21.2 11.2 21 10.4 20.8 9.4Z"
+            d="M18.4 6.9C18.1 4.3 19.7 2.2 22 1.2C22.2 2.8 23 4.1 23.3 5.6C23.7 8 22.4 10 20.1 10.7C19.1 9.7 18.6 8.7 18.4 6.9Z"
             fill={theme.flameOuter}
+            opacity="0.96"
           />
           <path
-            d="M16.7 7.6C16.3 6.6 16.6 5.5 17.3 4.8C17.6 5.5 18.1 5.9 18.3 6.7C18.6 7.7 18 8.7 17.1 8.9C16.9 8.5 16.8 8.1 16.7 7.6Z"
+            d="M24.6 9.8C24.4 7.4 25.9 5.5 27.9 4.4C28.2 5.9 28.9 7 29.3 8.3C29.6 10.2 28.5 11.8 26.8 12.3C25.6 11.9 24.8 10.9 24.6 9.8Z"
+            fill={theme.flameOuter}
+            opacity="0.9"
+          />
+          <path
+            d="M14.9 7.2C14.7 5.7 15.5 4.4 16.8 3.7C17 4.6 17.5 5.4 17.7 6.3C17.9 7.6 17.2 8.7 15.9 9C15.3 8.6 15 8 14.9 7.2Z"
+            fill={theme.flameCore}
+          />
+          <path
+            d="M22 6.5C21.8 5.1 22.6 4 23.8 3.5C24.1 4.3 24.5 4.9 24.6 5.8C24.9 7.1 24.2 8.1 23 8.3C22.5 7.9 22.2 7.3 22 6.5Z"
             fill={theme.flameCore}
           />
         </>
       )}
-      <path d="M2.8 8.1L6.6 10.4" stroke={theme.frameStroke} strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M27.4 10.4L31.2 8.1" stroke={theme.frameStroke} strokeWidth="1.8" strokeLinecap="round" />
-      <rect x="6.4" y="8" width="9.6" height="6.8" rx="2.2" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.3" />
-      <rect x="18" y="8" width="9.6" height="6.8" rx="2.2" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.3" />
-      <rect x="7.5" y="9" width="7.4" height="4.8" rx="1.6" fill={theme.lensFill} />
-      <rect x="19.1" y="9" width="7.4" height="4.8" rx="1.6" fill={theme.lensFill} />
-      <path d="M16 10.5H18" stroke={theme.frameStroke} strokeWidth="1.4" strokeLinecap="round" />
-      <path d="M8.2 9.9H10.5" stroke={theme.highlight} strokeWidth="0.95" strokeLinecap="round" opacity="0.82" />
-      <path d="M19.8 9.9H22.1" stroke={theme.highlight} strokeWidth="0.95" strokeLinecap="round" opacity="0.82" />
+      <rect x="4.8" y="9.5" width="10.9" height="7.1" rx="2.4" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.4" />
+      <rect x="18.3" y="9.5" width="10.9" height="7.1" rx="2.4" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.4" />
+      <rect x="6.1" y="10.7" width="8.3" height="4.7" rx="1.5" fill={theme.lensFill} />
+      <rect x="19.6" y="10.7" width="8.3" height="4.7" rx="1.5" fill={theme.lensFill} />
+      <rect x="15.2" y="11.5" width="3.6" height="1.6" rx="0.8" fill={theme.frameStroke} />
+      <path d="M6.9 11.5H9.6" stroke={theme.highlight} strokeWidth="1" strokeLinecap="round" opacity="0.85" />
+      <path d="M20.4 11.5H23.1" stroke={theme.highlight} strokeWidth="1" strokeLinecap="round" opacity="0.85" />
     </svg>
   );
 }
@@ -612,7 +622,7 @@ const PlayerTable = () => {
     const [tiebreakWinner, setTiebreakWinner] = useState('');
     const [crownedWinner, setCrownedWinner] = useState('');
     const [inheritedCrownedWinner, setInheritedCrownedWinner] = useState('');
-    const [stylePointBurstCount, setStylePointBurstCount] = useState(0);
+    const [stylePointBurstToken, setStylePointBurstToken] = useState('');
     const [stylePointBurstPlayer, setStylePointBurstPlayer] = useState('');
     const [presentations, setPresentations] = useState([]);
     const [notes, setNotes] = useState('');
@@ -1614,7 +1624,7 @@ const PlayerTable = () => {
     }, [players, sortedPlayersForDisplay]);
 
     useEffect(() => {
-      if (stylePointBurstCount === 0 || !stylePointBurstAnchorRef.current) {
+      if (!stylePointBurstToken || !stylePointBurstAnchorRef.current) {
         return;
       }
 
@@ -1631,7 +1641,7 @@ const PlayerTable = () => {
       return () => {
         window.cancelAnimationFrame(frameId);
       };
-    }, [stylePointBurstCount]);
+    }, [stylePointBurstToken]);
 
     useEffect(() => {
       if (!openDatePicker) {
@@ -1681,7 +1691,7 @@ const PlayerTable = () => {
         incrementStylePoint(prevStylePoints, selectedStylePointPlayer)
       ));
       setStylePointBurstPlayer(selectedStylePointPlayer);
-      setStylePointBurstCount(prev => prev + 1);
+      setStylePointBurstToken(createMutationId());
       setIsStylePointDialogOpen(false);
       markDirty();
     };
