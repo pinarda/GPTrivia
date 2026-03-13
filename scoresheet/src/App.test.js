@@ -11,6 +11,10 @@ import {
 } from './crown';
 import { DEFAULT_VISIBLE_PLAYERS } from './defaultPlayers';
 import {
+  resolveJokerRoundIndices,
+  resolvePresentationPlayers,
+} from './presentationData';
+import {
   clearCreatorScoreForRound,
   getDisplayedCreatorBonus,
   getDisplayedFinalTotal,
@@ -211,6 +215,19 @@ describe('scoresheet player defaults', () => {
       'score_dan',
       'score_chris',
     ]);
+  });
+
+  test('hydrates player and joker data from object payloads', () => {
+    expect(
+      resolvePresentationPlayers(
+        { score_alex: 'score_alex', score_megan: 'score_megan' },
+        DEFAULT_VISIBLE_PLAYERS,
+      ),
+    ).toEqual(['score_alex', 'score_megan']);
+
+    expect(
+      resolveJokerRoundIndices({ alex: 'Round 1', megan: 'Round 2' }),
+    ).toEqual({ alex: 'Round 1', megan: 'Round 2' });
   });
 });
 

@@ -49,6 +49,10 @@ import {
   getPlayerFieldForName,
 } from './crown';
 import { DEFAULT_VISIBLE_PLAYERS } from './defaultPlayers';
+import {
+  resolveJokerRoundIndices,
+  resolvePresentationPlayers,
+} from './presentationData';
 
     const playerColorMapping = {
         'score_alex': '#D2042D',
@@ -843,28 +847,13 @@ const PlayerTable = () => {
             if(selectedPresentation) {
                 plist = selectedPresentation.player_list;
             }
-            // if there is no player list, or if the player dict is empty, set the player names to the default players
-            if (!plist || plist === "{}") {
-                setPlayers(defaultPlayers);
-                // set the player names to the default players
-                playerNames = defaultPlayers.map(player => player.replace('score_', ''));
-            } else {
-                const jsonString = plist.replace(/'/g, '"');
-                const dictionary = JSON.parse(jsonString);
-
-                const newPlayers = Object.keys(dictionary);
-                setPlayers(newPlayers);
-                playerNames = newPlayers.map(player => player.replace('score_', ''));
-            }
+            const resolvedPlayers = resolvePresentationPlayers(plist, defaultPlayers);
+            setPlayers(resolvedPlayers);
+            playerNames = resolvedPlayers.map(player => player.replace('score_', ''));
 
 
             if(selectedPresentation) {
-                const jokerRoundIndicesString = selectedPresentation.joker_round_indices;
-                if (jokerRoundIndicesString !== null) {
-                    var jokerRoundIndices = JSON.parse(jokerRoundIndicesString.replace(/'/g, "\"").replace(/^'/, '"').replace(/'$/, '"').replace(/~~~~/g, "'"));
-                } else {
-                    var jokerRoundIndices = {};
-                }
+                const jokerRoundIndices = resolveJokerRoundIndices(selectedPresentation.joker_round_indices);
                 // const jokerRoundIndices = selectedPresentation.joker_round_indices;
                 const ID = selectedPresentation.presentation_id;
 
