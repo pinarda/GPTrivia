@@ -17,6 +17,11 @@ import {
   resolvePresentationPlayers,
 } from './presentationData';
 import {
+  buildJokerRouletteSequence,
+  JOKER_RANDOMIZE_VALUE,
+  pickJokerRouletteIndex,
+} from './jokerRoulette';
+import {
   extractPlayersFromRounds,
   getDisplayNameForPlayerField,
   getRoundExtraScores,
@@ -381,6 +386,40 @@ describe('scoresheet player defaults', () => {
     expect(getPlayerStorageKey('score_alex')).toBe('alex');
     expect(getPlayerStorageKey('score_sam guest')).toBe('sam guest');
     expect(getDisplayNameForPlayerField('score_sam guest')).toBe('Sam Guest');
+  });
+});
+
+describe('scoresheet joker roulette helpers', () => {
+  test('keeps a stable randomize sentinel value', () => {
+    expect(JOKER_RANDOMIZE_VALUE).toBe('__JOKER_RANDOMIZE__');
+  });
+
+  test('picks a valid roulette index from the available rounds', () => {
+    expect(pickJokerRouletteIndex(['Round 1', 'Round 2', 'Round 3'], () => 0)).toBe(0);
+    expect(pickJokerRouletteIndex(['Round 1', 'Round 2', 'Round 3'], () => 0.61)).toBe(1);
+    expect(pickJokerRouletteIndex(['Round 1', 'Round 2', 'Round 3'], () => 0.99)).toBe(2);
+    expect(pickJokerRouletteIndex([], () => 0.4)).toBeNull();
+  });
+
+  test('builds a slowing roulette sequence that lands on the requested round', () => {
+    const sequence = buildJokerRouletteSequence(
+      ['Round 1', 'Round 2', 'Round 3'],
+      1,
+      { fullCycles: 2, minDelay: 50, maxDelay: 200 },
+    );
+
+    expect(sequence.map(step => step.title)).toEqual([
+      'Round 1',
+      'Round 2',
+      'Round 3',
+      'Round 1',
+      'Round 2',
+      'Round 3',
+      'Round 1',
+      'Round 2',
+    ]);
+    expect(sequence[0].delay).toBeLessThan(sequence[sequence.length - 1].delay);
+    expect(sequence[sequence.length - 1].title).toBe('Round 2');
   });
 });
 

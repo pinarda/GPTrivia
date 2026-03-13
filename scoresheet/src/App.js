@@ -61,6 +61,11 @@ import {
   resolvePresentationPlayers,
 } from './presentationData';
 import {
+  buildJokerRouletteSequence,
+  JOKER_RANDOMIZE_VALUE,
+  pickJokerRouletteIndex,
+} from './jokerRoulette';
+import {
     extractPlayersFromRounds,
     FIXED_SCORE_FIELDS,
     getDisplayNameForPlayerField,
@@ -717,6 +722,8 @@ const PlayerTable = () => {
     const [selectedStylePointPlayer, setSelectedStylePointPlayer] = useState('');
     const [isTiebreakDialogOpen, setIsTiebreakDialogOpen] = useState(false);
     const [selectedTiebreakPlayer, setSelectedTiebreakPlayer] = useState('');
+    const [jokerRouletteHighlights, setJokerRouletteHighlights] = useState({});
+    const [jokerRouletteSpinningPlayers, setJokerRouletteSpinningPlayers] = useState({});
 
     const playerNamesDisplay = useMemo(
       () => (players || []).map(getDisplayNameForPlayerField),
@@ -752,6 +759,7 @@ const PlayerTable = () => {
     const stylePointAnchorRefs = useRef({});
     const newPlayerInputRef = useRef(null);
     const datePickerFieldRef = useRef(null);
+    const jokerRouletteTimeoutsRef = useRef({});
     const saveInFlightRef = useRef(false);
     const saveQueuedRef = useRef(false);
     const latestStateRef = useRef(null);
@@ -762,6 +770,44 @@ const PlayerTable = () => {
     const markDirty = useCallback(() => {
       setIsSaved(false);
       setSaveRequestCount(prev => prev + 1);
+    }, []);
+
+    const clearJokerRouletteForPlayer = useCallback((player) => {
+      const playerTimeouts = jokerRouletteTimeoutsRef.current[player] || [];
+      playerTimeouts.forEach(timeoutId => {
+        window.clearTimeout(timeoutId);
+      });
+      delete jokerRouletteTimeoutsRef.current[player];
+
+      setJokerRouletteHighlights(prevState => {
+        if (!(player in prevState)) {
+          return prevState;
+        }
+        const nextState = { ...prevState };
+        delete nextState[player];
+        return nextState;
+      });
+
+      setJokerRouletteSpinningPlayers(prevState => {
+        if (!(player in prevState)) {
+          return prevState;
+        }
+        const nextState = { ...prevState };
+        delete nextState[player];
+        return nextState;
+      });
+    }, []);
+
+    const clearAllJokerRoulette = useCallback(() => {
+      Object.keys(jokerRouletteTimeoutsRef.current).forEach(player => {
+        const playerTimeouts = jokerRouletteTimeoutsRef.current[player] || [];
+        playerTimeouts.forEach(timeoutId => {
+          window.clearTimeout(timeoutId);
+        });
+      });
+      jokerRouletteTimeoutsRef.current = {};
+      setJokerRouletteHighlights({});
+      setJokerRouletteSpinningPlayers({});
     }, []);
 
     const sortedPlayersForDisplay = useMemo(
@@ -1386,6 +1432,7 @@ const PlayerTable = () => {
         if (!confirmChange) return;
 
       const displayName = getDisplayNameForPlayerField(playerToRemove);
+      clearJokerRouletteForPlayer(playerToRemove);
 
       setPlayers(prevPlayers => prevPlayers.filter(player => player !== playerToRemove));
       setRounds(prevRounds => prevRounds.map(round => removePlayerFromRound(round, playerToRemove)));
@@ -1421,6 +1468,7 @@ const PlayerTable = () => {
         }
 
         if (nextDate !== selectedDate) {
+            clearAllJokerRoulette();
             // check if the eventOrDate.target.value exists in the sorted dates array
             // and if it doesn't run:
             //  setSelectedDate(todayStr);
@@ -1572,6 +1620,70 @@ const PlayerTable = () => {
       }
     };
 
+    const startJokerRoulette = useCallback((player) => {
+      if (!rounds.length) {
+        return;
+      }
+
+      const roundTitles = rounds.map(round => round.title);
+      const finalIndex = pickJokerRouletteIndex(roundTitles);
+
+      if (finalIndex == null) {
+        return;
+      }
+
+      const sequence = buildJokerRouletteSequence(
+        roundTitles,
+        finalIndex,
+        { fullCycles: 2 + Math.floor(Math.random() * 2) },
+      );
+
+      clearJokerRouletteForPlayer(player);
+      setJokerRouletteSpinningPlayers(prevState => ({
+        ...prevState,
+        [player]: true,
+      }));
+
+      let elapsedDelay = 0;
+      const timeoutIds = sequence.map(({ title, delay }) => {
+        elapsedDelay += delay;
+        return window.setTimeout(() => {
+          setJokerRouletteHighlights(prevState => ({
+            ...prevState,
+            [player]: title,
+          }));
+        }, elapsedDelay);
+      });
+
+      const finalTitle = roundTitles[finalIndex];
+      timeoutIds.push(window.setTimeout(() => {
+        setSelectedRounds(prevState => ({
+          ...prevState,
+          [player]: finalTitle,
+        }));
+        clearJokerRouletteForPlayer(player);
+        markDirty();
+      }, elapsedDelay + 240));
+
+      jokerRouletteTimeoutsRef.current[player] = timeoutIds;
+    }, [clearJokerRouletteForPlayer, markDirty, rounds]);
+
+    const handleJokerSelectionChange = useCallback((player, nextValue) => {
+      if (!confirmPastChange()) return;
+
+      if (nextValue === JOKER_RANDOMIZE_VALUE) {
+        startJokerRoulette(player);
+        return;
+      }
+
+      clearJokerRouletteForPlayer(player);
+      setSelectedRounds(prevState => ({
+        ...prevState,
+        [player]: nextValue,
+      }));
+      markDirty();
+    }, [clearJokerRouletteForPlayer, markDirty, startJokerRoulette]);
+
     const handleAddPlayer = () => {
         const confirmChange = confirmPastChange()
         if (!confirmChange) return;
@@ -1690,6 +1802,17 @@ const PlayerTable = () => {
         window.removeEventListener('scoresheet:crown-winner', handleCrownWinner);
       };
     }, [crownedWinner, markDirty, players, sortedPlayersForDisplay, tiebreakWinner]);
+
+    useEffect(() => {
+      return () => {
+        Object.values(jokerRouletteTimeoutsRef.current).forEach(timeoutIds => {
+          timeoutIds.forEach(timeoutId => {
+            window.clearTimeout(timeoutId);
+          });
+        });
+        jokerRouletteTimeoutsRef.current = {};
+      };
+    }, []);
 
     useEffect(() => {
       if (!openDatePicker) {
@@ -2375,6 +2498,8 @@ const PlayerTable = () => {
         <TableBody>
           {sortedPlayersForDisplay.map((player) => {
               const stylePointTheme = getStylePointTheme(stylePoints, player);
+              const activeJokerRouletteTitle = jokerRouletteHighlights[player];
+              const isJokerRouletteSpinning = Boolean(jokerRouletteSpinningPlayers[player]);
               return (<TableRow key={player}>
                   <StyledTableCell player={player}>
                       <PlayerNameStack>
@@ -2416,19 +2541,26 @@ const PlayerTable = () => {
                               MenuProps={dropdownMenuProps}
                               labelId="demo-simple-select-label"
                               id="demo-simple-select"
-                              value={selectedRounds[player] || "Select"} // Access the selected round for this player
-                              onChange={(event) => {
-                                // Update the selected round for this player
-                                  if (!confirmPastChange()) return;                                        // Set the saved status to false
-
-                                setSelectedRounds({
-                                    ...selectedRounds,
-                                    [player]: event.target.value
-                                });
-                                markDirty();
-                            }} // Update the selected round for this player
+                              displayEmpty
+                              value={isJokerRouletteSpinning ? JOKER_RANDOMIZE_VALUE : (selectedRounds[player] || "Select")} // Access the selected round for this player
+                              renderValue={(value) => {
+                                if (value === JOKER_RANDOMIZE_VALUE) {
+                                  return <span style={{ color: '#f6c343', fontWeight: 700 }}>Randomizing...</span>;
+                                }
+                                if (value === "Select") {
+                                  return '- Select -';
+                                }
+                                return value;
+                              }}
+                              onChange={(event) => handleJokerSelectionChange(player, event.target.value)}
                           >
                               <MenuItem value={"Select"}>- Select -</MenuItem>
+                              <MenuItem
+                                  value={JOKER_RANDOMIZE_VALUE}
+                                  sx={{ color: '#f6c343 !important', fontWeight: 700 }}
+                              >
+                                  Randomize
+                              </MenuItem>
                               {rounds.map((round, index) => (
                                   <MenuItem value={round.title} key={index}>{round.title}</MenuItem>
                               ))}
@@ -2443,7 +2575,9 @@ const PlayerTable = () => {
                           contentEditable
                           style={{
                               backgroundColor:
-                                  selectedRounds[player] === round.title
+                                  activeJokerRouletteTitle === round.title
+                                      ? '#f3bc34'
+                                      : (!isJokerRouletteSpinning && selectedRounds[player] === round.title)
                                       ? '#1e7662'
                                       : roundCreators[round.title] === getDisplayNameForPlayerField(player)
                                           ? '#810e19'
