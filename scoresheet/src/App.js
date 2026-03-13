@@ -467,7 +467,7 @@ function CrownIcon({ streak }) {
           x="12"
           y="11.1"
           textAnchor="middle"
-          fontSize={displayStreak.length > 2 ? '4.2' : '5.5'}
+          fontSize={displayStreak.length > 2 ? '4.8' : '6.3'}
           fontFamily="Monaco, monospace"
           fontWeight="700"
           fill="#2d1800"
