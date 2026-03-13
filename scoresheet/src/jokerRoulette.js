@@ -15,9 +15,9 @@ export function buildJokerRouletteSequence(
   {
     minDelay = 35,
     maxDelay = 720,
-    easingPower = 1.45,
+    easingPower = 1.75,
     fastDurationMs = 500,
-    slowdownCycles = 3.2,
+    slowdownCycles = 3,
   } = {},
 ) {
   if (!Array.isArray(roundTitles) || roundTitles.length === 0 || finalIndex == null) {

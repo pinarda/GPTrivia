@@ -3,6 +3,13 @@ import jsonfield
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.core.files.base import ContentFile
+from pathlib import Path
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageOps
+
+
+PROFILE_ICON_SIZE = (50, 50)
 
 # Signal handlers
 @receiver(post_save, sender=User)
@@ -18,13 +25,84 @@ def save_user_profile(sender, instance, **kwargs):
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     profile_picture = models.ImageField(upload_to='profile_pics', default='./default.jpg')
+    profile_icon = models.ImageField(upload_to='profile_icons', blank=True, default='')
 
     def __str__(self):
         return f'{self.user.username} Profile'
 
 
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)  # Call the "real" save() method
+        previous_picture_name = None
+        previous_icon_name = None
+        if self.pk:
+            try:
+                existing_profile = Profile.objects.only('profile_picture', 'profile_icon').get(pk=self.pk)
+                previous_picture_name = existing_profile.profile_picture.name
+                previous_icon_name = existing_profile.profile_icon.name
+            except Profile.DoesNotExist:
+                previous_picture_name = None
+                previous_icon_name = None
+
+        super().save(*args, **kwargs)
+
+        picture_changed = previous_picture_name != self.profile_picture.name
+        icon_missing = not self.profile_icon
+        icon_stale = previous_icon_name and previous_icon_name != self.profile_icon.name
+
+        if picture_changed or icon_missing or icon_stale:
+            self.ensure_profile_icon(force=picture_changed)
+
+    def has_custom_profile_picture(self):
+        picture_name = Path(self.profile_picture.name or '').name
+        return bool(picture_name and picture_name != 'default.jpg')
+
+    def _build_profile_icon_content(self):
+        if not self.has_custom_profile_picture():
+            return None
+
+        try:
+            with Image.open(self.profile_picture) as source_image:
+                source_image = ImageOps.exif_transpose(source_image).convert('RGBA')
+                resample_filter = getattr(Image, 'Resampling', Image).LANCZOS
+                fitted_image = ImageOps.fit(source_image, PROFILE_ICON_SIZE, method=resample_filter)
+
+                mask = Image.new('L', PROFILE_ICON_SIZE, 0)
+                ImageDraw.Draw(mask).ellipse((0, 0, PROFILE_ICON_SIZE[0] - 1, PROFILE_ICON_SIZE[1] - 1), fill=255)
+
+                output_image = Image.new('RGBA', PROFILE_ICON_SIZE, (0, 0, 0, 0))
+                output_image.paste(fitted_image, (0, 0), mask)
+
+                output_buffer = BytesIO()
+                output_image.save(output_buffer, format='PNG')
+                return output_buffer.getvalue()
+        except Exception:
+            return None
+
+    def ensure_profile_icon(self, force=False):
+        if not self.pk:
+            return False
+
+        if not self.has_custom_profile_picture():
+            if self.profile_icon:
+                self.profile_icon.delete(save=False)
+                self.profile_icon = ''
+                super().save(update_fields=['profile_icon'])
+            return False
+
+        if self.profile_icon and not force:
+            return False
+
+        icon_content = self._build_profile_icon_content()
+        if not icon_content:
+            return False
+
+        icon_filename = f"{Path(self.profile_picture.name).stem}_icon.png"
+        if self.profile_icon and self.profile_icon.name and Path(self.profile_icon.name).name != icon_filename:
+            self.profile_icon.delete(save=False)
+
+        self.profile_icon.save(icon_filename, ContentFile(icon_content), save=False)
+        super().save(update_fields=['profile_icon'])
+        return True
 
 class GPTriviaRound(models.Model):
     creator = models.CharField(max_length=100)

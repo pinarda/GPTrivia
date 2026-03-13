@@ -66,6 +66,10 @@ import {
   pickJokerRouletteIndex,
 } from './jokerRoulette';
 import {
+  getPlayerIconUrl,
+  readPlayerIconMap,
+} from './playerIcons';
+import {
     extractPlayersFromRounds,
     FIXED_SCORE_FIELDS,
     getDisplayNameForPlayerField,
@@ -527,9 +531,27 @@ import {
     const PlayerNameAnchor = styled.span`
       position: relative;
       display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+    `;
+
+    const PlayerNameLabel = styled.span`
+      position: relative;
+      display: inline-flex;
       align-items: flex-start;
       justify-content: center;
       padding-top: 0.1rem;
+    `;
+
+    const PlayerAvatarIcon = styled.img`
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
     `;
 
     const WinnerCrown = styled(motion.div)`
@@ -729,6 +751,7 @@ const PlayerTable = () => {
       () => (players || []).map(getDisplayNameForPlayerField),
       [players]
     );
+    const playerIconMap = useMemo(() => readPlayerIconMap(), []);
 
     const creatorOptions = useMemo(
       () => [...new Set([...(allPlayers || []), ...playerNamesDisplay])].sort((left, right) => left.localeCompare(right)),
@@ -1638,9 +1661,9 @@ const PlayerTable = () => {
         {
           minDelay: 35,
           maxDelay: 720,
-          easingPower: 1.45,
+          easingPower: 1.75,
           fastDurationMs: 500,
-          slowdownCycles: 3.2,
+          slowdownCycles: 3,
         },
       );
 
@@ -2506,36 +2529,46 @@ const PlayerTable = () => {
               const stylePointTheme = getStylePointTheme(stylePoints, player);
               const activeJokerRouletteTitle = jokerRouletteHighlights[player];
               const isJokerRouletteSpinning = Boolean(jokerRouletteSpinningPlayers[player]);
+              const playerDisplayName = getDisplayNameForPlayerField(player);
+              const playerIconUrl = getPlayerIconUrl(playerIconMap, player);
               return (<TableRow key={player}>
                   <StyledTableCell player={player}>
                       <PlayerNameStack>
                           <PlayerNameAnchor>
-                              {crownedPlayer === player && (
-                                  <WinnerCrown
-                                      initial={{ opacity: 0, y: -5, rotate: 6, scale: 0.8 }}
-                                      animate={{ opacity: 1, y: 0, rotate: 22, scale: 1 }}
-                                      transition={{ duration: 0.35, ease: 'easeOut' }}
+                              <PlayerNameLabel>
+                                  {crownedPlayer === player && (
+                                      <WinnerCrown
+                                          initial={{ opacity: 0, y: -5, rotate: 6, scale: 0.8 }}
+                                          animate={{ opacity: 1, y: 0, rotate: 22, scale: 1 }}
+                                          transition={{ duration: 0.35, ease: 'easeOut' }}
+                                      >
+                                          <CrownIcon streak={crownStreak} />
+                                      </WinnerCrown>
+                                  )}
+                                  {hasStylePointAward(stylePoints, player) && (
+                                      <StylePointShades
+                                          ref={(node) => setStylePointAnchor(player, node)}
+                                          initial={{ opacity: 0, y: -3, rotate: -30, scale: 0.8 }}
+                                          animate={{ opacity: 1, y: 0, rotate: -18, scale: 1 }}
+                                          transition={{ duration: 0.28, ease: 'easeOut' }}
+                                      >
+                                          <SunglassesIcon theme={stylePointTheme} />
+                                      </StylePointShades>
+                                  )}
+                                  <a
+                                      href={url + `/player_profile/${playerDisplayName}/`}
+                                      className="player_name"
+                                      data-player={playerDisplayName}
                                   >
-                                      <CrownIcon streak={crownStreak} />
-                                  </WinnerCrown>
+                                      {playerDisplayName}
+                                  </a>
+                              </PlayerNameLabel>
+                              {playerIconUrl && (
+                                  <PlayerAvatarIcon
+                                      src={playerIconUrl}
+                                      alt={`${playerDisplayName} icon`}
+                                  />
                               )}
-                              {hasStylePointAward(stylePoints, player) && (
-                                  <StylePointShades
-                                      ref={(node) => setStylePointAnchor(player, node)}
-                                      initial={{ opacity: 0, y: -3, rotate: -30, scale: 0.8 }}
-                                      animate={{ opacity: 1, y: 0, rotate: -18, scale: 1 }}
-                                      transition={{ duration: 0.28, ease: 'easeOut' }}
-                                  >
-                                      <SunglassesIcon theme={stylePointTheme} />
-                                  </StylePointShades>
-                              )}
-                              <a
-                                  href={url + `/player_profile/${getDisplayNameForPlayerField(player)}/`}
-                                  className="player_name"
-                                  data-player={getDisplayNameForPlayerField(player)}
-                              >
-                                  {getDisplayNameForPlayerField(player)}
-                              </a>
                           </PlayerNameAnchor>
                       </PlayerNameStack>
                   </StyledTableCell>

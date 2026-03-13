@@ -22,6 +22,10 @@ import {
   pickJokerRouletteIndex,
 } from './jokerRoulette';
 import {
+  getPlayerIconUrl,
+  readPlayerIconMap,
+} from './playerIcons';
+import {
   extractPlayersFromRounds,
   getDisplayNameForPlayerField,
   getRoundExtraScores,
@@ -386,6 +390,26 @@ describe('scoresheet player defaults', () => {
     expect(getPlayerStorageKey('score_alex')).toBe('alex');
     expect(getPlayerStorageKey('score_sam guest')).toBe('sam guest');
     expect(getDisplayNameForPlayerField('score_sam guest')).toBe('Sam Guest');
+  });
+});
+
+describe('scoresheet player icon helpers', () => {
+  test('reads the embedded icon map from the DOM', () => {
+    document.body.innerHTML = '<script id="scoresheet-player-icons" type="application/json">{\"Alex\":\"/media/profile_icons/alex_icon.png\"}</script>';
+
+    expect(readPlayerIconMap(document)).toEqual({
+      Alex: '/media/profile_icons/alex_icon.png',
+    });
+  });
+
+  test('resolves a player icon by field name or display name', () => {
+    const iconMap = {
+      Alex: '/media/profile_icons/alex_icon.png',
+    };
+
+    expect(getPlayerIconUrl(iconMap, 'score_alex')).toBe('/media/profile_icons/alex_icon.png');
+    expect(getPlayerIconUrl(iconMap, 'Alex')).toBe('/media/profile_icons/alex_icon.png');
+    expect(getPlayerIconUrl(iconMap, 'score_unknown')).toBe('');
   });
 });
 

@@ -46,18 +46,20 @@ from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.http import JsonResponse
+from django.http import Http404
 from django.core import serializers
 from rest_framework.renderers import JSONRenderer
 from datetime import date
 from .models import JeopardyQuestion, JeopardyRound, PushSubscription
 from .player_scores import (
     FIXED_SCORE_FIELDS,
+    MIN_ANALYSIS_ROUNDS,
     build_player_color_mapping,
     build_player_text_mapping,
     collect_player_fields,
     display_name_for_player_field,
     flatten_round_for_analysis,
-    get_all_player_fields,
+    get_eligible_player_fields,
     get_player_color,
     get_round_score_map,
     player_field_for_name,
@@ -395,6 +397,31 @@ def upload_profile_picture(request):
         form = ProfilePictureForm(instance=request.user.profile)
     return render(request, 'your_template.html', {'form': form})
 
+
+def _build_player_icon_map():
+    icon_map = {}
+
+    for profile in Profile.objects.select_related('user'):
+        if not profile.user_id:
+            continue
+
+        if profile.has_custom_profile_picture():
+            profile.ensure_profile_icon()
+
+        if not profile.profile_icon:
+            continue
+
+        display_name = display_name_for_player_field(profile.user.username)
+        if not display_name:
+            continue
+
+        icon_map[display_name] = profile.profile_icon.url
+        player_field = player_field_for_name(display_name)
+        if player_field:
+            icon_map[player_field] = profile.profile_icon.url
+
+    return icon_map
+
 @login_required
 def player_profile_dict(request, player_name):
     player_name = display_name_for_player_field(player_name)
@@ -410,6 +437,9 @@ def player_profile_dict(request, player_name):
     ]
 
     global_player_names = _get_global_player_names()
+    if player_name not in global_player_names:
+        raise Http404("Player profile not available")
+
     player_color = get_player_color(player_name)
     brightness = (0.5 * int(player_color[1:3], 16)) + int(player_color[3:5], 16) + (0.25 * int(player_color[5:7], 16))
     text_color = 'white' if brightness < 300 else 'black'
@@ -1027,7 +1057,7 @@ def home(request):
                 host="Unknown",
                 scorekeeper="Unknown",
                 style_points={},
-                notes={},
+                notes="",
                 tiebreak_winner="",
             )
             response_presentation_id = new_presentation_id
@@ -1171,7 +1201,9 @@ def buzzer_page(request):
 
 @login_required
 def scoresheet_new(request):
-    return render(request, 'GPTrivia/scoresheet_new.html', {})
+    return render(request, 'GPTrivia/scoresheet_new.html', {
+        'player_icon_map': _build_player_icon_map(),
+    })
 
 ## API stuff
 
@@ -1274,9 +1306,9 @@ def _current_trivia_date():
 
 
 def _get_global_player_fields():
-    return get_all_player_fields(
-        GPTriviaRound.objects.all(),
-        MergedPresentation.objects.all(),
+    return get_eligible_player_fields(
+        list(GPTriviaRound.objects.all()),
+        min_rounds=MIN_ANALYSIS_ROUNDS,
     )
 
 
