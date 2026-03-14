@@ -862,13 +862,28 @@ def player_profile(request, player_name):
 @sync_to_async          # runs blocking code in a thread-pool
 def _collect_rounds():
     links, titles, creators, old_links, shared_dates = get_round_titles_and_links()
-    return [
+    new_rounds = [
         {
             "title": t, "creator": c, "link": l,
-            "old_link": o, "shared_date": d
+            "old_link": o, "shared_date": d,
+            "coop": False,
+            "is_new": True,
         }
         for t, c, l, o, d in zip(titles, creators, links, old_links, shared_dates)
     ]
+    historical_rounds = [
+        {
+            "title": trivia_round.title,
+            "creator": trivia_round.creator,
+            "link": trivia_round.link,
+            "old_link": trivia_round.link,
+            "shared_date": trivia_round.date.isoformat() if trivia_round.date else "",
+            "coop": bool(trivia_round.cooperative),
+            "is_new": False,
+        }
+        for trivia_round in GPTriviaRound.objects.order_by('-date', 'round_number', 'title')
+    ]
+    return new_rounds + historical_rounds
 
 async def collect_rounds_api(request):
     if request.method != "GET":
