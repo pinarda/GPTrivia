@@ -891,8 +891,14 @@
         document.addEventListener("DOMContentLoaded", () => {
           homePresentationState = initializePresentationCalendar();
 
-          document.getElementById('round-search-input').addEventListener('input', (event) => {
+          const roundSearchInput = document.getElementById('round-search-input');
+          roundSearchInput.addEventListener('input', (event) => {
               filterRounds(event.target.value);
+          });
+          roundSearchInput.addEventListener('keydown', (event) => {
+              if (event.key === 'Enter') {
+                  event.preventDefault();
+              }
           });
           document.getElementById('round-page-prev').addEventListener('click', () => {
               if (homeRoundState.currentPage > 1) {
