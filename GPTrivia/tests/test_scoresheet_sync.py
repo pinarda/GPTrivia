@@ -304,3 +304,33 @@ class ScoresheetSyncTests(TestCase):
         self.assertEqual(message["client_id"], "client-3")
         self.assertEqual(message["mutation_id"], "mutation-4")
         self.assertEqual(message["round_id"], round_id)
+
+    def test_delete_round_removes_matching_presentation_with_non_padded_name(self):
+        self.presentation.delete()
+        unpadded_presentation = MergedPresentation.objects.create(
+            name="3.12.2026",
+            presentation_id="presentation-unpadded",
+            round_names=["Round 1"],
+            creator_list=["Alex"],
+            joker_round_indices={},
+            player_list={"score_alex": "score_alex"},
+            host="Alex",
+            scorekeeper="Megan",
+            style_points={},
+            notes="",
+            tiebreak_winner="",
+            crowned_winner="",
+        )
+
+        response = self.client.delete(
+            reverse("delete_round", args=[self.round.id]),
+            data=json.dumps({
+                "client_id": "client-5",
+                "mutation_id": "mutation-6",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(GPTriviaRound.objects.filter(date=datetime.date(2026, 3, 12)).exists())
+        self.assertFalse(MergedPresentation.objects.filter(id=unpadded_presentation.id).exists())

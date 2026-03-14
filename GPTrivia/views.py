@@ -940,6 +940,16 @@ def _build_presentation_calendar(presentations):
     return presentation_calendar
 
 
+def _delete_presentations_for_date(presentation_date):
+    matching_ids = [
+        presentation.id
+        for presentation in MergedPresentation.objects.all()
+        if _parse_presentation_name_date(presentation.name) == presentation_date
+    ]
+    if matching_ids:
+        MergedPresentation.objects.filter(id__in=matching_ids).delete()
+
+
 def _ready_presentations_queryset():
     return MergedPresentation.objects.filter(status=MergedPresentation.STATUS_READY)
 
@@ -1793,7 +1803,7 @@ def delete_round(request, round_id):
 
         if GPTriviaRound.objects.filter(date=thedate).count() == 0:
             print("deleting merged presentation with date: " + str(thedate))
-            MergedPresentation.objects.filter(name=thedate.strftime("%m.%d.%Y")).delete()
+            _delete_presentations_for_date(thedate)
 
         _schedule_scoresheet_broadcast({
             'action': 'update',
