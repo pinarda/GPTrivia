@@ -6,6 +6,7 @@ from django.test import SimpleTestCase
 from GPTrivia.mail import (
     ROUND_SOURCE_MERGED_DECK,
     ROUND_SOURCE_WHOLE_PRESENTATION,
+    _build_update_summary_entries,
     _classify_round_source_link,
     _find_slide_index_for_round_title,
     _format_pacific_timestamp,
@@ -180,6 +181,29 @@ class MailHelpersTests(SimpleTestCase):
         self.assertFalse(_pop_is_coop(coop_values))
         self.assertTrue(_pop_is_coop(coop_values))
         self.assertFalse(_pop_is_coop(coop_values))
+
+    def test_build_update_summary_entries_starts_after_existing_rounds(self):
+        entries = _build_update_summary_entries(
+            1,
+            ["New Round"],
+            ["Alex"],
+            ["on"],
+        )
+
+        self.assertEqual(
+            entries,
+            [
+                {
+                    "round_placeholder": "ROUND2",
+                    "creator_placeholder": "CREATOR2",
+                    "title": "New Round",
+                    "creator_key": "Alex",
+                    "coop": True,
+                    "round_done": False,
+                    "creator_done": False,
+                }
+            ],
+        )
 
     def test_infer_historical_round_slide_range_uses_next_round_title_when_links_are_missing(self):
         slides = [

@@ -79,7 +79,7 @@
     display: block;
     width: 100%;
     border: 1px solid #0073cc;
-    --round-table-columns: 80px 64px minmax(260px, 2.4fr) minmax(160px, 1.2fr) 88px 120px;
+    --round-table-columns: 80px minmax(260px, 2.4fr) minmax(160px, 1.2fr) 88px 120px;
 }
 
 /* Title row styling */
@@ -313,7 +313,7 @@
 }
 
 .new-cell {
-    text-align: center !important;
+    display: none !important;
 }
 
 /* Ensure the round title column text wraps */
@@ -347,7 +347,7 @@
 /* Specific adjustments for smaller screens */
 @media (max-width: 600px) {
     .round-selection-table {
-        --round-table-columns: 72px minmax(170px, 2.1fr) minmax(110px, 1fr);
+        --round-table-columns: 64px minmax(0, 1.75fr) minmax(0, 1fr);
     }
     .round-selection-shell,
     .round-selection-table {
@@ -367,9 +367,6 @@
     .date_cell {
         display: none;
     }
-    .new-cell {
-        display: none;
-    }
     .presentation-actions {
         width: 95%;
     }
@@ -381,14 +378,45 @@
         flex-basis: 230px;
     }
     .round-selection-table {
-        --round-table-columns: 76px 56px minmax(210px, 2.2fr) minmax(130px, 1fr) 82px;
+        --round-table-columns: 76px minmax(210px, 2.2fr) minmax(130px, 1fr) 82px;
     }
     .date_cell {
         display: none;
     }
     .round-selection-shell,
     .round-selection-table {
-        width: 90%; /* Ensure the table takes up all available space on small screens */
+        width: 90%;
+    }
+}
+
+@media (max-width: 700px) {
+    .round-selection-search {
+        min-width: min(100%, 220px);
+        flex-basis: 200px;
+    }
+    .round-selection-table {
+        --round-table-columns: 64px minmax(0, 1.5fr) minmax(0, 0.95fr) 72px;
+    }
+    .date_cell {
+        display: none;
+    }
+    .round-selection-shell,
+    .round-selection-table {
+        width: 100%;
+    }
+    .round-selection-table-header,
+    .round-selection-table-row {
+        column-gap: 8px;
+    }
+    .round-selection-table-cell {
+        padding: 4px;
+    }
+    .round-selection-table-cell input[type="text"] {
+        font-size: 14px;
+    }
+    .historical-text {
+        font-size: 0.92rem;
+        padding: 6px 2px;
     }
 }
 

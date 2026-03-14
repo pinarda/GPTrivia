@@ -185,6 +185,26 @@ def _pop_is_coop(coop_values):
     return coop_values.pop(0) == 'on'
 
 
+def _build_update_summary_entries(existing_round_count, titles, creator_keys, coops, max_slots=6):
+    entries = []
+    for offset, (title, creator_key) in enumerate(zip(titles, creator_keys)):
+        slot_index = existing_round_count + offset
+        if slot_index >= max_slots:
+            break
+        entries.append(
+            {
+                "round_placeholder": f"ROUND{slot_index + 1}",
+                "creator_placeholder": f"CREATOR{slot_index + 1}",
+                "title": title,
+                "creator_key": creator_key,
+                "coop": bool(coops[offset] == "on") if offset < len(coops) else False,
+                "round_done": False,
+                "creator_done": False,
+            }
+        )
+    return entries
+
+
 def _find_slide_index_for_round_title(slides, round_title, min_index=0):
     normalized_round_title = _normalize_round_title(round_title)
     if not normalized_round_title:
@@ -696,7 +716,13 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
     creator_placeholders = ['CREATOR1', 'CREATOR2', 'CREATOR3', 'CREATOR4', 'CREATOR5', 'CREATOR6']
     summary_round_titles = list(round_titles_for_return)
     summary_creator_keys = list(creator_keys)
-    summary_coops = list(coops)
+    summary_entries = _build_update_summary_entries(
+        len(merged_creators),
+        summary_round_titles,
+        summary_creator_keys,
+        coops,
+        max_slots=len(round_placeholders),
+    )
     print(summary_round_titles)
     print(summary_creator_keys)
     print(merged_creators)
@@ -719,9 +745,18 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                     for i in range(len(round_placeholders)):
                         round_placeholder = round_placeholders[i]
                         creator_placeholder = creator_placeholders[i]
+                        matching_entry = next(
+                            (
+                                entry for entry in summary_entries
+                                if entry["round_placeholder"] == round_placeholder
+                            ),
+                            None,
+                        )
+                        if matching_entry is None:
+                            continue
 
-                        if round_placeholder in content and len(summary_round_titles) > 0:
-                            new_text = _sanitize_slides_text(summary_round_titles.pop(0))
+                        if round_placeholder in content and not matching_entry["round_done"]:
+                            new_text = _sanitize_slides_text(matching_entry["title"])
                             round_start_index, round_end_index = _utf16_placeholder_range(
                                 content, round_placeholder
                             )
@@ -800,14 +835,15 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                             updated_content = _get_shape_text_content(updated_text, element_id)
                             if updated_content is not None:
                                 content = updated_content
+                            matching_entry["round_done"] = True
 
-                        if creator_placeholder in content and len(summary_creator_keys) > 0:
-                            new_text = _sanitize_slides_text(MAIL_NAME_MAP[summary_creator_keys.pop(0)])
+                        if creator_placeholder in content and not matching_entry["creator_done"]:
+                            new_text = _sanitize_slides_text(MAIL_NAME_MAP[matching_entry["creator_key"]])
                             creator_start_index, creator_end_index = _utf16_placeholder_range(
                                 content, creator_placeholder
                             )
 
-                            if _pop_is_coop(summary_coops):
+                            if matching_entry["coop"]:
                                 new_text = new_text + " - Co-op"
                             j+=1
 
@@ -822,6 +858,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                             response = slides_service.presentations().batchUpdate(presentationId=merged_presentation_id,
                                                                                   body={
                                                                                       'requests': delete_insert_requests}).execute()
+                            matching_entry["creator_done"] = True
                             break
 
     # add the outro slide
