@@ -1118,6 +1118,8 @@
 
         // Show spinner and message
         document.getElementById('submit-spinner1').style.display = 'inline';
+        document.getElementById('msg').textContent = 'Working... This may take a few minutes.';
+        document.getElementById('msg').style.color = 'white';
         document.getElementById('msg').style.display = 'block';
     }
 
@@ -1168,7 +1170,9 @@
             const payload = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                throw new Error(payload.detail || 'Network response was not ok');
+                const error = new Error(payload.detail || 'Network response was not ok');
+                error.payload = payload;
+                throw error;
             }
 
             return payload;
@@ -1181,6 +1185,15 @@
             // Handle errors and re-enable buttons
             console.error('Error:', error);
             enableButtons();
+            if (error.payload && error.payload.presentation_id) {
+                applyPresentationSelection(error.payload);
+            }
+            const messageElement = document.getElementById('msg');
+            if (messageElement) {
+                messageElement.textContent = error.message || 'Something went wrong while generating slides.';
+                messageElement.style.color = '#ffb3b3';
+                messageElement.style.display = 'block';
+            }
         });
     });
 

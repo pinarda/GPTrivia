@@ -141,6 +141,13 @@ class GPTriviaRound(models.Model):
 
 
 class MergedPresentation(models.Model):
+    STATUS_READY = 'ready'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_READY, 'Ready'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+
     name = models.CharField(max_length=255)
     presentation_id = models.CharField(max_length=255)
     round_names = jsonfield.JSONField(default=list)
@@ -153,6 +160,8 @@ class MergedPresentation(models.Model):
     notes = models.TextField(blank=True)
     tiebreak_winner = models.CharField(max_length=100, blank=True)
     crowned_winner = models.CharField(max_length=100, blank=True, default='')
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_READY)
+    error_message = models.TextField(blank=True, default='')
 
 
     def __str__(self):

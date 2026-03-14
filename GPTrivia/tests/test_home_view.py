@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from GPTrivia.mail import PresentationBuildError
 from GPTrivia.models import MergedPresentation
 
 
@@ -88,6 +89,23 @@ class HomeViewPresentationSelectionTests(TestCase):
             "https://docs.google.com/presentation/d/presentation-latest/embed",
         )
 
+    def test_home_ignores_failed_presentations_for_default_selection(self):
+        self._create_presentation(
+            name="03.13.2026",
+            presentation_id="presentation-failed",
+            round_names=["Round Failed"],
+            creator_list=["Alex"],
+        )
+        MergedPresentation.objects.filter(presentation_id="presentation-failed").update(
+            status=MergedPresentation.STATUS_FAILED,
+            error_message="generation failed",
+        )
+
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_presentation_id"], "presentation-latest")
+
     @patch("GPTrivia.views.create_presentation", return_value="presentation-generated")
     def test_generate_ajax_returns_json_for_new_presentation(self, create_mock):
         with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 6, 5)):
@@ -124,8 +142,55 @@ class HomeViewPresentationSelectionTests(TestCase):
                 },
             },
         )
-        self.assertTrue(
-            MergedPresentation.objects.filter(presentation_id="presentation-generated").exists()
+        generated_presentation = MergedPresentation.objects.get(presentation_id="presentation-generated")
+        self.assertEqual(generated_presentation.notes, "")
+        self.assertEqual(generated_presentation.status, MergedPresentation.STATUS_READY)
+
+    @patch(
+        "GPTrivia.views.create_presentation",
+        side_effect=PresentationBuildError(
+            "Slide generation stopped before completion: simulated failure",
+            presentation_id="presentation-partial",
+            creators=["Alex"],
+            round_titles=["Round C"],
+            round_links=["https://docs.google.com/presentation/d/presentation-partial/edit#slide=id.partial"],
+        ),
+    )
+    def test_generate_ajax_returns_partial_presentation_payload_on_failure(self, _create_mock):
+        with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 6, 5)):
+            response = self.client.post(
+                reverse("home"),
+                data={
+                    "action": "generate",
+                    "round_order_0": "1",
+                    "round_title_0": "Round C",
+                    "round_creator_0": "Alex",
+                    "round_link_0": "https://example.com/round-c",
+                    "round_old_link_0": "https://example.com/round-c/edit",
+                    "round_shared_date_0": "03.12.2026",
+                },
+                HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+                HTTP_ACCEPT="application/json",
+            )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(
+            response.json(),
+            {
+                "presentation_id": "presentation-partial",
+                "presentation_name": "6.05.2026",
+                "presentation_url": "https://docs.google.com/presentation/d/presentation-partial/embed",
+                "selected_presentation_iso_date": "2026-06-05",
+                "calendar_entry": None,
+                "detail": "Slide generation stopped before completion: simulated failure",
+                "build_failed": True,
+            },
+        )
+        failed_presentation = MergedPresentation.objects.get(presentation_id="presentation-partial")
+        self.assertEqual(failed_presentation.status, MergedPresentation.STATUS_FAILED)
+        self.assertEqual(
+            failed_presentation.error_message,
+            "Slide generation stopped before completion: simulated failure",
         )
 
     @patch("GPTrivia.views.update_merged_presentation", return_value=("presentation-old-updated", ["Jenny"], ["Round D"], ["https://example.com/round-d"]))

@@ -109,6 +109,12 @@ def get_round_titles_and_links(*args, **kwargs):
     return mail_get_round_titles_and_links(*args, **kwargs)
 
 
+def _get_presentation_build_error_class():
+    from .mail import PresentationBuildError
+
+    return PresentationBuildError
+
+
 @lru_cache(maxsize=1)
 def _get_openai_client():
     from openai import OpenAI
@@ -928,6 +934,10 @@ def _build_presentation_calendar(presentations):
     return presentation_calendar
 
 
+def _ready_presentations_queryset():
+    return MergedPresentation.objects.filter(status=MergedPresentation.STATUS_READY)
+
+
 def _build_home_context(selected_presentation, presentation_calendar):
     selected_presentation_date = None
     presentation_url = None
@@ -951,7 +961,7 @@ def _build_home_context(selected_presentation, presentation_calendar):
     }
 
 
-def _serialize_home_presentation(selected_presentation, presentation_id=None):
+def _serialize_home_presentation(selected_presentation, presentation_id=None, include_calendar_entry=None):
     if selected_presentation is None:
         return {
             "presentation_id": "",
@@ -963,6 +973,11 @@ def _serialize_home_presentation(selected_presentation, presentation_id=None):
 
     resolved_presentation_id = presentation_id or selected_presentation.presentation_id
     selected_presentation_date = _parse_presentation_name_date(selected_presentation.name)
+    if include_calendar_entry is None:
+        include_calendar_entry = (
+            getattr(selected_presentation, "status", MergedPresentation.STATUS_READY)
+            == MergedPresentation.STATUS_READY
+        )
 
     return {
         "presentation_id": resolved_presentation_id,
@@ -978,7 +993,7 @@ def _serialize_home_presentation(selected_presentation, presentation_id=None):
                 "presentation_id": resolved_presentation_id,
                 "name": selected_presentation.name,
             }
-            if selected_presentation_date
+            if selected_presentation_date and include_calendar_entry
             else None
         ),
     }
@@ -989,7 +1004,7 @@ def _is_ajax_home_request(request):
 
 
 def _get_selected_home_presentation(selected_presentation_id=None):
-    presentations = list(MergedPresentation.objects.order_by("id"))
+    presentations = list(_ready_presentations_queryset().order_by("id"))
     latest_presentation = presentations[-1] if presentations else None
     selected_presentation = latest_presentation
 
@@ -1004,6 +1019,36 @@ def _get_selected_home_presentation(selected_presentation_id=None):
         )
 
     return latest_presentation, selected_presentation, _build_presentation_calendar(presentations)
+
+
+def _upsert_failed_presentation(
+    *,
+    name,
+    presentation_id,
+    creator_list,
+    round_names,
+    error_message,
+):
+    if not presentation_id:
+        return None
+
+    failed_presentation, _ = MergedPresentation.objects.update_or_create(
+        presentation_id=presentation_id,
+        defaults={
+            "name": name,
+            "creator_list": creator_list,
+            "round_names": round_names,
+            "player_list": {},
+            "host": "Unknown",
+            "scorekeeper": "Unknown",
+            "style_points": {},
+            "notes": "",
+            "tiebreak_winner": "",
+            "status": MergedPresentation.STATUS_FAILED,
+            "error_message": error_message,
+        },
+    )
+    return failed_presentation
 
 @login_required
 @ensure_csrf_cookie
@@ -1064,14 +1109,42 @@ def home(request):
             ordered_coop = [round['coop'] for round in ordered_rounds]
 
             # Pass the ordered data to create_presentation
-            create_result = create_presentation(
-                ordered_titles,
-                ordered_creators,
-                ordered_links,
-                presentation_name=presentation_name,
-                old_links=ordered_old_links,
-                coops=ordered_coop
-            )
+            try:
+                create_result = create_presentation(
+                    ordered_titles,
+                    ordered_creators,
+                    ordered_links,
+                    presentation_name=presentation_name,
+                    old_links=ordered_old_links,
+                    coops=ordered_coop
+                )
+            except Exception as error:
+                PresentationBuildError = _get_presentation_build_error_class()
+                if not isinstance(error, PresentationBuildError):
+                    if ajax_request:
+                        return JsonResponse(
+                            {"detail": f"Slide generation failed before completion: {error}"},
+                            status=500,
+                        )
+                    raise
+
+                failed_presentation = _upsert_failed_presentation(
+                    name=presentation_name,
+                    presentation_id=error.presentation_id,
+                    creator_list=error.creators or ordered_creators,
+                    round_names=error.round_titles or ordered_titles,
+                    error_message=str(error),
+                )
+                if ajax_request:
+                    payload = _serialize_home_presentation(
+                        failed_presentation,
+                        error.presentation_id,
+                        include_calendar_entry=False,
+                    )
+                    payload["detail"] = str(error)
+                    payload["build_failed"] = True
+                    return JsonResponse(payload, status=500)
+                raise
 
             if isinstance(create_result, tuple):
                 new_presentation_id, creators, round_titles, round_links = create_result
@@ -1164,15 +1237,30 @@ def home(request):
             #     presentation_name=presentation_name
             # )
 
-            updated_presentation_id, new_creators, round_titles, new_links = update_merged_presentation(
-                selected_presentation.presentation_id,
-                selected_presentation.creator_list,
-                ordered_titles,
-                ordered_creators,
-                ordered_links,
-                ordered_old_links,
-                coops=ordered_coop,
-            )
+            try:
+                updated_presentation_id, new_creators, round_titles, new_links = update_merged_presentation(
+                    selected_presentation.presentation_id,
+                    selected_presentation.creator_list,
+                    ordered_titles,
+                    ordered_creators,
+                    ordered_links,
+                    ordered_old_links,
+                    coops=ordered_coop,
+                )
+            except Exception as error:
+                selected_presentation.status = MergedPresentation.STATUS_FAILED
+                selected_presentation.error_message = str(error)
+                selected_presentation.save(update_fields=["status", "error_message"])
+                if ajax_request:
+                    payload = _serialize_home_presentation(
+                        selected_presentation,
+                        selected_presentation.presentation_id,
+                        include_calendar_entry=False,
+                    )
+                    payload["detail"] = f"Slide update stopped before completion: {error}"
+                    payload["build_failed"] = True
+                    return JsonResponse(payload, status=500)
+                raise
 
             # update the MergedPresentation object that has the same presentation_id as the latest_presentation
             # by appending the new creators to the creator_list and appending the new round titles to the round_names
@@ -1183,6 +1271,8 @@ def home(request):
             selected_presentation.presentation_id = updated_presentation_id
             selected_presentation.round_names.extend(round_titles)
             selected_presentation.creator_list.extend(new_creators)
+            selected_presentation.status = MergedPresentation.STATUS_READY
+            selected_presentation.error_message = ""
             selected_presentation.save()
 
             print(updated_presentation_id, new_creators, round_titles)
@@ -1265,7 +1355,7 @@ class TriviaRoundList(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
 class PresentationList(generics.ListAPIView):
-    queryset = MergedPresentation.objects.all()
+    queryset = _ready_presentations_queryset()
     serializer_class = MergedPresentationSerializer
     permission_classes = [IsAuthenticated]
 
@@ -1365,7 +1455,7 @@ def _build_round_rows(round_queryset, player_fields):
 def _get_scoresheet_presentation(presentation_id=None, selected_date=None):
     if presentation_id:
         try:
-            return MergedPresentation.objects.get(presentation_id=presentation_id)
+            return _ready_presentations_queryset().get(presentation_id=presentation_id)
         except ObjectDoesNotExist:
             return None
 
@@ -1374,7 +1464,7 @@ def _get_scoresheet_presentation(presentation_id=None, selected_date=None):
         return None
 
     try:
-        return MergedPresentation.objects.get(name=presentation_name)
+        return _ready_presentations_queryset().get(name=presentation_name)
     except ObjectDoesNotExist:
         return None
 

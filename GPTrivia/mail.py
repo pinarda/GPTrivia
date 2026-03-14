@@ -61,6 +61,23 @@ GOOGLE_SLIDES_PRESENTATION_PATTERN = re.compile(r'/presentation/d/([a-zA-Z0-9_-]
 GOOGLE_SLIDES_SLIDE_FRAGMENT_PATTERN = re.compile(r'(?:^|&)slide=id\.([a-zA-Z0-9_:-]+)')
 
 
+class PresentationBuildError(Exception):
+    def __init__(
+        self,
+        message,
+        *,
+        presentation_id=None,
+        creators=None,
+        round_titles=None,
+        round_links=None,
+    ):
+        super().__init__(message)
+        self.presentation_id = presentation_id
+        self.creators = creators or []
+        self.round_titles = round_titles or []
+        self.round_links = round_links or []
+
+
 def _current_pacific_date():
     return datetime.datetime.now(pst).date()
 
@@ -922,6 +939,8 @@ def share_slides(presId):
 
 def create_presentation(titles, creators, links, presentation_name, old_links, coops):
     credentials = None
+    new_presentation_id = None
+    copied_links = []
     # Check if the token.pickle file exists
     if os.path.exists(token_file_path):
         with open(token_file_path, 'rb') as token:
@@ -956,238 +975,215 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
     intro_id = '1I3ONljiYpyHJloW_11rWayLs3j9gxRPc-WU_UPqfrt4'
     outro_id = '1BSOudw2JxjVcHxfHX-yfJqmuh0Pp4iKMmYY5klW5zLI'
 
-    new_presentation_id = new_presentation(credentials)
-    print("finding shared presentations for new presentation...")
-    # shared_urls, creators = find_shared_presentations(credentials, [])
-    find_shared_presentations(credentials, [], links, old_links)
-    shared_urls = links
-    # Build the service or the Apps Script API
-    http = httplib2.Http(timeout=300)
-    authorized_http = AuthorizedHttp(credentials, http=http)
-    script_service = build('script', 'v1', http=authorized_http)
-    slides_service = build('slides', 'v1', credentials=credentials)
-    drive_service = build('drive', 'v3', credentials=credentials)
+    try:
+        new_presentation_id = new_presentation(credentials)
+        print("finding shared presentations for new presentation...")
+        find_shared_presentations(credentials, [], links, old_links)
+        shared_urls = links
+        http = httplib2.Http(timeout=300)
+        authorized_http = AuthorizedHttp(credentials, http=http)
+        script_service = build('script', 'v1', http=authorized_http)
+        slides_service = build('slides', 'v1', credentials=credentials)
+        drive_service = build('drive', 'v3', credentials=credentials)
 
-    # The name of the function you want to execute
-    # Copy the extra slides to the beginning of the new presentation
-    response = _copy_presentation_via_apps_script(
-        script_service,
-        intro_id,
-        new_presentation_id,
-    )
-
-    print("Apps Script response:\n" + pprint.pformat(response), flush=True)
-
-
-    ### MODIFYING THE DATE
-
-
-
-    # Fetch the new presentation
-    new_pres = slides_service.presentations().get(presentationId=new_presentation_id).execute()
-
-    # Get the first slide
-    first_slide = new_pres['slides'][1]
-    first_slide_id = first_slide['objectId']
-
-    # Find the date text element
-    date_element_id = None
-    for element in first_slide['pageElements']:
-        if 'shape' in element and 'text' in element['shape']:
-            text = element['shape']['text']['textElements']
-            for text_element in text:
-                if 'textRun' in text_element and 'content' in text_element['textRun']:
-                    content = text_element['textRun']['content']
-                    if "June" in content:
-                        date_element_id = element['objectId']
-                        # get the text in this element
-                        date_text = content
-                        len_date_text = len(date_text)
-                        break
-
-    # Update the date text
-    date_text = _current_pacific_date().strftime("%B %d, %Y")
-
-    delete_text_request = {
-        'deleteText': {
-            'objectId': date_element_id,
-            'textRange': {
-                'type': 'FIXED_RANGE',
-                'startIndex': 0,
-                'endIndex': len_date_text-1
-            },
-        }
-    }
-
-    # now modify slide 2
-
-
-
-    insert_text_request = {
-        'insertText': {
-            'objectId': date_element_id,
-            'insertionIndex': 0,
-            'text': date_text
-        }
-    }
-
-    slides_service.presentations().batchUpdate(
-        presentationId=new_presentation_id,
-        body={'requests': [delete_text_request, insert_text_request]}
-    ).execute()
-
-
-
-
-    copied_links = []  # List to store links to the first slide of each copied presentation in the new presentation
-
-    for url in shared_urls:
-        copied_links.append(
-            _copy_round_into_presentation(
-                url,
-                new_presentation_id,
-                script_service,
-                slides_service,
-                drive_service,
-            )
+        response = _copy_presentation_via_apps_script(
+            script_service,
+            intro_id,
+            new_presentation_id,
         )
 
-    creators_list = list(creator_keys)
-    summary_round_titles = list(round_titles_for_return)
-    summary_creator_keys = list(creators_list)
+        print("Apps Script response:\n" + pprint.pformat(response), flush=True)
 
+        new_pres = slides_service.presentations().get(presentationId=new_presentation_id).execute()
+        first_slide = new_pres['slides'][1]
 
-    # HERE IS WHERE I WANT TO ADD THE CODE TO MODIFY THE SECOND SLIDE TO REPLACE THE PLACEHOLDER NAMES
-    # WITH THE NAMES FROM THE CREATOR LIST AND THE ROUND TITLES WITH THE ROUND TITLES LIST
-    # Get the second slide
-    second_slide = new_pres['slides'][2]
-    second_slide_id = second_slide['objectId']
-    second_slide_elements = second_slide['pageElements']
-
-    # Define placeholders for the rounds and creators
-    round_placeholders = ['ROUND1', 'ROUND2', 'ROUND3', 'ROUND4', 'ROUND5', 'ROUND6']
-    creator_placeholders = ['CREATOR1', 'CREATOR2', 'CREATOR3', 'CREATOR4', 'CREATOR5', 'CREATOR6']
-
-    # Iterate through the page elements in the second slide
-    for element in second_slide_elements:
-        if 'shape' in element and 'text' in element['shape']:
-            element_id = element['objectId']
-            text_elements = element['shape']['text']['textElements']
-
-            element_len = 0  # Subtract 7 to account for the placeholder text
-            for idx, text_element in enumerate(text_elements):
-                if idx != 1:
-                    continue
-                if 'textRun' in text_element and 'content' in text_element['textRun']:
-                    content = text_element['textRun']['content']
-                    element_len += len(content)
-
-                    # Check if the content contains any of the placeholders
-                    for i in range(len(round_placeholders)):
-                        round_placeholder = round_placeholders[i]
-                        creator_placeholder = creator_placeholders[i]
-
-                        if round_placeholder in content and len(summary_round_titles) > i:
-                            new_text = _sanitize_slides_text(summary_round_titles[i])
-                            round_start_index, round_end_index = _utf16_placeholder_range(
-                                content, round_placeholder
-                            )
-                            delete_insert_requests = create_delete_insert_text_requests(
-                                element_id, round_start_index, round_end_index, new_text)
-
-                            if len(new_text) > 30:
-                                # Add a request to modify the font size; you can adjust the font size value as needed
-                                font_size_request = {
-                                    "updateTextStyle": {
-                                        "objectId": element_id,
-                                        "textRange": {
-                                            "type": "FIXED_RANGE",  # Explicitly specifying the range type
-                                            "startIndex": round_start_index,
-                                            "endIndex": _inserted_text_end_index(round_start_index, new_text)
-                                        },
-                                        "style": {
-                                            "fontSize": {
-                                                "magnitude": 20,  # Change this to your desired font size
-                                                "unit": "PT"
-                                            }
-                                        },
-                                        "fields": "fontSize"
-                                    }
-                                }
-                                delete_insert_requests.append(font_size_request)
-                            elif len(new_text) > 40:
-                                # Add a request to modify the font size; you can adjust the font size value as needed
-                                font_size_request = {
-                                    "updateTextStyle": {
-                                        "objectId": element_id,
-                                        "textRange": {
-                                            "type": "FIXED_RANGE",  # Explicitly specifying the range type
-                                            "startIndex": round_start_index,
-                                            "endIndex": _inserted_text_end_index(round_start_index, new_text)
-                                        },
-                                        "style": {
-                                            "fontSize": {
-                                                "magnitude": 16,  # Change this to your desired font size
-                                                "unit": "PT"
-                                            }
-                                        },
-                                        "fields": "fontSize"
-                                    }
-                                }
-                                delete_insert_requests.append(font_size_request)
-
-                            slides_service.presentations().batchUpdate(
-                                presentationId=new_presentation_id,
-                                body={'requests': delete_insert_requests}
-                            ).execute()
-
-                            # Update the content variable with the updated text from the API
-                            updated_text = slides_service.presentations().get(
-                                presentationId=new_presentation_id).execute()
-                            for slide in updated_text['slides']:
-                                for elem in slide['pageElements']:
-                                    if 'shape' in elem and 'text' in elem['shape'] and elem['objectId'] == element_id:
-                                        content = "".join([text_elem['textRun']['content'] for text_elem in
-                                                           elem['shape']['text']['textElements'] if
-                                                           'textRun' in text_elem])
-
-                        if creator_placeholder in content and len(summary_creator_keys) > i:
-                            new_text = _sanitize_slides_text(MAIL_NAME_MAP[summary_creator_keys[i]])
-                            creator_start_index, creator_end_index = _utf16_placeholder_range(
-                                content, creator_placeholder
-                            )
-
-                            if coops[i] == 'on':
-                                new_text = f"{new_text} - Co-op"
-
-                            print(f"creator_start_index: {creator_start_index}")
-                            print(f"creator_end_index: {creator_end_index}")
-                            print(f"content: {content}")
-                            print(f"new_text: {new_text}")
-
-                            delete_insert_requests = create_delete_insert_text_requests(
-                                element_id, creator_start_index, creator_end_index, new_text)
-
-                            response = slides_service.presentations().batchUpdate(presentationId=new_presentation_id, body={'requests': delete_insert_requests}).execute()
+        date_element_id = None
+        for element in first_slide['pageElements']:
+            if 'shape' in element and 'text' in element['shape']:
+                text = element['shape']['text']['textElements']
+                for text_element in text:
+                    if 'textRun' in text_element and 'content' in text_element['textRun']:
+                        content = text_element['textRun']['content']
+                        if "June" in content:
+                            date_element_id = element['objectId']
+                            date_text = content
+                            len_date_text = len(date_text)
                             break
 
-    # Copy the extra slides to the end of the new presentation
-    response = _copy_presentation_via_apps_script(
-        script_service,
-        outro_id,
-        new_presentation_id,
-    )
+        date_text = _current_pacific_date().strftime("%B %d, %Y")
 
-    remove_first_slide(credentials, new_presentation_id)
+        delete_text_request = {
+            'deleteText': {
+                'objectId': date_element_id,
+                'textRange': {
+                    'type': 'FIXED_RANGE',
+                    'startIndex': 0,
+                    'endIndex': len_date_text-1
+                },
+            }
+        }
 
-    update_slide_permissions(new_presentation_id, credentials)
+        insert_text_request = {
+            'insertText': {
+                'objectId': date_element_id,
+                'insertionIndex': 0,
+                'text': date_text
+            }
+        }
 
-    return (
-        new_presentation_id,
-        creator_names_for_return,
-        round_titles_for_return,
-        copied_links,
-    )
+        slides_service.presentations().batchUpdate(
+            presentationId=new_presentation_id,
+            body={'requests': [delete_text_request, insert_text_request]}
+        ).execute()
+
+        for url in shared_urls:
+            copied_links.append(
+                _copy_round_into_presentation(
+                    url,
+                    new_presentation_id,
+                    script_service,
+                    slides_service,
+                    drive_service,
+                )
+            )
+
+        creators_list = list(creator_keys)
+        summary_round_titles = list(round_titles_for_return)
+        summary_creator_keys = list(creators_list)
+
+        second_slide = new_pres['slides'][2]
+        second_slide_elements = second_slide['pageElements']
+
+        round_placeholders = ['ROUND1', 'ROUND2', 'ROUND3', 'ROUND4', 'ROUND5', 'ROUND6']
+        creator_placeholders = ['CREATOR1', 'CREATOR2', 'CREATOR3', 'CREATOR4', 'CREATOR5', 'CREATOR6']
+
+        for element in second_slide_elements:
+            if 'shape' in element and 'text' in element['shape']:
+                element_id = element['objectId']
+                text_elements = element['shape']['text']['textElements']
+
+                element_len = 0
+                for idx, text_element in enumerate(text_elements):
+                    if idx != 1:
+                        continue
+                    if 'textRun' in text_element and 'content' in text_element['textRun']:
+                        content = text_element['textRun']['content']
+                        element_len += len(content)
+
+                        for i in range(len(round_placeholders)):
+                            round_placeholder = round_placeholders[i]
+                            creator_placeholder = creator_placeholders[i]
+
+                            if round_placeholder in content and len(summary_round_titles) > i:
+                                new_text = _sanitize_slides_text(summary_round_titles[i])
+                                round_start_index, round_end_index = _utf16_placeholder_range(
+                                    content, round_placeholder
+                                )
+                                delete_insert_requests = create_delete_insert_text_requests(
+                                    element_id, round_start_index, round_end_index, new_text)
+
+                                if len(new_text) > 30:
+                                    font_size_request = {
+                                        "updateTextStyle": {
+                                            "objectId": element_id,
+                                            "textRange": {
+                                                "type": "FIXED_RANGE",
+                                                "startIndex": round_start_index,
+                                                "endIndex": _inserted_text_end_index(round_start_index, new_text)
+                                            },
+                                            "style": {
+                                                "fontSize": {
+                                                    "magnitude": 20,
+                                                    "unit": "PT"
+                                                }
+                                            },
+                                            "fields": "fontSize"
+                                        }
+                                    }
+                                    delete_insert_requests.append(font_size_request)
+                                elif len(new_text) > 40:
+                                    font_size_request = {
+                                        "updateTextStyle": {
+                                            "objectId": element_id,
+                                            "textRange": {
+                                                "type": "FIXED_RANGE",
+                                                "startIndex": round_start_index,
+                                                "endIndex": _inserted_text_end_index(round_start_index, new_text)
+                                            },
+                                            "style": {
+                                                "fontSize": {
+                                                    "magnitude": 16,
+                                                    "unit": "PT"
+                                                }
+                                            },
+                                            "fields": "fontSize"
+                                        }
+                                    }
+                                    delete_insert_requests.append(font_size_request)
+
+                                slides_service.presentations().batchUpdate(
+                                    presentationId=new_presentation_id,
+                                    body={'requests': delete_insert_requests}
+                                ).execute()
+
+                                updated_text = slides_service.presentations().get(
+                                    presentationId=new_presentation_id).execute()
+                                for slide in updated_text['slides']:
+                                    for elem in slide['pageElements']:
+                                        if 'shape' in elem and 'text' in elem['shape'] and elem['objectId'] == element_id:
+                                            content = "".join([text_elem['textRun']['content'] for text_elem in
+                                                               elem['shape']['text']['textElements'] if
+                                                               'textRun' in text_elem])
+
+                            if creator_placeholder in content and len(summary_creator_keys) > i:
+                                new_text = _sanitize_slides_text(MAIL_NAME_MAP[summary_creator_keys[i]])
+                                creator_start_index, creator_end_index = _utf16_placeholder_range(
+                                    content, creator_placeholder
+                                )
+
+                                if coops[i] == 'on':
+                                    new_text = f"{new_text} - Co-op"
+
+                                print(f"creator_start_index: {creator_start_index}")
+                                print(f"creator_end_index: {creator_end_index}")
+                                print(f"content: {content}")
+                                print(f"new_text: {new_text}")
+
+                                delete_insert_requests = create_delete_insert_text_requests(
+                                    element_id, creator_start_index, creator_end_index, new_text)
+
+                                slides_service.presentations().batchUpdate(
+                                    presentationId=new_presentation_id,
+                                    body={'requests': delete_insert_requests}
+                                ).execute()
+                                break
+
+        _copy_presentation_via_apps_script(
+            script_service,
+            outro_id,
+            new_presentation_id,
+        )
+
+        remove_first_slide(credentials, new_presentation_id)
+
+        update_slide_permissions(new_presentation_id, credentials)
+
+        return (
+            new_presentation_id,
+            creator_names_for_return,
+            round_titles_for_return,
+            copied_links,
+        )
+    except PresentationBuildError:
+        raise
+    except Exception as error:
+        raise PresentationBuildError(
+            f"Slide generation stopped before completion: {error}",
+            presentation_id=new_presentation_id,
+            creators=creator_names_for_return,
+            round_titles=round_titles_for_return,
+            round_links=copied_links,
+        ) from error
 
 def convert_shared_presentation(presentation_url, credentials):
     try:

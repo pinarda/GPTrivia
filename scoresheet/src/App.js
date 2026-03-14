@@ -2237,8 +2237,10 @@ const PlayerTable = () => {
         fetch(url + `/delete_round/${roundId}/`, {
             method: 'DELETE',
             headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRFToken': csrfToken,
-              'Authorization': `Token ${localStorage.getItem('token')}`,
+                'Authorization': `Token ${localStorage.getItem('token')}`,
             },
             body: JSON.stringify({
                 client_id: clientIdRef.current,
