@@ -672,6 +672,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
             pickle.dump(credentials, token)
 
     creator_keys = [key for creator in creators for key, value in MAIL_NAME_MAP.items() if value == creator]
+    existing_round_count = len(list(merged_creators))
     round_titles_for_return = list(titles)
     creator_names_for_return = [MAIL_NAME_MAP[creator] for creator in creator_keys]
 
@@ -686,7 +687,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
     # Append any new shared slides from new creators
     print("finding shared presentations for shared presentation...")
     # shared_urls, creators = find_shared_presentations(credentials, merged_creators)
-    find_shared_presentations(credentials, merged_creators, links, old_links)
+    find_shared_presentations(credentials, list(merged_creators), links, old_links)
     shared_urls = links
 
     script_service = build('script', 'v1', credentials=credentials)
@@ -717,7 +718,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
     summary_round_titles = list(round_titles_for_return)
     summary_creator_keys = list(creator_keys)
     summary_entries = _build_update_summary_entries(
-        len(merged_creators),
+        existing_round_count,
         summary_round_titles,
         summary_creator_keys,
         coops,

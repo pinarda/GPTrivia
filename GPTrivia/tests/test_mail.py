@@ -17,6 +17,7 @@ from GPTrivia.mail import (
     _utf16_code_units,
     _utf16_placeholder_range,
     convert_shared_presentation,
+    update_merged_presentation,
 )
 
 
@@ -204,6 +205,111 @@ class MailHelpersTests(SimpleTestCase):
                 }
             ],
         )
+
+    @patch("GPTrivia.mail.os.path.exists", return_value=True)
+    @patch("GPTrivia.mail.find_shared_presentations")
+    @patch("GPTrivia.mail._copy_presentation_via_apps_script")
+    @patch("GPTrivia.mail._copy_round_into_presentation", return_value="https://example.com/copied-round")
+    @patch("GPTrivia.mail.build")
+    @patch("GPTrivia.mail.pickle.load")
+    @patch("GPTrivia.mail.pickle.dump")
+    @patch("builtins.open")
+    def test_update_merged_presentation_uses_pre_scan_round_count_for_summary_slots(
+        self,
+        _open_mock,
+        _pickle_dump_mock,
+        pickle_load_mock,
+        build_mock,
+        _copy_round_into_presentation_mock,
+        _copy_presentation_via_apps_script_mock,
+        find_shared_presentations_mock,
+        _path_exists_mock,
+    ):
+        credentials = Mock()
+        credentials.expired = False
+        credentials.refresh_token = None
+        credentials.valid = True
+        pickle_load_mock.return_value = credentials
+
+        summary_content = "ROUND1\nCREATOR1\nROUND2\nCREATOR2\nROUND3\nCREATOR3\nROUND4\nCREATOR4\nROUND5\nCREATOR5"
+        summary_element = {
+            "objectId": "summary-shape",
+            "shape": {
+                "text": {
+                    "textElements": [
+                        {"textRun": {"content": "\n"}},
+                        {"textRun": {"content": summary_content}},
+                    ]
+                }
+            },
+        }
+        presentation_state = {
+            "slides": [
+                {"objectId": "slide-1"},
+                {"objectId": "slide-2", "pageElements": [summary_element]},
+                {"objectId": "slide-3"},
+            ]
+        }
+
+        def presentations_get_side_effect(*args, **kwargs):
+            response = Mock()
+            response.execute.return_value = presentation_state
+            return response
+
+        recorded_requests = []
+
+        def batch_update_side_effect(*args, **kwargs):
+            body = kwargs.get("body", {})
+            recorded_requests.append(body.get("requests", []))
+            response = Mock()
+            response.execute.return_value = {}
+            return response
+
+        slides_service = Mock()
+        slides_service.presentations.return_value.get.side_effect = presentations_get_side_effect
+        slides_service.presentations.return_value.batchUpdate.side_effect = batch_update_side_effect
+
+        drive_service = Mock()
+        script_service = Mock()
+
+        def build_side_effect(service_name, version, credentials=None):
+            if service_name == "slides":
+                return slides_service
+            if service_name == "drive":
+                return drive_service
+            if service_name == "script":
+                return script_service
+            raise AssertionError(f"Unexpected service: {service_name}")
+
+        build_mock.side_effect = build_side_effect
+
+        def mutate_processed_senders(_credentials, processed_senders, _links, _old_links):
+            processed_senders.extend(["Megan", "Jenny", "Debi"])
+            return [], []
+
+        find_shared_presentations_mock.side_effect = mutate_processed_senders
+
+        update_merged_presentation(
+            "presentation-123",
+            ["Alex"],
+            ["New Round"],
+            ["Alex"],
+            ["https://example.com/new-round"],
+            ["https://example.com/new-round"],
+            ["on"],
+        )
+
+        expected_round2_start_index, _ = _utf16_placeholder_range(summary_content, "ROUND2")
+        round_insert_requests = [
+            request["insertText"]
+            for request_group in recorded_requests
+            for request in request_group
+            if request.get("insertText", {}).get("objectId") == "summary-shape"
+            and request["insertText"]["text"] == "New Round"
+        ]
+
+        self.assertEqual(len(round_insert_requests), 1)
+        self.assertEqual(round_insert_requests[0]["insertionIndex"], expected_round2_start_index)
 
     def test_infer_historical_round_slide_range_uses_next_round_title_when_links_are_missing(self):
         slides = [
