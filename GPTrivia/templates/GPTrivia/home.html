@@ -619,6 +619,7 @@
             pageSize: 10,
             selectedOrders: {},
         };
+        let homeFormSubmitInFlight = false;
 
         function syncSelectedOrdersFromRounds() {
             homeRoundState.selectedOrders = {};
@@ -835,16 +836,29 @@
             nextButton.disabled = homeRoundState.currentPage === totalPages;
         }
 
-        function buildRoundSubmissionPayload() {
+        function getSelectedRoundsSnapshot() {
+            return homeRoundState.rounds
+                .filter(round => round.order)
+                .sort((left, right) => left.order - right.order)
+                .map((round) => ({
+                    order: round.order,
+                    title: round.title || '',
+                    creator: round.creator || '',
+                    link: round.link || '',
+                    old_link: round.old_link || '',
+                    shared_date: round.shared_date || '',
+                    coop: Boolean(round.coop),
+                }));
+        }
+
+        function buildRoundSubmissionPayload(selectedRounds) {
             const payloadContainer = document.getElementById('round-form-payload');
             if (!payloadContainer) {
-                return;
+                return 0;
             }
 
             payloadContainer.innerHTML = '';
-            homeRoundState.rounds
-                .filter(round => round.order)
-                .forEach((round, index) => {
+            (selectedRounds || []).forEach((round, index) => {
                 const fields = {
                     [`round_order_${index}`]: round.order || '',
                     [`round_title_${index}`]: round.title || '',
@@ -870,6 +884,8 @@
                     payloadContainer.appendChild(coopInput);
                 }
             });
+
+            return (selectedRounds || []).length;
         }
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -1178,8 +1194,24 @@
             return;
         }
 
+        if (homeFormSubmitInFlight) {
+            return;
+        }
+
+        const selectedRounds = getSelectedRoundsSnapshot();
+        if (!selectedRounds.length) {
+            const messageElement = document.getElementById('msg');
+            if (messageElement) {
+                messageElement.textContent = 'Select at least one round before generating slides.';
+                messageElement.style.color = '#ffb3b3';
+                messageElement.style.display = 'block';
+            }
+            return;
+        }
+
         disableButtons();  // Disable buttons and show spinner
-        buildRoundSubmissionPayload();
+        homeFormSubmitInFlight = true;
+        buildRoundSubmissionPayload(selectedRounds);
 
         // Create a FormData object from the form
         let formData = new FormData(this);
@@ -1213,11 +1245,13 @@
         .then((payload) => {
             applyPresentationSelection(payload);
             enableButtons();
+            homeFormSubmitInFlight = false;
         })
         .catch((error) => {
             // Handle errors and re-enable buttons
             console.error('Error:', error);
             enableButtons();
+            homeFormSubmitInFlight = false;
             if (error.payload && error.payload.presentation_id) {
                 applyPresentationSelection(error.payload);
             }
