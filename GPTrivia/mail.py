@@ -164,6 +164,21 @@ def _extract_slide_text(slide):
     return ' '.join(text_chunks)
 
 
+def _get_shape_text_content(presentation, element_id):
+    for slide in presentation.get('slides', []):
+        for element in slide.get('pageElements', []):
+            if element.get('objectId') != element_id:
+                continue
+            shape = element.get('shape', {})
+            text_elements = shape.get('text', {}).get('textElements', [])
+            return ''.join(
+                text_element['textRun']['content']
+                for text_element in text_elements
+                if 'textRun' in text_element and 'content' in text_element['textRun']
+            )
+    return None
+
+
 def _find_slide_index_for_round_title(slides, round_title, min_index=0):
     normalized_round_title = _normalize_round_title(round_title)
     if not normalized_round_title:
@@ -775,12 +790,9 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                             # Update the content variable with the updated text from the API
                             updated_text = slides_service.presentations().get(
                                 presentationId=merged_presentation_id).execute()
-                            for slide in updated_text['slides']:
-                                for elem in slide['pageElements']:
-                                    if 'shape' in elem and 'text' in elem['shape'] and elem['objectId'] == element_id:
-                                        content = "".join([text_elem['textRun']['content'] for text_elem in
-                                                           elem['shape']['text']['textElements'] if
-                                                           'textRun' in text_elem])
+                            updated_content = _get_shape_text_content(updated_text, element_id)
+                            if updated_content is not None:
+                                content = updated_content
 
                         if creator_placeholder in content and len(summary_creator_keys) > 0:
                             new_text = _sanitize_slides_text(MAIL_NAME_MAP[summary_creator_keys.pop(0)])
@@ -1265,12 +1277,9 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
 
                                 updated_text = slides_service.presentations().get(
                                     presentationId=new_presentation_id).execute()
-                                for slide in updated_text['slides']:
-                                    for elem in slide['pageElements']:
-                                        if 'shape' in elem and 'text' in elem['shape'] and elem['objectId'] == element_id:
-                                            content = "".join([text_elem['textRun']['content'] for text_elem in
-                                                               elem['shape']['text']['textElements'] if
-                                                               'textRun' in text_elem])
+                                updated_content = _get_shape_text_content(updated_text, element_id)
+                                if updated_content is not None:
+                                    content = updated_content
 
                             if creator_placeholder in content and len(summary_creator_keys) > i:
                                 new_text = _sanitize_slides_text(MAIL_NAME_MAP[summary_creator_keys[i]])

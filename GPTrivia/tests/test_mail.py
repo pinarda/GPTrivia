@@ -9,6 +9,7 @@ from GPTrivia.mail import (
     _classify_round_source_link,
     _find_slide_index_for_round_title,
     _format_pacific_timestamp,
+    _get_shape_text_content,
     _infer_historical_round_slide_range,
     _sanitize_slides_text,
     _utf16_code_units,
@@ -141,6 +142,34 @@ class MailHelpersTests(SimpleTestCase):
         self.assertEqual(
             _find_slide_index_for_round_title(slides, "Flags Picture Round"),
             1,
+        )
+
+    def test_get_shape_text_content_skips_slides_without_page_elements(self):
+        presentation = {
+            "slides": [
+                {"objectId": "slide-0"},
+                {
+                    "objectId": "slide-1",
+                    "pageElements": [
+                        {
+                            "objectId": "shape-1",
+                            "shape": {
+                                "text": {
+                                    "textElements": [
+                                        {"textRun": {"content": "Current "}},
+                                        {"textRun": {"content": "Round"}},
+                                    ]
+                                }
+                            },
+                        }
+                    ],
+                },
+            ]
+        }
+
+        self.assertEqual(
+            _get_shape_text_content(presentation, "shape-1"),
+            "Current Round",
         )
 
     def test_infer_historical_round_slide_range_uses_next_round_title_when_links_are_missing(self):
