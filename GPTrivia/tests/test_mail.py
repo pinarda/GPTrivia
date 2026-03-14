@@ -12,6 +12,7 @@ from GPTrivia.mail import (
     _format_pacific_timestamp,
     _get_shape_text_content,
     _infer_historical_round_slide_range,
+    _prepare_update_round_sources,
     _pop_is_coop,
     _sanitize_slides_text,
     _utf16_code_units,
@@ -119,6 +120,48 @@ class MailHelpersTests(SimpleTestCase):
         )
 
         self.assertEqual((start_index, end_index), (4, 4))
+
+    @patch("GPTrivia.mail._create_temporary_round_copy", return_value="temp-round-copy")
+    @patch("GPTrivia.mail._get_historical_round_context")
+    def test_prepare_update_round_sources_snapshots_rounds_from_destination_presentation(
+        self,
+        historical_context_mock,
+        create_temp_copy_mock,
+    ):
+        slides_service = Mock()
+        slides_service.presentations.return_value.get.return_value.execute.return_value = {
+            "slides": [
+                {"objectId": "slide-0"},
+                {"objectId": "slide-1"},
+                {"objectId": "slide-2"},
+            ]
+        }
+        drive_service = Mock()
+        current_round = Mock()
+        current_round.link = "https://docs.google.com/presentation/d/dest-presentation/edit#slide=id.slide-1"
+        current_round.round_number = 1
+        next_round = None
+        historical_context_mock.return_value = (current_round, [current_round], next_round)
+
+        prepared_links, temporary_ids = _prepare_update_round_sources(
+            ["https://docs.google.com/presentation/d/dest-presentation/edit#slide=id.slide-1"],
+            "dest-presentation",
+            slides_service,
+            drive_service,
+        )
+
+        create_temp_copy_mock.assert_called_once_with(
+            drive_service,
+            slides_service,
+            "dest-presentation",
+            1,
+            1,
+        )
+        self.assertEqual(
+            prepared_links,
+            ["https://docs.google.com/presentation/d/temp-round-copy/edit"],
+        )
+        self.assertEqual(temporary_ids, ["temp-round-copy"])
 
     def test_find_slide_index_for_round_title_matches_slide_text(self):
         slides = [

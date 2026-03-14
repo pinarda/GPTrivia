@@ -466,6 +466,71 @@ def _copy_round_into_presentation(
     )
 
 
+def _prepare_update_round_sources(
+    round_links,
+    destination_presentation_id,
+    slides_service,
+    drive_service,
+):
+    prepared_links = []
+    temporary_presentation_ids = []
+
+    if not round_links:
+        return prepared_links, temporary_presentation_ids
+
+    destination_presentation = None
+    destination_slides = None
+
+    for round_link in round_links:
+        link_info = _classify_round_source_link(round_link)
+        if link_info["presentation_id"] != destination_presentation_id:
+            prepared_links.append(round_link)
+            continue
+
+        if destination_presentation is None:
+            destination_presentation = slides_service.presentations().get(
+                presentationId=destination_presentation_id
+            ).execute()
+            destination_slides = destination_presentation.get("slides", [])
+
+        if link_info["source_type"] == ROUND_SOURCE_MERGED_DECK:
+            _, sibling_rounds, next_round = _get_historical_round_context(
+                round_link,
+                destination_presentation_id,
+                link_info["slide_id"],
+            )
+            sibling_round_links = [
+                sibling.link for sibling in sibling_rounds
+                if sibling.link and f'/presentation/d/{destination_presentation_id}' in sibling.link
+            ] or _historical_round_links_for_presentation(destination_presentation_id)
+            start_index, end_index = _infer_historical_round_slide_range(
+                destination_slides,
+                link_info["slide_id"],
+                sibling_round_links,
+                next_round_title=next_round.title if next_round else None,
+            )
+            temporary_presentation_id = _create_temporary_round_copy(
+                drive_service,
+                slides_service,
+                destination_presentation_id,
+                start_index,
+                end_index,
+            )
+        else:
+            temporary_copy = drive_service.files().copy(
+                fileId=destination_presentation_id,
+                body={'name': f"Temporary update source copy {destination_presentation_id}"},
+            ).execute()
+            temporary_presentation_id = temporary_copy['id']
+
+        temporary_presentation_ids.append(temporary_presentation_id)
+        prepared_links.append(
+            f"https://docs.google.com/presentation/d/{temporary_presentation_id}/edit"
+        )
+
+    return prepared_links, temporary_presentation_ids
+
+
 def _find_existing_converted_presentation(drive_service, file_id):
     query = (
         "mimeType = 'application/vnd.google-apps.presentation' "
@@ -675,10 +740,16 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
     existing_round_count = len(list(merged_creators))
     round_titles_for_return = list(titles)
     creator_names_for_return = [MAIL_NAME_MAP[creator] for creator in creator_keys]
-
-    # Remove the last slide
     slides_service = build('slides', 'v1', credentials=credentials)
     drive_service = build('drive', 'v3', credentials=credentials)
+    prepared_shared_urls, prepared_temp_ids = _prepare_update_round_sources(
+        links,
+        merged_presentation_id,
+        slides_service,
+        drive_service,
+    )
+
+    # Remove the last slide
     presentation = slides_service.presentations().get(presentationId=merged_presentation_id).execute()
     last_slide_id = presentation['slides'][-1]['objectId']
     delete_slide_request = {'deleteObject': {'objectId': last_slide_id}}
@@ -687,22 +758,26 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
     # Append any new shared slides from new creators
     print("finding shared presentations for shared presentation...")
     # shared_urls, creators = find_shared_presentations(credentials, merged_creators)
-    find_shared_presentations(credentials, list(merged_creators), links, old_links)
-    shared_urls = links
+    find_shared_presentations(credentials, list(merged_creators), prepared_shared_urls, old_links)
+    shared_urls = prepared_shared_urls
 
     script_service = build('script', 'v1', credentials=credentials)
     copied_links = []  # List to store links to the first slide of each copied presentation in the new presentation
 
-    for url in shared_urls:
-        copied_links.append(
-            _copy_round_into_presentation(
-                url,
-                merged_presentation_id,
-                script_service,
-                slides_service,
-                drive_service,
+    try:
+        for url in shared_urls:
+            copied_links.append(
+                _copy_round_into_presentation(
+                    url,
+                    merged_presentation_id,
+                    script_service,
+                    slides_service,
+                    drive_service,
+                )
             )
-        )
+    finally:
+        for temporary_presentation_id in prepared_temp_ids:
+            _delete_drive_file(drive_service, temporary_presentation_id)
 
 
     # update the second slide with the round titles and creators
