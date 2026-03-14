@@ -107,7 +107,6 @@
     display: block;
     min-width: 0;
     padding: 5px;
-    {#border: 1px solid #0073cc;#}
     text-align: left;
     vertical-align: middle;
     color: white;
@@ -129,6 +128,12 @@
 .round-selection-table-row.historical-row .creator-input,
 .round-selection-table-row.historical-row .historical-text {
     color: rgba(255, 255, 255, 0.62);
+}
+
+.round-selection-table-header {
+    background-color: #0073cc;
+    font-weight: bold;
+    color: white;
 }
 
 /* Style for disabled buttons */
@@ -307,17 +312,7 @@
     z-index: 1000;
 }
 
-.creator-cell {
-    padding: 5px;
-    {#border: 1px solid #0073cc;#}
-    text-align: left;
-    vertical-align: middle;
-    color: white;
-    position: relative;
-}
-
 .new-cell {
-    width: 8%;
     text-align: center !important;
 }
 
@@ -329,7 +324,14 @@
     padding: 0px 0px;
 }
 
-/* Adjust header styles */
+.creator-cell {
+    padding: 5px;
+    text-align: left;
+    vertical-align: middle;
+    color: white;
+    position: relative;
+}
+
 .round-selection-table-header {
     background-color: #0073cc;
     font-weight: bold;
@@ -650,7 +652,7 @@
 
         function toggleOrder(rowId) {
             const round = homeRoundState.rounds.find(item => item.rowId === rowId);
-            if (!round || !round.is_new) {
+            if (!round) {
                 return;
             }
 
@@ -718,12 +720,7 @@
                 orderCell.className = 'round-selection-table-cell';
                 const orderBox = document.createElement('div');
                 orderBox.className = 'order-box';
-                if (!round.is_new) {
-                    orderBox.classList.add('disabled-button');
-                    orderBox.style.pointerEvents = 'none';
-                    orderBox.style.opacity = '0.45';
-                    orderBox.title = 'Past rounds are display-only for now.';
-                } else if (round.order) {
+                if (round.order) {
                     orderBox.classList.add('selected');
                     orderBox.textContent = round.order;
                 }
@@ -813,7 +810,6 @@
 
             payloadContainer.innerHTML = '';
             homeRoundState.rounds
-                .filter(round => round.is_new)
                 .forEach((round, index) => {
                 const fields = {
                     [`round_order_${index}`]: round.order || '',

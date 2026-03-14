@@ -4,7 +4,11 @@ from unittest.mock import Mock, patch
 from django.test import SimpleTestCase
 
 from GPTrivia.mail import (
+    ROUND_SOURCE_MERGED_DECK,
+    ROUND_SOURCE_WHOLE_PRESENTATION,
+    _classify_round_source_link,
     _format_pacific_timestamp,
+    _infer_historical_round_slide_range,
     _sanitize_slides_text,
     _utf16_code_units,
     _utf16_placeholder_range,
@@ -13,6 +17,24 @@ from GPTrivia.mail import (
 
 
 class MailHelpersTests(SimpleTestCase):
+    def test_classify_round_source_link_detects_whole_presentations(self):
+        link_info = _classify_round_source_link(
+            "https://docs.google.com/presentation/d/source-presentation-id/edit"
+        )
+
+        self.assertEqual(link_info["source_type"], ROUND_SOURCE_WHOLE_PRESENTATION)
+        self.assertEqual(link_info["presentation_id"], "source-presentation-id")
+        self.assertIsNone(link_info["slide_id"])
+
+    def test_classify_round_source_link_detects_merged_deck_round_starts(self):
+        link_info = _classify_round_source_link(
+            "https://docs.google.com/presentation/d/source-presentation-id/edit#slide=id.g2f6f1"
+        )
+
+        self.assertEqual(link_info["source_type"], ROUND_SOURCE_MERGED_DECK)
+        self.assertEqual(link_info["presentation_id"], "source-presentation-id")
+        self.assertEqual(link_info["slide_id"], "g2f6f1")
+
     def test_utf16_placeholder_range_counts_emoji_as_two_code_units(self):
         content = "🚀 ROUND1 CREATOR1"
 
@@ -32,6 +54,48 @@ class MailHelpersTests(SimpleTestCase):
             _format_pacific_timestamp(int(utc_dt.timestamp() * 1000)),
             "June 05, 2026",
         )
+
+    def test_infer_historical_round_slide_range_stops_before_next_round_start(self):
+        slides = [
+            {"objectId": "slide-0"},
+            {"objectId": "slide-1"},
+            {"objectId": "slide-2"},
+            {"objectId": "slide-3"},
+            {"objectId": "slide-4"},
+            {"objectId": "slide-5"},
+        ]
+
+        start_index, end_index = _infer_historical_round_slide_range(
+            slides,
+            "slide-2",
+            [
+                "https://docs.google.com/presentation/d/source/edit#slide=id.slide-2",
+                "https://docs.google.com/presentation/d/source/edit#slide=id.slide-4",
+            ],
+        )
+
+        self.assertEqual((start_index, end_index), (2, 3))
+
+    def test_infer_historical_round_slide_range_excludes_outro_for_last_round(self):
+        slides = [
+            {"objectId": "slide-0"},
+            {"objectId": "slide-1"},
+            {"objectId": "slide-2"},
+            {"objectId": "slide-3"},
+            {"objectId": "slide-4"},
+            {"objectId": "slide-5"},
+        ]
+
+        start_index, end_index = _infer_historical_round_slide_range(
+            slides,
+            "slide-4",
+            [
+                "https://docs.google.com/presentation/d/source/edit#slide=id.slide-2",
+                "https://docs.google.com/presentation/d/source/edit#slide=id.slide-4",
+            ],
+        )
+
+        self.assertEqual((start_index, end_index), (4, 4))
 
 
 class ConvertSharedPresentationTests(SimpleTestCase):

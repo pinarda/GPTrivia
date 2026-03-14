@@ -1064,7 +1064,7 @@ def home(request):
             ordered_coop = [round['coop'] for round in ordered_rounds]
 
             # Pass the ordered data to create_presentation
-            new_presentation_id = create_presentation(
+            create_result = create_presentation(
                 ordered_titles,
                 ordered_creators,
                 ordered_links,
@@ -1073,9 +1073,13 @@ def home(request):
                 coops=ordered_coop
             )
 
-            round_titles = ordered_titles
-            creators = ordered_creators
-            round_links = ordered_links
+            if isinstance(create_result, tuple):
+                new_presentation_id, creators, round_titles, round_links = create_result
+            else:
+                new_presentation_id = create_result
+                round_titles = ordered_titles
+                creators = ordered_creators
+                round_links = ordered_links
 
             # new_presentation_id, creators, round_titles, round_links = create_presentation()
 

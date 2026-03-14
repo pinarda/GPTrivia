@@ -20,6 +20,7 @@ import datetime
 
 import os
 import pickle
+from urllib.parse import urlparse
 
 MAIL_NAME_MAP = {
     'Alex': 'Alex',
@@ -53,6 +54,11 @@ mail_file_directory = os.path.dirname(os.path.abspath(__file__))
 token_file_path = os.path.join(mail_file_directory, 'token.pickle')
 pst = pytz.timezone('America/Los_Angeles')
 CONVERTED_SOURCE_FILE_PROPERTY = 'converted_from_file_id'
+ROUND_SOURCE_WHOLE_PRESENTATION = 'whole_presentation'
+ROUND_SOURCE_MERGED_DECK = 'merged_round_start'
+ROUND_SOURCE_UNKNOWN = 'unknown'
+GOOGLE_SLIDES_PRESENTATION_PATTERN = re.compile(r'/presentation/d/([a-zA-Z0-9_-]+)')
+GOOGLE_SLIDES_SLIDE_FRAGMENT_PATTERN = re.compile(r'(?:^|&)slide=id\.([a-zA-Z0-9_:-]+)')
 
 
 def _current_pacific_date():
@@ -97,6 +103,199 @@ def _utf16_placeholder_range(content, placeholder):
 
 def _inserted_text_end_index(start_index, new_text):
     return start_index + _utf16_code_units(_sanitize_slides_text(new_text))
+
+
+def _extract_presentation_link_parts(presentation_url):
+    if not presentation_url:
+        return None, None
+
+    presentation_match = GOOGLE_SLIDES_PRESENTATION_PATTERN.search(presentation_url)
+    presentation_id = presentation_match.group(1) if presentation_match else None
+
+    parsed_url = urlparse(presentation_url)
+    fragment = parsed_url.fragment or ''
+    slide_match = GOOGLE_SLIDES_SLIDE_FRAGMENT_PATTERN.search(fragment)
+    slide_id = slide_match.group(1) if slide_match else None
+
+    return presentation_id, slide_id
+
+
+def _classify_round_source_link(presentation_url):
+    presentation_id, slide_id = _extract_presentation_link_parts(presentation_url)
+
+    if presentation_id and slide_id:
+        return {
+            'source_type': ROUND_SOURCE_MERGED_DECK,
+            'presentation_id': presentation_id,
+            'slide_id': slide_id,
+        }
+
+    if presentation_id:
+        return {
+            'source_type': ROUND_SOURCE_WHOLE_PRESENTATION,
+            'presentation_id': presentation_id,
+            'slide_id': None,
+        }
+
+    return {
+        'source_type': ROUND_SOURCE_UNKNOWN,
+        'presentation_id': None,
+        'slide_id': None,
+    }
+
+
+def _infer_historical_round_slide_range(slides, round_start_slide_id, sibling_round_links):
+    slide_index_by_id = {
+        slide.get('objectId'): index
+        for index, slide in enumerate(slides)
+        if slide.get('objectId')
+    }
+
+    if round_start_slide_id not in slide_index_by_id:
+        raise ValueError(f"Could not locate slide {round_start_slide_id} in source presentation.")
+
+    start_index = slide_index_by_id[round_start_slide_id]
+    sibling_start_indices = sorted(
+        {
+            slide_index_by_id[slide_id]
+            for link in sibling_round_links
+            for _, slide_id in [_extract_presentation_link_parts(link)]
+            if slide_id in slide_index_by_id
+        }
+    )
+
+    next_start_index = next(
+        (index for index in sibling_start_indices if index > start_index),
+        None,
+    )
+
+    if next_start_index is not None:
+        end_index = next_start_index - 1
+    elif len(slides) > start_index + 1:
+        # Historical merged decks end with an outro slide that should not be copied.
+        end_index = len(slides) - 2
+    else:
+        end_index = start_index
+
+    return start_index, max(start_index, end_index)
+
+
+def _historical_round_links_for_presentation(presentation_id):
+    from .models import GPTriviaRound
+
+    presentation_fragment = f'/presentation/d/{presentation_id}'
+    return list(
+        GPTriviaRound.objects.filter(link__icontains=presentation_fragment)
+        .values_list('link', flat=True)
+    )
+
+
+def _copy_presentation_via_apps_script(script_service, source_presentation_id, destination_presentation_id):
+    request = {
+        'function': 'copySlides',
+        'parameters': [source_presentation_id, destination_presentation_id],
+        'devMode': True,
+    }
+    return script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
+
+
+def _create_temporary_round_copy(
+    drive_service,
+    slides_service,
+    source_presentation_id,
+    start_index,
+    end_index,
+):
+    temp_presentation = drive_service.files().copy(
+        fileId=source_presentation_id,
+        body={'name': f"Temporary round copy {source_presentation_id} {start_index + 1}-{end_index + 1}"},
+    ).execute()
+    temp_presentation_id = temp_presentation['id']
+
+    temp_slides = slides_service.presentations().get(
+        presentationId=temp_presentation_id
+    ).execute().get('slides', [])
+    delete_requests = [
+        {'deleteObject': {'objectId': slide['objectId']}}
+        for index, slide in enumerate(temp_slides)
+        if index < start_index or index > end_index
+    ]
+
+    if delete_requests:
+        slides_service.presentations().batchUpdate(
+            presentationId=temp_presentation_id,
+            body={'requests': delete_requests},
+        ).execute()
+
+    return temp_presentation_id
+
+
+def _delete_drive_file(drive_service, file_id):
+    if not file_id:
+        return
+
+    try:
+        drive_service.files().delete(fileId=file_id).execute()
+    except HttpError as error:
+        print(f"Failed to delete temporary file {file_id}: {error}")
+
+
+def _copy_round_into_presentation(
+    round_link,
+    destination_presentation_id,
+    script_service,
+    slides_service,
+    drive_service,
+):
+    link_info = _classify_round_source_link(round_link)
+    source_presentation_id = link_info['presentation_id']
+    temporary_presentation_id = None
+
+    if link_info['source_type'] == ROUND_SOURCE_MERGED_DECK:
+        source_presentation = slides_service.presentations().get(
+            presentationId=source_presentation_id
+        ).execute()
+        source_slides = source_presentation.get('slides', [])
+        sibling_round_links = _historical_round_links_for_presentation(source_presentation_id)
+        start_index, end_index = _infer_historical_round_slide_range(
+            source_slides,
+            link_info['slide_id'],
+            sibling_round_links,
+        )
+        temporary_presentation_id = _create_temporary_round_copy(
+            drive_service,
+            slides_service,
+            source_presentation_id,
+            start_index,
+            end_index,
+        )
+        source_presentation_id = temporary_presentation_id
+    elif not source_presentation_id:
+        source_presentation_id = round_link.split('/')[-2]
+
+    current_slide_count = len(
+        slides_service.presentations().get(
+            presentationId=destination_presentation_id
+        ).execute().get('slides', [])
+    )
+
+    try:
+        _copy_presentation_via_apps_script(
+            script_service,
+            source_presentation_id,
+            destination_presentation_id,
+        )
+    finally:
+        _delete_drive_file(drive_service, temporary_presentation_id)
+
+    destination_slides = slides_service.presentations().get(
+        presentationId=destination_presentation_id
+    ).execute().get('slides', [])
+    copied_slide_id = destination_slides[current_slide_count]['objectId']
+    return (
+        f"https://docs.google.com/presentation/d/{destination_presentation_id}"
+        f"/edit#slide=id.{copied_slide_id}"
+    )
 
 
 def _find_existing_converted_presentation(drive_service, file_id):
@@ -304,11 +503,13 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
         with open(token_file_path, 'wb') as token:
             pickle.dump(credentials, token)
 
-    swapped_creators = [key for creator in creators for key, value in MAIL_NAME_MAP.items() if value == creator]
-    creators = swapped_creators
+    creator_keys = [key for creator in creators for key, value in MAIL_NAME_MAP.items() if value == creator]
+    round_titles_for_return = list(titles)
+    creator_names_for_return = [MAIL_NAME_MAP[creator] for creator in creator_keys]
 
     # Remove the last slide
     slides_service = build('slides', 'v1', credentials=credentials)
+    drive_service = build('drive', 'v3', credentials=credentials)
     presentation = slides_service.presentations().get(presentationId=merged_presentation_id).execute()
     last_slide_id = presentation['slides'][-1]['objectId']
     delete_slide_request = {'deleteObject': {'objectId': last_slide_id}}
@@ -321,57 +522,18 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
     shared_urls = links
 
     script_service = build('script', 'v1', credentials=credentials)
-    FUNCTION_NAME = 'copySlides'
-
-    round_titles = []
     copied_links = []  # List to store links to the first slide of each copied presentation in the new presentation
 
-    i = 0
     for url in shared_urls:
-        shared_presentation_id = url.split('/')[-2]
-        request = {
-            'function': FUNCTION_NAME,
-            'parameters': [shared_presentation_id, merged_presentation_id],
-            'devMode': True
-        }
-        # response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
-
-        shared_presentation = slides_service.presentations().get(presentationId=shared_presentation_id).execute()
-        a_new_presentation = slides_service.presentations().get(presentationId=merged_presentation_id).execute()
-
-        current_slide_count = len(a_new_presentation['slides'])
-
-        # Get the first slide of the presentation
-        first_slide = shared_presentation['slides'][0]
-
-        # Extract the title text from the first slide
-        title_text = ""
-        flag=0
-        for element in first_slide['pageElements']:
-            if 'shape' in element and 'text' in element['shape']:
-                text = element['shape']['text']['textElements']
-                if flag:
-                    break
-                for text_element in text:
-                    if 'textRun' in text_element and 'content' in text_element['textRun']:
-                        flag=1
-                        title_text += text_element['textRun']['content']
-                        break
-
-        # Clean up the title text by removing excess whitespace and line breaks
-        title_text = re.sub(r'\s+', ' ', title_text).strip()
-        title_text = titles[i]
-        i += 1
-
-        # Add the title to the list of round titles
-        round_titles.append(title_text)
-
-        response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
-        slides = slides_service.presentations().get(presentationId=merged_presentation_id).execute().get('slides', [])
-        copied_slide_id = slides[current_slide_count]['objectId']
-        # Construct the link for the first slide of the copied presentation in the new presentation
-        link_to_copied_slide = f"https://docs.google.com/presentation/d/{merged_presentation_id}/edit#slide=id.{copied_slide_id}"
-        copied_links.append(link_to_copied_slide)
+        copied_links.append(
+            _copy_round_into_presentation(
+                url,
+                merged_presentation_id,
+                script_service,
+                slides_service,
+                drive_service,
+            )
+        )
 
 
     # update the second slide with the round titles and creators
@@ -384,8 +546,10 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
     # Define placeholders for the rounds and creators
     round_placeholders = ['ROUND1', 'ROUND2', 'ROUND3', 'ROUND4', 'ROUND5', 'ROUND6']
     creator_placeholders = ['CREATOR1', 'CREATOR2', 'CREATOR3', 'CREATOR4', 'CREATOR5', 'CREATOR6']
-    print(round_titles)
-    print(creators)
+    summary_round_titles = list(round_titles_for_return)
+    summary_creator_keys = list(creator_keys)
+    print(summary_round_titles)
+    print(summary_creator_keys)
     print(merged_creators)
 
     j=0
@@ -407,8 +571,8 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                         round_placeholder = round_placeholders[i]
                         creator_placeholder = creator_placeholders[i]
 
-                        if round_placeholder in content and len(round_titles) > 0:
-                            new_text = _sanitize_slides_text(round_titles.pop(0))
+                        if round_placeholder in content and len(summary_round_titles) > 0:
+                            new_text = _sanitize_slides_text(summary_round_titles.pop(0))
                             round_start_index, round_end_index = _utf16_placeholder_range(
                                 content, round_placeholder
                             )
@@ -491,8 +655,8 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                                                            elem['shape']['text']['textElements'] if
                                                            'textRun' in text_elem])
 
-                        if creator_placeholder in content and len(creators) > 0:
-                            new_text = _sanitize_slides_text(MAIL_NAME_MAP[creators.pop(0)])
+                        if creator_placeholder in content and len(summary_creator_keys) > 0:
+                            new_text = _sanitize_slides_text(MAIL_NAME_MAP[summary_creator_keys.pop(0)])
                             creator_start_index, creator_end_index = _utf16_placeholder_range(
                                 content, creator_placeholder
                             )
@@ -516,16 +680,14 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
 
     # add the outro slide
     outro_id = '1BSOudw2JxjVcHxfHX-yfJqmuh0Pp4iKMmYY5klW5zLI'
-    request = {
-        'function': FUNCTION_NAME,
-        'parameters': [outro_id, merged_presentation_id],
-        'devMode': True
-    }
-    response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
+    _copy_presentation_via_apps_script(script_service, outro_id, merged_presentation_id)
 
-    creator_names = [MAIL_NAME_MAP[creator] for creator in creators]
-
-    return merged_presentation_id, creator_names, round_titles, copied_links
+    return (
+        merged_presentation_id,
+        creator_names_for_return,
+        round_titles_for_return,
+        copied_links,
+    )
 
 
 def create_delete_insert_text_requests(element_id, start_index, end_index, new_text):
@@ -765,8 +927,9 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
         with open(token_file_path, 'rb') as token:
             credentials = pickle.load(token)
 
-    swapped_creators = [key for creator in creators for key, value in MAIL_NAME_MAP.items() if value == creator]
-    creators = swapped_creators
+    creator_keys = [key for creator in creators for key, value in MAIL_NAME_MAP.items() if value == creator]
+    creator_names_for_return = [MAIL_NAME_MAP[creator] for creator in creator_keys]
+    round_titles_for_return = list(titles)
 
     # Check if the credentials have expired
     if credentials.expired and credentials.refresh_token:
@@ -803,17 +966,15 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
     authorized_http = AuthorizedHttp(credentials, http=http)
     script_service = build('script', 'v1', http=authorized_http)
     slides_service = build('slides', 'v1', credentials=credentials)
+    drive_service = build('drive', 'v3', credentials=credentials)
 
     # The name of the function you want to execute
-    FUNCTION_NAME = 'copySlides'
-
     # Copy the extra slides to the beginning of the new presentation
-    request = {
-        'function': FUNCTION_NAME,
-        'parameters': [intro_id, new_presentation_id],
-        'devMode': True
-    }
-    response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
+    response = _copy_presentation_via_apps_script(
+        script_service,
+        intro_id,
+        new_presentation_id,
+    )
 
     print("Apps Script response:\n" + pprint.pformat(response), flush=True)
 
@@ -878,59 +1039,22 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
 
 
 
-    round_titles = []
     copied_links = []  # List to store links to the first slide of each copied presentation in the new presentation
 
-    i = 0
     for url in shared_urls:
-        shared_presentation_id = url.split('/')[-2]
-        request = {
-            'function': FUNCTION_NAME,  # Replace with your function name
-            'parameters': [shared_presentation_id, new_presentation_id],  # Replace with your actual parameters
-            'devMode': True
-        }
+        copied_links.append(
+            _copy_round_into_presentation(
+                url,
+                new_presentation_id,
+                script_service,
+                slides_service,
+                drive_service,
+            )
+        )
 
-        shared_presentation = slides_service.presentations().get(presentationId=shared_presentation_id).execute()
-        a_new_presentation = slides_service.presentations().get(presentationId=new_presentation_id).execute()
-
-        current_slide_count = len(a_new_presentation['slides'])
-
-        # Get the first slide of the presentation
-        first_slide = shared_presentation['slides'][0]
-
-        # Extract the title text from the first slide
-        title_text = ""
-        flag = 0
-        for element in first_slide['pageElements']:
-            if 'shape' in element and 'text' in element['shape']:
-                text = element['shape']['text']['textElements']
-                if flag:
-                    break
-                for text_element in text:
-                    if 'textRun' in text_element and 'content' in text_element['textRun']:
-                        flag=1
-                        title_text += text_element['textRun']['content']
-                        break
-
-
-
-        # Clean up the title text by removing excess whitespace and line breaks
-        title_text = re.sub(r'\s+', ' ', title_text).strip()
-
-        title_text = titles[i]
-        i += 1
-
-        # Add the title to the list of round titles
-        round_titles.append(title_text)
-
-        response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
-        slides = slides_service.presentations().get(presentationId=new_presentation_id).execute().get('slides', [])
-        copied_slide_id = slides[current_slide_count]['objectId']
-        # Construct the link for the first slide of the copied presentation in the new presentation
-        link_to_copied_slide = f"https://docs.google.com/presentation/d/{new_presentation_id}/edit#slide=id.{copied_slide_id}"
-        copied_links.append(link_to_copied_slide)
-
-    creators_list = list(creators)
+    creators_list = list(creator_keys)
+    summary_round_titles = list(round_titles_for_return)
+    summary_creator_keys = list(creators_list)
 
 
     # HERE IS WHERE I WANT TO ADD THE CODE TO MODIFY THE SECOND SLIDE TO REPLACE THE PLACEHOLDER NAMES
@@ -963,8 +1087,8 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                         round_placeholder = round_placeholders[i]
                         creator_placeholder = creator_placeholders[i]
 
-                        if round_placeholder in content and len(round_titles) > i:
-                            new_text = _sanitize_slides_text(round_titles[i])
+                        if round_placeholder in content and len(summary_round_titles) > i:
+                            new_text = _sanitize_slides_text(summary_round_titles[i])
                             round_start_index, round_end_index = _utf16_placeholder_range(
                                 content, round_placeholder
                             )
@@ -1027,8 +1151,8 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                                                            elem['shape']['text']['textElements'] if
                                                            'textRun' in text_elem])
 
-                        if creator_placeholder in content and len(creators_list) > i:
-                            new_text = _sanitize_slides_text(MAIL_NAME_MAP[creators_list[i]])
+                        if creator_placeholder in content and len(summary_creator_keys) > i:
+                            new_text = _sanitize_slides_text(MAIL_NAME_MAP[summary_creator_keys[i]])
                             creator_start_index, creator_end_index = _utf16_placeholder_range(
                                 content, creator_placeholder
                             )
@@ -1048,20 +1172,22 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                             break
 
     # Copy the extra slides to the end of the new presentation
-    request = {
-        'function': FUNCTION_NAME,
-        'parameters': [outro_id, new_presentation_id],
-        'devMode': True
-    }
-    response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
+    response = _copy_presentation_via_apps_script(
+        script_service,
+        outro_id,
+        new_presentation_id,
+    )
 
     remove_first_slide(credentials, new_presentation_id)
 
-    creator_names = [MAIL_NAME_MAP[creator] for creator in creators_list]
-
     update_slide_permissions(new_presentation_id, credentials)
 
-    return new_presentation_id
+    return (
+        new_presentation_id,
+        creator_names_for_return,
+        round_titles_for_return,
+        copied_links,
+    )
 
 def convert_shared_presentation(presentation_url, credentials):
     try:
