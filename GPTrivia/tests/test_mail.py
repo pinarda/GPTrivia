@@ -7,6 +7,7 @@ from GPTrivia.mail import (
     ROUND_SOURCE_MERGED_DECK,
     ROUND_SOURCE_WHOLE_PRESENTATION,
     _classify_round_source_link,
+    _find_slide_index_for_round_title,
     _format_pacific_timestamp,
     _infer_historical_round_slide_range,
     _sanitize_slides_text,
@@ -29,6 +30,24 @@ class MailHelpersTests(SimpleTestCase):
     def test_classify_round_source_link_detects_merged_deck_round_starts(self):
         link_info = _classify_round_source_link(
             "https://docs.google.com/presentation/d/source-presentation-id/edit#slide=id.g2f6f1"
+        )
+
+        self.assertEqual(link_info["source_type"], ROUND_SOURCE_MERGED_DECK)
+        self.assertEqual(link_info["presentation_id"], "source-presentation-id")
+        self.assertEqual(link_info["slide_id"], "g2f6f1")
+
+    def test_classify_round_source_link_detects_embed_slide_links(self):
+        link_info = _classify_round_source_link(
+            "https://docs.google.com/presentation/d/source-presentation-id/embed?start=false#slide=id.g2f6f1"
+        )
+
+        self.assertEqual(link_info["source_type"], ROUND_SOURCE_MERGED_DECK)
+        self.assertEqual(link_info["presentation_id"], "source-presentation-id")
+        self.assertEqual(link_info["slide_id"], "g2f6f1")
+
+    def test_classify_round_source_link_detects_embed_query_slide_links(self):
+        link_info = _classify_round_source_link(
+            "https://docs.google.com/presentation/d/source-presentation-id/embed?start=false&slide=id.g2f6f1"
         )
 
         self.assertEqual(link_info["source_type"], ROUND_SOURCE_MERGED_DECK)
@@ -96,6 +115,98 @@ class MailHelpersTests(SimpleTestCase):
         )
 
         self.assertEqual((start_index, end_index), (4, 4))
+
+    def test_find_slide_index_for_round_title_matches_slide_text(self):
+        slides = [
+            {
+                "objectId": "slide-0",
+                "pageElements": [],
+            },
+            {
+                "objectId": "slide-1",
+                "pageElements": [
+                    {
+                        "shape": {
+                            "text": {
+                                "textElements": [
+                                    {"textRun": {"content": "Flags Picture Round"}}
+                                ]
+                            }
+                        }
+                    }
+                ],
+            },
+        ]
+
+        self.assertEqual(
+            _find_slide_index_for_round_title(slides, "Flags Picture Round"),
+            1,
+        )
+
+    def test_infer_historical_round_slide_range_uses_next_round_title_when_links_are_missing(self):
+        slides = [
+            {
+                "objectId": "slide-0",
+                "pageElements": [],
+            },
+            {
+                "objectId": "slide-1",
+                "pageElements": [
+                    {
+                        "shape": {
+                            "text": {
+                                "textElements": [
+                                    {"textRun": {"content": "Current Round"}}
+                                ]
+                            }
+                        }
+                    }
+                ],
+            },
+            {
+                "objectId": "slide-2",
+                "pageElements": [
+                    {
+                        "shape": {
+                            "text": {
+                                "textElements": [
+                                    {"textRun": {"content": "Question slide"}}
+                                ]
+                            }
+                        }
+                    }
+                ],
+            },
+            {
+                "objectId": "slide-3",
+                "pageElements": [
+                    {
+                        "shape": {
+                            "text": {
+                                "textElements": [
+                                    {"textRun": {"content": "Next Round"}}
+                                ]
+                            }
+                        }
+                    }
+                ],
+            },
+            {
+                "objectId": "slide-4",
+                "pageElements": [],
+            },
+        ]
+
+        start_index, end_index = _infer_historical_round_slide_range(
+            slides,
+            "slide-1",
+            [
+                "https://docs.google.com/presentation/d/source/edit#slide=id.slide-1",
+            ],
+            next_round_title="Next Round",
+        )
+
+        self.assertEqual((start_index, end_index), (1, 2))
 
 
 class ConvertSharedPresentationTests(SimpleTestCase):

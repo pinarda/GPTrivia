@@ -22,6 +22,8 @@ import os
 import pickle
 from urllib.parse import urlparse
 
+from django.db.models import Q
+
 MAIL_NAME_MAP = {
     'Alex': 'Alex',
     'I': 'Ichigo',
@@ -130,11 +132,47 @@ def _extract_presentation_link_parts(presentation_url):
     presentation_id = presentation_match.group(1) if presentation_match else None
 
     parsed_url = urlparse(presentation_url)
-    fragment = parsed_url.fragment or ''
-    slide_match = GOOGLE_SLIDES_SLIDE_FRAGMENT_PATTERN.search(fragment)
+    slide_match = None
+    for slide_source in (parsed_url.fragment or '', parsed_url.query or ''):
+        slide_match = GOOGLE_SLIDES_SLIDE_FRAGMENT_PATTERN.search(slide_source)
+        if slide_match:
+            break
     slide_id = slide_match.group(1) if slide_match else None
 
     return presentation_id, slide_id
+
+
+def _normalize_round_title(text):
+    if not text:
+        return ''
+    return re.sub(r'[^a-z0-9]+', ' ', text.lower()).strip()
+
+
+def _extract_slide_text(slide):
+    text_chunks = []
+    for element in slide.get('pageElements', []):
+        shape = element.get('shape', {})
+        text_elements = shape.get('text', {}).get('textElements', [])
+        for text_element in text_elements:
+            text_run = text_element.get('textRun')
+            if text_run and 'content' in text_run:
+                text_chunks.append(text_run['content'])
+    return ' '.join(text_chunks)
+
+
+def _find_slide_index_for_round_title(slides, round_title, min_index=0):
+    normalized_round_title = _normalize_round_title(round_title)
+    if not normalized_round_title:
+        return None
+
+    for index in range(max(min_index, 0), len(slides)):
+        slide_text = _normalize_round_title(_extract_slide_text(slides[index]))
+        if not slide_text:
+            continue
+        if normalized_round_title in slide_text or slide_text in normalized_round_title:
+            return index
+
+    return None
 
 
 def _classify_round_source_link(presentation_url):
@@ -161,7 +199,12 @@ def _classify_round_source_link(presentation_url):
     }
 
 
-def _infer_historical_round_slide_range(slides, round_start_slide_id, sibling_round_links):
+def _infer_historical_round_slide_range(
+    slides,
+    round_start_slide_id,
+    sibling_round_links,
+    next_round_title=None,
+):
     slide_index_by_id = {
         slide.get('objectId'): index
         for index, slide in enumerate(slides)
@@ -188,6 +231,19 @@ def _infer_historical_round_slide_range(slides, round_start_slide_id, sibling_ro
 
     if next_start_index is not None:
         end_index = next_start_index - 1
+    elif next_round_title:
+        title_matched_index = _find_slide_index_for_round_title(
+            slides,
+            next_round_title,
+            min_index=start_index + 1,
+        )
+        if title_matched_index is not None:
+            end_index = title_matched_index - 1
+        elif len(slides) > start_index + 1:
+            # Historical merged decks end with an outro slide that should not be copied.
+            end_index = len(slides) - 2
+        else:
+            end_index = start_index
     elif len(slides) > start_index + 1:
         # Historical merged decks end with an outro slide that should not be copied.
         end_index = len(slides) - 2
@@ -205,6 +261,47 @@ def _historical_round_links_for_presentation(presentation_id):
         GPTriviaRound.objects.filter(link__icontains=presentation_fragment)
         .values_list('link', flat=True)
     )
+
+
+def _get_historical_round_context(round_link, presentation_id, slide_id):
+    from .models import GPTriviaRound
+
+    presentation_fragment = f'/presentation/d/{presentation_id}'
+    current_round = None
+
+    if slide_id:
+        current_round = (
+            GPTriviaRound.objects.filter(
+                Q(link__icontains=presentation_fragment)
+                & Q(link__icontains=f'slide=id.{slide_id}')
+            )
+            .order_by('date', 'round_number', 'id')
+            .first()
+        )
+
+    if current_round is None and round_link:
+        current_round = (
+            GPTriviaRound.objects.filter(link=round_link)
+            .order_by('date', 'round_number', 'id')
+            .first()
+        )
+
+    if current_round is None or not current_round.date:
+        return current_round, [], None
+
+    sibling_rounds = list(
+        GPTriviaRound.objects.filter(date=current_round.date)
+        .order_by('round_number', 'id')
+    )
+    next_round = next(
+        (
+            sibling
+            for sibling in sibling_rounds
+            if sibling.round_number > current_round.round_number
+        ),
+        None,
+    )
+    return current_round, sibling_rounds, next_round
 
 
 def _copy_presentation_via_apps_script(script_service, source_presentation_id, destination_presentation_id):
@@ -273,11 +370,20 @@ def _copy_round_into_presentation(
             presentationId=source_presentation_id
         ).execute()
         source_slides = source_presentation.get('slides', [])
-        sibling_round_links = _historical_round_links_for_presentation(source_presentation_id)
+        _, sibling_rounds, next_round = _get_historical_round_context(
+            round_link,
+            source_presentation_id,
+            link_info['slide_id'],
+        )
+        sibling_round_links = [
+            sibling.link for sibling in sibling_rounds
+            if sibling.link and f'/presentation/d/{source_presentation_id}' in sibling.link
+        ] or _historical_round_links_for_presentation(source_presentation_id)
         start_index, end_index = _infer_historical_round_slide_range(
             source_slides,
             link_info['slide_id'],
             sibling_round_links,
+            next_round_title=next_round.title if next_round else None,
         )
         temporary_presentation_id = _create_temporary_round_copy(
             drive_service,
