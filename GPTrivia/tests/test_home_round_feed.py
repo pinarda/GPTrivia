@@ -52,7 +52,7 @@ class HomeRoundFeedTests(TestCase):
         response = self.client.get(reverse("home"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Search by creator or round title")
+        self.assertContains(response, "Search by creator, round title, or date")
         self.assertContains(response, "Page 1 of 1")
         self.assertContains(response, ">New<", html=False)
         self.assertNotContains(response, "Past rounds are display-only for now.")

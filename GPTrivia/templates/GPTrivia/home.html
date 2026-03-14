@@ -520,7 +520,7 @@
             <div class="round-selection-shell">
                 <div class="round-selection-toolbar">
                     <div class="round-selection-search">
-                        <input id="round-search-input" type="search" placeholder="Search by creator or round title">
+                        <input id="round-search-input" type="search" placeholder="Search by creator, round title, or date">
                     </div>
                     <div class="round-selection-pagination">
                         <button id="round-page-prev" type="button">Prev</button>
@@ -677,7 +677,40 @@
                     return true;
                 }
 
-                const haystack = `${round.title} ${round.creator}`.toLowerCase();
+                const dateText = (round.shared_date || '').trim();
+                const searchFragments = [
+                    round.title || '',
+                    round.creator || '',
+                    dateText,
+                    dateText.replace(/[-/.]/g, ' '),
+                    dateText.replace(/-/g, '/'),
+                    dateText.replace(/-/g, '.'),
+                ];
+
+                const parsedDate = new Date(dateText);
+                if (!Number.isNaN(parsedDate.getTime())) {
+                    const month = parsedDate.getMonth() + 1;
+                    const day = parsedDate.getDate();
+                    const year = parsedDate.getFullYear();
+                    searchFragments.push(
+                        parsedDate.toLocaleDateString('en-US', {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric',
+                        }),
+                        parsedDate.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                        }),
+                        `${month}/${day}/${year}`,
+                        `${month}.${day}.${year}`,
+                        `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}/${year}`,
+                        `${String(month).padStart(2, '0')}.${String(day).padStart(2, '0')}.${year}`,
+                    );
+                }
+
+                const haystack = searchFragments.join(' ').toLowerCase();
                 return searchTokens.every(token => haystack.includes(token));
             });
             homeRoundState.currentPage = 1;
