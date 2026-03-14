@@ -810,6 +810,7 @@
 
             payloadContainer.innerHTML = '';
             homeRoundState.rounds
+                .filter(round => round.order)
                 .forEach((round, index) => {
                 const fields = {
                     [`round_order_${index}`]: round.order || '',
