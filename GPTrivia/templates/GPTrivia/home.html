@@ -76,17 +76,15 @@
 }
 
 .round-selection-table {
-    display: table;
+    display: block;
     width: 100%;
-    max-height: 400px;
-    overflow-y: auto;
-    border-collapse: collapse;
     border: 1px solid #0073cc;
+    --round-table-columns: 80px 64px minmax(260px, 2.4fr) minmax(160px, 1.2fr) 88px 120px;
 }
 
 /* Title row styling */
 .round-selection-table-title {
-    display: table-caption; /* Use table-caption to allow the title to behave like a table header */
+    display: block;
     text-align: left;
     font-size: 1.8em;
     font-weight: bold;
@@ -95,20 +93,33 @@
     background-color: #0073cc; /* Match the table header background */
     caption-side: top;
     border-radius: 3px 3px 0px 0px;
-}
-
-.round-selection-table-header, .round-selection-table-row {
-    display: table-row;
+.round-selection-table-header,
+.round-selection-table-row {
+    display: grid;
+    grid-template-columns: var(--round-table-columns);
+    column-gap: 12px;
+    align-items: center;
 }
 
 .round-selection-table-cell {
-    display: table-cell;
+    display: block;
+    min-width: 0;
     padding: 5px;
     {#border: 1px solid #0073cc;#}
     text-align: left;
     vertical-align: middle;
     color: white;
     position: relative;
+}
+
+#rounds-table-body {
+    display: block;
+}
+
+.loading-cell {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 18px 10px;
 }
 
 .round-selection-table-row.historical-row .round-selection-table-cell,
@@ -295,14 +306,12 @@
 }
 
 .creator-cell {
-    display: table-cell;
     padding: 5px;
     {#border: 1px solid #0073cc;#}
     text-align: left;
     vertical-align: middle;
     color: white;
     position: relative;
-    width: 15%;
 }
 
 .new-cell {
@@ -323,10 +332,19 @@
     background-color: #0073cc;
     font-weight: bold;
     color: white;
+    padding: 0 6px;
+}
+
+.round-selection-table-row {
+    padding: 4px 6px;
+    border-top: 1px solid rgba(0, 115, 204, 0.18);
 }
 
 /* Specific adjustments for smaller screens */
 @media (max-width: 600px) {
+    .round-selection-table {
+        --round-table-columns: 80px minmax(220px, 2.5fr) minmax(140px, 1.2fr);
+    }
     .round-selection-shell,
     .round-selection-table {
         width: 100%;
@@ -346,6 +364,9 @@
 }
 
 @media (max-width: 1000px) {
+    .round-selection-table {
+        --round-table-columns: 80px 64px minmax(240px, 2.5fr) minmax(150px, 1.15fr) 88px;
+    }
     .date_cell {
         display: none;
     }
@@ -406,13 +427,14 @@
 
 
 .round-selection-table-cell input[type="text"] {
-    width: 90%;
+    width: 100%;
     border: 1px solid #ccc;
     border-radius: 2px;
     font-size: 16px;
     background-color: #333;
     color: white;
     font-family: YoungSerif;
+    box-sizing: border-box;
 }
 
 .round-selection-table-cell creator-input {
@@ -464,6 +486,8 @@
     display: inline-block;
     padding: 7px 2px;
     font-family: YoungSerif;
+    width: 100%;
+    box-sizing: border-box;
 }
 
   </style>
@@ -643,12 +667,14 @@
 
         function filterRounds(searchTerm) {
             const normalizedTerm = (searchTerm || '').trim().toLowerCase();
+            const searchTokens = normalizedTerm.split(/\s+/).filter(Boolean);
             homeRoundState.filteredRounds = homeRoundState.rounds.filter((round) => {
-                if (!normalizedTerm) {
+                if (!searchTokens.length) {
                     return true;
                 }
 
-                return `${round.title} ${round.creator}`.toLowerCase().includes(normalizedTerm);
+                const haystack = `${round.title} ${round.creator}`.toLowerCase();
+                return searchTokens.every(token => haystack.includes(token));
             });
             homeRoundState.currentPage = 1;
             renderRoundsTable();
