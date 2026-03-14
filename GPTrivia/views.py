@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import GPTriviaRoundForm, ProfilePictureForm
-from .models import GPTriviaRound, MergedPresentation, Profile
+from .models import GPTriviaRound, MergedPresentation, PresentationBuildState, Profile
 from django.db import transaction
 from django.db.models import Avg, F, FloatField, Case, When, Sum, Count
 from django.contrib.auth import views as auth_views
@@ -51,6 +51,7 @@ from django.http import Http404
 from django.core import serializers
 from rest_framework.renderers import JSONRenderer
 from datetime import date
+from django.utils import timezone
 from .models import JeopardyQuestion, JeopardyRound, PushSubscription
 from .player_scores import (
     FIXED_SCORE_FIELDS,
@@ -79,6 +80,9 @@ VAPID_CLAIMS = {
     "sub": "mailto:hailsciencetrivia@gmail.com"
 }
 logger = logging.getLogger(__name__)
+HOME_BUILD_GROUP_NAME = 'home_build_updates'
+HOME_BUILD_STATE_KEY = 'home_page'
+HOME_BUILD_STALE_MINUTES = 30
 
 
 def create_presentation(*args, **kwargs):
@@ -940,7 +944,108 @@ def _ready_presentations_queryset():
     return MergedPresentation.objects.filter(status=MergedPresentation.STATUS_READY)
 
 
-def _build_home_context(selected_presentation, presentation_calendar):
+def _stale_home_build_cutoff():
+    return timezone.now() - datetime.timedelta(minutes=HOME_BUILD_STALE_MINUTES)
+
+
+def _serialize_home_build_state(build_state=None):
+    if build_state is None:
+        build_state = _get_home_build_state()
+
+    return {
+        "is_active": bool(build_state and build_state.is_active),
+        "action": build_state.action if build_state else "",
+        "presentation_name": build_state.presentation_name if build_state else "",
+        "presentation_id": build_state.presentation_id if build_state else "",
+    }
+
+
+def _clear_stale_home_build_state(build_state):
+    if not build_state or not build_state.is_active or not build_state.started_at:
+        return build_state
+    if build_state.started_at >= _stale_home_build_cutoff():
+        return build_state
+
+    build_state.is_active = False
+    build_state.action = ""
+    build_state.presentation_name = ""
+    build_state.presentation_id = ""
+    build_state.started_at = None
+    build_state.save(
+        update_fields=["is_active", "action", "presentation_name", "presentation_id", "started_at", "updated_at"]
+    )
+    return build_state
+
+
+def _get_home_build_state():
+    build_state, _ = PresentationBuildState.objects.get_or_create(
+        key=HOME_BUILD_STATE_KEY,
+    )
+    return _clear_stale_home_build_state(build_state)
+
+
+def _broadcast_home_build_state(build_state):
+    channel_layer = get_channel_layer()
+    if not channel_layer:
+        return
+
+    async_to_sync(channel_layer.group_send)(
+        HOME_BUILD_GROUP_NAME,
+        {
+            "type": "home_build_message",
+            "build_state": _serialize_home_build_state(build_state),
+        },
+    )
+
+
+def _schedule_home_build_state_broadcast(build_state):
+    transaction.on_commit(lambda: _broadcast_home_build_state(build_state))
+
+
+def _acquire_home_build_lock(action, *, presentation_name="", presentation_id=""):
+    with transaction.atomic():
+        build_state, _ = PresentationBuildState.objects.select_for_update().get_or_create(
+            key=HOME_BUILD_STATE_KEY,
+        )
+        _clear_stale_home_build_state(build_state)
+        if build_state.is_active:
+            return False, build_state
+
+        build_state.is_active = True
+        build_state.action = action
+        build_state.presentation_name = presentation_name
+        build_state.presentation_id = presentation_id
+        build_state.started_at = timezone.now()
+        build_state.save(
+            update_fields=["is_active", "action", "presentation_name", "presentation_id", "started_at", "updated_at"]
+        )
+
+    _schedule_home_build_state_broadcast(build_state)
+    return True, build_state
+
+
+def _release_home_build_lock():
+    with transaction.atomic():
+        build_state, _ = PresentationBuildState.objects.select_for_update().get_or_create(
+            key=HOME_BUILD_STATE_KEY,
+        )
+        if not build_state.is_active and not build_state.action and not build_state.presentation_name and not build_state.presentation_id:
+            return build_state
+
+        build_state.is_active = False
+        build_state.action = ""
+        build_state.presentation_name = ""
+        build_state.presentation_id = ""
+        build_state.started_at = None
+        build_state.save(
+            update_fields=["is_active", "action", "presentation_name", "presentation_id", "started_at", "updated_at"]
+        )
+
+    _schedule_home_build_state_broadcast(build_state)
+    return build_state
+
+
+def _build_home_context(selected_presentation, presentation_calendar, build_state=None):
     selected_presentation_date = None
     presentation_url = None
 
@@ -960,6 +1065,7 @@ def _build_home_context(selected_presentation, presentation_calendar):
             selected_presentation_date.isoformat() if selected_presentation_date else ""
         ),
         "presentation_calendar": presentation_calendar,
+        "home_build_state": _serialize_home_build_state(build_state),
     }
 
 
@@ -1059,10 +1165,11 @@ def home(request):
     selected_presentation_id = (
         request.GET.get("presentation_id") or request.POST.get("selected_presentation_id")
     )
+    home_build_state = _get_home_build_state()
     latest_presentation, selected_presentation, presentation_calendar = _get_selected_home_presentation(
         selected_presentation_id
     )
-    home_context = _build_home_context(selected_presentation, presentation_calendar)
+    home_context = _build_home_context(selected_presentation, presentation_calendar, home_build_state)
 
     # (links, titles, creators, old_links, shared_dates) = get_round_titles_and_links(processed_senders=[])
 
@@ -1098,6 +1205,18 @@ def home(request):
             if not round_order:
                 if ajax_request:
                     return JsonResponse({"detail": "No rounds selected."}, status=400)
+                return render(request, "GPTrivia/home.html", home_context)
+
+            lock_acquired, active_build_state = _acquire_home_build_lock(
+                "generate",
+                presentation_name=presentation_name,
+            )
+            if not lock_acquired:
+                detail = "Another presentation build is already in progress."
+                if ajax_request:
+                    payload = {"detail": detail, "build_in_progress": True}
+                    payload.update(_serialize_home_build_state(active_build_state))
+                    return JsonResponse(payload, status=409)
                 return render(request, "GPTrivia/home.html", home_context)
 
             # Sort rounds by order
@@ -1162,6 +1281,8 @@ def home(request):
                     payload["build_failed"] = True
                     return JsonResponse(payload, status=500)
                 raise
+            finally:
+                _release_home_build_lock()
 
             if isinstance(create_result, tuple):
                 new_presentation_id, creators, round_titles, round_links = create_result
@@ -1240,6 +1361,19 @@ def home(request):
                     return JsonResponse({"detail": "No presentation selected."}, status=400)
                 return render(request, "GPTrivia/home.html", home_context)
 
+            lock_acquired, active_build_state = _acquire_home_build_lock(
+                "update",
+                presentation_name=selected_presentation.name,
+                presentation_id=selected_presentation.presentation_id,
+            )
+            if not lock_acquired:
+                detail = "Another presentation build is already in progress."
+                if ajax_request:
+                    payload = {"detail": detail, "build_in_progress": True}
+                    payload.update(_serialize_home_build_state(active_build_state))
+                    return JsonResponse(payload, status=409)
+                return render(request, "GPTrivia/home.html", home_context)
+
             # Sort rounds by order
             ordered_rounds = [round_order[key] for key in sorted(round_order.keys())]
 
@@ -1294,6 +1428,8 @@ def home(request):
                     payload["build_failed"] = True
                     return JsonResponse(payload, status=500)
                 raise
+            finally:
+                _release_home_build_lock()
             logger.info(
                 "Home update completed for %s (%s)",
                 presentation_name,

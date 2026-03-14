@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from GPTrivia.mail import PresentationBuildError
-from GPTrivia.models import MergedPresentation
+from GPTrivia.models import MergedPresentation, PresentationBuildState
 
 
 class HomeViewPresentationSelectionTests(TestCase):
@@ -105,6 +105,27 @@ class HomeViewPresentationSelectionTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["selected_presentation_id"], "presentation-latest")
+
+    def test_home_context_includes_active_build_state(self):
+        PresentationBuildState.objects.create(
+            key="home_page",
+            is_active=True,
+            action="generate",
+            presentation_name="3.14.2026",
+        )
+
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context["home_build_state"],
+            {
+                "is_active": True,
+                "action": "generate",
+                "presentation_name": "3.14.2026",
+                "presentation_id": "",
+            },
+        )
 
     @patch("GPTrivia.views.create_presentation", return_value="presentation-generated")
     def test_generate_ajax_returns_json_for_new_presentation(self, create_mock):
@@ -270,3 +291,42 @@ class HomeViewPresentationSelectionTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse("home"))
+
+    @patch("GPTrivia.views.create_presentation")
+    def test_generate_ajax_rejects_when_build_is_already_in_progress(self, create_mock):
+        PresentationBuildState.objects.create(
+            key="home_page",
+            is_active=True,
+            action="update",
+            presentation_name="3.14.2026",
+            presentation_id="presentation-busy",
+        )
+
+        response = self.client.post(
+            reverse("home"),
+            data={
+                "action": "generate",
+                "round_order_0": "1",
+                "round_title_0": "Round C",
+                "round_creator_0": "Alex",
+                "round_link_0": "https://example.com/round-c",
+                "round_old_link_0": "https://example.com/round-c/edit",
+                "round_shared_date_0": "03.12.2026",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+            HTTP_ACCEPT="application/json",
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.json(),
+            {
+                "detail": "Another presentation build is already in progress.",
+                "build_in_progress": True,
+                "is_active": True,
+                "action": "update",
+                "presentation_name": "3.14.2026",
+                "presentation_id": "presentation-busy",
+            },
+        )
+        create_mock.assert_not_called()

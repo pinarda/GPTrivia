@@ -168,6 +168,18 @@ class MergedPresentation(models.Model):
         return self.name
 
 
+class PresentationBuildState(models.Model):
+    key = models.CharField(max_length=32, unique=True, default='home_page')
+    is_active = models.BooleanField(default=False)
+    action = models.CharField(max_length=16, blank=True, default='')
+    presentation_name = models.CharField(max_length=255, blank=True, default='')
+    presentation_id = models.CharField(max_length=255, blank=True, default='')
+    started_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.key}: {'active' if self.is_active else 'idle'}"
+
 
 class PushSubscription(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)

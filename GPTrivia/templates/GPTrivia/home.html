@@ -347,11 +347,19 @@
 /* Specific adjustments for smaller screens */
 @media (max-width: 600px) {
     .round-selection-table {
-        --round-table-columns: 80px minmax(220px, 2.5fr) minmax(140px, 1.2fr);
+        --round-table-columns: 72px minmax(170px, 2.1fr) minmax(110px, 1fr);
     }
     .round-selection-shell,
     .round-selection-table {
         width: 100%;
+    }
+    .round-selection-search {
+        min-width: min(100%, 220px);
+        flex-basis: 200px;
+    }
+    .round-selection-search input[type="search"] {
+        font-size: 0.9rem;
+        padding: 7px 9px;
     }
     .coop_cell {
         display: none;
@@ -368,8 +376,12 @@
 }
 
 @media (max-width: 1000px) {
+    .round-selection-search {
+        min-width: min(100%, 260px);
+        flex-basis: 230px;
+    }
     .round-selection-table {
-        --round-table-columns: 80px 64px minmax(240px, 2.5fr) minmax(150px, 1.15fr) 88px;
+        --round-table-columns: 76px 56px minmax(210px, 2.2fr) minmax(130px, 1fr) 82px;
     }
     .date_cell {
         display: none;
@@ -378,6 +390,13 @@
     .round-selection-table {
         width: 90%; /* Ensure the table takes up all available space on small screens */
     }
+}
+
+.new-box {
+    width: 20px;
+    height: 20px;
+    accent-color: #0073cc;
+    cursor: default;
 }
 
 .coop_cell {
@@ -421,14 +440,6 @@
 .coop-box:hover {
     border-color: #005a99; /* Slightly darker border on hover */
 }
-
-.new-box {
-    width: 20px;
-    height: 20px;
-    accent-color: #0073cc;
-    cursor: default;
-}
-
 
 .round-selection-table-cell input[type="text"] {
     width: 100%;
@@ -562,8 +573,20 @@
         <div id="round-form-payload"></div>
         <div class="presentation-actions">
             <div class="presentation-action-buttons">
-                <button id="gen-button" type="submit" name="action" value="generate">Generate Slides</button>
-                <button id="up-button" type="submit" name="action" value="update">Update Slides</button>
+                <button
+                    id="gen-button"
+                    type="submit"
+                    name="action"
+                    value="generate"
+                    {% if home_build_state.is_active %}disabled{% endif %}
+                >Generate Slides</button>
+                <button
+                    id="up-button"
+                    type="submit"
+                    name="action"
+                    value="update"
+                    {% if home_build_state.is_active %}disabled{% endif %}
+                >Update Slides</button>
                 <button
                     id="calendar-button"
                     class="calendar-trigger-button{% if not presentation_calendar %} disabled-button{% endif %}"
@@ -608,6 +631,7 @@
 </div>
 
 {{ presentation_calendar|json_script:"presentation-calendar-data" }}
+{{ home_build_state|json_script:"home-build-state-data" }}
 
 
     <script>
@@ -620,6 +644,9 @@
             selectedOrders: {},
         };
         let homeFormSubmitInFlight = false;
+        let homeBuildSocket = null;
+        let homeBuildReconnectTimer = null;
+        let homeBuildLockState = {is_active: false, action: '', presentation_name: '', presentation_id: ''};
 
         function syncSelectedOrdersFromRounds() {
             homeRoundState.selectedOrders = {};
@@ -897,8 +924,105 @@
             renderRoundsTable();
         }
 
+        function setStatusMessage(text, color = 'white', mode = 'status') {
+            const messageElement = document.getElementById('msg');
+            if (!messageElement) {
+                return;
+            }
+            messageElement.dataset.mode = mode;
+            messageElement.textContent = text;
+            messageElement.style.color = color;
+            messageElement.style.display = text ? 'block' : 'none';
+        }
+
+        function getHomeBuildLockMessage() {
+            if (!homeBuildLockState.is_active) {
+                return '';
+            }
+            const actionLabel = homeBuildLockState.action === 'update' ? 'update' : 'generation';
+            const presentationLabel = homeBuildLockState.presentation_name
+                ? ` for ${homeBuildLockState.presentation_name}`
+                : '';
+            return `Slides are currently in ${actionLabel}${presentationLabel}.`;
+        }
+
+        function syncHomeActionButtons() {
+            const shouldDisable = homeFormSubmitInFlight || homeBuildLockState.is_active;
+            const generateButton = document.getElementById('gen-button');
+            const updateButton = document.getElementById('up-button');
+            const spinner = document.getElementById('submit-spinner1');
+            const messageElement = document.getElementById('msg');
+
+            [generateButton, updateButton].forEach((button) => {
+                if (!button) {
+                    return;
+                }
+                button.disabled = shouldDisable;
+                button.classList.toggle('disabled-button', shouldDisable);
+            });
+
+            if (homeFormSubmitInFlight) {
+                if (spinner) {
+                    spinner.style.display = 'inline';
+                }
+                setStatusMessage('Working... This may take a few minutes.');
+                return;
+            }
+
+            if (spinner) {
+                spinner.style.display = 'none';
+            }
+
+            if (homeBuildLockState.is_active) {
+                setStatusMessage(getHomeBuildLockMessage());
+                return;
+            }
+
+            if (messageElement && messageElement.dataset.mode === 'status') {
+                setStatusMessage('', 'white', 'status');
+            }
+        }
+
+        function setHomeBuildLockState(buildState) {
+            homeBuildLockState = {
+                is_active: Boolean(buildState && buildState.is_active),
+                action: buildState && buildState.action ? buildState.action : '',
+                presentation_name: buildState && buildState.presentation_name ? buildState.presentation_name : '',
+                presentation_id: buildState && buildState.presentation_id ? buildState.presentation_id : '',
+            };
+            syncHomeActionButtons();
+        }
+
+        function connectHomeBuildSocket() {
+            if (homeBuildSocket) {
+                homeBuildSocket.close();
+            }
+
+            const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            homeBuildSocket = new WebSocket(`${protocol}://${window.location.host}/ws/home/`);
+
+            homeBuildSocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'build_state' && data.build_state) {
+                    setHomeBuildLockState(data.build_state);
+                }
+            };
+
+            homeBuildSocket.onclose = () => {
+                if (homeBuildReconnectTimer) {
+                    clearTimeout(homeBuildReconnectTimer);
+                }
+                homeBuildReconnectTimer = window.setTimeout(connectHomeBuildSocket, 2000);
+            };
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
           homePresentationState = initializePresentationCalendar();
+          const buildStateElement = document.getElementById('home-build-state-data');
+          if (buildStateElement) {
+              setHomeBuildLockState(JSON.parse(buildStateElement.textContent));
+          }
+          connectHomeBuildSocket();
 
           const roundSearchInput = document.getElementById('round-search-input');
           roundSearchInput.addEventListener('input', (event) => {
@@ -1157,48 +1281,14 @@
             }
         }
     
-        // when the gen-button is clicked, show the spinner
-        document.getElementById('gen-button').addEventListener('click', function() {
-            document.getElementById('submit-spinner1').style.display = 'inline';
-            // also show the "Working..." message
-            document.getElementById('msg').style.display = 'block';
-        });
-
-        // likewise, when the up-button is clicked, show the spinner
-        document.getElementById('up-button').addEventListener('click', function() {
-            document.getElementById('submit-spinner1').style.display = 'inline';
-            // also show the "Working..." message
-            document.getElementById('msg').style.display = 'block';
-        });
-
         // Function to disable buttons and show spinner
     function disableButtons() {
-        document.getElementById('gen-button').disabled = true;
-        document.getElementById('up-button').disabled = true;
-
-        // Optionally, change button styles to look disabled
-        document.getElementById('gen-button').classList.add('disabled-button');
-        document.getElementById('up-button').classList.add('disabled-button');
-
-        // Show spinner and message
-        document.getElementById('submit-spinner1').style.display = 'inline';
-        document.getElementById('msg').textContent = 'Working... This may take a few minutes.';
-        document.getElementById('msg').style.color = 'white';
-        document.getElementById('msg').style.display = 'block';
+        syncHomeActionButtons();
     }
 
     // Function to re-enable buttons and hide spinner
     function enableButtons() {
-        document.getElementById('gen-button').disabled = false;
-        document.getElementById('up-button').disabled = false;
-
-        // Remove disabled styles
-        document.getElementById('gen-button').classList.remove('disabled-button');
-        document.getElementById('up-button').classList.remove('disabled-button');
-
-        // Hide spinner and message
-        document.getElementById('submit-spinner1').style.display = 'none';
-        document.getElementById('msg').style.display = 'none';
+        syncHomeActionButtons();
     }
 
     // Submit the form via AJAX
@@ -1210,6 +1300,11 @@
         }
 
         if (homeFormSubmitInFlight) {
+            return;
+        }
+
+        if (homeBuildLockState.is_active) {
+            setStatusMessage(getHomeBuildLockMessage());
             return;
         }
 
@@ -1260,23 +1355,26 @@
         .then((payload) => {
             applyPresentationSelection(payload);
             clearSelectedRoundOrders();
-            enableButtons();
             homeFormSubmitInFlight = false;
+            enableButtons();
         })
         .catch((error) => {
             // Handle errors and re-enable buttons
             console.error('Error:', error);
-            enableButtons();
             homeFormSubmitInFlight = false;
+            if (error.payload && error.payload.build_in_progress) {
+                setHomeBuildLockState(error.payload);
+                return;
+            }
+            enableButtons();
             if (error.payload && error.payload.presentation_id) {
                 applyPresentationSelection(error.payload);
             }
-            const messageElement = document.getElementById('msg');
-            if (messageElement) {
-                messageElement.textContent = error.message || 'Something went wrong while generating slides.';
-                messageElement.style.color = '#ffb3b3';
-                messageElement.style.display = 'block';
-            }
+            setStatusMessage(
+                error.message || 'Something went wrong while generating slides.',
+                '#ffb3b3',
+                'error'
+            );
         });
     });
 

@@ -1,7 +1,8 @@
 from django.urls import path
-from .consumers import ScoresheetConsumer, ButtonPressConsumer
+from .consumers import ScoresheetConsumer, ButtonPressConsumer, HomePageConsumer
 
 websocket_urlpatterns = [
     path('ws/scoresheet/', ScoresheetConsumer.as_asgi()),
+    path('ws/home/', HomePageConsumer.as_asgi()),
     path('ws/button/', ButtonPressConsumer.as_asgi()),  # New WebSocket route
 ]

@@ -42,6 +42,33 @@ class ScoresheetConsumer(AsyncWebsocketConsumer):
         }))
 
 
+class HomePageConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.room_group_name = 'home_build_updates'
+        await self.channel_layer.group_add(
+            self.room_group_name,
+            self.channel_name
+        )
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.room_group_name,
+            self.channel_name
+        )
+
+    async def receive(self, text_data):
+        text_data_json = json.loads(text_data)
+        if text_data_json.get('type') == 'ping':
+            await self.send(text_data=json.dumps({'type': 'pong'}))
+
+    async def home_build_message(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'build_state',
+            'build_state': event['build_state'],
+        }))
+
+
 class ButtonPressConsumer(AsyncWebsocketConsumer):
     # periodic_task = None  # Reference to the periodic task
     reset_task = None  # Reference to the reset task
