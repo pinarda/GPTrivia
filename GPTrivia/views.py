@@ -35,6 +35,7 @@ from django.db.models.query import QuerySet
 import json
 from django.core.serializers.json import DjangoJSONEncoder
 import datetime
+import logging
 
 ## API Libs
 from rest_framework import generics
@@ -77,6 +78,7 @@ VAPID_PRIVATE_KEY = 'sn34CZG_vKbl_AoGObw2aUFo1TV0t2QdGwa-vut-Q70'
 VAPID_CLAIMS = {
     "sub": "mailto:hailsciencetrivia@gmail.com"
 }
+logger = logging.getLogger(__name__)
 
 
 def create_presentation(*args, **kwargs):
@@ -1107,6 +1109,11 @@ def home(request):
             ordered_links = [round['link'] for round in ordered_rounds]
             ordered_old_links = [round['old_link'] for round in ordered_rounds]
             ordered_coop = [round['coop'] for round in ordered_rounds]
+            logger.info(
+                "Home generate requested for %s with %s rounds",
+                presentation_name,
+                len(ordered_titles),
+            )
 
             # Pass the ordered data to create_presentation
             try:
@@ -1121,6 +1128,10 @@ def home(request):
             except Exception as error:
                 PresentationBuildError = _get_presentation_build_error_class()
                 if not isinstance(error, PresentationBuildError):
+                    logger.exception(
+                        "Home generate failed before completion for %s",
+                        presentation_name,
+                    )
                     if ajax_request:
                         return JsonResponse(
                             {"detail": f"Slide generation failed before completion: {error}"},
@@ -1128,6 +1139,12 @@ def home(request):
                         )
                     raise
 
+                logger.error(
+                    "Home generate failed during %s for %s (%s)",
+                    error.step or "unknown step",
+                    presentation_name,
+                    error.presentation_id,
+                )
                 failed_presentation = _upsert_failed_presentation(
                     name=presentation_name,
                     presentation_id=error.presentation_id,
@@ -1153,6 +1170,11 @@ def home(request):
                 round_titles = ordered_titles
                 creators = ordered_creators
                 round_links = ordered_links
+            logger.info(
+                "Home generate completed for %s (%s)",
+                presentation_name,
+                new_presentation_id,
+            )
 
             # new_presentation_id, creators, round_titles, round_links = create_presentation()
 
@@ -1227,6 +1249,12 @@ def home(request):
             ordered_links = [round['link'] for round in ordered_rounds]
             ordered_old_links = [round['old_link'] for round in ordered_rounds]
             ordered_coop = [round['coop'] for round in ordered_rounds]
+            logger.info(
+                "Home update requested for %s using presentation %s with %s rounds",
+                presentation_name,
+                selected_presentation.presentation_id,
+                len(ordered_titles),
+            )
 
 
             # Pass the ordered data to create_presentation
@@ -1248,6 +1276,11 @@ def home(request):
                     coops=ordered_coop,
                 )
             except Exception as error:
+                logger.exception(
+                    "Home update failed for %s (%s)",
+                    presentation_name,
+                    selected_presentation.presentation_id,
+                )
                 selected_presentation.status = MergedPresentation.STATUS_FAILED
                 selected_presentation.error_message = str(error)
                 selected_presentation.save(update_fields=["status", "error_message"])
@@ -1261,6 +1294,11 @@ def home(request):
                     payload["build_failed"] = True
                     return JsonResponse(payload, status=500)
                 raise
+            logger.info(
+                "Home update completed for %s (%s)",
+                presentation_name,
+                updated_presentation_id,
+            )
 
             # update the MergedPresentation object that has the same presentation_id as the latest_presentation
             # by appending the new creators to the creator_list and appending the new round titles to the round_names

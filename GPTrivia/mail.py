@@ -17,6 +17,7 @@ from google.oauth2 import service_account
 import base64
 import re
 import datetime
+import logging
 
 import os
 import pickle
@@ -61,6 +62,7 @@ ROUND_SOURCE_MERGED_DECK = 'merged_round_start'
 ROUND_SOURCE_UNKNOWN = 'unknown'
 GOOGLE_SLIDES_PRESENTATION_PATTERN = re.compile(r'/presentation/d/([a-zA-Z0-9_-]+)')
 GOOGLE_SLIDES_SLIDE_FRAGMENT_PATTERN = re.compile(r'(?:^|&)slide=id\.([a-zA-Z0-9_:-]+)')
+logger = logging.getLogger(__name__)
 
 
 class PresentationBuildError(Exception):
@@ -72,12 +74,14 @@ class PresentationBuildError(Exception):
         creators=None,
         round_titles=None,
         round_links=None,
+        step=None,
     ):
         super().__init__(message)
         self.presentation_id = presentation_id
         self.creators = creators or []
         self.round_titles = round_titles or []
         self.round_links = round_links or []
+        self.step = step
 
 
 def _current_pacific_date():
@@ -1047,6 +1051,12 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
     credentials = None
     new_presentation_id = None
     copied_links = []
+    current_step = "loading credentials"
+    logger.info(
+        "Starting presentation generation for %s with %s rounds",
+        presentation_name,
+        len(titles),
+    )
     # Check if the token.pickle file exists
     if os.path.exists(token_file_path):
         with open(token_file_path, 'rb') as token:
@@ -1082,7 +1092,14 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
     outro_id = '1BSOudw2JxjVcHxfHX-yfJqmuh0Pp4iKMmYY5klW5zLI'
 
     try:
+        current_step = "creating destination presentation"
         new_presentation_id = new_presentation(credentials)
+        logger.info(
+            "Created destination presentation %s for %s",
+            new_presentation_id,
+            presentation_name,
+        )
+        current_step = "finding shared presentations"
         print("finding shared presentations for new presentation...")
         find_shared_presentations(credentials, [], links, old_links)
         shared_urls = links
@@ -1092,6 +1109,7 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
         slides_service = build('slides', 'v1', credentials=credentials)
         drive_service = build('drive', 'v3', credentials=credentials)
 
+        current_step = "copying intro slides"
         response = _copy_presentation_via_apps_script(
             script_service,
             intro_id,
@@ -1103,6 +1121,7 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
         new_pres = slides_service.presentations().get(presentationId=new_presentation_id).execute()
         first_slide = new_pres['slides'][1]
 
+        current_step = "updating intro date slide"
         date_element_id = None
         for element in first_slide['pageElements']:
             if 'shape' in element and 'text' in element['shape']:
@@ -1142,7 +1161,11 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
             body={'requests': [delete_text_request, insert_text_request]}
         ).execute()
 
-        for url in shared_urls:
+        for index, url in enumerate(shared_urls):
+            current_step = (
+                f"copying round {index + 1}/{len(shared_urls)}"
+                f" ({titles[index] if index < len(titles) else url})"
+            )
             copied_links.append(
                 _copy_round_into_presentation(
                     url,
@@ -1152,11 +1175,19 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                     drive_service,
                 )
             )
+            logger.info(
+                "Copied round %s/%s into %s from %s",
+                index + 1,
+                len(shared_urls),
+                new_presentation_id,
+                url,
+            )
 
         creators_list = list(creator_keys)
         summary_round_titles = list(round_titles_for_return)
         summary_creator_keys = list(creators_list)
 
+        current_step = "updating summary slide"
         second_slide = new_pres['slides'][2]
         second_slide_elements = second_slide['pageElements']
 
@@ -1264,15 +1295,23 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                                 ).execute()
                                 break
 
+        current_step = "copying outro slide"
         _copy_presentation_via_apps_script(
             script_service,
             outro_id,
             new_presentation_id,
         )
 
+        current_step = "removing blank first slide"
         remove_first_slide(credentials, new_presentation_id)
 
+        current_step = "updating presentation permissions"
         update_slide_permissions(new_presentation_id, credentials)
+        logger.info(
+            "Completed presentation generation for %s (%s)",
+            presentation_name,
+            new_presentation_id,
+        )
 
         return (
             new_presentation_id,
@@ -1283,12 +1322,19 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
     except PresentationBuildError:
         raise
     except Exception as error:
+        logger.exception(
+            "Presentation generation failed during %s for %s (%s)",
+            current_step,
+            presentation_name,
+            new_presentation_id,
+        )
         raise PresentationBuildError(
-            f"Slide generation stopped before completion: {error}",
+            f"Slide generation stopped during {current_step}: {error}",
             presentation_id=new_presentation_id,
             creators=creator_names_for_return,
             round_titles=round_titles_for_return,
             round_links=copied_links,
+            step=current_step,
         ) from error
 
 def convert_shared_presentation(presentation_url, credentials):
