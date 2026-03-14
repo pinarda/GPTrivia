@@ -89,7 +89,10 @@
 
 /* Title row styling */
 .round-selection-table-title {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     text-align: left;
     font-size: 1.8em;
     font-weight: bold;
@@ -98,6 +101,26 @@
     background-color: #0073cc; /* Match the table header background */
     caption-side: top;
     border-radius: 3px 3px 0px 0px;
+}
+
+.round-selection-title-text {
+    min-width: 0;
+}
+
+.round-selection-title-picker {
+    min-width: 180px;
+    max-width: min(100%, 280px);
+}
+
+.round-selection-title-picker select {
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: #0d2644;
+    color: white;
+    font-family: YoungSerif;
+    font-size: 0.95rem;
+    padding: 7px 10px;
+    box-sizing: border-box;
 }
 
 .round-selection-table-header,
@@ -377,6 +400,14 @@
     .presentation-actions {
         width: 95%;
     }
+    .round-selection-table-title {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .round-selection-title-picker {
+        min-width: 0;
+        max-width: 100%;
+    }
 }
 
 @media (max-width: 1000px) {
@@ -604,7 +635,14 @@
                     </div>
                 </div>
                 <div class="round-selection-table">
-                    <div class="round-selection-table-title" colspan="4">Currently Available Rounds</div>
+                    <div class="round-selection-table-title" colspan="4">
+                        <span class="round-selection-title-text">Currently Available Rounds</span>
+                        <div class="round-selection-title-picker">
+                            <select id="round-player-spotlight">
+                                <option value="">All Players</option>
+                            </select>
+                        </div>
+                    </div>
 
                     <div class="round-selection-table-header">
                         <div class="round-selection-table-cell">Order</div>
@@ -678,6 +716,7 @@
             currentPage: 1,
             pageSize: 10,
             selectedOrders: {},
+            spotlightCreator: '',
         };
         let homeFormSubmitInFlight = false;
         let homeBuildSocket = null;
@@ -734,6 +773,11 @@
         }
 
         function filterRounds(searchTerm) {
+            if (homeRoundState.spotlightCreator) {
+                showRandomRoundForCreator(homeRoundState.spotlightCreator);
+                return;
+            }
+
             const normalizedTerm = (searchTerm || '').trim().toLowerCase();
             const searchTokens = normalizedTerm.split(/\s+/).filter(Boolean);
             homeRoundState.filteredRounds = homeRoundState.rounds.filter((round) => {
@@ -777,6 +821,51 @@
                 const haystack = searchFragments.join(' ').toLowerCase();
                 return searchTokens.every(token => haystack.includes(token));
             });
+            homeRoundState.currentPage = 1;
+            renderRoundsTable();
+        }
+
+        function populateCreatorSpotlightOptions() {
+            const spotlightSelect = document.getElementById('round-player-spotlight');
+            if (!spotlightSelect) {
+                return;
+            }
+
+            const previousValue = spotlightSelect.value;
+            const uniqueCreators = Array.from(
+                new Set(
+                    homeRoundState.rounds
+                        .map((round) => (round.creator || '').trim())
+                        .filter(Boolean)
+                )
+            ).sort((left, right) => left.localeCompare(right));
+
+            spotlightSelect.innerHTML = '';
+
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = 'All Players';
+            spotlightSelect.appendChild(emptyOption);
+
+            uniqueCreators.forEach((creator) => {
+                const option = document.createElement('option');
+                option.value = creator;
+                option.textContent = creator;
+                spotlightSelect.appendChild(option);
+            });
+
+            spotlightSelect.value = uniqueCreators.includes(previousValue) ? previousValue : '';
+        }
+
+        function showRandomRoundForCreator(creator) {
+            const matchingRounds = homeRoundState.rounds.filter(
+                (round) => (round.creator || '').trim() === creator
+            );
+            const spotlightRound = matchingRounds.length
+                ? matchingRounds[Math.floor(Math.random() * matchingRounds.length)]
+                : null;
+
+            homeRoundState.filteredRounds = spotlightRound ? [spotlightRound] : [];
             homeRoundState.currentPage = 1;
             renderRoundsTable();
         }
@@ -897,6 +986,7 @@
             pageStatus.textContent = `Page ${homeRoundState.currentPage} of ${totalPages}`;
             prevButton.disabled = homeRoundState.currentPage === 1;
             nextButton.disabled = homeRoundState.currentPage === totalPages;
+            syncHomeActionButtons();
         }
 
         function getSelectedRoundsSnapshot() {
@@ -982,8 +1072,13 @@
             return `Slides are currently in ${actionLabel}${presentationLabel}.`;
         }
 
+        function hasSelectedRounds() {
+            return homeRoundState.rounds.some((round) => Boolean(round.order));
+        }
+
         function syncHomeActionButtons() {
-            const shouldDisable = homeFormSubmitInFlight || homeBuildLockState.is_active;
+            const hasRoundsSelected = hasSelectedRounds();
+            const shouldDisable = homeFormSubmitInFlight || homeBuildLockState.is_active || !hasRoundsSelected;
             const generateButton = document.getElementById('gen-button');
             const updateButton = document.getElementById('up-button');
             const spinner = document.getElementById('submit-spinner1');
@@ -1068,6 +1163,7 @@
           connectHomeBuildSocket();
 
           const roundSearchInput = document.getElementById('round-search-input');
+          const spotlightSelect = document.getElementById('round-player-spotlight');
           roundSearchInput.addEventListener('input', (event) => {
               filterRounds(event.target.value);
           });
@@ -1076,6 +1172,18 @@
                   event.preventDefault();
               }
           });
+          if (spotlightSelect) {
+              spotlightSelect.addEventListener('change', (event) => {
+                  const selectedCreator = event.target.value || '';
+                  homeRoundState.spotlightCreator = selectedCreator;
+                  roundSearchInput.value = '';
+                  if (!selectedCreator) {
+                      filterRounds('');
+                      return;
+                  }
+                  showRandomRoundForCreator(selectedCreator);
+              });
+          }
           document.getElementById('round-page-prev').addEventListener('click', () => {
               if (homeRoundState.currentPage > 1) {
                   homeRoundState.currentPage -= 1;
@@ -1105,6 +1213,7 @@
                   is_new: Boolean(round.is_new),
                   order: null,
               }));
+              populateCreatorSpotlightOptions();
               syncSelectedOrdersFromRounds();
               filterRounds('');
             })
