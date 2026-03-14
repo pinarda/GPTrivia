@@ -127,8 +127,9 @@ class HomeViewPresentationSelectionTests(TestCase):
             },
         )
 
+    @patch("GPTrivia.views._schedule_home_presentation_refresh_broadcast")
     @patch("GPTrivia.views.create_presentation", return_value="presentation-generated")
-    def test_generate_ajax_returns_json_for_new_presentation(self, create_mock):
+    def test_generate_ajax_returns_json_for_new_presentation(self, create_mock, refresh_broadcast_mock):
         with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 6, 5)):
             response = self.client.post(
                 reverse("home"),
@@ -166,6 +167,9 @@ class HomeViewPresentationSelectionTests(TestCase):
         generated_presentation = MergedPresentation.objects.get(presentation_id="presentation-generated")
         self.assertEqual(generated_presentation.notes, "")
         self.assertEqual(generated_presentation.status, MergedPresentation.STATUS_READY)
+        refresh_broadcast_mock.assert_called_once()
+        self.assertEqual(refresh_broadcast_mock.call_args.kwargs["action"], "generate")
+        self.assertEqual(refresh_broadcast_mock.call_args.args[1], "presentation-generated")
 
     @patch(
         "GPTrivia.views.create_presentation",
@@ -214,8 +218,9 @@ class HomeViewPresentationSelectionTests(TestCase):
             "Slide generation stopped before completion: simulated failure",
         )
 
+    @patch("GPTrivia.views._schedule_home_presentation_refresh_broadcast")
     @patch("GPTrivia.views.update_merged_presentation", return_value=("presentation-old-updated", ["Jenny"], ["Round D"], ["https://example.com/round-d"]))
-    def test_update_ajax_returns_json_for_selected_presentation(self, update_mock):
+    def test_update_ajax_returns_json_for_selected_presentation(self, update_mock, refresh_broadcast_mock):
         response = self.client.post(
             reverse("home"),
             data={
@@ -249,6 +254,9 @@ class HomeViewPresentationSelectionTests(TestCase):
                 },
             },
         )
+        refresh_broadcast_mock.assert_called_once()
+        self.assertEqual(refresh_broadcast_mock.call_args.kwargs["action"], "update")
+        self.assertEqual(refresh_broadcast_mock.call_args.args[1], "presentation-old-updated")
 
     @patch("GPTrivia.views.update_merged_presentation", return_value=("presentation-old", [], [], []))
     def test_update_uses_selected_presentation_id(self, update_mock):

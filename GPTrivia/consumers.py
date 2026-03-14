@@ -68,6 +68,14 @@ class HomePageConsumer(AsyncWebsocketConsumer):
             'build_state': event['build_state'],
         }))
 
+    async def home_presentation_message(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'presentation_refresh',
+            'presentation': event['presentation'],
+            'action': event.get('action', ''),
+            'refreshed_at': event.get('refreshed_at', ''),
+        }))
+
 
 class ButtonPressConsumer(AsyncWebsocketConsumer):
     # periodic_task = None  # Reference to the periodic task

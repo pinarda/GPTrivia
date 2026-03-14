@@ -1012,6 +1012,35 @@ def _schedule_home_build_state_broadcast(build_state):
     transaction.on_commit(lambda: _broadcast_home_build_state(build_state))
 
 
+def _broadcast_home_presentation_refresh(selected_presentation, presentation_id=None, *, action=""):
+    if selected_presentation is None:
+        return
+
+    channel_layer = get_channel_layer()
+    if not channel_layer:
+        return
+
+    async_to_sync(channel_layer.group_send)(
+        HOME_BUILD_GROUP_NAME,
+        {
+            "type": "home_presentation_message",
+            "presentation": _serialize_home_presentation(selected_presentation, presentation_id),
+            "action": action,
+            "refreshed_at": timezone.now().isoformat(),
+        },
+    )
+
+
+def _schedule_home_presentation_refresh_broadcast(selected_presentation, presentation_id=None, *, action=""):
+    transaction.on_commit(
+        lambda: _broadcast_home_presentation_refresh(
+            selected_presentation,
+            presentation_id,
+            action=action,
+        )
+    )
+
+
 def _acquire_home_build_lock(action, *, presentation_name="", presentation_id=""):
     with transaction.atomic():
         build_state, _ = PresentationBuildState.objects.select_for_update().get_or_create(
@@ -1322,6 +1351,11 @@ def home(request):
                 tiebreak_winner="",
             )
             response_presentation_id = new_presentation_id
+            _schedule_home_presentation_refresh_broadcast(
+                response_presentation,
+                response_presentation_id,
+                action="generate",
+            )
             print (new_presentation_id, creators, round_titles)
 
             for round_index in range(len(round_titles)):
@@ -1458,6 +1492,11 @@ def home(request):
             selected_presentation.status = MergedPresentation.STATUS_READY
             selected_presentation.error_message = ""
             selected_presentation.save()
+            _schedule_home_presentation_refresh_broadcast(
+                selected_presentation,
+                updated_presentation_id,
+                action="update",
+            )
 
             print(updated_presentation_id, new_creators, round_titles)
             response_presentation = selected_presentation

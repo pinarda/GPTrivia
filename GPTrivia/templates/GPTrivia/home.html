@@ -79,6 +79,7 @@
     display: block;
     width: 100%;
     border: 1px solid #0073cc;
+    box-sizing: border-box;
     --round-table-columns: 80px minmax(260px, 2.4fr) minmax(160px, 1.2fr) 88px 120px;
 }
 
@@ -347,7 +348,7 @@
 /* Specific adjustments for smaller screens */
 @media (max-width: 600px) {
     .round-selection-table {
-        --round-table-columns: 64px minmax(0, 1.75fr) minmax(0, 1fr);
+        --round-table-columns: 58px minmax(0, 1.7fr) minmax(0, 0.95fr);
     }
     .round-selection-shell,
     .round-selection-table {
@@ -395,7 +396,7 @@
         flex-basis: 200px;
     }
     .round-selection-table {
-        --round-table-columns: 64px minmax(0, 1.5fr) minmax(0, 0.95fr) 72px;
+        --round-table-columns: 58px minmax(0, 1.42fr) minmax(0, 0.86fr) 66px;
     }
     .date_cell {
         display: none;
@@ -406,10 +407,10 @@
     }
     .round-selection-table-header,
     .round-selection-table-row {
-        column-gap: 8px;
+        column-gap: 6px;
     }
     .round-selection-table-cell {
-        padding: 4px;
+        padding: 3px;
     }
     .round-selection-table-cell input[type="text"] {
         font-size: 14px;
@@ -1033,6 +1034,13 @@
                 const data = JSON.parse(event.data);
                 if (data.type === 'build_state' && data.build_state) {
                     setHomeBuildLockState(data.build_state);
+                    return;
+                }
+                if (data.type === 'presentation_refresh' && data.presentation) {
+                    applyPresentationSelection(data.presentation, {
+                        forceReload: true,
+                        refreshToken: data.refreshed_at || `${Date.now()}`,
+                    });
                 }
             };
 
@@ -1285,17 +1293,34 @@
             return frame;
         }
 
-        function applyPresentationSelection(presentationData) {
+        function buildPresentationFrameUrl(presentationUrl, refreshToken) {
+            if (!presentationUrl || !refreshToken) {
+                return presentationUrl;
+            }
+
+            const nextUrl = new URL(presentationUrl);
+            nextUrl.searchParams.set('codex_refresh', refreshToken);
+            return nextUrl.toString();
+        }
+
+        function applyPresentationSelection(presentationData, options = {}) {
             if (!presentationData || !presentationData.presentation_id) {
                 return;
             }
 
+            const forceReload = Boolean(options.forceReload);
+            const refreshToken = options.refreshToken || `${Date.now()}`;
             const presentationFrame = ensurePresentationFrame();
+            const selectedPresentationInput = document.querySelector('input[name="selected_presentation_id"]');
+            const currentPresentationId = selectedPresentationInput ? selectedPresentationInput.value : '';
+            const shouldForceFrameRefresh = forceReload || currentPresentationId === presentationData.presentation_id;
             if (presentationFrame && presentationData.presentation_url) {
-                presentationFrame.src = presentationData.presentation_url;
+                presentationFrame.src = buildPresentationFrameUrl(
+                    presentationData.presentation_url,
+                    shouldForceFrameRefresh ? refreshToken : ''
+                );
             }
 
-            const selectedPresentationInput = document.querySelector('input[name="selected_presentation_id"]');
             if (selectedPresentationInput) {
                 selectedPresentationInput.value = presentationData.presentation_id;
             }
