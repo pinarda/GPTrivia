@@ -179,6 +179,12 @@ def _get_shape_text_content(presentation, element_id):
     return None
 
 
+def _pop_is_coop(coop_values):
+    if not coop_values:
+        return False
+    return coop_values.pop(0) == 'on'
+
+
 def _find_slide_index_for_round_title(slides, round_title, min_index=0):
     normalized_round_title = _normalize_round_title(round_title)
     if not normalized_round_title:
@@ -690,6 +696,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
     creator_placeholders = ['CREATOR1', 'CREATOR2', 'CREATOR3', 'CREATOR4', 'CREATOR5', 'CREATOR6']
     summary_round_titles = list(round_titles_for_return)
     summary_creator_keys = list(creator_keys)
+    summary_coops = list(coops)
     print(summary_round_titles)
     print(summary_creator_keys)
     print(merged_creators)
@@ -800,7 +807,7 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                                 content, creator_placeholder
                             )
 
-                            if coops[i] == 'on':
+                            if _pop_is_coop(summary_coops):
                                 new_text = new_text + " - Co-op"
                             j+=1
 
@@ -1198,6 +1205,7 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
         creators_list = list(creator_keys)
         summary_round_titles = list(round_titles_for_return)
         summary_creator_keys = list(creators_list)
+        summary_coops = list(coops)
 
         current_step = "updating summary slide"
         second_slide = new_pres['slides'][2]
@@ -1287,7 +1295,7 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                                     content, creator_placeholder
                                 )
 
-                                if coops[i] == 'on':
+                                if _pop_is_coop(summary_coops):
                                     new_text = f"{new_text} - Co-op"
 
                                 print(f"creator_start_index: {creator_start_index}")

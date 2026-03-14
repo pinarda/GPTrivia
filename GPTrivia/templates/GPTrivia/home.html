@@ -888,6 +888,15 @@
             return (selectedRounds || []).length;
         }
 
+        function clearSelectedRoundOrders() {
+            homeRoundState.rounds.forEach((round) => {
+                round.order = null;
+            });
+            homeRoundState.selectedOrders = {};
+            buildRoundSubmissionPayload([]);
+            renderRoundsTable();
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
           homePresentationState = initializePresentationCalendar();
 
@@ -1250,6 +1259,7 @@
         })
         .then((payload) => {
             applyPresentationSelection(payload);
+            clearSelectedRoundOrders();
             enableButtons();
             homeFormSubmitInFlight = false;
         })
