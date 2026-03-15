@@ -74,6 +74,7 @@
 
         body.site-shell {
             min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             flex-direction: column;
         }
@@ -127,8 +128,8 @@
 
         @media (max-width: 750px) {
             body.site-shell {
-                --mobile-header-offset: calc(76px + env(safe-area-inset-top));
-                --mobile-footer-offset: calc(40px + env(safe-area-inset-bottom));
+                --mobile-header-offset: calc(62px + env(safe-area-inset-top));
+                --mobile-footer-offset: calc(36px + env(safe-area-inset-bottom));
             }
 
             body.site-shell #menu-button {
@@ -152,11 +153,13 @@
             }
 
             body.site-shell .page-body {
+                flex: 0 0 auto;
                 padding-top: var(--mobile-header-offset);
                 padding-bottom: var(--mobile-footer-offset);
             }
 
             body.site-shell .content-container {
+                flex: 0 0 auto !important;
                 min-height: 0 !important;
                 margin: 10px 10px 0 !important;
             }
