@@ -488,8 +488,8 @@ import {
       padding: 0.08rem 0 0.9rem;
 
       @media (max-width: 1000px) {
-        margin-top: -0.18rem;
-        padding: 0 0 1.02rem;
+        margin-top: -0.2rem;
+        padding: 0 0 0.62rem;
       }
     `;
 
@@ -620,14 +620,10 @@ import {
       }
 
       @media (max-width: 1000px) {
-        width: min(100%, 52rem);
+        width: min(100%, 26rem);
 
-        & > button:first-child {
-          flex: 1 1 12rem;
-        }
-
-        & > button:nth-child(n + 2) {
-          flex: 1 1 9.75rem;
+        & > button {
+          flex: 1 1 10.75rem;
           font-size: 0.94rem;
           min-height: 2.4rem;
           white-space: nowrap;
