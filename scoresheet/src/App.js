@@ -73,11 +73,11 @@ import {
   readPlayerColorMap,
 } from './playerColors';
 import {
+    applyCooperativeScoreEntry,
     extractPlayersFromRounds,
-    FIXED_SCORE_FIELDS,
     getDisplayNameForPlayerField,
-    getRoundExtraScores,
     getMergedRoundScoreMap,
+    getRoundExtraScores,
     getPlayerColor,
     getPlayerStorageKey,
     getPlayerFieldForName as getScoreFieldForName,
@@ -1764,27 +1764,35 @@ const PlayerTable = () => {
             const updatedRounds = [...rounds];
             const roundIndex = updatedRounds.findIndex(r => r.id === round.id);
             if (roundIndex !== -1) {
-                updatedRounds[roundIndex][player] = newScore;
-                if (!FIXED_SCORE_FIELDS.includes(player)) {
-                    const nextExtraScores = { ...getRoundExtraScores(updatedRounds[roundIndex]) };
-                    if (newScore === null) {
-                        delete nextExtraScores[player];
-                    } else {
-                        nextExtraScores[player] = newScore;
-                    }
-                    updatedRounds[roundIndex].extra_scores = nextExtraScores;
-                }
+                const originalRound = updatedRounds[roundIndex];
+                const updatedRound = applyCooperativeScoreEntry({
+                    round: originalRound,
+                    playerField: player,
+                    newScore,
+                    players,
+                    creatorName: roundCreators[roundTitle] || round?.creator || '',
+                    isCooperative: Boolean(cooperativeStatus[roundTitle]),
+                });
+                const originalScoreMap = getMergedRoundScoreMap(originalRound);
+                const updatedScoreMap = getMergedRoundScoreMap(updatedRound);
+                updatedRounds[roundIndex] = updatedRound;
                 setRounds(updatedRounds);
+
+                setScores(prevScores => {
+                    const nextScores = { ...prevScores };
+                    Object.entries(updatedScoreMap).forEach(([playerField, scoreValue]) => {
+                        if (originalScoreMap[playerField] === scoreValue) {
+                            return;
+                        }
+                        nextScores[playerField] = {
+                            ...(nextScores[playerField] || {}),
+                            [roundTitle]: scoreValue,
+                        };
+                    });
+                    return nextScores;
+                });
             }
         }
-
-        setScores({
-            ...scores,
-            [player]: {
-                ...scores[player],
-                [roundTitle]: newScore,
-            },
-        });
         markDirty();
     };
 

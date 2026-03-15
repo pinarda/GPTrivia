@@ -29,9 +29,11 @@ import {
   readPlayerColorMap,
 } from './playerColors';
 import {
+  applyCooperativeScoreEntry,
   extractPlayersFromRounds,
   getDisplayNameForPlayerField,
   getRoundExtraScores,
+  getRoundScoreValue,
   getPlayerStorageKey,
   removePlayerFromRound,
 } from './playerScores';
@@ -393,6 +395,47 @@ describe('scoresheet player defaults', () => {
     expect(getPlayerStorageKey('score_alex')).toBe('alex');
     expect(getPlayerStorageKey('score_sam guest')).toBe('sam guest');
     expect(getDisplayNameForPlayerField('score_sam guest')).toBe('Sam Guest');
+  });
+
+  test('copies the first cooperative non-creator score to the rest of the team', () => {
+    const updatedRound = applyCooperativeScoreEntry({
+      round: {
+        title: 'Co-op Round',
+        score_alex: null,
+        score_megan: null,
+        score_zach: null,
+        extra_scores: {},
+      },
+      playerField: 'score_megan',
+      newScore: 8,
+      players: ['score_alex', 'score_megan', 'score_zach'],
+      creatorName: 'Alex',
+      isCooperative: true,
+    });
+
+    expect(getRoundScoreValue(updatedRound, 'score_alex')).toBeNull();
+    expect(getRoundScoreValue(updatedRound, 'score_megan')).toBe(8);
+    expect(getRoundScoreValue(updatedRound, 'score_zach')).toBe(8);
+  });
+
+  test('does not overwrite later cooperative teammate scores after the first entry', () => {
+    const updatedRound = applyCooperativeScoreEntry({
+      round: {
+        title: 'Co-op Round',
+        score_alex: null,
+        score_megan: null,
+        score_zach: 6,
+        extra_scores: {},
+      },
+      playerField: 'score_megan',
+      newScore: 8,
+      players: ['score_alex', 'score_megan', 'score_zach'],
+      creatorName: 'Alex',
+      isCooperative: true,
+    });
+
+    expect(getRoundScoreValue(updatedRound, 'score_megan')).toBe(8);
+    expect(getRoundScoreValue(updatedRound, 'score_zach')).toBe(6);
   });
 });
 

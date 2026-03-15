@@ -137,6 +137,77 @@ export function getRoundScoreValue(round, playerField) {
   return null;
 }
 
+export function setRoundScoreValue(round, playerField, scoreValue) {
+  const nextRound = { ...(round || {}) };
+  const normalizedField = getPlayerFieldForName(playerField);
+  if (!normalizedField) {
+    return nextRound;
+  }
+
+  if (FIXED_SCORE_FIELDS.includes(normalizedField)) {
+    nextRound[normalizedField] = scoreValue ?? null;
+  } else if (scoreValue === null || scoreValue === undefined) {
+    delete nextRound[normalizedField];
+  } else {
+    nextRound[normalizedField] = scoreValue;
+  }
+
+  const nextExtraScores = { ...getRoundExtraScores(round) };
+  if (!FIXED_SCORE_FIELDS.includes(normalizedField)) {
+    if (scoreValue === null || scoreValue === undefined) {
+      delete nextExtraScores[normalizedField];
+    } else {
+      nextExtraScores[normalizedField] = scoreValue;
+    }
+  }
+  nextRound.extra_scores = nextExtraScores;
+
+  return nextRound;
+}
+
+export function applyCooperativeScoreEntry({
+  round,
+  playerField,
+  newScore,
+  players,
+  creatorName,
+  isCooperative,
+}) {
+  const normalizedPlayer = getPlayerFieldForName(playerField);
+  const creatorField = getPlayerFieldForName(creatorName);
+  const nextRound = setRoundScoreValue(round, normalizedPlayer, newScore);
+
+  if (!isCooperative || newScore === null || newScore === undefined || !normalizedPlayer) {
+    return nextRound;
+  }
+
+  if (creatorField && normalizedPlayer === creatorField) {
+    return nextRound;
+  }
+
+  const normalizedPlayers = [...new Set((players || [])
+    .map(candidate => getPlayerFieldForName(candidate))
+    .filter(Boolean))];
+
+  const otherNonCreatorPlayers = normalizedPlayers.filter(candidate => (
+    candidate !== normalizedPlayer && candidate !== creatorField
+  ));
+
+  const hasExistingNonCreatorScore = otherNonCreatorPlayers.some(candidate => {
+    const candidateScore = getRoundScoreValue(round, candidate);
+    return candidateScore !== null && candidateScore !== undefined && candidateScore !== '';
+  });
+
+  if (hasExistingNonCreatorScore) {
+    return nextRound;
+  }
+
+  return otherNonCreatorPlayers.reduce(
+    (accumulator, candidate) => setRoundScoreValue(accumulator, candidate, newScore),
+    nextRound,
+  );
+}
+
 export function removePlayerFromRound(round, playerField) {
   const nextRound = { ...(round || {}) };
   const normalizedField = getPlayerFieldForName(playerField);
