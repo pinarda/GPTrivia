@@ -340,6 +340,45 @@ import {
         }
       `;
 
+    const JokerFormControl = styled(StyledFormControl)`
+      width: 100%;
+      min-width: 0;
+      max-width: 8rem;
+
+      @media (max-width: 1500px) {
+        max-width: 100%;
+      }
+
+      @media (max-width: 1000px) {
+        max-width: 100%;
+      }
+    `;
+
+    const JokerSelect = styled(StyledSelect)`
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+
+      && .MuiSelect-select {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      @media (max-width: 1500px) {
+        && .MuiSelect-select {
+          font-size: 0.72rem;
+          padding-right: 1.25rem;
+        }
+      }
+
+      @media (max-width: 1100px) {
+        && .MuiSelect-select {
+          font-size: 0.68rem;
+        }
+      }
+    `;
+
     const StyledInputLabel = styled(InputLabel)`
       color: #fff;
       text-align: center;
@@ -765,6 +804,22 @@ import {
 
       && .MuiCheckbox-root.Mui-checked {
         color: #2c9d84;
+      }
+    `;
+
+    const CoopRowToggleLabel = styled(DetailToggleLabel)`
+      && {
+        width: 100%;
+        justify-content: center;
+      }
+
+      && .MuiTypography-root {
+        font-size: 0.84rem;
+      }
+
+      && .MuiCheckbox-root {
+        padding: 4px;
+        transform: scale(1.18);
       }
     `;
 
@@ -3017,10 +3072,9 @@ const PlayerTable = () => {
                       </PlayerNameStack>
                   </StyledTableCell>
                   <StyledTableCell sx={{maxWidth: '200px'}} className={selectedColumnIndex === 1 ? 'selected-column' : ''}>
-                      <StyledFormControl>
+                      <JokerFormControl>
                           <InputLabel id="demo-simple-select-label"></InputLabel>
-                          <StyledSelect
-                              sx={{maxWidth: '150px'}}
+                          <JokerSelect
                               MenuProps={dropdownMenuProps}
                               labelId="demo-simple-select-label"
                               id="demo-simple-select"
@@ -3047,8 +3101,8 @@ const PlayerTable = () => {
                               >
                                   Randomize
                               </MenuItem>
-                          </StyledSelect>
-                      </StyledFormControl>
+                          </JokerSelect>
+                      </JokerFormControl>
                   </StyledTableCell>
                   {rounds.map((round, index) => (
                       <StyledTableCell
@@ -3106,15 +3160,14 @@ const PlayerTable = () => {
             <TableCell></TableCell> {/* Empty cell for the joker column */}
               {rounds.map((round, index) => (
                   <StyledTableCell key={index} className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}>
-                    <StyledFormControlLabel
+                    <CoopRowToggleLabel
                       control={
                         <Checkbox
-                          style={{transform: 'scale(1.5)'}}
                           checked={cooperativeStatus[round.title] || false}
                           onChange={(event) => handleCooperativeChange(round.title, event.target.checked)}
                         />
                       }
-                      label="Coop"
+                      label="Co-op"
                     />
                     </StyledTableCell>
                     ))}
