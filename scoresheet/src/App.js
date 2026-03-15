@@ -630,6 +630,7 @@ import {
           font-size: 1rem;
           line-height: 1.25;
           padding: 0.26rem 0.5rem;
+          min-height: 3rem !important;
         }
       }
     `;
