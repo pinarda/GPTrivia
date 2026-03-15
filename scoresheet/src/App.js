@@ -904,6 +904,7 @@ const PlayerTable = () => {
     const pendingMutationIdsRef = useRef(new Set());
     const serverRoundSnapshotRef = useRef({});
     const serverPresentationSnapshotRef = useRef(makePresentationSnapshot(null));
+    const stylePointAnchorRefs = useRef({});
     const newPlayerInputRef = useRef(null);
     const datePickerFieldRef = useRef(null);
     const jokerRouletteTimeoutsRef = useRef({});
@@ -2006,23 +2007,17 @@ const PlayerTable = () => {
         markDirty();
     };
 
+    const setStylePointAnchor = useCallback((playerField, node) => {
+      if (node) {
+        stylePointAnchorRefs.current[playerField] = node;
+        return;
+      }
+
+      delete stylePointAnchorRefs.current[playerField];
+    }, []);
+
     const triggerStylePointBurst = useCallback((playerField) => {
-      const escapeSelectorValue = (value) => {
-        if (typeof value !== 'string') {
-          return '';
-        }
-
-        if (window.CSS && typeof window.CSS.escape === 'function') {
-          return window.CSS.escape(value);
-        }
-
-        return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-      };
-
-      const anchorNode = document.querySelector(
-        `[data-style-burst-anchor="${escapeSelectorValue(playerField)}"]`
-      );
-
+      const anchorNode = stylePointAnchorRefs.current[playerField];
       if (!anchorNode) {
         return;
       }
@@ -2030,8 +2025,8 @@ const PlayerTable = () => {
       const rect = anchorNode.getBoundingClientRect();
       window.dispatchEvent(new CustomEvent('scoresheet:burst-stars', {
         detail: {
-          x: rect.left + (rect.width / 2),
-          y: Math.max(18, rect.top + Math.min(rect.height * 0.35, 16)),
+          x: rect.left + (rect.width * 0.34),
+          y: Math.max(12, rect.top + 4),
         },
       }));
     }, []);
@@ -2668,7 +2663,7 @@ const PlayerTable = () => {
                   <StyledTableCell player={player}>
                           <PlayerNameStack>
                           <PlayerNameAnchor>
-                              <PlayerNameLabel data-style-burst-anchor={player}>
+                              <PlayerNameLabel ref={(node) => setStylePointAnchor(player, node)}>
                                   {crownedPlayer === player && (
                                       <WinnerCrown
                                           initial={{ opacity: 0, y: -5, rotate: 6, scale: 0.8 }}

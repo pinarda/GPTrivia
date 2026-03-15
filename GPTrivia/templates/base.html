@@ -123,8 +123,9 @@
 
         @media (max-width: 1000px) {
             body.site-shell {
-                --mobile-header-offset: calc(92px + env(safe-area-inset-top));
-                --mobile-footer-offset: calc(28px + env(safe-area-inset-bottom));
+                --mobile-header-offset: calc(76px + env(safe-area-inset-top));
+                --mobile-footer-offset: calc(16px + env(safe-area-inset-bottom));
+                --mobile-footer-bar-height: 16px;
             }
 
             body.site-shell header {
@@ -135,6 +136,12 @@
                 z-index: 1100;
                 padding-top: env(safe-area-inset-top);
                 box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+            }
+
+            body.site-shell .header-container {
+                min-height: 46px !important;
+                padding-top: 8px !important;
+                padding-bottom: 8px !important;
             }
 
             body.site-shell .page-body {
@@ -152,9 +159,33 @@
             }
 
             body.site-shell .footer-container {
-                min-height: 0 !important;
-                padding-bottom: env(safe-area-inset-bottom) !important;
+                min-height: var(--mobile-footer-bar-height) !important;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding-top: 0 !important;
+                padding-bottom: calc(env(safe-area-inset-bottom) + 2px) !important;
                 box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.18);
+            }
+
+            body.site-shell .footer-content,
+            body.site-shell .footer-bottom {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: var(--mobile-footer-bar-height);
+            }
+
+            body.site-shell #footer-text {
+                margin: 0 !important;
+                padding: 0 !important;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: var(--mobile-footer-bar-height);
+                font-size: 0.82rem;
+                line-height: 1;
             }
         }
       </style>
