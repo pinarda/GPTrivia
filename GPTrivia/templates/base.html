@@ -128,7 +128,7 @@
         @media (max-width: 1000px) {
             body.site-shell {
                 --mobile-header-offset: calc(76px + env(safe-area-inset-top));
-                --mobile-footer-offset: calc(34px + env(safe-area-inset-bottom));
+                --mobile-footer-offset: calc(46px + env(safe-area-inset-bottom));
             }
 
             body.site-shell header {
@@ -190,50 +190,74 @@
             }
 
             body.site-shell .mobile-footer-nav {
-                display: flex;
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
                 align-items: center;
-                justify-content: space-evenly;
-                gap: 0.2rem;
+                justify-content: stretch;
+                gap: 0;
                 width: 100%;
                 height: 100%;
-                padding: 0.1rem 0.3rem calc(env(safe-area-inset-bottom) + 0.12rem);
+                padding: 0 0.2rem calc(env(safe-area-inset-bottom) + 0.08rem);
                 box-sizing: border-box;
             }
 
             body.site-shell .mobile-footer-item {
                 display: inline-flex;
-                flex-direction: row;
+                flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                gap: 0.22rem;
-                flex: 1 1 0;
+                gap: 0.12rem;
                 min-width: 0;
-                padding: 0;
+                width: 100%;
+                height: 100%;
+                padding: 0.08rem 0.15rem 0;
                 color: white;
                 background: transparent;
                 border: none;
                 text-decoration: none;
                 font-family: Monaco, monospace;
                 cursor: pointer;
+                box-sizing: border-box;
             }
 
             body.site-shell .mobile-footer-item img,
             body.site-shell .mobile-footer-item svg {
-                width: 16px;
-                height: 16px;
+                width: 18px;
+                height: 18px;
                 display: block;
                 flex-shrink: 0;
             }
 
-            body.site-shell .mobile-footer-item.menu-item img {
-                width: 17px;
-                height: 17px;
+            body.site-shell .mobile-footer-item.menu-item svg {
+                width: 19px;
+                height: 19px;
             }
 
             body.site-shell .mobile-footer-label {
                 font-size: 0.52rem;
                 line-height: 1;
                 white-space: nowrap;
+                text-align: center;
+            }
+
+            body.site-shell #mobileMenu {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: var(--mobile-footer-offset);
+                z-index: 1095;
+                margin: 0;
+                padding: 0.45rem 0.75rem 0.55rem;
+                background-color: var(--shell-chrome-color, #333);
+                border-top: 1px solid rgba(255, 255, 255, 0.14);
+                box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.28);
+                font-family: YoungSerif;
+                font-size: 1rem;
+                text-align: center;
+            }
+
+            body.site-shell #mobileMenu > div + div {
+                margin-top: 0.32rem;
             }
         }
       </style>
@@ -295,9 +319,6 @@
             </div>
         </div>
         <div id="mobileMenu" class="hide-on-mobile">
-            <div class="scorebtn">
-                <a style="color: white;" href={% url 'scoresheet_new' %}>Scoresheet</a>
-            </div>
             <div class="analysisbtn">
                 <a style="color: white;" href={% url 'player_analysis' %}>Analysis</a>
             </div>
@@ -367,13 +388,17 @@
                         </a>
                         <a class="mobile-footer-item" href="{% url 'scoresheet_new' %}">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <rect x="3" y="4" width="18" height="16" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="1.8"/>
-                                <path fill="currentColor" d="M7 15.2h2.4V9H7v6.2zm3.8 0h2.4V7.2h-2.4v8zm3.8 0H17v-4.1h-2.4v4.1z"/>
+                                <rect x="3.2" y="4.2" width="17.6" height="15.6" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2.2"/>
+                                <path fill="currentColor" d="M6.5 16h3V9h-3v7zm4.2 0h3V7h-3v9zm4.2 0h3v-4.6h-3V16z"/>
                             </svg>
                             <span class="mobile-footer-label">Scores</span>
                         </a>
                         <button class="mobile-footer-item menu-item" type="button" onclick="toggleMenu()">
-                            <img src="/static/GPTrivia/css/menubars.png" alt="" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 7H20" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>
+                                <path d="M4 12H20" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>
+                                <path d="M4 17H20" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>
+                            </svg>
                             <span class="mobile-footer-label">Menu</span>
                         </button>
                     </nav>

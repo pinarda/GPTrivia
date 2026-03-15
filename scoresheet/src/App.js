@@ -488,7 +488,7 @@ import {
       padding: 0.08rem 0 0.9rem;
 
       @media (max-width: 1000px) {
-        padding: 0.15rem 0 1.1rem;
+        padding: 0.02rem 0 1.1rem;
       }
     `;
 
@@ -629,14 +629,6 @@ import {
           min-height: 2.4rem;
           white-space: nowrap;
         }
-      }
-    `;
-
-    const MetadataActionPrimaryButton = styled(StyledButton)`
-      min-width: 210px;
-
-      @media (max-width: 1000px) {
-        min-width: 12.5rem;
       }
     `;
 
@@ -3198,6 +3190,12 @@ const PlayerTable = () => {
                     </StyledSelect>
                   </MetadataFormControl>
                 </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ color: '#fff', fontFamily: 'Monaco', fontSize: '0.85rem' }}>Tiebreak Winner</span>
+                  <StyledButton type="button" onClick={openTiebreakDialog} style={{ width: '100%', margin: 0 }}>
+                    {tiebreakWinner ? tiebreakWinner : 'Set Tiebreak Winner'}
+                  </StyledButton>
+                </div>
               </div>
             </TableCell>
           </StyledTableRow>
@@ -3233,9 +3231,6 @@ const PlayerTable = () => {
           <MetadataActionField>
             <MetadataActionRow>
               <MetadataActionButtons>
-                <MetadataActionPrimaryButton type="button" onClick={openTiebreakDialog}>
-                  {tiebreakWinner ? `Tiebreak: ${tiebreakWinner}` : 'Set Tiebreak Winner'}
-                </MetadataActionPrimaryButton>
                 <StyledButton type="button" onClick={() => window.dispatchEvent(new Event('scoresheet:crown-winner'))}>
                   Crown Winner
                 </StyledButton>
