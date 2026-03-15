@@ -488,7 +488,8 @@ import {
       padding: 0.08rem 0 0.9rem;
 
       @media (max-width: 1000px) {
-        padding: 0.02rem 0 1.1rem;
+        margin-top: -0.18rem;
+        padding: 0 0 1.02rem;
       }
     `;
 
@@ -567,6 +568,8 @@ import {
       @media (max-width: 1000px) {
         && textarea {
           font-size: 1rem;
+          line-height: 1.25;
+          padding: 0.26rem 0.5rem;
         }
       }
     `;
@@ -3249,7 +3252,7 @@ const PlayerTable = () => {
                 markDirty();
               }}
               multiline
-              rows={isSmallScreen ? 2 : 1}
+              rows={1}
               placeholder="Enter Nightly Notes"
             />
           </MetadataNotesFieldWrapper>
