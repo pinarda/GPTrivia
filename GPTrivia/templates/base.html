@@ -125,10 +125,14 @@
             display: none;
         }
 
-        @media (max-width: 1000px) {
+        @media (max-width: 750px) {
             body.site-shell {
                 --mobile-header-offset: calc(76px + env(safe-area-inset-top));
                 --mobile-footer-offset: calc(46px + env(safe-area-inset-bottom));
+            }
+
+            body.site-shell #menu-button {
+                display: none !important;
             }
 
             body.site-shell header {
@@ -145,6 +149,14 @@
                 min-height: 46px !important;
                 padding-top: 8px !important;
                 padding-bottom: 8px !important;
+            }
+
+            body.site-shell .logo {
+                font-size: clamp(2.2rem, 8.2vw, 2.65rem) !important;
+            }
+
+            body.site-shell .logo img {
+                width: clamp(2.2rem, 9.6vw, 2.8rem) !important;
             }
 
             body.site-shell .page-body {
@@ -218,19 +230,31 @@
                 font-family: Monaco, monospace;
                 cursor: pointer;
                 box-sizing: border-box;
+                appearance: none;
+                -webkit-appearance: none;
+                outline: none !important;
+                box-shadow: none !important;
+                -webkit-tap-highlight-color: transparent;
             }
 
             body.site-shell .mobile-footer-item img,
             body.site-shell .mobile-footer-item svg {
-                width: 18px;
-                height: 18px;
+                width: 22px;
+                height: 22px;
                 display: block;
                 flex-shrink: 0;
             }
 
             body.site-shell .mobile-footer-item.menu-item svg {
-                width: 19px;
-                height: 19px;
+                width: 23px;
+                height: 23px;
+            }
+
+            body.site-shell .mobile-footer-item:focus,
+            body.site-shell .mobile-footer-item:focus-visible,
+            body.site-shell .mobile-footer-item:active {
+                outline: none !important;
+                box-shadow: none !important;
             }
 
             body.site-shell .mobile-footer-label {
