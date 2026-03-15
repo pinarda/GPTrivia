@@ -95,7 +95,7 @@
     width: 100%;
     border: 1px solid #0073cc;
     box-sizing: border-box;
-    --round-table-columns: 80px minmax(260px, 2.4fr) minmax(160px, 1.2fr) 88px 120px;
+    --round-table-columns: 80px minmax(260px, 2.4fr) minmax(160px, 1.2fr) 120px 88px;
 }
 
 /* Title row styling */
@@ -485,14 +485,11 @@
 /* Specific adjustments for smaller screens */
 @media (max-width: 600px) {
     .round-selection-table {
-        --round-table-columns: 58px minmax(0, 1.7fr) minmax(0, 0.95fr);
+        --round-table-columns: 58px minmax(0, 1.7fr) minmax(0, 0.95fr) 66px;
     }
     .round-selection-shell,
     .round-selection-table {
         width: 100%;
-    }
-    .coop_cell {
-        display: none;
     }
     .date_cell {
         display: none;
@@ -580,10 +577,7 @@
         padding: 10px 12px;
     }
     .round-selection-table {
-        --round-table-columns: 76px minmax(210px, 2.2fr) minmax(130px, 1fr) 82px;
-    }
-    .date_cell {
-        display: none;
+        --round-table-columns: 76px minmax(210px, 2.2fr) minmax(130px, 1fr) 82px 74px;
     }
     .round-selection-shell,
     .round-selection-table {
@@ -851,8 +845,8 @@
                         <div class="round-selection-table-cell new-cell">New</div>
                         <div class="round-selection-table-cell">Round Title</div>
                         <div class="round-selection-table-cell creator-cell">Creator</div>
-                        <div class="round-selection-table-cell coop_cell">Co-op</div>
                         <div class="round-selection-table-cell date_cell">Date</div>
+                        <div class="round-selection-table-cell coop_cell">Co-op</div>
                     </div>
 
                     <div id="rounds-placeholder" class="round-selection-table-row">
@@ -1258,7 +1252,7 @@
                 dateSpan.textContent = round.shared_date || '';
                 dateCell.appendChild(dateSpan);
 
-                row.append(orderCell, newCell, titleCell, creatorCell, coopCell, dateCell);
+                row.append(orderCell, newCell, titleCell, creatorCell, dateCell, coopCell);
                 roundsBody.appendChild(row);
             });
 
