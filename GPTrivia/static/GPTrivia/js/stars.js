@@ -249,7 +249,7 @@ function launchStar(cx, cy, surfaces) {
 
   let dx = 0, dy = 0;
 
-  let vx = (Math.random() - 0.5) * 8;
+  let vx = 2.75 + (Math.random() * 5.5);
   let vy = (Math.random() - 1.2) * 12;
   let angle = Math.random() * 360;
   const initialSpinMagnitude = 30 + (Math.random() * 40);
