@@ -126,6 +126,10 @@
             display: none;
         }
 
+        body.site-shell .mobile-header-profile-link {
+            display: none;
+        }
+
         @media (max-width: 750px) {
             body.site-shell {
                 --mobile-header-offset: calc(62px + env(safe-area-inset-top));
@@ -150,6 +154,45 @@
                 min-height: 46px !important;
                 padding-top: 8px !important;
                 padding-bottom: 8px !important;
+            }
+
+            body.site-shell .logo-menu-container {
+                gap: 0.7rem;
+            }
+
+            body.site-shell .mobile-header-profile-link {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                width: 36px;
+                height: 36px;
+                border-radius: 999px;
+                overflow: hidden;
+                text-decoration: none;
+                background: rgba(255, 255, 255, 0.12);
+                border: 1px solid rgba(255, 255, 255, 0.42);
+                box-shadow: 0 1px 6px rgba(0, 0, 0, 0.22);
+            }
+
+            body.site-shell .mobile-header-profile-avatar {
+                width: 100%;
+                height: 100%;
+                display: block;
+                object-fit: cover;
+            }
+
+            body.site-shell .mobile-header-profile-fallback {
+                width: 100%;
+                height: 100%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                color: #fff;
+                font-family: Monaco, monospace;
+                font-size: 0.92rem;
+                font-weight: 700;
+                text-transform: uppercase;
             }
 
             body.site-shell .page-body {
@@ -203,7 +246,7 @@
 
             body.site-shell .mobile-footer-nav {
                 display: grid;
-                grid-template-columns: repeat(3, minmax(0, 1fr));
+                grid-template-columns: repeat(4, minmax(0, 1fr));
                 align-items: center;
                 justify-content: stretch;
                 gap: 0;
@@ -306,6 +349,17 @@
                         <span>{% block text %}Hail Science{% endblock %}<span class="red"> T</span><span class="orange">r</span><span class="yellow">i</span><span class="green">v</span><span class="blue">i</span><span class="purple">a</span></span>
                     </div>
                 </a>
+                {% if user.is_authenticated %}
+                    <a class="mobile-header-profile-link" href="{% url 'player_profile' player_name=user.username %}" aria-label="Open your profile">
+                        {% if user.profile.profile_icon %}
+                            <img class="mobile-header-profile-avatar" src="{{ user.profile.profile_icon.url }}" alt="{{ user.username }} profile icon">
+                        {% elif user.profile.profile_picture %}
+                            <img class="mobile-header-profile-avatar" src="{{ user.profile.profile_picture.url }}" alt="{{ user.username }} profile picture">
+                        {% else %}
+                            <span class="mobile-header-profile-fallback">{{ user.username|slice:":1" }}</span>
+                        {% endif %}
+                    </a>
+                {% endif %}
                 <button id="menu-button">
                     <img src="/static/GPTrivia/css/menubars.png" class="dropbtn" alt="Menu" onclick="toggleMenu()" scale="20%">
                 </button>
@@ -348,9 +402,6 @@
             </div>
             <div class="roundsbtn">
                 <a style="color: white;" href={% url 'rounds_list' %}>Rounds List</a>
-            </div>
-            <div class="makerbtn">
-                <a style="color: white;" href={% url 'round_maker' %}>S.W.O.O.P.</a>
             </div>
             <div class="btnbtn">
                 <a style="color: white;" href={% url 'button_page' %}>Button</a>
@@ -417,6 +468,10 @@
                                 <rect x="16" y="5" width="4" height="15" fill="currentColor"/>
                             </svg>
                             <span class="mobile-footer-label">Scores</span>
+                        </a>
+                        <a class="mobile-footer-item" href="{% url 'round_maker' %}">
+                            <img src="{% static 'snake.png' %}" alt="" aria-hidden="true">
+                            <span class="mobile-footer-label">S.W.O.O.P.</span>
                         </a>
                         <button class="mobile-footer-item menu-item" type="button" onclick="toggleMenu()">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
