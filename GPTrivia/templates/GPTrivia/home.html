@@ -119,8 +119,8 @@
 }
 
 .round-selection-title-picker {
-    min-width: 180px;
-    max-width: min(100%, 280px);
+    min-width: 260px;
+    max-width: min(100%, 380px);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -185,12 +185,15 @@
     position: absolute;
     top: calc(100% + 4px);
     left: 0;
-    right: 0;
+    right: auto;
     display: none;
     background: #333;
     border: 1px solid #0073cc;
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
     z-index: 40;
+    width: max-content;
+    min-width: 100%;
+    max-width: min(420px, calc(100vw - 32px));
     max-height: 280px;
     overflow-y: auto;
 }
@@ -513,7 +516,7 @@
     }
     .round-selection-title-picker {
         min-width: 0;
-        max-width: 100%;
+        max-width: min(100%, 340px);
         justify-content: stretch;
     }
     .round-selection-title-picker-label {
@@ -563,6 +566,10 @@
     }
     .round-selection-title-picker-label {
         font-size: 0.95rem;
+    }
+    .round-selection-title-picker {
+        min-width: 220px;
+        max-width: min(100%, 340px);
     }
     .round-selection-title-picker-trigger {
         font-size: 1rem;
@@ -815,7 +822,7 @@
                         <div class="round-selection-table-title" colspan="4">
                             <span class="round-selection-title-text">Currently Available Rounds</span>
                             <div class="round-selection-title-picker">
-                                <span class="round-selection-title-picker-label">Select Random Round</span>
+                                <span class="round-selection-title-picker-label">Randomize</span>
                                 <div class="round-selection-title-picker-control">
                                     <button
                                         id="round-player-spotlight-button"
@@ -827,7 +834,7 @@
                                         <span id="round-player-spotlight-button-label" class="round-selection-title-picker-trigger-label">—</span>
                                         <span class="round-selection-title-picker-trigger-chevron" aria-hidden="true">▾</span>
                                     </button>
-                                    <div id="round-player-spotlight-menu" class="round-selection-title-picker-menu" role="listbox" aria-label="Select Random Round"></div>
+                                    <div id="round-player-spotlight-menu" class="round-selection-title-picker-menu" role="listbox" aria-label="Randomize"></div>
                                     <select id="round-player-spotlight" hidden aria-hidden="true" tabindex="-1">
                                         <option value="">—</option>
                                     </select>
