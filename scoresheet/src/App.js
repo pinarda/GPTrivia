@@ -2025,8 +2025,8 @@ const PlayerTable = () => {
       const rect = anchorNode.getBoundingClientRect();
       window.dispatchEvent(new CustomEvent('scoresheet:burst-stars', {
         detail: {
-          x: rect.left + (rect.width * 0.34),
-          y: Math.max(12, rect.top + 4),
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
         },
       }));
     }, []);
@@ -2663,7 +2663,7 @@ const PlayerTable = () => {
                   <StyledTableCell player={player}>
                           <PlayerNameStack>
                           <PlayerNameAnchor>
-                              <PlayerNameLabel ref={(node) => setStylePointAnchor(player, node)}>
+                              <PlayerNameLabel>
                                   {crownedPlayer === player && (
                                       <WinnerCrown
                                           initial={{ opacity: 0, y: -5, rotate: 6, scale: 0.8 }}
@@ -2675,6 +2675,7 @@ const PlayerTable = () => {
                                   )}
                                   {hasStylePointAward(stylePoints, player) && (
                                       <StylePointShades
+                                          ref={(node) => setStylePointAnchor(player, node)}
                                           initial={{ opacity: 0, y: -3, rotate: -30, scale: 0.8 }}
                                           animate={{ opacity: 1, y: 0, rotate: -18, scale: 1 }}
                                           transition={{ duration: 0.28, ease: 'easeOut' }}
