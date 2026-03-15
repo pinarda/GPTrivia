@@ -16,6 +16,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Menu,
 } from "@mui/material";
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
@@ -236,10 +237,10 @@ import {
       }
 
       @media (max-width: 1000px) {
-        padding: 0.56rem 0.92rem;
+        padding: 0.48rem 0.84rem;
         margin: 0;
         font-size: 1.05rem;
-        min-height: 2.6rem;
+        min-height: 2.4rem;
         min-width: 7.75rem;
         line-height: 1.2;
       }
@@ -612,8 +613,13 @@ import {
       @media (max-width: 1000px) {
         width: min(100%, 52rem);
 
-        & > button {
-          flex: 1 1 12.5rem;
+        & > button:first-child {
+          flex: 1 1 12rem;
+        }
+
+        & > button:nth-child(n + 2) {
+          flex: 1 1 9.75rem;
+          font-size: 0.94rem;
         }
       }
     `;
@@ -860,6 +866,13 @@ const PlayerTable = () => {
     const [selectedStylePointPlayer, setSelectedStylePointPlayer] = useState('');
     const [isTiebreakDialogOpen, setIsTiebreakDialogOpen] = useState(false);
     const [selectedTiebreakPlayer, setSelectedTiebreakPlayer] = useState('');
+    const [scoreCellMenu, setScoreCellMenu] = useState({
+      mouseX: null,
+      mouseY: null,
+      playerField: '',
+      playerDisplayName: '',
+      roundTitle: '',
+    });
     const [jokerRouletteHighlights, setJokerRouletteHighlights] = useState({});
     const [jokerRouletteSpinningPlayers, setJokerRouletteSpinningPlayers] = useState({});
 
@@ -905,6 +918,7 @@ const PlayerTable = () => {
     const serverRoundSnapshotRef = useRef({});
     const serverPresentationSnapshotRef = useRef(makePresentationSnapshot(null));
     const stylePointAnchorRefs = useRef({});
+    const scoreCellLongPressTimeoutRef = useRef(null);
     const newPlayerInputRef = useRef(null);
     const datePickerFieldRef = useRef(null);
     const jokerRouletteTimeoutsRef = useRef({});
@@ -1838,6 +1852,62 @@ const PlayerTable = () => {
       markDirty();
     }, [clearJokerRouletteForPlayer, markDirty, startJokerRoulette]);
 
+    const clearScoreCellLongPress = useCallback(() => {
+      if (scoreCellLongPressTimeoutRef.current) {
+        window.clearTimeout(scoreCellLongPressTimeoutRef.current);
+        scoreCellLongPressTimeoutRef.current = null;
+      }
+    }, []);
+
+    const closeScoreCellMenu = useCallback(() => {
+      clearScoreCellLongPress();
+      setScoreCellMenu({
+        mouseX: null,
+        mouseY: null,
+        playerField: '',
+        playerDisplayName: '',
+        roundTitle: '',
+      });
+    }, [clearScoreCellLongPress]);
+
+    const openScoreCellMenu = useCallback((clientX, clientY, playerField, roundTitle) => {
+      const playerDisplayName = getDisplayNameForPlayerField(playerField);
+      if (!playerDisplayName || !roundTitle) {
+        return;
+      }
+
+      setScoreCellMenu({
+        mouseX: clientX + 2,
+        mouseY: clientY - 6,
+        playerField,
+        playerDisplayName,
+        roundTitle,
+      });
+    }, []);
+
+    const handleScoreCellContextMenu = useCallback((event, playerField, roundTitle) => {
+      event.preventDefault();
+      clearScoreCellLongPress();
+      openScoreCellMenu(event.clientX, event.clientY, playerField, roundTitle);
+    }, [clearScoreCellLongPress, openScoreCellMenu]);
+
+    const handleScoreCellTouchStart = useCallback((event, playerField, roundTitle) => {
+      clearScoreCellLongPress();
+      const touch = event.touches?.[0];
+      if (!touch) {
+        return;
+      }
+
+      const { clientX, clientY } = touch;
+      scoreCellLongPressTimeoutRef.current = window.setTimeout(() => {
+        openScoreCellMenu(clientX, clientY, playerField, roundTitle);
+      }, 450);
+    }, [clearScoreCellLongPress, openScoreCellMenu]);
+
+    useEffect(() => () => {
+      clearScoreCellLongPress();
+    }, [clearScoreCellLongPress]);
+
     const handleAddPlayer = () => {
         const confirmChange = confirmPastChange()
         if (!confirmChange) return;
@@ -2017,18 +2087,31 @@ const PlayerTable = () => {
     }, []);
 
     const triggerStylePointBurst = useCallback((playerField) => {
-      const anchorNode = stylePointAnchorRefs.current[playerField];
-      if (!anchorNode) {
-        return;
-      }
+      const attemptBurst = (remainingAttempts) => {
+        let anchorNode = stylePointAnchorRefs.current[playerField];
 
-      const rect = anchorNode.getBoundingClientRect();
-      window.dispatchEvent(new CustomEvent('scoresheet:burst-stars', {
-        detail: {
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2,
-        },
-      }));
+        if (!anchorNode) {
+          anchorNode = Array.from(document.querySelectorAll('[data-player-field]'))
+            .find((node) => node.dataset.playerField === playerField) || null;
+        }
+
+        if (!anchorNode) {
+          if (remainingAttempts > 0) {
+            window.setTimeout(() => attemptBurst(remainingAttempts - 1), 70);
+          }
+          return;
+        }
+
+        const rect = anchorNode.getBoundingClientRect();
+        window.dispatchEvent(new CustomEvent('scoresheet:burst-stars', {
+          detail: {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          },
+        }));
+      };
+
+      attemptBurst(8);
     }, []);
 
     const openStylePointDialog = useCallback(() => {
@@ -2153,6 +2236,28 @@ const PlayerTable = () => {
         });
       markDirty();
     };
+
+    const handleSetCellAsJoker = useCallback(() => {
+      if (!scoreCellMenu.playerField || !scoreCellMenu.roundTitle) {
+        return;
+      }
+
+      handleJokerSelectionChange(scoreCellMenu.playerField, scoreCellMenu.roundTitle);
+      closeScoreCellMenu();
+    }, [closeScoreCellMenu, handleJokerSelectionChange, scoreCellMenu.playerField, scoreCellMenu.roundTitle]);
+
+    const handleSetCellAsCreator = useCallback(() => {
+      if (!scoreCellMenu.playerDisplayName || !scoreCellMenu.roundTitle) {
+        return;
+      }
+
+      if (!confirmPastChange()) {
+        return;
+      }
+
+      handleCreatorChange(scoreCellMenu.roundTitle, scoreCellMenu.playerDisplayName);
+      closeScoreCellMenu();
+    }, [closeScoreCellMenu, scoreCellMenu.playerDisplayName, scoreCellMenu.roundTitle]);
 
     const saveData = useCallback(() => {
         if (saveInFlightRef.current) {
@@ -2687,6 +2792,7 @@ const PlayerTable = () => {
                                       href={url + `/player_profile/${playerDisplayName}/`}
                                       className="player_name"
                                       data-player={playerDisplayName}
+                                      data-player-field={player}
                                   >
                                       {playerDisplayName}
                                   </a>
@@ -2753,6 +2859,11 @@ const PlayerTable = () => {
                               fontFamily: 'Monaco',
                                 fontSize: "1rem",
                           }}
+                          onContextMenu={(event) => handleScoreCellContextMenu(event, player, round.title)}
+                          onTouchStart={(event) => handleScoreCellTouchStart(event, player, round.title)}
+                          onTouchEnd={clearScoreCellLongPress}
+                          onTouchMove={clearScoreCellLongPress}
+                          onTouchCancel={clearScoreCellLongPress}
                           onBlur={(event) => handleScoreChange(event, player, round.title, round)}
                       >
                           {getDisplayedRoundScore(scores, player, round)}
@@ -3139,6 +3250,45 @@ const PlayerTable = () => {
           </MetadataNotesFieldWrapper>
         </MetadataGrid>
       </MetadataSection>
+      <Menu
+        open={scoreCellMenu.mouseY !== null}
+        onClose={closeScoreCellMenu}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          scoreCellMenu.mouseY !== null && scoreCellMenu.mouseX !== null
+            ? { top: scoreCellMenu.mouseY, left: scoreCellMenu.mouseX }
+            : undefined
+        }
+        PaperProps={{
+          sx: {
+            backgroundColor: '#333',
+            color: '#fff',
+            borderRadius: 0,
+            border: '1px solid #1e7662',
+            boxShadow: '0 16px 36px rgba(0, 0, 0, 0.45)',
+            fontFamily: 'Monaco, monospace',
+            '& .MuiMenuItem-root': {
+              fontFamily: 'Monaco, monospace',
+              fontSize: '0.95rem',
+            },
+            '& .MuiMenuItem-root.Mui-disabled': {
+              opacity: 0.78,
+              color: 'rgba(255,255,255,0.8)',
+            },
+            '& .MuiMenuItem-root:hover': {
+              backgroundColor: 'rgba(30, 118, 98, 0.22)',
+            },
+          },
+        }}
+      >
+        <MenuItem disabled>
+          {scoreCellMenu.playerDisplayName && scoreCellMenu.roundTitle
+            ? `${scoreCellMenu.playerDisplayName} • ${scoreCellMenu.roundTitle}`
+            : 'Cell actions'}
+        </MenuItem>
+        <MenuItem onClick={handleSetCellAsJoker}>Set as Joker</MenuItem>
+        <MenuItem onClick={handleSetCellAsCreator}>Set as Creator</MenuItem>
+      </Menu>
       <Dialog
         open={isStylePointDialogOpen}
         onClose={() => setIsStylePointDialogOpen(false)}
