@@ -303,8 +303,17 @@
             body.site-shell .mobile-footer-item .mobile-footer-swoop-icon {
                 width: 31px;
                 height: auto;
-                max-height: 24px;
+                max-height: 20px;
                 object-fit: contain;
+            }
+
+            body.site-shell .mobile-footer-swoop-frame {
+                width: 27px;
+                height: 27px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
             }
 
             body.site-shell .mobile-footer-item.menu-item svg {
@@ -487,7 +496,9 @@
                             <span class="mobile-footer-label">Scores</span>
                         </a>
                         <a class="mobile-footer-item" href="{% url 'round_maker' %}">
-                            <img class="mobile-footer-swoop-icon" src="{% static 'snake.png' %}" alt="" aria-hidden="true">
+                            <span class="mobile-footer-swoop-frame" aria-hidden="true">
+                                <img class="mobile-footer-swoop-icon" src="{% static 'snake.png' %}" alt="">
+                            </span>
                             <span class="mobile-footer-label">S.W.O.O.P.</span>
                         </a>
                         <button class="mobile-footer-item menu-item" type="button" onclick="toggleMenu()">
