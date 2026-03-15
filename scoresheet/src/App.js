@@ -486,19 +486,19 @@ import {
 
       @media (max-width: 919px) {
         & .MuiTableCell-root:first-child {
-          width: 34%;
-        }
-
-        & .MuiTableCell-root.selected-column {
-          width: 28%;
+          width: 36%;
         }
 
         & .MuiTableCell-root:nth-last-child(2) {
-          width: 22%;
+          width: 18%;
         }
 
         & .MuiTableCell-root:last-child {
-          width: 16%;
+          width: 3.2rem;
+        }
+
+        & .MuiTableCell-root.selected-column {
+          width: auto;
         }
       }
     `;
