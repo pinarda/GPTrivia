@@ -11,7 +11,6 @@ import {
     FormControl,
     InputLabel,
     TextField,
-  Input,
   Dialog,
   DialogActions,
   DialogContent,
@@ -377,6 +376,7 @@ import {
     const StyledTableContainer = styled(TableContainer)`
         background-color: #333;
         color: #fff;
+        width: 100%;
       
         .showonsmall {
             @media (max-width: 919px) {
@@ -444,6 +444,9 @@ import {
 
 
     const StyledTable = styled(Table)`
+      width: 100%;
+      table-layout: fixed;
+
       & tbody {
         & tr {
           & .MuiTableCell-root {
@@ -478,6 +481,24 @@ import {
           & .MuiTableCell-root.selected-column {
             display: table-cell;
           }
+        }
+      }
+
+      @media (max-width: 919px) {
+        & .MuiTableCell-root:first-child {
+          width: 34%;
+        }
+
+        & .MuiTableCell-root.selected-column {
+          width: 28%;
+        }
+
+        & .MuiTableCell-root:nth-last-child(2) {
+          width: 22%;
+        }
+
+        & .MuiTableCell-root:last-child {
+          width: 16%;
         }
       }
     `;
@@ -629,6 +650,186 @@ import {
           white-space: nowrap;
         }
       }
+    `;
+
+    const DetailsPanelCell = styled(TableCell)`
+      && {
+        padding: 0.55rem 0.65rem;
+        background-color: #333;
+        border-bottom: none;
+      }
+
+      @media (max-width: 1000px) {
+        && {
+          padding: 0.45rem;
+        }
+      }
+    `;
+
+    const DetailsPanel = styled.div`
+      display: grid;
+      gap: 0.6rem;
+    `;
+
+    const DetailsSection = styled.div`
+      display: grid;
+      gap: 0.55rem;
+      padding: 0.6rem;
+      background: rgba(20, 20, 20, 0.35);
+      border: 1px solid rgba(30, 118, 98, 0.7);
+
+      @media (max-width: 1000px) {
+        padding: 0.5rem;
+        gap: 0.45rem;
+      }
+    `;
+
+    const DetailsSectionTitle = styled.div`
+      color: #fff;
+      font-family: Monaco;
+      font-size: 0.92rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+
+      @media (max-width: 1000px) {
+        font-size: 0.98rem;
+      }
+    `;
+
+    const DetailsRoundGrid = styled.div`
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.6rem;
+    `;
+
+    const DetailsRoundCard = styled.div`
+      display: grid;
+      gap: 0.5rem;
+      padding: 0.55rem;
+      background: #333;
+      border: 1px solid rgba(30, 118, 98, 0.58);
+    `;
+
+    const DetailsRoundTitle = styled.div`
+      color: #fff;
+      font-family: Monaco;
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-align: center;
+      word-break: break-word;
+    `;
+
+    const DetailsFieldGrid = styled.div`
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.5rem;
+
+      @media (max-width: 1100px) {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    `;
+
+    const DetailsField = styled.div`
+      display: flex;
+      flex-direction: column;
+      gap: 0.28rem;
+      min-width: 0;
+    `;
+
+    const DetailsToggleGrid = styled.div`
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.15rem 0.55rem;
+
+      @media (max-width: 1000px) {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    `;
+
+    const DetailToggleLabel = styled(FormControlLabel)`
+      && {
+        margin: 0;
+        color: #fff;
+      }
+
+      && .MuiTypography-root {
+        color: #fff;
+        font-family: Monaco;
+        font-size: 0.82rem;
+      }
+
+      && .MuiCheckbox-root {
+        color: #1e7662;
+        padding: 4px;
+      }
+
+      && .MuiCheckbox-root.Mui-checked {
+        color: #2c9d84;
+      }
+    `;
+
+    const DetailTextField = styled(TextField)`
+      && {
+        width: 100%;
+      }
+
+      && .MuiInputBase-root {
+        background-color: #333;
+        color: #fff;
+        font-family: Monaco;
+        border-radius: 0;
+      }
+
+      && .MuiOutlinedInput-notchedOutline {
+        border-color: #1e7662;
+      }
+
+      &&:hover .MuiOutlinedInput-notchedOutline {
+        border-color: #2c9d84;
+      }
+
+      && .Mui-focused .MuiOutlinedInput-notchedOutline {
+        border-color: #2c9d84;
+      }
+
+      && .MuiInputBase-input,
+      && .MuiInputBase-inputMultiline {
+        color: #fff;
+        font-family: Monaco;
+        font-size: 0.84rem;
+        padding: 0.45rem 0.55rem;
+      }
+
+      @media (max-width: 1000px) {
+        && .MuiInputBase-input,
+        && .MuiInputBase-inputMultiline {
+          font-size: 0.94rem;
+        }
+      }
+    `;
+
+    const StylePointsGrid = styled.div`
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.45rem 0.6rem;
+    `;
+
+    const StylePointRow = styled.label`
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 5.25rem;
+      align-items: center;
+      gap: 0.45rem;
+      color: #fff;
+      font-family: Monaco;
+      font-size: 0.82rem;
+      min-width: 0;
+    `;
+
+    const StylePointName = styled.span`
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     `;
 
     const CompactTopControlGroup = styled.div`
@@ -2917,310 +3118,200 @@ const PlayerTable = () => {
 
           </StyledTableRow>
         {isBottomRowVisible && (
-        <StyledTableRow>
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            {rounds.map((round, index) => (
-              <StyledTableCell key={index} className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}>
-                {/* Checkbox to indicate if the round is cooperative */}
-
-              <StyledFormControlLabel
-                  control={
-                    <Checkbox
-                      checked={isReplay[round.title] || false}
-                      onChange={(event) => handleReplayChange(round.title, event.target.checked)}
-                    />
-                  }
-                  label="Replay"
-                />
-              </StyledTableCell>
-            ))}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-        </StyledTableRow>
-        )}
-        {isBottomRowVisible && (
-        <StyledTableRow>
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-                {rounds.map((round, index) => (
-                    <StyledTableCell key={index} className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}>
-
-                              <StyledFormControlLabel
-                                    control={
-                                  <Input
-                                      value = {maxScores[round.title] || 10}
-                                        onChange={(e) => handleMaxScoreChange(round.title, parseFloat(e.target.value))}
-                                        inputProps={{
-                                            step: 0.5,
-                                            min: 1,
-                                            max: 100,
-                                            type: 'number',
-                                            'aria-labelledby': 'input-slider'
-                                        }}
-                                    />
-                                }
-                            label="Max Score"
-                                    // put the label to the left of the input
-                                  // and can we add some spacing between the label and the input?
-                                  labelPlacement="top"
-                                    // make the label smaller
-                                    sx={{fontSize: '0.6rem'}}
+          <StyledTableRow>
+            <DetailsPanelCell colSpan={rounds.length + 6}>
+              <DetailsPanel>
+                <DetailsSection>
+                  <DetailsSectionTitle>Round Details</DetailsSectionTitle>
+                  <DetailsRoundGrid>
+                    {rounds.map((round, index) => (
+                      <DetailsRoundCard key={round.id || round.title || index}>
+                        <DetailsRoundTitle>{round.title || `Round ${index + 1}`}</DetailsRoundTitle>
+                        <DetailsToggleGrid>
+                          <DetailToggleLabel
+                            control={
+                              <Checkbox
+                                checked={Boolean(isReplay[round.title])}
+                                onChange={(event) => handleReplayChange(round.title, event.target.checked)}
+                              />
+                            }
+                            label="Replay"
+                          />
+                          <DetailToggleLabel
+                            control={
+                              <Checkbox
+                                checked={Boolean(cooperativeStatus[round.title])}
+                                onChange={(event) => handleCooperativeChange(round.title, event.target.checked)}
+                              />
+                            }
+                            label="Co-op"
+                          />
+                        </DetailsToggleGrid>
+                        <DetailsFieldGrid>
+                          <DetailsField>
+                            <MetadataFieldLabel>Max Score</MetadataFieldLabel>
+                            <DetailTextField
+                              value={maxScores[round.title] || 10}
+                              onChange={(e) => handleMaxScoreChange(round.title, parseFloat(e.target.value))}
+                              type="number"
+                              inputProps={{ step: 0.5, min: 1, max: 100 }}
                             />
-                        </StyledTableCell>
-                ))}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-        </StyledTableRow>
-        )}
-        {isBottomRowVisible && (
-        <StyledTableRow>
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            {rounds.map((round, index) => (
-                <StyledTableCell className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}>
-                  <StyledFormControlLabel
-                        label="Creator"
-                        labelPlacement="top"
-                        control={
-                      <Select
-                          value = {roundCreators[round.title] || ''}
-                            onChange={(e) => handleCreatorChange(round.title, e.target.value)}
-                        >
-                            <MenuItem value="">Unknown</MenuItem> {/* Added "None" option */}
-                            {creatorOptions.map((player, index) => (
-                                <MenuItem key={index} value={player}>
+                          </DetailsField>
+                          <DetailsField>
+                            <MetadataFieldLabel>Creator</MetadataFieldLabel>
+                            <MetadataFormControl>
+                              <StyledSelect
+                                MenuProps={dropdownMenuProps}
+                                value={roundCreators[round.title] || ''}
+                                onChange={(e) => handleCreatorChange(round.title, e.target.value)}
+                              >
+                                <MenuItem value="">Unknown</MenuItem>
+                                {creatorOptions.map((player, creatorIndex) => (
+                                  <MenuItem key={creatorIndex} value={player}>
                                     {player}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    }
-                />
-                </StyledTableCell>
-            ))}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-        </StyledTableRow>
-        )}
-        {isBottomRowVisible && (
-        <StyledTableRow>
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            {rounds.map((round, index) => (
-                <StyledTableCell className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}>
-                  <StyledFormControlLabel
-                      label="Category"
-                        labelPlacement="top"
-                      // make the label smaller
-                        sx={{fontSize: '0.6rem'}}
-                        control={
-                      <Select
-                            value = {selectedMajorCategories[round.title] || ''}
-                            onChange={(e) => handleMajorCategoryChange(round.title, e.target.value)}
-                        >
-                            {majorCategories.sort((a, b) => a.localeCompare(b)).map((category, index) => (
-                                <MenuItem key={index} value={category}>
+                                  </MenuItem>
+                                ))}
+                              </StyledSelect>
+                            </MetadataFormControl>
+                          </DetailsField>
+                          <DetailsField>
+                            <MetadataFieldLabel>Category</MetadataFieldLabel>
+                            <MetadataFormControl>
+                              <StyledSelect
+                                MenuProps={dropdownMenuProps}
+                                value={selectedMajorCategories[round.title] || ''}
+                                onChange={(e) => handleMajorCategoryChange(round.title, e.target.value)}
+                              >
+                                {majorCategories.sort((a, b) => a.localeCompare(b)).map((category, categoryIndex) => (
+                                  <MenuItem key={categoryIndex} value={category}>
                                     {category}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    }
-                />
-                </StyledTableCell>
-            ))}
+                                  </MenuItem>
+                                ))}
+                              </StyledSelect>
+                            </MetadataFormControl>
+                          </DetailsField>
+                          <DetailsField>
+                            <MetadataFieldLabel>Sub1</MetadataFieldLabel>
+                            <MetadataFormControl>
+                              <StyledSelect
+                                MenuProps={dropdownMenuProps}
+                                value={selectedMinor1Categories[round.title] || ''}
+                                onChange={(e) => handleMinor1CategoryChange(round.title, e.target.value)}
+                              >
+                                {minor1Categories.sort((a, b) => a.localeCompare(b)).map((category, categoryIndex) => (
+                                  <MenuItem key={categoryIndex} value={category}>
+                                    {category}
+                                  </MenuItem>
+                                ))}
+                              </StyledSelect>
+                            </MetadataFormControl>
+                          </DetailsField>
+                          <DetailsField>
+                            <MetadataFieldLabel>Sub2</MetadataFieldLabel>
+                            <MetadataFormControl>
+                              <StyledSelect
+                                MenuProps={dropdownMenuProps}
+                                value={selectedMinor2Categories[round.title] || ''}
+                                onChange={(e) => handleMinor2CategoryChange(round.title, e.target.value)}
+                              >
+                                {minor2Categories.sort((a, b) => a.localeCompare(b)).map((category, categoryIndex) => (
+                                  <MenuItem key={categoryIndex} value={category}>
+                                    {category}
+                                  </MenuItem>
+                                ))}
+                              </StyledSelect>
+                            </MetadataFormControl>
+                          </DetailsField>
+                        </DetailsFieldGrid>
+                        <DetailsField>
+                          <MetadataFieldLabel>Slide Link</MetadataFieldLabel>
+                          <DetailTextField
+                            value={tempLinks[index]}
+                            onChange={(e) => handleTempLinkChange(index, e.target.value)}
+                            onBlur={(e) => handleLinkChange(index, e.target.value)}
+                            multiline
+                            maxRows={2}
+                          />
+                        </DetailsField>
+                        <StyledButton type="button" onClick={() => handleRemoveColumn(round.id)} style={{ width: '100%', margin: 0 }}>
+                          Delete Round
+                        </StyledButton>
+                      </DetailsRoundCard>
+                    ))}
+                  </DetailsRoundGrid>
+                </DetailsSection>
 
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-        </StyledTableRow>
-        )}
-        {isBottomRowVisible && (
-        <StyledTableRow>
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            {rounds.map((round, index) => (
-                <StyledTableCell  className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}>
-                  <StyledFormControlLabel
-                      label="Sub1"
-                        labelPlacement="top"
-                        control={
-                      <Select
-                            value = {selectedMinor1Categories[round.title] || ''}
-                            onChange={(e) => handleMinor1CategoryChange(round.title, e.target.value)}
+                <DetailsSection>
+                  <DetailsSectionTitle>Night Roles</DetailsSectionTitle>
+                  <DetailsFieldGrid>
+                    <DetailsField>
+                      <MetadataFieldLabel>Host</MetadataFieldLabel>
+                      <MetadataFormControl>
+                        <StyledSelect
+                          MenuProps={dropdownMenuProps}
+                          displayEmpty
+                          value={host}
+                          onChange={(e) => {
+                            setHost(e.target.value);
+                            markDirty();
+                          }}
                         >
-                            {minor1Categories.sort((a, b) => a.localeCompare(b)).map((category, index) => (
-                                <MenuItem key={index} value={category}>
-                                    {category}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    }
-                />
-                </StyledTableCell>
-            ))}
+                          <MenuItem value="">—</MenuItem>
+                          {playerNamesDisplay.map((name) => (
+                            <MenuItem key={name} value={name}>{name}</MenuItem>
+                          ))}
+                        </StyledSelect>
+                      </MetadataFormControl>
+                    </DetailsField>
+                    <DetailsField>
+                      <MetadataFieldLabel>Scorekeeper</MetadataFieldLabel>
+                      <MetadataFormControl>
+                        <StyledSelect
+                          MenuProps={dropdownMenuProps}
+                          displayEmpty
+                          value={scorekeeper}
+                          onChange={(e) => {
+                            setScorekeeper(e.target.value);
+                            markDirty();
+                          }}
+                        >
+                          <MenuItem value="">—</MenuItem>
+                          {playerNamesDisplay.map((name) => (
+                            <MenuItem key={name} value={name}>{name}</MenuItem>
+                          ))}
+                        </StyledSelect>
+                      </MetadataFormControl>
+                    </DetailsField>
+                    <DetailsField>
+                      <MetadataFieldLabel>Tiebreak Winner</MetadataFieldLabel>
+                      <StyledButton type="button" onClick={openTiebreakDialog} style={{ width: '100%', margin: 0 }}>
+                        {tiebreakWinner ? tiebreakWinner : 'Set Tiebreak Winner'}
+                      </StyledButton>
+                    </DetailsField>
+                  </DetailsFieldGrid>
+                </DetailsSection>
 
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-        </StyledTableRow>
-        )}
-        {isBottomRowVisible && (
-        <StyledTableRow>
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            {rounds.map((round, index) => (
-                <StyledTableCell key={index} className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}>
-                  <StyledFormControlLabel
-                      label="Sub2"
-                        labelPlacement="top"
-                      // make the label smaller
-                        control={
-                      <Select
-                            value = {selectedMinor2Categories[round.title] || ''}
-                            onChange={(e) => handleMinor2CategoryChange(round.title, e.target.value)}
-                        >
-                            {minor2Categories.sort((a, b) => a.localeCompare(b)).map((category, index) => (
-                                <MenuItem key={index} value={category}>
-                                    {category}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    }
-                />
-                </StyledTableCell>
-            ))}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-        </StyledTableRow>
-        )}
-        {isBottomRowVisible && (
-        <StyledTableRow>
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            {rounds.map((round, index) => (
-              <StyledTableCell key={index} className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}>
-                <StyledTextField
-                    value={tempLinks[index]} // set the default value to round.title
-                    onChange={(e) => {handleTempLinkChange(index, e.target.value)}} // update the temp title on change
-                    onBlur={(e) => {
-                        handleLinkChange(index, e.target.value); // update the global state on blur
-                    }}
-                    fullWidth
-                    multiline
-                    rowsMax={3}
-                    // use getFontSIze to set the font size based on the length of the title
-                    inputProps={{ style: { fontSize: getFontSize(round.link) } }}
-                />
-            </StyledTableCell>
-            ))}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-        </StyledTableRow>
-        )}
-        {isBottomRowVisible && (
-        <StyledTableRow>
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            {rounds.map((round, index) => (
-                <StyledTableCell key={index} className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}>
-                    <StyledButton variant="contained" color="secondary" onClick={() => handleRemoveColumn(round.id)}>
-                        Delete
-                    </StyledButton>
-                </StyledTableCell>
-            ))}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-            <TableCell></TableCell> {/* Empty cell for the player column */}
-            <TableCell></TableCell> {/* Empty cell for the joker column */}
-          </StyledTableRow>
-        )}
-        {isBottomRowVisible && (
-          <StyledTableRow>
-            <TableCell colSpan={2}>
-              <div className="textCell"><strong>Night Roles</strong></div>
-            </TableCell>
-            <TableCell colSpan={rounds.length + 4}>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 220px))', gap: '10px', justifyContent: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ color: '#fff', fontFamily: 'Monaco', fontSize: '0.85rem' }}>Host</span>
-                  <MetadataFormControl>
-                    <StyledSelect
-                      displayEmpty
-                      value={host}
-                      onChange={(e) => {
-                        setHost(e.target.value);
-                        markDirty();
-                      }}
-                    >
-                      <MenuItem value="">—</MenuItem>
-                      {playerNamesDisplay.map((name) => (
-                        <MenuItem key={name} value={name}>{name}</MenuItem>
-                      ))}
-                    </StyledSelect>
-                  </MetadataFormControl>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ color: '#fff', fontFamily: 'Monaco', fontSize: '0.85rem' }}>Scorekeeper</span>
-                  <MetadataFormControl>
-                    <StyledSelect
-                      displayEmpty
-                      value={scorekeeper}
-                      onChange={(e) => {
-                        setScorekeeper(e.target.value);
-                        markDirty();
-                      }}
-                    >
-                      <MenuItem value="">—</MenuItem>
-                      {playerNamesDisplay.map((name) => (
-                        <MenuItem key={name} value={name}>{name}</MenuItem>
-                      ))}
-                    </StyledSelect>
-                  </MetadataFormControl>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ color: '#fff', fontFamily: 'Monaco', fontSize: '0.85rem' }}>Tiebreak Winner</span>
-                  <StyledButton type="button" onClick={openTiebreakDialog} style={{ width: '100%', margin: 0 }}>
-                    {tiebreakWinner ? tiebreakWinner : 'Set Tiebreak Winner'}
-                  </StyledButton>
-                </div>
-              </div>
-            </TableCell>
-          </StyledTableRow>
-        )}
-        {isBottomRowVisible && (
-          <StyledTableRow>
-            <TableCell colSpan={2}>
-              <div className="textCell"><strong>Style points</strong></div>
-            </TableCell>
-            <TableCell colSpan={rounds.length + 4}>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap: '8px' }}>
-                {playerNamesDisplay.map(name => (
-                  <label key={name} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <span style={{ minWidth:80 }}>{name}</span>
-                    <Input
-                      value={stylePoints?.[name] ?? ''}
-                      onChange={(e)=>{
-                        setStylePoints(prev => setStylePointValue(prev, name, e.target.value));
-                        markDirty();
-                      }}
-                      inputProps={{ step:0.5, min:0, type:'number' }}
-                    />
-                  </label>
-                ))}
-              </div>
-            </TableCell>
+                <DetailsSection>
+                  <DetailsSectionTitle>Style Points</DetailsSectionTitle>
+                  <StylePointsGrid>
+                    {playerNamesDisplay.map((name) => (
+                      <StylePointRow key={name}>
+                        <StylePointName>{name}</StylePointName>
+                        <DetailTextField
+                          value={stylePoints?.[name] ?? ''}
+                          onChange={(e) => {
+                            setStylePoints((prev) => setStylePointValue(prev, name, e.target.value));
+                            markDirty();
+                          }}
+                          type="number"
+                          inputProps={{ step: 0.5, min: 0 }}
+                        />
+                      </StylePointRow>
+                    ))}
+                  </StylePointsGrid>
+                </DetailsSection>
+              </DetailsPanel>
+            </DetailsPanelCell>
           </StyledTableRow>
         )}
         </TableBody>
