@@ -9,6 +9,13 @@
 
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'GPTrivia/css/round_maker.css' %}">
+  <style>
+    @media (max-width: 750px) {
+      .logo span {
+        font-size: 0.82em;
+      }
+    }
+  </style>
 {% endblock %}
 
 {% block image %}

@@ -106,7 +106,7 @@ class ProfileIconTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-profile-theme="light"')
-        self.assertContains(response, '--scoresheet-surface: #eef2f5;')
+        self.assertContains(response, '--scoresheet-surface: #f4f1e8;')
 
     def test_scoresheet_view_embeds_profile_color_overrides(self):
         user = User.objects.create_user(username='Alex', password='pw')
