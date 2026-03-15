@@ -177,11 +177,11 @@ import {
     const StyledTableCell = styled(TableCell)`
       background-color: #333;
       && {
-        padding: 0.6rem;
+        padding: 0.5rem;
         text-align: center;
       }
       div {
-          font-size: 1.05rem;
+          font-size: 1rem;
           font-family: "Monaco";
           padding: 0;
         }
@@ -189,15 +189,27 @@ import {
         color: #fff;
         text-align: center;
         font-family: Monaco;
-        font-size: 1.05rem;
+        font-size: 1rem;
       }
       a {
         color: #fff;
         text-decoration: none;  
         font-family: Monaco;
-        font-size: 1.05rem;
+        font-size: 1rem;
         &:hover {
           color: ${props => resolvePlayerColor(props.player) || '#000'};
+        }
+      }
+
+      @media (max-width: 1000px) {
+        && {
+          padding: 0.6rem;
+        }
+
+        div,
+        .textCell,
+        a {
+          font-size: 1.05rem;
         }
       }
     `;
@@ -211,19 +223,25 @@ import {
         background-color: #1e7662; /* Green */
         border: none;
         color: white;
-        padding: 0.65rem 1rem;
-        margin: 0;
+        padding: 5px 12px;
+        margin: 5px;
         text-align: center;
         text-decoration: none;
-        font-size: 1.05rem;
+        font-size: 1rem;
         box-sizing: border-box;
         font-family: "Monaco";
-        min-height: 2.85rem;
-        min-width: 7.75rem;
-        line-height: 1.2;
       
       &:hover {
         background-color: ${props => darkenBackground('#1e7662')};// Darken the background color on hover
+      }
+
+      @media (max-width: 1000px) {
+        padding: 0.56rem 0.92rem;
+        margin: 0;
+        font-size: 1.05rem;
+        min-height: 2.6rem;
+        min-width: 7.75rem;
+        line-height: 1.2;
       }
   `
 
@@ -252,15 +270,26 @@ import {
 
         && .MuiSelect-select {
           color: #fff;
-          font-size: 0.92rem;
+          font-size: 0.75rem;
           font-family: "Monaco";
-          padding: 0.4rem 1.7rem 0.4rem 0.6rem;
+          padding: 0.16rem 1.45rem 0.16rem 0.45rem;
           min-height: unset;
         }
 
         && .MuiSvgIcon-root {
           color: #fff;
-          font-size: 1.15rem;
+          font-size: 1.05rem;
+        }
+
+        @media (max-width: 1000px) {
+          && .MuiSelect-select {
+            font-size: 0.92rem;
+            padding: 0.4rem 1.7rem 0.4rem 0.6rem;
+          }
+
+          && .MuiSvgIcon-root {
+            font-size: 1.15rem;
+          }
         }
     `;
 
@@ -292,14 +321,22 @@ import {
     const StyledFormControl = styled(FormControl)`
         background-color: #333;
         color: #fff;
-        max-width: 11rem;
+        max-width: 8rem;
         && * {
           color: #fff;
           font-family: "Monaco";
-          font-size: 0.92rem;
+          font-size: 0.8rem;
           padding: 0.15rem;
           margin: 0rem;
           //margin: 5px 12px;
+        }
+
+        @media (max-width: 1000px) {
+          max-width: 11rem;
+
+          && * {
+            font-size: 0.92rem;
+          }
         }
       `;
 
@@ -307,7 +344,11 @@ import {
       color: #fff;
       text-align: center;
         font-family: Monaco;
-        font-size: 0.92rem;
+        font-size: 0.8rem;
+
+        @media (max-width: 1000px) {
+          font-size: 0.92rem;
+        }
     `;
 
 
@@ -316,11 +357,19 @@ import {
     const StyledFormControlLabel = styled(FormControlLabel)`
         background-color: #333;
         color: #fff;
-        font-size: 0.92rem;
+        font-size: 0.8rem;
       && * {
         color: #fff;
         font-family: "Monaco";
-        font-size: 0.98rem;
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 1000px) {
+        font-size: 0.92rem;
+
+        && * {
+          font-size: 0.98rem;
+        }
       }
     `;
 
@@ -354,7 +403,7 @@ import {
         }
       
       * {
-        font-size: 1.05rem;
+        font-size: 1rem;
         font-family: "Monaco";
         color: #fff;
       }
@@ -362,8 +411,8 @@ import {
       div > input {
         color: #fff;
         padding: 0px; 
-        margin: 0.55rem 0.75rem;
-        font-size: 0.96rem;
+        margin: 8px 12px;
+        font-size: 0.8rem;
         font-family: "Monaco";
         background-color: #333;
       }
@@ -378,6 +427,17 @@ import {
             background-color: #333;
           border: none;
         }
+
+      @media (max-width: 1000px) {
+        * {
+          font-size: 1.05rem;
+        }
+
+        div > input {
+          margin: 0.55rem 0.75rem;
+          font-size: 0.96rem;
+        }
+      }
     `
 
 
@@ -424,16 +484,26 @@ import {
     const MetadataSection = styled.div`
       display: flex;
       justify-content: center;
-      padding: 0.15rem 0 1.1rem;
+      padding: 0.08rem 0 0.9rem;
+
+      @media (max-width: 1000px) {
+        padding: 0.15rem 0 1.1rem;
+      }
     `;
 
     const MetadataGrid = styled.div`
-      width: min(100%, 1080px);
+      width: min(100%, 960px);
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(3, minmax(180px, 220px));
       justify-content: center;
-      gap: 0.8rem;
+      gap: 0.85rem;
       padding: 0 0.75rem;
+
+      @media (max-width: 1000px) {
+        width: min(100%, 1080px);
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 0.8rem;
+      }
 
       @media (max-width: 919px) {
         grid-template-columns: minmax(0, 1fr);
@@ -452,8 +522,12 @@ import {
       color: #fff;
       text-align: center;
       font-family: Monaco;
-      font-size: 0.92rem;
+      font-size: 0.8rem;
       margin-bottom: 0.35rem;
+
+      @media (max-width: 1000px) {
+        font-size: 0.92rem;
+      }
     `;
 
     const MetadataNotesField = styled(TextField)`
@@ -476,7 +550,7 @@ import {
       && textarea {
         color: #fff;
         font-family: "Monaco";
-        font-size: 1rem;
+        font-size: 0.9rem;
         line-height: 1.4;
         padding: 0.35rem 0.55rem;
         text-align: center;
@@ -487,6 +561,12 @@ import {
         color: rgba(255, 255, 255, 0.5);
         opacity: 1;
         text-align: center;
+      }
+
+      @media (max-width: 1000px) {
+        && textarea {
+          font-size: 1rem;
+        }
       }
     `;
 
@@ -514,8 +594,12 @@ import {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 0.55rem;
+      gap: 0.75rem;
       flex-wrap: wrap;
+
+      @media (max-width: 1000px) {
+        gap: 0.55rem;
+      }
     `;
 
     const MetadataActionButtons = styled.div`
@@ -524,15 +608,34 @@ import {
       align-items: center;
       gap: 0.55rem;
       flex-wrap: wrap;
-      width: min(100%, 52rem);
 
-      & > button {
-        flex: 1 1 12.5rem;
+      @media (max-width: 1000px) {
+        width: min(100%, 52rem);
+
+        & > button {
+          flex: 1 1 12.5rem;
+        }
       }
     `;
 
     const MetadataActionPrimaryButton = styled(StyledButton)`
-      min-width: 12.5rem;
+      min-width: 210px;
+
+      @media (max-width: 1000px) {
+        min-width: 12.5rem;
+      }
+    `;
+
+    const CompactTopControlGroup = styled.div`
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      flex-wrap: nowrap;
+
+      @media (min-width: 1001px) {
+        display: contents;
+      }
     `;
 
     const PlayerNameStack = styled.div`
@@ -546,7 +649,6 @@ import {
       align-items: center;
       justify-content: center;
       gap: 0.7rem;
-      padding-inline: 0.2rem;
     `;
 
     const PlayerNameLabel = styled.span`
@@ -791,6 +893,7 @@ const PlayerTable = () => {
 
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+    const isCompactScreen = useMediaQuery('(max-width:1000px)');
 
     // let url = "http://localhost:8000"
     let url = "https://hailsciencetrivia.com"
@@ -801,7 +904,6 @@ const PlayerTable = () => {
     const pendingMutationIdsRef = useRef(new Set());
     const serverRoundSnapshotRef = useRef({});
     const serverPresentationSnapshotRef = useRef(makePresentationSnapshot(null));
-    const stylePointAnchorRefs = useRef({});
     const newPlayerInputRef = useRef(null);
     const datePickerFieldRef = useRef(null);
     const jokerRouletteTimeoutsRef = useRef({});
@@ -1904,17 +2006,23 @@ const PlayerTable = () => {
         markDirty();
     };
 
-    const setStylePointAnchor = useCallback((playerField, node) => {
-      if (node) {
-        stylePointAnchorRefs.current[playerField] = node;
-        return;
-      }
-
-      delete stylePointAnchorRefs.current[playerField];
-    }, []);
-
     const triggerStylePointBurst = useCallback((playerField) => {
-      const anchorNode = stylePointAnchorRefs.current[playerField];
+      const escapeSelectorValue = (value) => {
+        if (typeof value !== 'string') {
+          return '';
+        }
+
+        if (window.CSS && typeof window.CSS.escape === 'function') {
+          return window.CSS.escape(value);
+        }
+
+        return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      };
+
+      const anchorNode = document.querySelector(
+        `[data-style-burst-anchor="${escapeSelectorValue(playerField)}"]`
+      );
+
       if (!anchorNode) {
         return;
       }
@@ -1922,8 +2030,8 @@ const PlayerTable = () => {
       const rect = anchorNode.getBoundingClientRect();
       window.dispatchEvent(new CustomEvent('scoresheet:burst-stars', {
         detail: {
-          x: rect.left + (rect.width * 0.34),
-          y: Math.max(12, rect.top + 4),
+          x: rect.left + (rect.width / 2),
+          y: Math.max(18, rect.top + Math.min(rect.height * 0.35, 16)),
         },
       }));
     }, []);
@@ -2288,20 +2396,21 @@ const PlayerTable = () => {
     <>
     <GlobalStyle />
     <StyledTableContainer>
-      <Grid container alignItems="center" spacing={1.25} justifyContent="center">
+      <Grid container alignItems="center" spacing={1}>
 
         {/* Left Section */}
-        <Grid item xs={12}>
+        <Grid item xs={12} md={isCompactScreen ? 12 : 4}>
           <Box
           display="flex"
           alignItems="center"
-          justifyContent="center"
-          flexDirection="row"
+          justifyContent={isCompactScreen ? 'center' : 'flex-start'}
+          flexDirection={isCompactScreen ? 'row' : 'row'}
           flexWrap="wrap"
-          gap={0.65}
-          padding={isSmallScreen ? '0.4rem 0.35rem 0.25rem' : '0.35rem 0.35rem 0.2rem'}
-          maxWidth="72rem"
-          margin="0 auto">
+          gap={isCompactScreen ? 0.65 : 0}
+          padding={isCompactScreen ? '0.28rem 0.35rem 0.15rem' : '0.2rem'}
+          maxWidth={isCompactScreen ? '72rem' : 'none'}
+          margin={isCompactScreen ? '0 auto' : '0'}
+          marginLeft={isCompactScreen ? '0' : '0.2rem'}>
             {/*<StyledFormControl>*/}
             {/*  <Select*/}
             {/*    value={selectedDate}*/}
@@ -2316,138 +2425,134 @@ const PlayerTable = () => {
             {/*    </StyledButton>*/}
             {/*</StyledFormControl>*/}
 
-            <StyledFormControl>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <DatePicker
-                    open={openDatePicker}
-                    value={selectedDate ? dayjs(selectedDate) : null}
-                      onChange={(newValue) => {
-                        if (!newValue) {
-                          return;
-                        }
-                        const formattedDate = dayjs(newValue).format('YYYY-MM-DD');
-                        handleChangeDate(formattedDate);
-                        setOpenDatePicker(false); // Close the DatePicker after selection
-                      }}
-                    onClose={() => setOpenDatePicker(false)}
-                      // renderInput={(params) => (
-                      //   <TextField
-                      //     {...params}
-                      //     InputProps={{
-                      //       ...params.InputProps,
-                      //       style: { backgroundColor: '#333' } // Apply background color directly
-                      //     }}
-                      //   />
-                      // )}
-                    slots={{
-                        day: CustomDay,
-                    }}
-                    slotProps={{
-                      textField: {
-                        ref: datePickerFieldRef,
-                        onClick: () => setOpenDatePicker(true),
-                        placeholder: 'Select date',
-                        inputProps: {
-                          readOnly: true,
-                          style: {
-                            cursor: 'pointer',
-                          },
-                        },
-                        sx: {
-                          minWidth: isSmallScreen ? 'min(100%, 15rem)' : '10.75rem',
-                          maxWidth: isSmallScreen ? '15rem' : '11rem',
-                          margin: 0,
-                          '& .MuiInputBase-root': {
-                            backgroundColor: '#333',
-                            color: '#fff',
-                            fontFamily: 'Monaco',
-                            borderRadius: 0,
-                            cursor: 'pointer',
-                          },
-                          '& .MuiInputAdornment-root': {
-                            marginLeft: 0,
-                            marginRight: '0.2rem',
-                          },
-                          '& .MuiIconButton-root': {
-                            color: '#fff',
-                            padding: '4px',
-                          },
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: 'none',
-                          },
-                          '& input': {
-                            color: '#fff',
-                            fontFamily: 'Monaco',
-                            textAlign: 'center',
-                            fontSize: '1rem',
-                            padding: '10px 10px 10px 12px',
-                            cursor: 'pointer',
-                          },
-                        },
-                      },
-                      day: {
-                        sortedDates,
-                      },
-                    }}
-                    />
-                </LocalizationProvider>
-            </StyledFormControl>
-
-
-            <StyledTextField
-              inputRef={newPlayerInputRef}
-              value={newPlayerName}
-              onChange={(e) => setNewPlayerName(e.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  handleAddPlayer();
-                }
-              }}
-              variant="outlined"
-              placeholder="Add player"
-              style={{
-                margin: 0,
-                width: isSmallScreen ? 'min(100%, 15rem)' : '11.5rem',
-                maxWidth: isSmallScreen ? '15rem' : '11.5rem',
-              }}
-            />
-
-            <StyledButton variant="contained" color="secondary" onClick={handleAddPlayer}>
-              Add
-            </StyledButton>
+            <CompactTopControlGroup>
               <StyledFormControl>
-                <StyledInputLabel className={"showonsmall"}>Round</StyledInputLabel>
-                  <StyledSelect
-                    className={"showonsmall"}
-                    value={selectedColumnIndex.toString()}
-                    MenuProps={dropdownMenuProps}
-                    onChange={e => {
-                        const value = parseInt(e.target.value, 10);
-                        setSelectedColumnIndex(value);
-                    }}
-                >
-                    <MenuItem value={1}>Joker</MenuItem>
-                    {rounds.map((round, index) => (
-                        <MenuItem key={index} value={index+2}>{round.title}</MenuItem>
-                    ))}
-                </StyledSelect>
+                  <LocalizationProvider dateAdapter={AdapterDayjs}>
+                      <DatePicker
+                      open={openDatePicker}
+                      value={selectedDate ? dayjs(selectedDate) : null}
+                        onChange={(newValue) => {
+                          if (!newValue) {
+                            return;
+                          }
+                          const formattedDate = dayjs(newValue).format('YYYY-MM-DD');
+                          handleChangeDate(formattedDate);
+                          setOpenDatePicker(false); // Close the DatePicker after selection
+                        }}
+                      onClose={() => setOpenDatePicker(false)}
+                      slots={{
+                          day: CustomDay,
+                      }}
+                      slotProps={{
+                        textField: {
+                          ref: datePickerFieldRef,
+                          onClick: () => setOpenDatePicker(true),
+                          placeholder: 'Select date',
+                          inputProps: {
+                            readOnly: true,
+                            style: {
+                              cursor: 'pointer',
+                            },
+                          },
+                          sx: {
+                            minWidth: isCompactScreen ? (isSmallScreen ? '9.6rem' : '10.25rem') : '9.5rem',
+                            maxWidth: isCompactScreen ? (isSmallScreen ? '9.6rem' : '10.25rem') : '10.25rem',
+                            margin: isCompactScreen ? 0 : '0.4rem',
+                            '& .MuiInputBase-root': {
+                              backgroundColor: '#333',
+                              color: '#fff',
+                              fontFamily: 'Monaco',
+                              borderRadius: 0,
+                              cursor: 'pointer',
+                            },
+                            '& .MuiInputAdornment-root': {
+                              marginLeft: 0,
+                              marginRight: '0.2rem',
+                            },
+                            '& .MuiIconButton-root': {
+                              color: '#fff',
+                              padding: '4px',
+                            },
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              border: 'none',
+                            },
+                            '& input': {
+                              color: '#fff',
+                              fontFamily: 'Monaco',
+                              textAlign: 'center',
+                              fontSize: isCompactScreen ? '1rem' : undefined,
+                              padding: isCompactScreen ? '10px 10px 10px 12px' : '8px 8px 8px 12px',
+                              cursor: 'pointer',
+                            },
+                          },
+                        },
+                        day: {
+                          sortedDates,
+                        },
+                      }}
+                      />
+                  </LocalizationProvider>
               </StyledFormControl>
+
+              <StyledFormControl>
+                  <StyledInputLabel className={"showonsmall"}>Round</StyledInputLabel>
+                    <StyledSelect
+                      className={"showonsmall"}
+                      value={selectedColumnIndex.toString()}
+                      MenuProps={dropdownMenuProps}
+                      onChange={e => {
+                          const value = parseInt(e.target.value, 10);
+                          setSelectedColumnIndex(value);
+                      }}
+                  >
+                      <MenuItem value={1}>Joker</MenuItem>
+                      {rounds.map((round, index) => (
+                          <MenuItem key={index} value={index+2}>{round.title}</MenuItem>
+                      ))}
+                  </StyledSelect>
+              </StyledFormControl>
+            </CompactTopControlGroup>
+
+            <CompactTopControlGroup>
+              <StyledTextField
+                inputRef={newPlayerInputRef}
+                value={newPlayerName}
+                onChange={(e) => setNewPlayerName(e.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    handleAddPlayer();
+                  }
+                }}
+                variant="outlined"
+                placeholder="Add player"
+                style={{
+                  margin: isCompactScreen ? 0 : '0.4rem',
+                  marginLeft: isCompactScreen ? '0' : '1rem',
+                  width: isCompactScreen ? (isSmallScreen ? '11rem' : 'min(100%, 15rem)') : undefined,
+                  maxWidth: isCompactScreen ? (isSmallScreen ? '11rem' : '15rem') : undefined,
+                }}
+              />
+
+              <StyledButton variant="contained" color="secondary" onClick={handleAddPlayer}>
+                Add
+              </StyledButton>
+            </CompactTopControlGroup>
           </Box>
         </Grid>
 
         {/* Right Section */}
-        <Grid item xs={12}>
+        <Grid item xs={12} md={isCompactScreen ? 12 : 8}>
           <Box
             display="flex"
-            justifyContent="center"
+            justifyContent={isCompactScreen ? 'center' : 'flex-end'}
             alignItems="center"
             flexDirection="row"
             flexWrap="wrap"
-            gap={0.65}
-            padding={isSmallScreen ? '0 0.35rem 0.45rem' : '0 0.35rem 0.45rem'}
-            maxWidth="72rem"
-            margin="0 auto"
+            gap={isCompactScreen ? 0.65 : 0}
+            padding={isCompactScreen ? '0 0.35rem 0.24rem' : 0}
+            maxWidth={isCompactScreen ? '72rem' : 'none'}
+            margin={isCompactScreen ? '0 auto' : 0}
           >
             <StyledButton variant="contained" color="secondary" onClick={() => setIsBottomRowVisible(prevState => !prevState)}>
               Toggle Details
@@ -2561,9 +2666,9 @@ const PlayerTable = () => {
               const playerIconUrl = getPlayerIconUrl(playerIconMap, player);
               return (<TableRow key={player}>
                   <StyledTableCell player={player}>
-                      <PlayerNameStack>
+                          <PlayerNameStack>
                           <PlayerNameAnchor>
-                              <PlayerNameLabel ref={(node) => setStylePointAnchor(player, node)}>
+                              <PlayerNameLabel data-style-burst-anchor={player}>
                                   {crownedPlayer === player && (
                                       <WinnerCrown
                                           initial={{ opacity: 0, y: -5, rotate: 6, scale: 0.8 }}

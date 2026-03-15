@@ -8,6 +8,10 @@
   <link rel="stylesheet" href="{% static 'scoresheet/build/static/css/main.e6c13ad2.css' %}">
   <link rel="preload" as="image" href="/static/img/snake_silhouette.png">
   <style>
+    :root {
+      --shell-chrome-color: #1e7662;
+    }
+
     .scoresheet-animation-controls {
       display: flex;
       justify-content: center;
@@ -72,7 +76,7 @@
     {{ player_icon_map|json_script:"scoresheet-player-icons" }}
     {{ player_color_map|json_script:"scoresheet-player-colors" }}
 
-    <script src="{% static 'scoresheet/build/static/js/main.93d214bf.js' %}"></script>
+    <script src="{% static 'scoresheet/build/static/js/main.3a99e2cb.js' %}"></script>
     <audio id="snake-hiss" src="/static/img/snake-hissing-6092.mp3" preload="auto"></audio>
 
     <div id="star-overlay"></div>
