@@ -610,6 +610,12 @@ import {
       gap: 0.55rem;
       flex-wrap: wrap;
 
+      & > button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
       @media (max-width: 1000px) {
         width: min(100%, 52rem);
 
@@ -620,6 +626,8 @@ import {
         & > button:nth-child(n + 2) {
           flex: 1 1 9.75rem;
           font-size: 0.94rem;
+          min-height: 2.4rem;
+          white-space: nowrap;
         }
       }
     `;
@@ -2661,9 +2669,11 @@ const PlayerTable = () => {
               Add Round
             </StyledButton>
 
-            <StyledButton variant="contained" color="primary" onClick={saveData} style={{ backgroundColor: isSaved ? '#1e7662' : '#810e19' }}>
-              Save Scoresheet
-            </StyledButton>
+            {!isCompactScreen && (
+              <StyledButton variant="contained" color="primary" onClick={saveData} style={{ backgroundColor: isSaved ? '#1e7662' : '#810e19' }}>
+                Save Scoresheet
+              </StyledButton>
+            )}
 
             {/*<StyledButton*/}
             {/*    variant="outlined"*/}

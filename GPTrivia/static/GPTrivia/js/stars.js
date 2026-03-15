@@ -1,28 +1,43 @@
-const GRAVITY = 0.45;
-const FADE_MS = 300;
+// ─────────────────────────────────────────────
+//  little physics helper
+// ─────────────────────────────────────────────
+const GRAVITY = 0.45;          // px per frame²
+const FADE_MS = 300;           // fade-out time
 const FLOOR_BOUNCE = 0.72;
 const SURFACE_BOUNCE = 0.78;
 const SURFACE_VERTICAL_DRAG = 0.96;
+const AIR_DRAG = 0.997;
+const SPIN_DRAG = 0.994;
+const SPIN_TRANSFER = 1.15;
+const COLLISION_SPIN_CARRY = 0.94;
 
 const overlay = document.getElementById("star-overlay");
-const MAX_SPEED = 25;
+const MAX_SPEED = 25; // px/frame at which color hits "max"
 const STAR_RADIUS = 5;
+const STAR_COLLISION_RADIUS = 3.75;
+const HORIZONTAL_COLLISION_PADDING = 1;
 
-function fadeOutAndRemove(elem) {
+function fadeOutAndRemove(elem){
   elem.style.transition = `opacity ${FADE_MS}ms`;
   elem.style.opacity = 0;
   setTimeout(() => elem.remove(), FADE_MS);
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function dot(ax, ay, bx, by) {
+  return (ax * bx) + (ay * by);
+}
+
 function parseRgb(color) {
-  const match = String(color || "").match(/rgba?\(([^)]+)\)/i);
+  const match = String(color || '').match(/rgba?\(([^)]+)\)/i);
   if (!match) {
     return null;
   }
 
-  const [r = 0, g = 0, b = 0, a = 1] = match[1]
-    .split(",")
-    .map((value) => Number.parseFloat(value.trim()));
+  const [r = 0, g = 0, b = 0, a = 1] = match[1].split(',').map(value => Number.parseFloat(value.trim()));
   return { r, g, b, a };
 }
 
@@ -68,20 +83,20 @@ function isRicochetColor(color) {
     return false;
   }
 
-  return (hue >= 95 && hue <= 165) || hue <= 22 || hue >= 338;
+  return (hue >= 90 && hue <= 190) || hue <= 22 || hue >= 338;
 }
 
 function collectRicochetSurfaces() {
   const seen = new Set();
   const surfaces = [];
-  const elements = document.querySelectorAll("body *");
+  const elements = document.querySelectorAll('body *');
 
   for (const element of elements) {
     if (
       !element ||
       element === overlay ||
-      element.classList?.contains("star") ||
-      ["SCRIPT", "STYLE", "LINK", "META"].includes(element.tagName)
+      element.classList?.contains('star') ||
+      ['SCRIPT', 'STYLE', 'LINK', 'META'].includes(element.tagName)
     ) {
       continue;
     }
@@ -92,8 +107,8 @@ function collectRicochetSurfaces() {
 
     const style = window.getComputedStyle(element);
     if (
-      style.display === "none" ||
-      style.visibility === "hidden" ||
+      style.display === 'none' ||
+      style.visibility === 'hidden' ||
       Number.parseFloat(style.opacity) === 0
     ) {
       continue;
@@ -129,7 +144,7 @@ function collectRicochetSurfaces() {
       Math.round(rect.top),
       Math.round(rect.width),
       Math.round(rect.height),
-    ].join(":");
+    ].join(':');
 
     if (seen.has(key)) {
       continue;
@@ -147,96 +162,70 @@ function collectRicochetSurfaces() {
   return surfaces;
 }
 
-function resolveSurfaceCollision(previousX, previousY, nextX, nextY, vx, vy, surface) {
+function resolveSurfaceCollision(previousX, previousY, nextX, nextY, vx, vy, angularVelocity, surface) {
   const expanded = {
-    left: surface.left - STAR_RADIUS,
-    right: surface.right + STAR_RADIUS,
-    top: surface.top - STAR_RADIUS,
-    bottom: surface.bottom + STAR_RADIUS,
+    left: surface.left - HORIZONTAL_COLLISION_PADDING,
+    right: surface.right + HORIZONTAL_COLLISION_PADDING,
+    top: surface.top,
+    bottom: surface.bottom,
   };
 
-  if (
-    nextX < expanded.left ||
-    nextX > expanded.right ||
-    nextY < expanded.top ||
-    nextY > expanded.bottom
-  ) {
+  const closestX = clamp(nextX, expanded.left, expanded.right);
+  const closestY = clamp(nextY, expanded.top, expanded.bottom);
+  let normalX = nextX - closestX;
+  let normalY = nextY - closestY;
+  const distanceSquared = (normalX * normalX) + (normalY * normalY);
+
+  if (distanceSquared > STAR_COLLISION_RADIUS * STAR_COLLISION_RADIUS) {
     return null;
   }
 
-  if (previousY <= expanded.top && nextY >= expanded.top) {
-    return {
-      x: nextX,
-      y: expanded.top,
-      vx: vx * SURFACE_VERTICAL_DRAG,
-      vy: -Math.abs(vy) * FLOOR_BOUNCE,
-    };
+  const EPSILON = 0.0001;
+  if (distanceSquared > EPSILON) {
+    const distance = Math.sqrt(distanceSquared);
+    normalX /= distance;
+    normalY /= distance;
+  } else {
+    const distances = [
+      { normalX: -1, normalY: 0, value: Math.abs(nextX - expanded.left), previous: Math.abs(previousX - expanded.left) },
+      { normalX: 1, normalY: 0, value: Math.abs(expanded.right - nextX), previous: Math.abs(expanded.right - previousX) },
+      { normalX: 0, normalY: -1, value: Math.abs(nextY - expanded.top), previous: Math.abs(previousY - expanded.top) },
+      { normalX: 0, normalY: 1, value: Math.abs(expanded.bottom - nextY), previous: Math.abs(expanded.bottom - previousY) },
+    ].sort((left, right) => {
+      if (left.value !== right.value) {
+        return left.value - right.value;
+      }
+      return left.previous - right.previous;
+    });
+
+    normalX = distances[0].normalX;
+    normalY = distances[0].normalY;
   }
 
-  if (previousY >= expanded.bottom && nextY <= expanded.bottom) {
-    return {
-      x: nextX,
-      y: expanded.bottom,
-      vx: vx * SURFACE_VERTICAL_DRAG,
-      vy: Math.abs(vy) * FLOOR_BOUNCE,
-    };
-  }
+  const correctedX = closestX + (normalX * STAR_COLLISION_RADIUS);
+  const correctedY = closestY + (normalY * STAR_COLLISION_RADIUS);
+  const tangentX = -normalY;
+  const tangentY = normalX;
+  const normalSpeed = dot(vx, vy, normalX, normalY);
+  const tangentSpeed = dot(vx, vy, tangentX, tangentY);
+  const restitution = Math.abs(normalY) > Math.abs(normalX) ? FLOOR_BOUNCE : SURFACE_BOUNCE;
+  const bouncedNormalSpeed = normalSpeed < 0 ? (-normalSpeed * restitution) : Math.max(normalSpeed, 0);
+  const nextTangentSpeed = tangentSpeed * SURFACE_VERTICAL_DRAG;
+  const nextVx = (normalX * bouncedNormalSpeed) + (tangentX * nextTangentSpeed);
+  const nextVy = (normalY * bouncedNormalSpeed) + (tangentY * nextTangentSpeed);
+  const spinKick = clamp(tangentSpeed * SPIN_TRANSFER, -36, 36);
 
-  if (previousX <= expanded.left && nextX >= expanded.left) {
-    return {
-      x: expanded.left,
-      y: nextY,
-      vx: -Math.abs(vx) * SURFACE_BOUNCE,
-      vy: vy * SURFACE_VERTICAL_DRAG,
-    };
-  }
-
-  if (previousX >= expanded.right && nextX <= expanded.right) {
-    return {
-      x: expanded.right,
-      y: nextY,
-      vx: Math.abs(vx) * SURFACE_BOUNCE,
-      vy: vy * SURFACE_VERTICAL_DRAG,
-    };
-  }
-
-  const distances = [
-    { edge: "left", value: Math.abs(nextX - expanded.left) },
-    { edge: "right", value: Math.abs(nextX - expanded.right) },
-    { edge: "top", value: Math.abs(nextY - expanded.top) },
-    { edge: "bottom", value: Math.abs(nextY - expanded.bottom) },
-  ].sort((left, right) => left.value - right.value);
-
-  switch (distances[0].edge) {
-    case "left":
-      return {
-        x: expanded.left,
-        y: nextY,
-        vx: -Math.abs(vx) * SURFACE_BOUNCE,
-        vy: vy * SURFACE_VERTICAL_DRAG,
-      };
-    case "right":
-      return {
-        x: expanded.right,
-        y: nextY,
-        vx: Math.abs(vx) * SURFACE_BOUNCE,
-        vy: vy * SURFACE_VERTICAL_DRAG,
-      };
-    case "top":
-      return {
-        x: nextX,
-        y: expanded.top,
-        vx: vx * SURFACE_VERTICAL_DRAG,
-        vy: -Math.abs(vy) * FLOOR_BOUNCE,
-      };
-    default:
-      return {
-        x: nextX,
-        y: expanded.bottom,
-        vx: vx * SURFACE_VERTICAL_DRAG,
-        vy: Math.abs(vy) * FLOOR_BOUNCE,
-      };
-  }
+  return {
+    x: correctedX,
+    y: correctedY,
+    vx: nextVx,
+    vy: nextVy,
+    angularVelocity: (angularVelocity * COLLISION_SPIN_CARRY) + spinKick,
+    resting:
+      Math.abs(bouncedNormalSpeed) < 0.8 &&
+      Math.abs(nextTangentSpeed) < 1.5 &&
+      Math.abs(normalY) > 0.45,
+  };
 }
 
 function burstStarsAt(cx, cy, count = 24) {
@@ -251,20 +240,23 @@ function burstStarsAt(cx, cy, count = 24) {
 }
 
 function launchStar(cx, cy, surfaces) {
-  const star = document.createElement("div");
-  star.className = "star";
-  star.style.left = `${cx}px`;
-  star.style.top = `${cy}px`;
-  overlay.appendChild(star);
+  const s = document.createElement("div");
+  s.className = "star";
 
-  let dx = 0;
-  let dy = 0;
+  s.style.left = `${cx}px`;
+  s.style.top  = `${cy}px`;
+  overlay.appendChild(s);
+
+  let dx = 0, dy = 0;
+
   let vx = (Math.random() - 0.5) * 8;
   let vy = (Math.random() - 1.2) * 12;
+  let angle = Math.random() * 360;
+  const initialSpinMagnitude = 30 + (Math.random() * 40);
+  let angularVelocity = (Math.random() < 0.5 ? -1 : 1) * initialSpinMagnitude;
 
   let last = performance.now();
   let restingTime = 0;
-
   function frame(t) {
     const dt = (t - last) / 16.7;
     last = t;
@@ -273,14 +265,17 @@ function launchStar(cx, cy, surfaces) {
     const previousY = cy + dy;
 
     vy += GRAVITY * dt;
+    vx *= Math.pow(AIR_DRAG, dt);
+    angularVelocity *= Math.pow(SPIN_DRAG, dt);
     dx += vx * dt;
     dy += vy * dt;
+    angle += angularVelocity * dt;
 
     let absX = cx + dx;
     let absY = cy + dy;
 
     for (const surface of surfaces) {
-      const collision = resolveSurfaceCollision(previousX, previousY, absX, absY, vx, vy, surface);
+      const collision = resolveSurfaceCollision(previousX, previousY, absX, absY, vx, vy, angularVelocity, surface);
       if (!collision) {
         continue;
       }
@@ -291,13 +286,15 @@ function launchStar(cx, cy, surfaces) {
       dy = absY - cy;
       vx = collision.vx;
       vy = collision.vy;
+      angularVelocity = collision.angularVelocity;
 
-      if (Math.abs(vy) < 1) {
+      if (collision.resting) {
         vy = 0;
-        vx *= 0.985;
+        vx *= 0.982;
+        angularVelocity *= 0.96;
         restingTime += dt;
         if (restingTime > 40) {
-          fadeOutAndRemove(star);
+          fadeOutAndRemove(s);
           return;
         }
       } else {
@@ -308,21 +305,21 @@ function launchStar(cx, cy, surfaces) {
     }
 
     const speed = Math.hypot(vx, vy);
-    const normalizedSpeed = Math.min(speed / MAX_SPEED, 1);
-    const hue = 240 - 240 * normalizedSpeed;
-    const saturation = 60 + 40 * normalizedSpeed;
-    const lightness = 50 + 30 * normalizedSpeed;
+    const n = Math.min(speed / MAX_SPEED, 1);
 
-    star.style.backgroundColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-    star.style.transform = `translate(${dx}px, ${dy}px) rotate(${t * 0.6}deg)`;
+    const hue   = 240 - 240 * n;
+    const sat   = 60  + 40  * n;
+    const light = 50  + 30  * n;
+
+    s.style.backgroundColor = `hsl(${hue}, ${sat}%, ${light}%)`;
+    s.style.transform = `translate(${dx}px, ${dy}px) rotate(${angle}deg)`;
 
     if (cy + dy < window.innerHeight + 40) {
       requestAnimationFrame(frame);
     } else {
-      fadeOutAndRemove(star);
+      fadeOutAndRemove(s);
     }
   }
-
   requestAnimationFrame(frame);
 }
 
@@ -330,7 +327,7 @@ window.addEventListener("scoresheet:burst-stars", (event) => {
   const x = event?.detail?.x;
   const y = event?.detail?.y;
 
-  if (typeof x !== "number" || typeof y !== "number") {
+  if (typeof x !== 'number' || typeof y !== 'number') {
     return;
   }
 
