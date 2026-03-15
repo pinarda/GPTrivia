@@ -488,8 +488,8 @@ import {
       padding: 0.08rem 0 0.9rem;
 
       @media (max-width: 1000px) {
-        margin-top: -0.2rem;
-        padding: 0 0 0.62rem;
+        margin-top: -0.42rem;
+        padding: 0 0 0.38rem;
       }
     `;
 
@@ -504,7 +504,7 @@ import {
       @media (max-width: 1000px) {
         width: min(100%, 1080px);
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 0.8rem;
+        gap: 0.55rem;
       }
 
       @media (max-width: 919px) {

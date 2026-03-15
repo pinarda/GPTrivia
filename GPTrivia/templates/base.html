@@ -128,7 +128,7 @@
         @media (max-width: 750px) {
             body.site-shell {
                 --mobile-header-offset: calc(76px + env(safe-area-inset-top));
-                --mobile-footer-offset: calc(46px + env(safe-area-inset-bottom));
+                --mobile-footer-offset: calc(40px + env(safe-area-inset-bottom));
             }
 
             body.site-shell #menu-button {
@@ -154,6 +154,11 @@
             body.site-shell .page-body {
                 padding-top: var(--mobile-header-offset);
                 padding-bottom: var(--mobile-footer-offset);
+            }
+
+            body.site-shell .content-container {
+                min-height: 0 !important;
+                margin: 10px 10px 0 !important;
             }
 
             body.site-shell footer {
