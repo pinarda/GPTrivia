@@ -133,9 +133,19 @@
     white-space: nowrap;
 }
 
-.round-selection-title-picker select {
+.round-selection-title-picker-control {
+    position: relative;
     flex: 1 1 auto;
     min-width: 0;
+}
+
+.round-selection-title-picker-trigger {
+    width: 100%;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
     border: 1px solid #0073cc;
     background: #333 !important;
     color: #fff !important;
@@ -148,18 +158,77 @@
     box-shadow: none;
     appearance: none;
     -webkit-appearance: none;
+    cursor: pointer;
 }
 
-.round-selection-title-picker select:hover,
-.round-selection-title-picker select:focus {
+.round-selection-title-picker-trigger:hover,
+.round-selection-title-picker-trigger:focus,
+.round-selection-title-picker-trigger[aria-expanded="true"] {
     border-color: #2d8fe0;
     background: #333 !important;
     color: #fff !important;
 }
 
-.round-selection-title-picker select option {
+.round-selection-title-picker-trigger-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.round-selection-title-picker-trigger-chevron {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.85);
+    flex-shrink: 0;
+}
+
+.round-selection-title-picker-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    display: none;
     background: #333;
-    color: white;
+    border: 1px solid #0073cc;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+    z-index: 40;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.round-selection-title-picker-menu.is-open {
+    display: block;
+}
+
+.round-selection-title-picker-option {
+    width: 100%;
+    display: block;
+    border: none;
+    border-bottom: 1px solid rgba(45, 143, 224, 0.22);
+    background: #333;
+    color: #fff;
+    font-family: Monaco, monospace;
+    font-size: 0.95rem;
+    text-align: left;
+    padding: 9px 10px;
+    cursor: pointer;
+}
+
+.round-selection-title-picker-option:last-child {
+    border-bottom: none;
+}
+
+.round-selection-title-picker-option:hover,
+.round-selection-title-picker-option:focus {
+    background: rgba(45, 143, 224, 0.16);
+    outline: none;
+}
+
+.round-selection-title-picker-option.is-selected {
+    background: rgba(45, 143, 224, 0.22);
+}
+
+.round-selection-title-picker select[hidden] {
+    display: none !important;
 }
 
 .round-selection-table-header,
@@ -498,13 +567,17 @@
     .round-selection-title-picker-label {
         font-size: 0.95rem;
     }
-    .round-selection-title-picker select {
+    .round-selection-title-picker-trigger {
         font-size: 1rem;
         padding: 9px 12px;
         border-color: #0073cc;
         background: #333 !important;
         color: #fff !important;
         font-family: Monaco, monospace !important;
+    }
+    .round-selection-title-picker-option {
+        font-size: 1rem;
+        padding: 10px 12px;
     }
     .round-selection-table {
         --round-table-columns: 76px minmax(210px, 2.2fr) minmax(130px, 1fr) 82px;
@@ -743,9 +816,22 @@
                             <span class="round-selection-title-text">Currently Available Rounds</span>
                             <div class="round-selection-title-picker">
                                 <span class="round-selection-title-picker-label">Select Random Round</span>
-                                <select id="round-player-spotlight">
-                                    <option value="">—</option>
-                                </select>
+                                <div class="round-selection-title-picker-control">
+                                    <button
+                                        id="round-player-spotlight-button"
+                                        class="round-selection-title-picker-trigger"
+                                        type="button"
+                                        aria-haspopup="listbox"
+                                        aria-expanded="false"
+                                    >
+                                        <span id="round-player-spotlight-button-label" class="round-selection-title-picker-trigger-label">—</span>
+                                        <span class="round-selection-title-picker-trigger-chevron" aria-hidden="true">▾</span>
+                                    </button>
+                                    <div id="round-player-spotlight-menu" class="round-selection-title-picker-menu" role="listbox" aria-label="Select Random Round"></div>
+                                    <select id="round-player-spotlight" hidden aria-hidden="true" tabindex="-1">
+                                        <option value="">—</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div class="round-selection-toolbar">
@@ -947,6 +1033,74 @@
             if (spotlightSelect) {
                 spotlightSelect.value = '';
             }
+            syncCreatorSpotlightPicker();
+            closeCreatorSpotlightMenu();
+        }
+
+        function closeCreatorSpotlightMenu() {
+            const spotlightMenu = document.getElementById('round-player-spotlight-menu');
+            const spotlightButton = document.getElementById('round-player-spotlight-button');
+            if (spotlightMenu) {
+                spotlightMenu.classList.remove('is-open');
+            }
+            if (spotlightButton) {
+                spotlightButton.setAttribute('aria-expanded', 'false');
+            }
+        }
+
+        function toggleCreatorSpotlightMenu() {
+            const spotlightMenu = document.getElementById('round-player-spotlight-menu');
+            const spotlightButton = document.getElementById('round-player-spotlight-button');
+            if (!spotlightMenu || !spotlightButton) {
+                return;
+            }
+            const isOpen = spotlightMenu.classList.toggle('is-open');
+            spotlightButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+
+        function setCreatorSpotlightValue(value) {
+            const spotlightSelect = document.getElementById('round-player-spotlight');
+            if (!spotlightSelect) {
+                return;
+            }
+
+            spotlightSelect.value = value;
+            syncCreatorSpotlightPicker();
+            spotlightSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            closeCreatorSpotlightMenu();
+        }
+
+        function syncCreatorSpotlightPicker() {
+            const spotlightSelect = document.getElementById('round-player-spotlight');
+            const spotlightMenu = document.getElementById('round-player-spotlight-menu');
+            const spotlightButtonLabel = document.getElementById('round-player-spotlight-button-label');
+            if (!spotlightSelect || !spotlightMenu || !spotlightButtonLabel) {
+                return;
+            }
+
+            const options = Array.from(spotlightSelect.options);
+            const selectedOption = options.find((option) => option.value === spotlightSelect.value) || options[0];
+            spotlightButtonLabel.textContent = selectedOption ? selectedOption.textContent : '—';
+
+            spotlightMenu.innerHTML = '';
+            options.forEach((option) => {
+                const menuOption = document.createElement('button');
+                menuOption.type = 'button';
+                menuOption.className = 'round-selection-title-picker-option';
+                if (option.value === spotlightSelect.value) {
+                    menuOption.classList.add('is-selected');
+                    menuOption.setAttribute('aria-selected', 'true');
+                } else {
+                    menuOption.setAttribute('aria-selected', 'false');
+                }
+                menuOption.setAttribute('role', 'option');
+                menuOption.textContent = option.textContent;
+                menuOption.dataset.value = option.value;
+                menuOption.addEventListener('click', () => {
+                    setCreatorSpotlightValue(option.value);
+                });
+                spotlightMenu.appendChild(menuOption);
+            });
         }
 
         function populateCreatorSpotlightOptions() {
@@ -979,6 +1133,7 @@
             });
 
             spotlightSelect.value = uniqueCreators.includes(previousValue) ? previousValue : '';
+            syncCreatorSpotlightPicker();
         }
 
         function showRandomRoundForCreator(creator) {
@@ -1288,6 +1443,8 @@
 
           const roundSearchInput = document.getElementById('round-search-input');
           const spotlightSelect = document.getElementById('round-player-spotlight');
+          const spotlightButton = document.getElementById('round-player-spotlight-button');
+          const spotlightMenu = document.getElementById('round-player-spotlight-menu');
           roundSearchInput.addEventListener('input', (event) => {
               clearCreatorSpotlightSelection();
               filterRounds(event.target.value);
@@ -1299,6 +1456,12 @@
                   event.preventDefault();
               }
           });
+          if (spotlightButton) {
+              spotlightButton.addEventListener('click', (event) => {
+                  event.stopPropagation();
+                  toggleCreatorSpotlightMenu();
+              });
+          }
           if (spotlightSelect) {
               spotlightSelect.addEventListener('change', (event) => {
                   const selectedCreator = event.target.value || '';
@@ -1311,6 +1474,20 @@
                   showRandomRoundForCreator(selectedCreator);
               });
           }
+          document.addEventListener('click', (event) => {
+              if (!spotlightButton || !spotlightMenu) {
+                  return;
+              }
+              if (spotlightButton.contains(event.target) || spotlightMenu.contains(event.target)) {
+                  return;
+              }
+              closeCreatorSpotlightMenu();
+          });
+          document.addEventListener('keydown', (event) => {
+              if (event.key === 'Escape') {
+                  closeCreatorSpotlightMenu();
+              }
+          });
           document.getElementById('round-page-prev').addEventListener('click', () => {
               if (homeRoundState.currentPage > 1) {
                   homeRoundState.currentPage -= 1;
