@@ -1,8 +1,8 @@
 body {
   font-family: YoungSerif;
   line-height: 1.6;
-  background-color: #333;
-    color:white;
+  background-color: var(--scoresheet-surface, #333);
+    color: var(--scoresheet-text, white);
 }
 
 /*https://coolors.co/palette/0d322c-1e7662-28b79f-a1dceb-ed192e-ce1628-a61120*/
@@ -19,7 +19,7 @@ input[type="text"] {
     padding: 10px 20px;
     border: none;
     border-bottom: 1px solid #ccc;
-    background-color: #333;
+    background-color: var(--scoresheet-surface, #333);
     margin-bottom: 20px;
     transition: 0.3s;
     padding-top: 16px; /* Increase or decrease this value to adjust spacing */
@@ -147,7 +147,7 @@ h1{
 }
 
 a {
-    color: white;
+    color: var(--scoresheet-text, white);
 }
 
 .joker-dropdown {
@@ -311,4 +311,3 @@ to { transform: translateX(calc(100vw + 100px)); } /* 8 px safety */
   .snake{ animation: none; }
 }
 */
-

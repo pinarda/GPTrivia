@@ -74,6 +74,16 @@
                             {% endfor %}
                         </div>
 
+                        <div class="profile-settings-group">
+                            <label class="profile-settings-label" for="{{ form.site_theme.id_for_label }}">
+                                Theme
+                            </label>
+                            {{ form.site_theme }}
+                            {% for error in form.site_theme.errors %}
+                                <p class="profile-settings-error">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+
                         {{ form.crop_x }}
                         {{ form.crop_y }}
                         {{ form.crop_size }}

@@ -23,10 +23,18 @@ def save_user_profile(sender, instance, **kwargs):
 
 
 class Profile(models.Model):
+    THEME_DEFAULT = 'default'
+    THEME_LIGHT = 'light'
+    THEME_CHOICES = [
+        (THEME_DEFAULT, 'Current (default)'),
+        (THEME_LIGHT, 'Light'),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     profile_picture = models.ImageField(upload_to='profile_pics', default='./default.jpg')
     profile_icon = models.ImageField(upload_to='profile_icons', blank=True, default='')
     profile_color = models.CharField(max_length=7, blank=True, default='')
+    site_theme = models.CharField(max_length=16, choices=THEME_CHOICES, default=THEME_DEFAULT)
 
     def __str__(self):
         return f'{self.user.username} Profile'

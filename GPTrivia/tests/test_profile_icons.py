@@ -67,7 +67,7 @@ class ProfileIconTests(TestCase):
         self.assertContains(response, 'profile_icons')
         self.assertContains(response, 'Alex')
 
-    def test_upload_profile_picture_crops_selected_square_region_and_updates_color(self):
+    def test_upload_profile_picture_crops_selected_square_region_and_updates_color_and_theme(self):
         user = User.objects.create_user(username='Alex', password='pw')
         self.client.force_login(user)
 
@@ -76,6 +76,7 @@ class ProfileIconTests(TestCase):
             {
                 'profile_picture': self._make_split_uploaded_image(),
                 'profile_color': '#123abc',
+                'site_theme': 'light',
                 'crop_x': '100',
                 'crop_y': '0',
                 'crop_size': '100',
@@ -87,11 +88,25 @@ class ProfileIconTests(TestCase):
 
         user.profile.refresh_from_db()
         self.assertEqual(user.profile.profile_color, '#123abc')
+        self.assertEqual(user.profile.site_theme, 'light')
 
         with Image.open(user.profile.profile_picture.path) as cropped_image:
             self.assertEqual(cropped_image.size, (100, 100))
             center_pixel = cropped_image.convert('RGB').getpixel((50, 50))
             self.assertGreater(center_pixel[2], center_pixel[0])
+
+    def test_scoresheet_view_applies_saved_light_theme(self):
+        user = User.objects.create_user(username='Alex', password='pw')
+        profile = user.profile
+        profile.site_theme = 'light'
+        profile.save()
+
+        self.client.force_login(user)
+        response = self.client.get(reverse('scoresheet_new'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-profile-theme="light"')
+        self.assertContains(response, '--scoresheet-surface: #eef2f5;')
 
     def test_scoresheet_view_embeds_profile_color_overrides(self):
         user = User.objects.create_user(username='Alex', password='pw')

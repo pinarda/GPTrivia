@@ -175,7 +175,7 @@ import {
 
 
     const StyledTableCell = styled(TableCell)`
-      background-color: #333;
+      background-color: var(--scoresheet-surface, #333);
       && {
         padding: 0.5rem;
         text-align: center;
@@ -186,13 +186,13 @@ import {
           padding: 0;
         }
       .textCell {
-        color: #fff;
+        color: var(--scoresheet-text, #fff);
         text-align: center;
         font-family: Monaco;
         font-size: 1rem;
       }
       a {
-        color: #fff;
+        color: var(--scoresheet-text, #fff);
         text-decoration: none;  
         font-family: Monaco;
         font-size: 1rem;
@@ -216,7 +216,7 @@ import {
 
 
     const StyledTableRow = styled(TableRow)({
-      borderBottom: '2px solid #333',
+      borderBottom: '2px solid var(--scoresheet-row-divider, #333)',
     });
 
     const StyledButton = styled.button`
@@ -248,8 +248,8 @@ import {
     const StyledSelect = styled(Select)`
         &&.MuiInputBase-root,
         &&.MuiOutlinedInput-root {
-          background-color: #333;
-          color: #fff;
+          background-color: var(--scoresheet-surface, #333);
+          color: var(--scoresheet-text, #fff);
           border-radius: 0;
           font-family: "Monaco";
           min-height: 30px;
@@ -269,7 +269,7 @@ import {
         }
 
         && .MuiSelect-select {
-          color: #fff;
+          color: var(--scoresheet-text, #fff);
           font-size: 0.75rem;
           font-family: "Monaco";
           padding: 0.16rem 1.45rem 0.16rem 0.45rem;
@@ -277,7 +277,7 @@ import {
         }
 
         && .MuiSvgIcon-root {
-          color: #fff;
+          color: var(--scoresheet-text, #fff);
           font-size: 1.05rem;
         }
 
@@ -296,8 +296,8 @@ import {
     const dropdownMenuProps = {
       PaperProps: {
         sx: {
-          backgroundColor: '#333',
-          color: '#fff',
+          backgroundColor: 'var(--scoresheet-menu-bg, #333)',
+          color: 'var(--scoresheet-text, #fff)',
           border: '1px solid #1e7662',
           borderRadius: 0,
           boxShadow: '0 12px 26px rgba(0, 0, 0, 0.35)',
@@ -309,21 +309,21 @@ import {
             backgroundColor: '#1e7662',
           },
           '& .MuiMenuItem-root.Mui-selected:hover': {
-            backgroundColor: '#185e4f',
+            backgroundColor: 'var(--scoresheet-menu-hover, #185e4f)',
           },
           '& .MuiMenuItem-root:hover': {
-            backgroundColor: '#185e4f',
+            backgroundColor: 'var(--scoresheet-menu-hover, #185e4f)',
           },
         },
       },
     };
 
     const StyledFormControl = styled(FormControl)`
-        background-color: #333;
-        color: #fff;
+        background-color: var(--scoresheet-surface, #333);
+        color: var(--scoresheet-text, #fff);
         max-width: 8rem;
         && * {
-          color: #fff;
+          color: var(--scoresheet-text, #fff);
           font-family: "Monaco";
           font-size: 0.8rem;
           padding: 0.15rem;
@@ -380,7 +380,7 @@ import {
     `;
 
     const StyledInputLabel = styled(InputLabel)`
-      color: #fff;
+      color: var(--scoresheet-text, #fff);
       text-align: center;
         font-family: Monaco;
         font-size: 0.8rem;
@@ -394,11 +394,11 @@ import {
 
 
     const StyledFormControlLabel = styled(FormControlLabel)`
-        background-color: #333;
-        color: #fff;
+        background-color: var(--scoresheet-surface, #333);
+        color: var(--scoresheet-text, #fff);
         font-size: 0.8rem;
       && * {
-        color: #fff;
+        color: var(--scoresheet-text, #fff);
         font-family: "Monaco";
         font-size: 0.9rem;
       }
@@ -413,8 +413,8 @@ import {
     `;
 
     const StyledTableContainer = styled(TableContainer)`
-        background-color: #333;
-        color: #fff;
+        background-color: var(--scoresheet-surface, #333);
+        color: var(--scoresheet-text, #fff);
         width: 100%;
       
         .showonsmall {
@@ -429,14 +429,14 @@ import {
 
     const StyledTextField = styled(TextField)`
       font-family: Monaco;
-      color: #fff;
+      color: var(--scoresheet-text, #fff);
       // prevent wrapping
       div {
           font-size: 12px;
           font-family: "Monaco";
-          color: #fff;
+          color: var(--scoresheet-text, #fff);
           border: none;
-          background-color: #333;
+          background-color: var(--scoresheet-surface, #333);
           text-align: center;
             white-space: nowrap;
             overflow: hidden;
@@ -445,26 +445,26 @@ import {
       * {
         font-size: 1rem;
         font-family: "Monaco";
-        color: #fff;
+        color: var(--scoresheet-text, #fff);
       }
       
       div > input {
-        color: #fff;
+        color: var(--scoresheet-text, #fff);
         padding: 0px; 
         margin: 8px 12px;
         font-size: 0.8rem;
         font-family: "Monaco";
-        background-color: #333;
+        background-color: var(--scoresheet-surface, #333);
       }
       
       && {
         .MuiInputLabel-root {
-            color: white;
+            color: var(--scoresheet-text, #fff);
         }
       }
       
       &:hover {
-            background-color: #333;
+            background-color: var(--scoresheet-surface, #333);
           border: none;
         }
 
@@ -581,7 +581,7 @@ import {
     `;
 
     const MetadataFieldLabel = styled.div`
-      color: #fff;
+      color: var(--scoresheet-text, #fff);
       text-align: center;
       font-family: Monaco;
       font-size: 0.8rem;
@@ -598,8 +598,8 @@ import {
       }
 
       && .MuiInputBase-root {
-        background-color: #333;
-        color: #fff;
+        background-color: var(--scoresheet-surface, #333);
+        color: var(--scoresheet-text, #fff);
         font-family: "Monaco";
         border-radius: 0;
         padding: 0;
@@ -610,7 +610,7 @@ import {
       }
 
       && textarea {
-        color: #fff;
+        color: var(--scoresheet-text, #fff);
         font-family: "Monaco";
         font-size: 0.9rem;
         line-height: 1.4;
@@ -620,7 +620,7 @@ import {
       }
 
       && textarea::placeholder {
-        color: rgba(255, 255, 255, 0.5);
+        color: var(--scoresheet-text-muted, rgba(255, 255, 255, 0.5));
         opacity: 1;
         text-align: center;
       }
@@ -695,7 +695,7 @@ import {
     const DetailsPanelCell = styled(TableCell)`
       && {
         padding: 0.55rem 0.65rem;
-        background-color: #333;
+        background-color: var(--scoresheet-surface, #333);
         border-bottom: none;
       }
 
@@ -715,7 +715,7 @@ import {
       display: grid;
       gap: 0.55rem;
       padding: 0.6rem;
-      background: rgba(20, 20, 20, 0.35);
+      background: var(--scoresheet-detail-panel, rgba(20, 20, 20, 0.35));
       border: 1px solid rgba(30, 118, 98, 0.7);
 
       @media (max-width: 1000px) {
@@ -725,7 +725,7 @@ import {
     `;
 
     const DetailsSectionTitle = styled.div`
-      color: #fff;
+      color: var(--scoresheet-text, #fff);
       font-family: Monaco;
       font-size: 0.92rem;
       font-weight: 700;
@@ -746,12 +746,12 @@ import {
       display: grid;
       gap: 0.5rem;
       padding: 0.55rem;
-      background: #333;
+      background: var(--scoresheet-surface-alt, #333);
       border: 1px solid rgba(30, 118, 98, 0.58);
     `;
 
     const DetailsRoundTitle = styled.div`
-      color: #fff;
+      color: var(--scoresheet-text, #fff);
       font-family: Monaco;
       font-size: 0.9rem;
       font-weight: 700;
@@ -789,11 +789,11 @@ import {
     const DetailToggleLabel = styled(FormControlLabel)`
       && {
         margin: 0;
-        color: #fff;
+        color: var(--scoresheet-text, #fff);
       }
 
       && .MuiTypography-root {
-        color: #fff;
+        color: var(--scoresheet-text, #fff);
         font-family: Monaco;
         font-size: 0.82rem;
       }
@@ -830,8 +830,8 @@ import {
       }
 
       && .MuiInputBase-root {
-        background-color: #333;
-        color: #fff;
+        background-color: var(--scoresheet-surface, #333);
+        color: var(--scoresheet-text, #fff);
         font-family: Monaco;
         border-radius: 0;
       }
@@ -850,7 +850,7 @@ import {
 
       && .MuiInputBase-input,
       && .MuiInputBase-inputMultiline {
-        color: #fff;
+        color: var(--scoresheet-text, #fff);
         font-family: Monaco;
         font-size: 0.84rem;
         padding: 0.45rem 0.55rem;
@@ -875,7 +875,7 @@ import {
       grid-template-columns: minmax(0, 1fr) 5.25rem;
       align-items: center;
       gap: 0.45rem;
-      color: #fff;
+      color: var(--scoresheet-text, #fff);
       font-family: Monaco;
       font-size: 0.82rem;
       min-width: 0;
@@ -928,8 +928,8 @@ import {
       object-fit: cover;
       flex-shrink: 0;
       margin-left: 0.15rem;
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+      border: 1px solid var(--scoresheet-border-soft, rgba(255, 255, 255, 0.22));
+      box-shadow: 0 0 0 1px var(--scoresheet-avatar-shadow, rgba(0, 0, 0, 0.18));
     `;
 
     const WinnerCrown = styled(motion.div)`
@@ -1045,19 +1045,21 @@ function SunglassesIcon({ theme }) {
           />
         </>
       )}
-      <path d="M3.8 12.1L6.9 13.6" stroke={theme.frameStroke} strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M27.1 13.6L30.2 12.1" stroke={theme.frameStroke} strokeWidth="1.8" strokeLinecap="round" />
-      <rect x="6.3" y="10.6" width="10.2" height="7.2" rx="2.5" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.35" />
-      <rect x="17.5" y="10.6" width="10.2" height="7.2" rx="2.5" fill={theme.frameFill} stroke={theme.frameStroke} strokeWidth="1.35" />
-      <rect x="6.3" y="10.6" width="10.2" height="7.2" rx="2.5" fill="none" stroke={theme.rimHighlight} strokeWidth="0.65" opacity="0.95" />
-      <rect x="17.5" y="10.6" width="10.2" height="7.2" rx="2.5" fill="none" stroke={theme.rimHighlight} strokeWidth="0.65" opacity="0.95" />
-      <rect x="7.2" y="11.3" width="8.4" height="5.8" rx="1.8" fill="#050505" />
-      <rect x="18.4" y="11.3" width="8.4" height="5.8" rx="1.8" fill="#050505" />
-      <rect x="15.7" y="12.3" width="2.7" height="1.8" rx="0.9" fill={theme.frameStroke} />
+      <rect x="3.8" y="12.1" width="3.2" height="1.9" rx="0.95" fill={theme.frameStroke} />
+      <rect x="27" y="12.1" width="3.2" height="1.9" rx="0.95" fill={theme.frameStroke} />
+      <rect x="6.1" y="10.2" width="10.8" height="8.4" rx="2.7" fill={theme.frameStroke} />
+      <rect x="17.1" y="10.2" width="10.8" height="8.4" rx="2.7" fill={theme.frameStroke} />
+      <rect x="7.3" y="11.3" width="8.4" height="6.1" rx="1.9" fill="#050505" />
+      <rect x="18.3" y="11.3" width="8.4" height="6.1" rx="1.9" fill="#050505" />
+      <rect x="15.2" y="12.2" width="3.6" height="2.2" rx="1.1" fill={theme.frameStroke} />
+      <rect x="6.9" y="10.9" width="9.2" height="1.05" rx="0.52" fill={theme.rimHighlight} opacity="0.8" />
+      <rect x="17.9" y="10.9" width="9.2" height="1.05" rx="0.52" fill={theme.rimHighlight} opacity="0.8" />
       {theme?.sparkle && (
         <>
-          <path d="M8.6 9.7L9.1 10.8L10.3 11.1L9.4 11.9L9.6 13.1L8.6 12.5L7.5 13.1L7.7 11.9L6.8 11.1L8 10.8Z" fill={theme.sparkleColor} opacity="0.9" />
-          <path d="M24.7 9L25.2 10L26.2 10.3L25.4 11L25.6 12L24.7 11.5L23.8 12L24 11L23.2 10.3L24.2 10Z" fill={theme.sparkleColor} opacity="0.85" />
+          <rect x="8.8" y="8.9" width="1.1" height="3.6" rx="0.5" fill={theme.sparkleColor} opacity="0.92" />
+          <rect x="7.55" y="10.15" width="3.6" height="1.1" rx="0.5" fill={theme.sparkleColor} opacity="0.92" />
+          <rect x="24.8" y="8.5" width="1.05" height="3.2" rx="0.5" fill={theme.sparkleColor} opacity="0.88" />
+          <rect x="23.7" y="9.6" width="3.2" height="1.05" rx="0.5" fill={theme.sparkleColor} opacity="0.88" />
         </>
       )}
     </svg>
@@ -2756,6 +2758,96 @@ const PlayerTable = () => {
 
 
 
+  const roundNavigationControls = (
+    <CompactTopControlGroup>
+      <StyledFormControl>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DatePicker
+              open={openDatePicker}
+              value={selectedDate ? dayjs(selectedDate) : null}
+                onChange={(newValue) => {
+                  if (!newValue) {
+                    return;
+                  }
+                  const formattedDate = dayjs(newValue).format('YYYY-MM-DD');
+                  handleChangeDate(formattedDate);
+                  setOpenDatePicker(false);
+                }}
+              onClose={() => setOpenDatePicker(false)}
+              slots={{
+                  day: CustomDay,
+              }}
+              slotProps={{
+                textField: {
+                  ref: datePickerFieldRef,
+                  onClick: () => setOpenDatePicker(true),
+                  placeholder: 'Select date',
+                  inputProps: {
+                    readOnly: true,
+                    style: {
+                      cursor: 'pointer',
+                    },
+                  },
+                  sx: {
+                    minWidth: isCompactScreen ? (isSmallScreen ? '9.6rem' : '10.25rem') : '9.5rem',
+                    maxWidth: isCompactScreen ? (isSmallScreen ? '9.6rem' : '10.25rem') : '10.25rem',
+                    margin: isCompactScreen ? 0 : '0.4rem',
+                    '& .MuiInputBase-root': {
+                      backgroundColor: 'var(--scoresheet-surface, #333)',
+                      color: 'var(--scoresheet-text, #fff)',
+                      fontFamily: 'Monaco',
+                      borderRadius: 0,
+                      cursor: 'pointer',
+                    },
+                    '& .MuiInputAdornment-root': {
+                      marginLeft: 0,
+                      marginRight: '0.2rem',
+                    },
+                    '& .MuiIconButton-root': {
+                      color: 'var(--scoresheet-text, #fff)',
+                      padding: '4px',
+                    },
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      border: 'none',
+                    },
+                    '& input': {
+                      color: 'var(--scoresheet-text, #fff)',
+                      fontFamily: 'Monaco',
+                      textAlign: 'center',
+                      fontSize: isCompactScreen ? '1rem' : undefined,
+                      padding: isCompactScreen ? '10px 10px 10px 12px' : '8px 8px 8px 12px',
+                      cursor: 'pointer',
+                    },
+                  },
+                },
+                day: {
+                  sortedDates,
+                },
+              }}
+              />
+          </LocalizationProvider>
+      </StyledFormControl>
+
+      <StyledFormControl>
+          <StyledInputLabel className={"showonsmall"}>View Round</StyledInputLabel>
+            <StyledSelect
+              className={"showonsmall"}
+              value={selectedColumnIndex.toString()}
+              MenuProps={dropdownMenuProps}
+              onChange={e => {
+                  const value = parseInt(e.target.value, 10);
+                  setSelectedColumnIndex(value);
+              }}
+          >
+              <MenuItem value={1}>Joker</MenuItem>
+              {rounds.map((round, index) => (
+                  <MenuItem key={index} value={index+2}>{round.title}</MenuItem>
+              ))}
+          </StyledSelect>
+      </StyledFormControl>
+    </CompactTopControlGroup>
+  );
+
   return (
     <>
     <GlobalStyle />
@@ -2788,94 +2880,7 @@ const PlayerTable = () => {
             {/*        Today*/}
             {/*    </StyledButton>*/}
             {/*</StyledFormControl>*/}
-
-            <CompactTopControlGroup>
-              <StyledFormControl>
-                  <LocalizationProvider dateAdapter={AdapterDayjs}>
-                      <DatePicker
-                      open={openDatePicker}
-                      value={selectedDate ? dayjs(selectedDate) : null}
-                        onChange={(newValue) => {
-                          if (!newValue) {
-                            return;
-                          }
-                          const formattedDate = dayjs(newValue).format('YYYY-MM-DD');
-                          handleChangeDate(formattedDate);
-                          setOpenDatePicker(false); // Close the DatePicker after selection
-                        }}
-                      onClose={() => setOpenDatePicker(false)}
-                      slots={{
-                          day: CustomDay,
-                      }}
-                      slotProps={{
-                        textField: {
-                          ref: datePickerFieldRef,
-                          onClick: () => setOpenDatePicker(true),
-                          placeholder: 'Select date',
-                          inputProps: {
-                            readOnly: true,
-                            style: {
-                              cursor: 'pointer',
-                            },
-                          },
-                          sx: {
-                            minWidth: isCompactScreen ? (isSmallScreen ? '9.6rem' : '10.25rem') : '9.5rem',
-                            maxWidth: isCompactScreen ? (isSmallScreen ? '9.6rem' : '10.25rem') : '10.25rem',
-                            margin: isCompactScreen ? 0 : '0.4rem',
-                            '& .MuiInputBase-root': {
-                              backgroundColor: '#333',
-                              color: '#fff',
-                              fontFamily: 'Monaco',
-                              borderRadius: 0,
-                              cursor: 'pointer',
-                            },
-                            '& .MuiInputAdornment-root': {
-                              marginLeft: 0,
-                              marginRight: '0.2rem',
-                            },
-                            '& .MuiIconButton-root': {
-                              color: '#fff',
-                              padding: '4px',
-                            },
-                            '& .MuiOutlinedInput-notchedOutline': {
-                              border: 'none',
-                            },
-                            '& input': {
-                              color: '#fff',
-                              fontFamily: 'Monaco',
-                              textAlign: 'center',
-                              fontSize: isCompactScreen ? '1rem' : undefined,
-                              padding: isCompactScreen ? '10px 10px 10px 12px' : '8px 8px 8px 12px',
-                              cursor: 'pointer',
-                            },
-                          },
-                        },
-                        day: {
-                          sortedDates,
-                        },
-                      }}
-                      />
-                  </LocalizationProvider>
-              </StyledFormControl>
-
-              <StyledFormControl>
-                  <StyledInputLabel className={"showonsmall"}>Round</StyledInputLabel>
-                    <StyledSelect
-                      className={"showonsmall"}
-                      value={selectedColumnIndex.toString()}
-                      MenuProps={dropdownMenuProps}
-                      onChange={e => {
-                          const value = parseInt(e.target.value, 10);
-                          setSelectedColumnIndex(value);
-                      }}
-                  >
-                      <MenuItem value={1}>Joker</MenuItem>
-                      {rounds.map((round, index) => (
-                          <MenuItem key={index} value={index+2}>{round.title}</MenuItem>
-                      ))}
-                  </StyledSelect>
-              </StyledFormControl>
-            </CompactTopControlGroup>
+            {!isCompactScreen && roundNavigationControls}
 
             <CompactTopControlGroup>
               <StyledTextField
@@ -2924,6 +2929,7 @@ const PlayerTable = () => {
             <StyledButton variant="contained" color="secondary" onClick={() => handleAddColumn(selectedDate, rounds.length + 1)}>
               Add Round
             </StyledButton>
+            {isCompactScreen && roundNavigationControls}
 
             {!isCompactScreen && (
               <StyledButton variant="contained" color="primary" onClick={saveData} style={{ backgroundColor: isSaved ? '#1e7662' : '#810e19' }}>
@@ -3119,8 +3125,8 @@ const PlayerTable = () => {
                                       ? '#1e7662'
                                       : roundCreators[round.title] === getDisplayNameForPlayerField(player)
                                           ? '#810e19'
-                                          : '#333',
-                              color: 'white',
+                                          : 'var(--scoresheet-surface, #333)',
+                              color: 'var(--scoresheet-text, #fff)',
                               fontFamily: 'Monaco',
                                 fontSize: "1rem",
                           }}
@@ -3418,8 +3424,8 @@ const PlayerTable = () => {
         }
         PaperProps={{
           sx: {
-            backgroundColor: '#333',
-            color: '#fff',
+            backgroundColor: 'var(--scoresheet-menu-bg, #333)',
+            color: 'var(--scoresheet-text, #fff)',
             borderRadius: 0,
             border: '1px solid #1e7662',
             boxShadow: '0 16px 36px rgba(0, 0, 0, 0.45)',
@@ -3430,10 +3436,10 @@ const PlayerTable = () => {
             },
             '& .MuiMenuItem-root.Mui-disabled': {
               opacity: 0.78,
-              color: 'rgba(255,255,255,0.8)',
+              color: 'var(--scoresheet-text-muted, rgba(255,255,255,0.8))',
             },
             '& .MuiMenuItem-root:hover': {
-              backgroundColor: 'rgba(30, 118, 98, 0.22)',
+              backgroundColor: 'var(--scoresheet-menu-hover, rgba(30, 118, 98, 0.22))',
             },
           },
         }}
@@ -3453,31 +3459,31 @@ const PlayerTable = () => {
         maxWidth="xs"
         PaperProps={{
           sx: {
-            backgroundColor: '#333',
-            color: '#fff',
+            backgroundColor: 'var(--scoresheet-menu-bg, #333)',
+            color: 'var(--scoresheet-text, #fff)',
             borderRadius: 0,
             border: '1px solid #1e7662',
             boxShadow: '0 16px 36px rgba(0, 0, 0, 0.45)',
           },
         }}
       >
-        <DialogTitle sx={{ fontFamily: 'Monaco, monospace', color: '#fff' }}>Award Style Point</DialogTitle>
-        <DialogContent sx={{ color: '#fff' }}>
+        <DialogTitle sx={{ fontFamily: 'Monaco, monospace', color: 'var(--scoresheet-text, #fff)' }}>Award Style Point</DialogTitle>
+        <DialogContent sx={{ color: 'var(--scoresheet-text, #fff)' }}>
           <Box sx={{ pt: 1 }}>
             <FormControl
               fullWidth
               sx={{
-                '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.72)', fontFamily: 'Monaco, monospace' },
-                '& .MuiInputLabel-root.Mui-focused': { color: '#fff' },
+                '& .MuiInputLabel-root': { color: 'var(--scoresheet-text-muted, rgba(255,255,255,0.72))', fontFamily: 'Monaco, monospace' },
+                '& .MuiInputLabel-root.Mui-focused': { color: 'var(--scoresheet-text, #fff)' },
                 '& .MuiOutlinedInput-root': {
-                  backgroundColor: '#333',
-                  color: '#fff',
+                  backgroundColor: 'var(--scoresheet-surface, #333)',
+                  color: 'var(--scoresheet-text, #fff)',
                   fontFamily: 'Monaco, monospace',
                 },
                 '& .MuiOutlinedInput-notchedOutline': {
                   borderColor: '#1e7662',
                 },
-                '& .MuiSvgIcon-root': { color: '#fff' },
+                '& .MuiSvgIcon-root': { color: 'var(--scoresheet-text, #fff)' },
               }}
             >
               <InputLabel id="style-point-player-label">Player</InputLabel>
@@ -3489,8 +3495,8 @@ const PlayerTable = () => {
                 MenuProps={{
                   PaperProps: {
                     sx: {
-                      backgroundColor: '#333',
-                      color: '#fff',
+                      backgroundColor: 'var(--scoresheet-menu-bg, #333)',
+                      color: 'var(--scoresheet-text, #fff)',
                       border: '1px solid #1e7662',
                       '& .MuiMenuItem-root': {
                         fontFamily: 'Monaco, monospace',
@@ -3499,7 +3505,7 @@ const PlayerTable = () => {
                         backgroundColor: '#1e7662',
                       },
                       '& .MuiMenuItem-root:hover': {
-                        backgroundColor: '#185e4f',
+                        backgroundColor: 'var(--scoresheet-menu-hover, #185e4f)',
                       },
                     },
                   },
@@ -3530,31 +3536,31 @@ const PlayerTable = () => {
         maxWidth="xs"
         PaperProps={{
           sx: {
-            backgroundColor: '#333',
-            color: '#fff',
+            backgroundColor: 'var(--scoresheet-menu-bg, #333)',
+            color: 'var(--scoresheet-text, #fff)',
             borderRadius: 0,
             border: '1px solid #1e7662',
             boxShadow: '0 16px 36px rgba(0, 0, 0, 0.45)',
           },
         }}
       >
-        <DialogTitle sx={{ fontFamily: 'Monaco, monospace', color: '#fff' }}>Set Tiebreak Winner</DialogTitle>
-        <DialogContent sx={{ color: '#fff' }}>
+        <DialogTitle sx={{ fontFamily: 'Monaco, monospace', color: 'var(--scoresheet-text, #fff)' }}>Set Tiebreak Winner</DialogTitle>
+        <DialogContent sx={{ color: 'var(--scoresheet-text, #fff)' }}>
           <Box sx={{ pt: 1 }}>
             <FormControl
               fullWidth
               sx={{
-                '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.72)', fontFamily: 'Monaco, monospace' },
-                '& .MuiInputLabel-root.Mui-focused': { color: '#fff' },
+                '& .MuiInputLabel-root': { color: 'var(--scoresheet-text-muted, rgba(255,255,255,0.72))', fontFamily: 'Monaco, monospace' },
+                '& .MuiInputLabel-root.Mui-focused': { color: 'var(--scoresheet-text, #fff)' },
                 '& .MuiOutlinedInput-root': {
-                  backgroundColor: '#333',
-                  color: '#fff',
+                  backgroundColor: 'var(--scoresheet-surface, #333)',
+                  color: 'var(--scoresheet-text, #fff)',
                   fontFamily: 'Monaco, monospace',
                 },
                 '& .MuiOutlinedInput-notchedOutline': {
                   borderColor: '#1e7662',
                 },
-                '& .MuiSvgIcon-root': { color: '#fff' },
+                '& .MuiSvgIcon-root': { color: 'var(--scoresheet-text, #fff)' },
               }}
             >
               <InputLabel id="tiebreak-player-label">Player</InputLabel>
@@ -3566,8 +3572,8 @@ const PlayerTable = () => {
                 MenuProps={{
                   PaperProps: {
                     sx: {
-                      backgroundColor: '#333',
-                      color: '#fff',
+                      backgroundColor: 'var(--scoresheet-menu-bg, #333)',
+                      color: 'var(--scoresheet-text, #fff)',
                       border: '1px solid #1e7662',
                       '& .MuiMenuItem-root': {
                         fontFamily: 'Monaco, monospace',
@@ -3576,7 +3582,7 @@ const PlayerTable = () => {
                         backgroundColor: '#1e7662',
                       },
                       '& .MuiMenuItem-root:hover': {
-                        backgroundColor: '#185e4f',
+                        backgroundColor: 'var(--scoresheet-menu-hover, #185e4f)',
                       },
                     },
                   },

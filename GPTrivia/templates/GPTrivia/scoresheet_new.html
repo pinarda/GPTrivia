@@ -10,6 +10,29 @@
   <style>
     :root {
       --shell-chrome-color: #1e7662;
+      --scoresheet-surface: #333;
+      --scoresheet-surface-alt: #333;
+      --scoresheet-text: #fff;
+      --scoresheet-text-muted: rgba(255, 255, 255, 0.5);
+      --scoresheet-row-divider: #333;
+      --scoresheet-detail-panel: rgba(20, 20, 20, 0.35);
+      --scoresheet-border-soft: rgba(255, 255, 255, 0.22);
+      --scoresheet-avatar-shadow: rgba(0, 0, 0, 0.18);
+      --scoresheet-menu-bg: #333;
+      --scoresheet-menu-hover: #185e4f;
+    }
+
+    body.site-shell[data-profile-theme="light"] {
+      --scoresheet-surface: #eef2f5;
+      --scoresheet-surface-alt: #f8fafb;
+      --scoresheet-text: #1b2530;
+      --scoresheet-text-muted: rgba(27, 37, 48, 0.56);
+      --scoresheet-row-divider: #d7dee5;
+      --scoresheet-detail-panel: rgba(255, 255, 255, 0.72);
+      --scoresheet-border-soft: rgba(27, 37, 48, 0.18);
+      --scoresheet-avatar-shadow: rgba(27, 37, 48, 0.08);
+      --scoresheet-menu-bg: #f8fafb;
+      --scoresheet-menu-hover: rgba(30, 118, 98, 0.14);
     }
 
     .scoresheet-animation-controls {
@@ -76,7 +99,7 @@
     {{ player_icon_map|json_script:"scoresheet-player-icons" }}
     {{ player_color_map|json_script:"scoresheet-player-colors" }}
 
-    <script src="{% static 'scoresheet/build/static/js/main.2565e2e5.js' %}"></script>
+    <script src="{% static 'scoresheet/build/static/js/main.b6a10d20.js' %}"></script>
     <audio id="snake-hiss" src="/static/img/snake-hissing-6092.mp3" preload="auto"></audio>
 
     <div id="star-overlay"></div>

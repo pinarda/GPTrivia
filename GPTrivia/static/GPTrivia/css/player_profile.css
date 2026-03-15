@@ -108,6 +108,20 @@ form {
     font-size: 0.8rem;
 }
 
+.profile-settings-form select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: #20233a;
+    color: #ffffff;
+    font-family: Monaco, monospace;
+    font-size: 0.82rem;
+    border-radius: 0;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
 .profile-color-input-row {
     display: flex;
     align-items: center;

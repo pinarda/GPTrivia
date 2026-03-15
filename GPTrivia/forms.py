@@ -26,9 +26,10 @@ class ProfilePictureForm(forms.ModelForm):
 
     class Meta:
         model = Profile
-        fields = ['profile_picture', 'profile_color']
+        fields = ['profile_picture', 'profile_color', 'site_theme']
         widgets = {
             'profile_color': forms.TextInput(attrs={'type': 'color'}),
+            'site_theme': forms.Select(),
         }
 
     def __init__(self, *args, **kwargs):
@@ -46,6 +47,10 @@ class ProfilePictureForm(forms.ModelForm):
         self.fields['profile_color'].required = False
         self.fields['profile_color'].widget.attrs.update({
             'id': 'profile-color-input',
+        })
+        self.fields['site_theme'].required = False
+        self.fields['site_theme'].widget.attrs.update({
+            'id': 'profile-theme-input',
         })
         self.initial.setdefault('profile_color', effective_color or '#333333')
 
