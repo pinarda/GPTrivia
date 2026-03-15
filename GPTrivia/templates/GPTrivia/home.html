@@ -650,36 +650,47 @@
 }
 
 .coop-box {
-    width: 20px;
-    height: 20px;
-    accent-color: #0073cc;
+    width: 25px;
+    height: 25px;
+    border: 2px solid #0073cc;
+    background-color: white;
+    color: #0073cc;
     cursor: pointer;
     position: relative;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     vertical-align: middle;
     margin: 0;
-    appearance: auto;
-    -webkit-appearance: checkbox;
-    border-radius: 0;
+    padding: 0;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 0 !important;
     outline: none;
     box-shadow: none;
+    line-height: 1;
 }
 
 .coop-box::before {
-    content: none;
+    content: '✔';
+    font-size: 20px;
+    display: none;
+    line-height: 1;
+    color: white;
 }
 
 .coop-box:checked {
-    background-color: initial;
-    color: initial;
+    background-color: #0073cc;
+    color: white;
 }
 
 .coop-box:checked::before {
-    display: none;
+    display: block;
 }
 
 .coop-box:hover {
-    filter: brightness(0.95);
+    border-color: #005a99;
 }
 
 .round-selection-table-cell input[type="text"] {
