@@ -177,11 +177,11 @@ import {
     const StyledTableCell = styled(TableCell)`
       background-color: #333;
       && {
-        padding: 0.5rem;
+        padding: 0.6rem;
         text-align: center;
       }
       div {
-          font-size: 1rem;
+          font-size: 1.05rem;
           font-family: "Monaco";
           padding: 0;
         }
@@ -189,13 +189,13 @@ import {
         color: #fff;
         text-align: center;
         font-family: Monaco;
-        font-size: 1rem;
+        font-size: 1.05rem;
       }
       a {
         color: #fff;
         text-decoration: none;  
         font-family: Monaco;
-        font-size: 1rem;
+        font-size: 1.05rem;
         &:hover {
           color: ${props => resolvePlayerColor(props.player) || '#000'};
         }
@@ -211,13 +211,16 @@ import {
         background-color: #1e7662; /* Green */
         border: none;
         color: white;
-        padding: 5px 12px;
-        margin: 5px;
+        padding: 0.65rem 1rem;
+        margin: 0;
         text-align: center;
         text-decoration: none;
-        font-size: 1rem;
+        font-size: 1.05rem;
         box-sizing: border-box;
-      font-family: "Monaco";
+        font-family: "Monaco";
+        min-height: 2.85rem;
+        min-width: 7.75rem;
+        line-height: 1.2;
       
       &:hover {
         background-color: ${props => darkenBackground('#1e7662')};// Darken the background color on hover
@@ -249,15 +252,15 @@ import {
 
         && .MuiSelect-select {
           color: #fff;
-          font-size: 0.75rem;
+          font-size: 0.92rem;
           font-family: "Monaco";
-          padding: 0.16rem 1.45rem 0.16rem 0.45rem;
+          padding: 0.4rem 1.7rem 0.4rem 0.6rem;
           min-height: unset;
         }
 
         && .MuiSvgIcon-root {
           color: #fff;
-          font-size: 1.05rem;
+          font-size: 1.15rem;
         }
     `;
 
@@ -289,11 +292,11 @@ import {
     const StyledFormControl = styled(FormControl)`
         background-color: #333;
         color: #fff;
-        max-width: 8rem;
+        max-width: 11rem;
         && * {
           color: #fff;
           font-family: "Monaco";
-          font-size: 0.8rem;
+          font-size: 0.92rem;
           padding: 0.15rem;
           margin: 0rem;
           //margin: 5px 12px;
@@ -304,7 +307,7 @@ import {
       color: #fff;
       text-align: center;
         font-family: Monaco;
-        font-size: 0.8rem;
+        font-size: 0.92rem;
     `;
 
 
@@ -313,11 +316,11 @@ import {
     const StyledFormControlLabel = styled(FormControlLabel)`
         background-color: #333;
         color: #fff;
-        font-size: 0.8rem;
+        font-size: 0.92rem;
       && * {
         color: #fff;
         font-family: "Monaco";
-        font-size: 0.9rem;
+        font-size: 0.98rem;
       }
     `;
 
@@ -351,7 +354,7 @@ import {
         }
       
       * {
-        font-size: 1rem;
+        font-size: 1.05rem;
         font-family: "Monaco";
         color: #fff;
       }
@@ -359,8 +362,8 @@ import {
       div > input {
         color: #fff;
         padding: 0px; 
-        margin: 8px 12px;
-        font-size: 0.8rem;
+        margin: 0.55rem 0.75rem;
+        font-size: 0.96rem;
         font-family: "Monaco";
         background-color: #333;
       }
@@ -421,20 +424,20 @@ import {
     const MetadataSection = styled.div`
       display: flex;
       justify-content: center;
-      padding: 0.08rem 0 0.9rem;
+      padding: 0.15rem 0 1.1rem;
     `;
 
     const MetadataGrid = styled.div`
-      width: min(100%, 960px);
+      width: min(100%, 1080px);
       display: grid;
-      grid-template-columns: repeat(3, minmax(180px, 220px));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       justify-content: center;
-      gap: 0.85rem;
+      gap: 0.8rem;
       padding: 0 0.75rem;
 
       @media (max-width: 919px) {
         grid-template-columns: minmax(0, 1fr);
-        width: min(100%, 24rem);
+        width: min(100%, 32rem);
       }
     `;
 
@@ -449,7 +452,7 @@ import {
       color: #fff;
       text-align: center;
       font-family: Monaco;
-      font-size: 0.8rem;
+      font-size: 0.92rem;
       margin-bottom: 0.35rem;
     `;
 
@@ -473,7 +476,7 @@ import {
       && textarea {
         color: #fff;
         font-family: "Monaco";
-        font-size: 0.9rem;
+        font-size: 1rem;
         line-height: 1.4;
         padding: 0.35rem 0.55rem;
         text-align: center;
@@ -511,7 +514,7 @@ import {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.55rem;
       flex-wrap: wrap;
     `;
 
@@ -521,11 +524,15 @@ import {
       align-items: center;
       gap: 0.55rem;
       flex-wrap: wrap;
+      width: min(100%, 52rem);
+
+      & > button {
+        flex: 1 1 12.5rem;
+      }
     `;
 
     const MetadataActionPrimaryButton = styled(StyledButton)`
-      margin: 0;
-      min-width: 210px;
+      min-width: 12.5rem;
     `;
 
     const PlayerNameStack = styled.div`
@@ -539,6 +546,7 @@ import {
       align-items: center;
       justify-content: center;
       gap: 0.7rem;
+      padding-inline: 0.2rem;
     `;
 
     const PlayerNameLabel = styled.span`
@@ -1914,8 +1922,8 @@ const PlayerTable = () => {
       const rect = anchorNode.getBoundingClientRect();
       window.dispatchEvent(new CustomEvent('scoresheet:burst-stars', {
         detail: {
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2,
+          x: rect.left + (rect.width * 0.34),
+          y: Math.max(12, rect.top + 4),
         },
       }));
     }, []);
@@ -2280,19 +2288,20 @@ const PlayerTable = () => {
     <>
     <GlobalStyle />
     <StyledTableContainer>
-      <Grid container alignItems="center" spacing={1}>
+      <Grid container alignItems="center" spacing={1.25} justifyContent="center">
 
         {/* Left Section */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12}>
           <Box
           display="flex"
           alignItems="center"
-          justifyContent={isSmallScreen ? 'center' : 'flex-start'}
-          flexDirection={isSmallScreen ? 'column' : 'row'}
+          justifyContent="center"
+          flexDirection="row"
           flexWrap="wrap"
-          gap={isSmallScreen ? 1 : 0}
-          padding={isSmallScreen ? '0.4rem' : '0.2rem'}
-          marginLeft={isSmallScreen ? '0' : '0.2rem'}>
+          gap={0.65}
+          padding={isSmallScreen ? '0.4rem 0.35rem 0.25rem' : '0.35rem 0.35rem 0.2rem'}
+          maxWidth="72rem"
+          margin="0 auto">
             {/*<StyledFormControl>*/}
             {/*  <Select*/}
             {/*    value={selectedDate}*/}
@@ -2345,9 +2354,9 @@ const PlayerTable = () => {
                           },
                         },
                         sx: {
-                          minWidth: isSmallScreen ? '100%' : '9.5rem',
-                          maxWidth: isSmallScreen ? '18rem' : '10.25rem',
-                          margin: '0.4rem',
+                          minWidth: isSmallScreen ? 'min(100%, 15rem)' : '10.75rem',
+                          maxWidth: isSmallScreen ? '15rem' : '11rem',
+                          margin: 0,
                           '& .MuiInputBase-root': {
                             backgroundColor: '#333',
                             color: '#fff',
@@ -2370,7 +2379,8 @@ const PlayerTable = () => {
                             color: '#fff',
                             fontFamily: 'Monaco',
                             textAlign: 'center',
-                            padding: '8px 8px 8px 12px',
+                            fontSize: '1rem',
+                            padding: '10px 10px 10px 12px',
                             cursor: 'pointer',
                           },
                         },
@@ -2397,10 +2407,9 @@ const PlayerTable = () => {
               variant="outlined"
               placeholder="Add player"
               style={{
-                margin: "0.4rem",
-                marginLeft: isSmallScreen ? "0.4rem" : "1rem",
-                width: isSmallScreen ? '100%' : undefined,
-                maxWidth: isSmallScreen ? '18rem' : undefined,
+                margin: 0,
+                width: isSmallScreen ? 'min(100%, 15rem)' : '11.5rem',
+                maxWidth: isSmallScreen ? '15rem' : '11.5rem',
               }}
             />
 
@@ -2428,14 +2437,17 @@ const PlayerTable = () => {
         </Grid>
 
         {/* Right Section */}
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12}>
           <Box
             display="flex"
-            justifyContent={isSmallScreen ? 'center' : 'flex-end'}
+            justifyContent="center"
             alignItems="center"
-            flexDirection={isSmallScreen ? 'column' : 'row'}
+            flexDirection="row"
             flexWrap="wrap"
-            gap={isSmallScreen ? 1 : 0}
+            gap={0.65}
+            padding={isSmallScreen ? '0 0.35rem 0.45rem' : '0 0.35rem 0.45rem'}
+            maxWidth="72rem"
+            margin="0 auto"
           >
             <StyledButton variant="contained" color="secondary" onClick={() => setIsBottomRowVisible(prevState => !prevState)}>
               Toggle Details
@@ -2551,7 +2563,7 @@ const PlayerTable = () => {
                   <StyledTableCell player={player}>
                       <PlayerNameStack>
                           <PlayerNameAnchor>
-                              <PlayerNameLabel>
+                              <PlayerNameLabel ref={(node) => setStylePointAnchor(player, node)}>
                                   {crownedPlayer === player && (
                                       <WinnerCrown
                                           initial={{ opacity: 0, y: -5, rotate: 6, scale: 0.8 }}
@@ -2563,7 +2575,6 @@ const PlayerTable = () => {
                                   )}
                                   {hasStylePointAward(stylePoints, player) && (
                                       <StylePointShades
-                                          ref={(node) => setStylePointAnchor(player, node)}
                                           initial={{ opacity: 0, y: -3, rotate: -30, scale: 0.8 }}
                                           animate={{ opacity: 1, y: 0, rotate: -18, scale: 1 }}
                                           transition={{ duration: 0.28, ease: 'easeOut' }}
