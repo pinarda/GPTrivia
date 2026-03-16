@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "${GPTRIVIA_SKIP_POST_MERGE_DEPLOY:-0}" == "1" ]]; then
+  exit 0
+fi
+
+REPO_DIR="$(git rev-parse --show-toplevel)"
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+
+if [[ "${CURRENT_BRANCH}" != "ai-refactor" ]]; then
+  exit 0
+fi
+
+echo "post-merge: ai-refactor updated, running server deploy steps..."
+SKIP_GIT_PULL=1 "${REPO_DIR}/update_server.sh"

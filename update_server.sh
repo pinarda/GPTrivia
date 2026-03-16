@@ -2,9 +2,15 @@
 
 set -euo pipefail
 
-REPO_DIR="${HOME}/git/GPTrivia"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="${SCRIPT_DIR}"
 CONDA_SH="${HOME}/miniconda3/etc/profile.d/conda.sh"
 ENV_NAME="GPTrivia"
+SKIP_GIT_PULL="${SKIP_GIT_PULL:-0}"
+
+if [[ ! -f "${REPO_DIR}/manage.py" ]]; then
+  REPO_DIR="${HOME}/git/GPTrivia"
+fi
 
 if [[ ! -d "${REPO_DIR}" ]]; then
   echo "Repo directory not found: ${REPO_DIR}" >&2
@@ -24,7 +30,10 @@ fi
 cd "${REPO_DIR}"
 conda activate "${ENV_NAME}"
 
-git pull --ff-only
+if [[ "${SKIP_GIT_PULL}" != "1" ]]; then
+  GPTRIVIA_SKIP_POST_MERGE_DEPLOY=1 git pull --ff-only
+fi
+
 python manage.py migrate
 python manage.py collectstatic --noinput
 sudo systemctl restart daphne
