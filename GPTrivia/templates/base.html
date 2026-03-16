@@ -138,7 +138,7 @@
         @media (max-width: 750px) {
             body.site-shell {
                 --mobile-header-offset: calc(62px + env(safe-area-inset-top));
-                --mobile-footer-offset: calc(48px + env(safe-area-inset-bottom));
+                --mobile-footer-offset: calc(40px + env(safe-area-inset-bottom));
             }
 
             body.site-shell #menu-button {
@@ -348,6 +348,12 @@
 
             body.site-shell #mobileMenu > div + div {
                 margin-top: 0.32rem;
+            }
+        }
+
+        @media (max-width: 750px) and (pointer: fine) {
+            body.site-shell {
+                --mobile-footer-offset: calc(48px + env(safe-area-inset-bottom));
             }
         }
       </style>

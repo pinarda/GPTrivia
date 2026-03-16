@@ -434,6 +434,10 @@ body.site-shell[data-profile-theme="light"] .spinner {
 .blue { color: #18af9d; }
 .purple { color: #9d4edd; }
 
+body.site-shell {
+    --shell-chrome-color: #240046;
+}
+
 body.site-shell[data-profile-theme="light"] {
     --shell-chrome-color: #9d4edd;
     background-color: #f4f1e8;
