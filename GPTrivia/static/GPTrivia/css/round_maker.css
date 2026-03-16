@@ -431,7 +431,9 @@ body.site-shell[data-profile-theme="light"] {
 }
 
 body.site-shell[data-profile-theme="light"] .intro-text p,
-body.site-shell[data-profile-theme="light"] .intro-text strong {
+body.site-shell[data-profile-theme="light"] .intro-text strong,
+body.site-shell[data-profile-theme="light"] .intro-text,
+body.site-shell[data-profile-theme="light"] .intro-text * {
     color: #1b2530 !important;
 }
 
@@ -448,6 +450,8 @@ body.site-shell[data-profile-theme="light"] .form-group label,
 body.site-shell[data-profile-theme="light"] .checkbox-label,
 body.site-shell[data-profile-theme="light"] .alternative-option p,
 body.site-shell[data-profile-theme="light"] .intro-text + .accordion-container,
+body.site-shell[data-profile-theme="light"] .accordion-container,
+body.site-shell[data-profile-theme="light"] .accordion-item,
 body.site-shell[data-profile-theme="light"] .content-wrapper,
 body.site-shell[data-profile-theme="light"] #chat-response,
 body.site-shell[data-profile-theme="light"] #question-response {
