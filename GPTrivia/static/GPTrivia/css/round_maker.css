@@ -415,6 +415,7 @@ select option {
 .purple { color: #9d4edd; }
 
 body.site-shell[data-profile-theme="light"] {
+    --shell-chrome-color: #9d4edd;
     background-color: #f4f1e8;
     color: #1b2530;
     --swoop-page-text: #1b2530;
@@ -431,7 +432,7 @@ body.site-shell[data-profile-theme="light"] {
 
 body.site-shell[data-profile-theme="light"] .intro-text p,
 body.site-shell[data-profile-theme="light"] .intro-text strong {
-    color: #ffffff;
+    color: #1b2530 !important;
 }
 
 body.site-shell[data-profile-theme="light"] .panel,
