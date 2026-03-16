@@ -18,6 +18,17 @@ body.site-shell[data-profile-theme="light"] {
     --rounds-search-text: #1b2530;
 }
 
+body.site-shell[data-profile-theme="light"],
+body.site-shell[data-profile-theme="light"] table,
+body.site-shell[data-profile-theme="light"] tbody,
+body.site-shell[data-profile-theme="light"] tr,
+body.site-shell[data-profile-theme="light"] td,
+body.site-shell[data-profile-theme="light"] .title-cell,
+body.site-shell[data-profile-theme="light"] a,
+body.site-shell[data-profile-theme="light"] #roundList tbody tr td {
+    color: #1b2530 !important;
+}
+
 body {
   font-family: Arial, sans-serif;
   background-color: var(--rounds-page-bg);

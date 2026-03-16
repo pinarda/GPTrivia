@@ -40,6 +40,19 @@ body.site-shell[data-profile-theme="light"] {
   background-image: linear-gradient(78deg, #f4f1e8 0%, #ece4d3 100%);
 }
 
+body.site-shell[data-profile-theme="light"] .select-label,
+body.site-shell[data-profile-theme="light"] .page-header,
+body.site-shell[data-profile-theme="light"] .page-subheader,
+body.site-shell[data-profile-theme="light"] #plot-checkbox,
+body.site-shell[data-profile-theme="light"] #plot-checkbox label,
+body.site-shell[data-profile-theme="light"] #column-checkboxes,
+body.site-shell[data-profile-theme="light"] #rounds-table,
+body.site-shell[data-profile-theme="light"] .table-class,
+body.site-shell[data-profile-theme="light"] .table-class td,
+body.site-shell[data-profile-theme="light"] .table-class th {
+    color: #1b2530 !important;
+}
+
 #roundsButton {
     font-family: YoungSerif;
     border-radius: 2px;
