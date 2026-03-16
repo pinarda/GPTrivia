@@ -2876,6 +2876,7 @@ const PlayerTable = () => {
                       color: `${dateFieldText} !important`,
                     },
                     '& .MuiPickersSectionList-root, & .MuiPickersInputBase-sectionsContainer, & .MuiPickersSectionList-sectionContent, & .MuiInputBase-input': {
+                      backgroundColor: `${dateFieldBg} !important`,
                       color: `${dateFieldText} !important`,
                     },
                     '& .MuiInputAdornment-root': {
