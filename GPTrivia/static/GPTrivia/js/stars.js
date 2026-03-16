@@ -89,7 +89,7 @@ function isRicochetColor(color) {
 function collectRicochetSurfaces() {
   const seen = new Set();
   const surfaces = [];
-  const elements = document.querySelectorAll('body *');
+  const elements = document.querySelectorAll('.star-ricochet');
 
   for (const element of elements) {
     if (
@@ -111,19 +111,6 @@ function collectRicochetSurfaces() {
       style.visibility === 'hidden' ||
       Number.parseFloat(style.opacity) === 0
     ) {
-      continue;
-    }
-
-    const hasRicochetColor = [
-      style.backgroundColor,
-      style.borderTopColor,
-      style.borderRightColor,
-      style.borderBottomColor,
-      style.borderLeftColor,
-      style.color,
-    ].some(isRicochetColor);
-
-    if (!hasRicochetColor) {
       continue;
     }
 

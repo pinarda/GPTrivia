@@ -219,7 +219,9 @@ import {
       borderBottom: '2px solid var(--scoresheet-row-divider, #333)',
     });
 
-    const StyledButton = styled.button`
+    const StyledButton = styled.button.attrs(({ className }) => ({
+      className: className ? `star-ricochet ${className}` : 'star-ricochet',
+    }))`
         background-color: #1e7662; /* Green */
         border: none;
         color: white;
@@ -3192,18 +3194,27 @@ const PlayerTable = () => {
                       </JokerFormControl>
                   </StyledTableCell>
                   {rounds.map((round, index) => (
+                      (() => {
+                        const isJokerCell = !isJokerRouletteSpinning && selectedRounds[player] === round.title;
+                        const isCreatorCell = roundCreators[round.title] === playerDisplayName;
+                        const scoreCellClassName = [
+                          index + 2 === selectedColumnIndex ? 'selected-column' : '',
+                          (isJokerCell || isCreatorCell) ? 'star-ricochet' : '',
+                        ].filter(Boolean).join(' ');
+
+                        return (
                       <StyledTableCell
                            sx={{color:textColor}}
-                           className={index + 2 === selectedColumnIndex ? 'selected-column' : ''}
+                           className={scoreCellClassName}
                           key={index}
                           contentEditable
                           style={{
                               backgroundColor:
                                   activeJokerRouletteTitle === round.title
                                       ? '#f3bc34'
-                                      : (!isJokerRouletteSpinning && selectedRounds[player] === round.title)
+                                      : isJokerCell
                                       ? '#1e7662'
-                                      : roundCreators[round.title] === getDisplayNameForPlayerField(player)
+                                      : isCreatorCell
                                           ? '#810e19'
                                           : 'var(--scoresheet-surface, #333)',
                               color: 'var(--scoresheet-text, #fff)',
@@ -3219,6 +3230,8 @@ const PlayerTable = () => {
                       >
                           {getDisplayedRoundScore(scores, player, round)}
                       </StyledTableCell>
+                        );
+                      })()
                   ))}
                   <StyledTableCell>
                   <div className={"textCell"}>
