@@ -964,6 +964,69 @@ import {
           .MuiPopover-root .MuiPaper-root {
             display: block;
           }
+
+          .MuiPickersPopper-root .MuiPaper-root,
+          .MuiDialog-root .MuiPickersLayout-root,
+          .MuiPickersLayout-root {
+            background-color: var(--scoresheet-menu-bg, #333);
+            color: var(--scoresheet-text, #fff);
+            border: 1px solid #1e7662;
+            border-radius: 0;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+            font-family: Monaco, monospace;
+          }
+
+          .MuiPickersLayout-root *,
+          .MuiPickersPopper-root .MuiPaper-root * {
+            font-family: Monaco, monospace;
+          }
+
+          .MuiPickersCalendarHeader-root,
+          .MuiPickersCalendarHeader-label,
+          .MuiDayCalendar-weekDayLabel,
+          .MuiPickersArrowSwitcher-root,
+          .MuiPickersArrowSwitcher-button,
+          .MuiPickersArrowSwitcher-button .MuiSvgIcon-root,
+          .MuiPickersYear-yearButton,
+          .MuiPickersMonth-monthButton,
+          .MuiPickersToolbar-root,
+          .MuiPickersToolbar-content,
+          .MuiPickersToolbarText-root,
+          .MuiPickersLayout-actionBar button {
+            color: var(--scoresheet-text, #fff) !important;
+          }
+
+          .MuiDayCalendar-weekDayLabel,
+          .MuiPickersDay-root.Mui-disabled,
+          .MuiPickersYear-yearButton.Mui-disabled,
+          .MuiPickersMonth-monthButton.Mui-disabled {
+            color: var(--scoresheet-text-muted, rgba(255, 255, 255, 0.52)) !important;
+          }
+
+          .MuiPickersDay-root,
+          .MuiPickersYear-yearButton,
+          .MuiPickersMonth-monthButton {
+            color: var(--scoresheet-text, #fff) !important;
+            background-color: transparent;
+          }
+
+          .MuiPickersDay-root:hover,
+          .MuiPickersYear-yearButton:hover,
+          .MuiPickersMonth-monthButton:hover,
+          .MuiPickersLayout-actionBar button:hover {
+            background-color: var(--scoresheet-menu-hover, rgba(30, 118, 98, 0.22));
+          }
+
+          .MuiPickersDay-root.Mui-selected,
+          .MuiPickersYear-yearButton.Mui-selected,
+          .MuiPickersMonth-monthButton.Mui-selected {
+            background-color: #1e7662 !important;
+            color: #fff !important;
+          }
+
+          .MuiPickersDay-root.MuiPickersDay-today:not(.Mui-selected) {
+            border-color: #1e7662;
+          }
     `;
 
 function CrownIcon({ streak }) {

@@ -11,6 +11,30 @@
   <style>
 :root {
     --shell-chrome-color: #0073cc;
+    --home-control-bg: #333;
+    --home-control-bg-strong: #333;
+    --home-control-text: #fff;
+    --home-control-text-muted: rgba(255, 255, 255, 0.62);
+    --home-control-border: #0073cc;
+    --home-control-hover: rgba(45, 143, 224, 0.16);
+    --home-table-text: #fff;
+}
+
+body.site-shell[data-profile-theme="light"] {
+    --home-control-bg: #fbf8f0;
+    --home-control-bg-strong: #f4f1e8;
+    --home-control-text: #1b2530;
+    --home-control-text-muted: rgba(27, 37, 48, 0.64);
+    --home-control-border: #7fa9cf;
+    --home-control-hover: rgba(0, 115, 204, 0.12);
+    --home-table-text: #1b2530;
+    --home-calendar-bg: #fbf8f0;
+    --home-calendar-border: rgba(127, 169, 207, 0.42);
+    --home-calendar-text-muted: rgba(27, 37, 48, 0.7);
+    --home-calendar-cell-bg: rgba(27, 37, 48, 0.05);
+    --home-calendar-cell-border: rgba(127, 169, 207, 0.34);
+    --home-calendar-cell-text: rgba(27, 37, 48, 0.78);
+    --home-calendar-overlay: rgba(37, 49, 62, 0.2);
 }
 
 .table-container {
@@ -56,8 +80,8 @@
 .round-selection-search input[type="search"] {
     width: 100%;
     border: 1px solid #0073cc;
-    background: #333;
-    color: white;
+    background: var(--home-control-bg);
+    color: var(--home-control-text);
     font-family: YoungSerif;
     font-size: 0.95rem;
     padding: 8px 10px;
@@ -68,7 +92,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--home-control-text);
     font-size: 0.9rem;
 }
 
@@ -147,8 +171,8 @@
     justify-content: space-between;
     gap: 10px;
     border: 1px solid #0073cc;
-    background: #333 !important;
-    color: #fff !important;
+    background: var(--home-control-bg) !important;
+    color: var(--home-control-text) !important;
     font-family: Monaco, monospace !important;
     font-size: 0.95rem;
     padding: 7px 10px;
@@ -165,8 +189,8 @@
 .round-selection-title-picker-trigger:focus,
 .round-selection-title-picker-trigger[aria-expanded="true"] {
     border-color: #2d8fe0;
-    background: #333 !important;
-    color: #fff !important;
+    background: var(--home-control-bg) !important;
+    color: var(--home-control-text) !important;
 }
 
 .round-selection-title-picker-trigger-label {
@@ -177,7 +201,7 @@
 
 .round-selection-title-picker-trigger-chevron {
     font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--home-control-text-muted);
     flex-shrink: 0;
 }
 
@@ -187,7 +211,7 @@
     left: 0;
     right: auto;
     display: none;
-    background: #333;
+    background: var(--home-control-bg-strong);
     border: 1px solid #0073cc;
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
     z-index: 40;
@@ -207,8 +231,8 @@
     display: block;
     border: none;
     border-bottom: 1px solid rgba(45, 143, 224, 0.22);
-    background: #333;
-    color: #fff;
+    background: var(--home-control-bg-strong);
+    color: var(--home-control-text);
     font-family: Monaco, monospace;
     font-size: 0.95rem;
     text-align: left;
@@ -222,12 +246,12 @@
 
 .round-selection-title-picker-option:hover,
 .round-selection-title-picker-option:focus {
-    background: rgba(45, 143, 224, 0.16);
+    background: var(--home-control-hover);
     outline: none;
 }
 
 .round-selection-title-picker-option.is-selected {
-    background: rgba(45, 143, 224, 0.22);
+    background: var(--home-control-hover);
 }
 
 .round-selection-title-picker select[hidden] {
@@ -250,7 +274,7 @@
     padding: 5px;
     text-align: left;
     vertical-align: middle;
-    color: white;
+    color: var(--home-table-text);
     position: relative;
 }
 
@@ -268,13 +292,13 @@
 .round-selection-table-row.historical-row .editable-cell,
 .round-selection-table-row.historical-row .creator-input,
 .round-selection-table-row.historical-row .historical-text {
-    color: rgba(255, 255, 255, 0.62);
+    color: var(--home-control-text-muted);
 }
 
 .round-selection-table-header {
     background-color: #0073cc;
     font-weight: bold;
-    color: white;
+    color: var(--home-table-text);
 }
 
 /* Style for disabled buttons */
@@ -309,11 +333,11 @@
     width: min(420px, calc(100vw - 32px));
     padding: 18px;
     border-radius: 16px;
-    background: #0d2644;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--home-calendar-bg, #0d2644);
+    border: 1px solid var(--home-calendar-border, rgba(255, 255, 255, 0.12));
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
     z-index: 1001;
-    color: white;
+    color: var(--home-control-text);
 }
 
 .presentation-calendar-header {
@@ -336,7 +360,7 @@
 
 .presentation-calendar-title span {
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--home-calendar-text-muted, rgba(255, 255, 255, 0.75));
 }
 
 .calendar-close-button,
@@ -388,7 +412,7 @@
 
 .calendar-weekdays {
     margin-bottom: 8px;
-    color: rgba(255, 255, 255, 0.65);
+    color: var(--home-calendar-text-muted, rgba(255, 255, 255, 0.65));
     text-align: center;
     font-size: 0.78rem;
     text-transform: uppercase;
@@ -396,10 +420,10 @@
 
 .calendar-day {
     min-height: 46px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--home-calendar-cell-border, rgba(255, 255, 255, 0.12));
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.75);
+    background: var(--home-calendar-cell-bg, rgba(255, 255, 255, 0.05));
+    color: var(--home-calendar-cell-text, rgba(255, 255, 255, 0.75));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -443,13 +467,13 @@
 .calendar-legend {
     margin-top: 14px;
     font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--home-calendar-text-muted, rgba(255, 255, 255, 0.8));
 }
 
 .calendar-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(1, 12, 24, 0.58);
+    background: var(--home-calendar-overlay, rgba(1, 12, 24, 0.58));
     z-index: 1000;
 }
 
@@ -574,9 +598,9 @@
     .round-selection-title-picker-trigger {
         font-size: 1rem;
         padding: 9px 12px;
-        border-color: #0073cc;
-        background: #333 !important;
-        color: #fff !important;
+        border-color: var(--home-control-border);
+        background: var(--home-control-bg) !important;
+        color: var(--home-control-text) !important;
         font-family: Monaco, monospace !important;
     }
     .round-selection-title-picker-option {
@@ -705,8 +729,8 @@
     border: 1px solid #ccc;
     border-radius: 2px;
     font-size: 16px;
-    background-color: #333;
-    color: white;
+    background-color: var(--home-control-bg);
+    color: var(--home-control-text);
     font-family: YoungSerif;
     box-sizing: border-box;
 }
@@ -716,8 +740,8 @@
     border: 1px solid #ccc;
     border-radius: 2px;
     font-size: 16px;
-    background-color: #333;
-    color: white;
+    background-color: var(--home-control-bg);
+    color: var(--home-control-text);
     font-family: YoungSerif;
 }
 
@@ -814,7 +838,7 @@
                         </button>
                         <img class="spinner" id="submit-spinner1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
                     </div>
-                    <div id="msg" style="color: white; display: none; width: 100%; text-align: center;">Working... This may take a few minutes.</div>
+                    <div id="msg" style="color: var(--home-table-text); display: none; width: 100%; text-align: center;">Working... This may take a few minutes.</div>
                 </div>
 
                 <div class="round-selection-table">
