@@ -1,4 +1,5 @@
 :root {
+    --shell-chrome-color: #f94144;
     --analysis-page-bg: #333;
     --analysis-page-text: #ffffff;
     --analysis-panel-bg: rgba(255, 255, 255, 0.1);

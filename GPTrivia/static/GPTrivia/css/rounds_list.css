@@ -1,4 +1,5 @@
 :root {
+    --shell-chrome-color: #96031A;
     --rounds-page-bg: #333;
     --rounds-page-text: #ffffff;
     --rounds-link-text: #ffffff;
@@ -23,10 +24,14 @@ body.site-shell[data-profile-theme="light"] table,
 body.site-shell[data-profile-theme="light"] tbody,
 body.site-shell[data-profile-theme="light"] tr,
 body.site-shell[data-profile-theme="light"] td,
-body.site-shell[data-profile-theme="light"] .title-cell,
 body.site-shell[data-profile-theme="light"] a,
 body.site-shell[data-profile-theme="light"] #roundList tbody tr td {
     color: #1b2530 !important;
+}
+
+body.site-shell[data-profile-theme="light"] .title-cell,
+body.site-shell[data-profile-theme="light"] #roundList tbody .title-cell {
+    color: #ffffff !important;
 }
 
 body {
