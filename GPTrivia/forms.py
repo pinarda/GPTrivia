@@ -49,6 +49,10 @@ class ProfilePictureForm(forms.ModelForm):
             'id': 'profile-color-input',
         })
         self.fields['site_theme'].required = False
+        self.fields['site_theme'].choices = [
+            (Profile.THEME_DEFAULT, 'Dark (default)'),
+            (Profile.THEME_LIGHT, 'Light'),
+        ]
         self.fields['site_theme'].widget.attrs.update({
             'id': 'profile-theme-input',
         })
