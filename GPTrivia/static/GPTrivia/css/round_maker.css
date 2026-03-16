@@ -378,6 +378,7 @@ select option {
     animation: spin 2s linear infinite;
     width: auto;
     height: 40px; /* Make the spinner match the button's height */
+    filter: hue-rotate(0deg) saturate(1.2) brightness(1.05);
 }
 
 .button-with-spinner {
@@ -390,11 +391,30 @@ select option {
 @keyframes spin {
     0% {
         transform: rotate(0deg);
-        filter: hue-rotate(0deg);
+        filter: hue-rotate(0deg) saturate(1.2) brightness(1.05);
     }
     100% {
         transform: rotate(-360deg);
-        filter: hue-rotate(-360deg);
+        filter: hue-rotate(-360deg) saturate(1.2) brightness(1.05);
+    }
+}
+
+body.site-shell[data-profile-theme="light"] .spinner {
+    filter: hue-rotate(0deg) saturate(1.8) brightness(0.96) contrast(1.08);
+}
+
+body.site-shell[data-profile-theme="light"] .spinner {
+    animation-name: spin-light;
+}
+
+@keyframes spin-light {
+    0% {
+        transform: rotate(0deg);
+        filter: hue-rotate(0deg) saturate(1.8) brightness(0.96) contrast(1.08);
+    }
+    100% {
+        transform: rotate(-360deg);
+        filter: hue-rotate(-360deg) saturate(1.8) brightness(0.96) contrast(1.08);
     }
 }
 
