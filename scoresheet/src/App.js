@@ -1027,6 +1027,11 @@ import {
           .MuiPickersDay-root.MuiPickersDay-today:not(.Mui-selected) {
             border-color: #1e7662;
           }
+
+          .MuiPickersPopper-root .MuiPaper-root .MuiIconButton-root,
+          .MuiDialog-root .MuiPickersLayout-root .MuiIconButton-root {
+            color: var(--scoresheet-text, #fff) !important;
+          }
     `;
 
 function CrownIcon({ streak }) {
@@ -2855,19 +2860,27 @@ const PlayerTable = () => {
                     minWidth: isCompactScreen ? (isSmallScreen ? '9.6rem' : '10.25rem') : '9.5rem',
                     maxWidth: isCompactScreen ? (isSmallScreen ? '9.6rem' : '10.25rem') : '10.25rem',
                     margin: isCompactScreen ? 0 : '0.4rem',
+                    backgroundColor: 'var(--scoresheet-surface-alt, var(--scoresheet-surface, #333))',
                     '& .MuiInputBase-root': {
-                      backgroundColor: 'var(--scoresheet-surface, #333)',
-                      color: 'var(--scoresheet-text, #fff)',
+                      backgroundColor: 'var(--scoresheet-surface-alt, var(--scoresheet-surface, #333)) !important',
+                      color: 'var(--scoresheet-text, #fff) !important',
                       fontFamily: 'Monaco',
                       borderRadius: 0,
                       cursor: 'pointer',
+                    },
+                    '& .MuiOutlinedInput-root, & .MuiPickersInputBase-root, & .MuiPickersOutlinedInput-root': {
+                      backgroundColor: 'var(--scoresheet-surface-alt, var(--scoresheet-surface, #333)) !important',
+                      color: 'var(--scoresheet-text, #fff) !important',
+                    },
+                    '& .MuiPickersSectionList-root, & .MuiPickersInputBase-sectionsContainer, & .MuiPickersSectionList-sectionContent, & .MuiInputBase-input': {
+                      color: 'var(--scoresheet-text, #fff) !important',
                     },
                     '& .MuiInputAdornment-root': {
                       marginLeft: 0,
                       marginRight: '0.2rem',
                     },
                     '& .MuiIconButton-root': {
-                      color: 'var(--scoresheet-text, #fff)',
+                      color: 'var(--scoresheet-text, #fff) !important',
                       padding: '4px',
                     },
                     '& .MuiOutlinedInput-notchedOutline': {
@@ -3085,10 +3098,10 @@ const PlayerTable = () => {
                 />
             </StyledTableCell>
             ))}
-            <StyledTableCell sx={{color:'white'}}><div>Joker Bonus</div></StyledTableCell>
-            <StyledTableCell sx={{color:'white'}}><div>Creator Bonus</div></StyledTableCell>
-              <StyledTableCell sx={{color:'white'}} onClick={() => setIsSortAscending(!isSortAscending)}><div>Total</div></StyledTableCell>
-                     <StyledTableCell sx={{color:'white', marginX:"0px", padding:"0"}}><div></div></StyledTableCell>
+            <StyledTableCell sx={{color:'var(--scoresheet-text, #fff)'}}><div>Joker Bonus</div></StyledTableCell>
+            <StyledTableCell sx={{color:'var(--scoresheet-text, #fff)'}}><div>Creator Bonus</div></StyledTableCell>
+              <StyledTableCell sx={{color:'var(--scoresheet-text, #fff)'}} onClick={() => setIsSortAscending(!isSortAscending)}><div>Total</div></StyledTableCell>
+                     <StyledTableCell sx={{color:'var(--scoresheet-text, #fff)', marginX:"0px", padding:"0"}}><div></div></StyledTableCell>
 
           </TableRow>
         </TableHead>

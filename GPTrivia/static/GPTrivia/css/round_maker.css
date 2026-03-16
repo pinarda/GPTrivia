@@ -1,9 +1,19 @@
 /* General Styles */
 body {
+    --swoop-page-text: #fff;
+    --swoop-panel-text: #fff;
+    --swoop-panel-bg: rgba(255, 255, 255, 0.1);
+    --swoop-card-bg: rgba(255, 255, 255, 0.05);
+    --swoop-form-bg: #222;
+    --swoop-form-text: #fff;
+    --swoop-form-border: #555;
+    --swoop-placeholder: #aaa;
+    --swoop-alt-text: #fff;
+    --swoop-chat-bg: rgba(255, 255, 255, 0.1);
     font-family: 'YoungSerif', serif;
     line-height: 1.6;
     background-color: #333;
-    color: white;
+    color: var(--swoop-page-text, white);
     background-image: url('swoop.png'), url('facingleftold.png');
     background-position: -200px 400px, 700px 800px;
     background-size: 70vw 70vw, 70vw 70vw;
@@ -18,7 +28,7 @@ body {
     font-family: 'YoungSerif', serif;
     line-height: 1.6;
     background-color: #333;
-    color: white;
+    color: var(--swoop-page-text, white);
     background-image: url('facingleft.png');
     background-position: calc(50% + 4vw) 300px; /* Centered horizontally, but shifted left by 1vw */
     background-size: 70vw auto; /* Ensures width is 70% of viewport, height is auto */
@@ -94,10 +104,10 @@ br {
 
 .panel {
     padding: 0 18px;
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--swoop-panel-bg, rgba(255, 255, 255, 0.1));
     display: none;
     overflow: hidden;
-    color: #fff; /* Changed text color to white */
+    color: var(--swoop-panel-text, #fff);
     border-radius: 0 0 2px 2px;
 }
 
@@ -113,7 +123,7 @@ br {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
-    color: #fff; /* Ensure labels are white */
+    color: var(--swoop-panel-text, #fff);
 }
 
 .form-group input[type="text"],
@@ -121,17 +131,17 @@ br {
 .form-group select {
     width: 100%;
     padding: 10px;
-    border: 1px solid #555;
+    border: 1px solid var(--swoop-form-border, #555);
     border-radius: 4px;
     font-family: 'YoungSerif', serif;
     font-size: 16px;
-    background-color: #222;
-    color: #fff; /* Input text color */
+    background-color: var(--swoop-form-bg, #222);
+    color: var(--swoop-form-text, #fff);
     margin-bottom: 0px;
 }
 
 .form-group input[type="text"]::placeholder {
-    color: #aaa;
+    color: var(--swoop-placeholder, #aaa);
 }
 
 .form-group input[type="checkbox"] {
@@ -142,11 +152,11 @@ br {
     display: inline-flex;
     align-items: center;
     margin-top: 10px;
-    color: #fff; /* Ensure checkbox label is white */
+    color: var(--swoop-panel-text, #fff);
 }
 
 .question-answer-pair {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--swoop-card-bg, rgba(255, 255, 255, 0.05));
     padding: 15px;
     border-radius: 5px;
     margin-bottom: 10px;
@@ -239,17 +249,17 @@ select option {
 
 .alternative-option p {
     margin-bottom: 10px;
-    color: #fff; /* Ensure text is visible */
+    color: var(--swoop-alt-text, #fff);
 }
 
 /* Chat Response */
 #chat-response,
 #question-response {
     margin-top: 20px;
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--swoop-chat-bg, rgba(255, 255, 255, 0.1));
     padding: 15px;
     border-radius: 5px;
-    color: #fff; /* Ensure text is visible */
+    color: var(--swoop-panel-text, #fff);
 }
 
 /* Hover Effects */
@@ -407,6 +417,16 @@ select option {
 body.site-shell[data-profile-theme="light"] {
     background-color: #f4f1e8;
     color: #1b2530;
+    --swoop-page-text: #1b2530;
+    --swoop-panel-text: #1b2530;
+    --swoop-panel-bg: rgba(255, 255, 255, 0.78);
+    --swoop-card-bg: rgba(255, 255, 255, 0.62);
+    --swoop-form-bg: #ffffff;
+    --swoop-form-text: #1b2530;
+    --swoop-form-border: #d4cbbb;
+    --swoop-placeholder: rgba(27, 37, 48, 0.55);
+    --swoop-alt-text: #1b2530;
+    --swoop-chat-bg: rgba(255, 255, 255, 0.78);
 }
 
 body.site-shell[data-profile-theme="light"] .intro-text p,

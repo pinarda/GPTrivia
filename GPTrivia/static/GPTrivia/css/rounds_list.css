@@ -1,7 +1,27 @@
+:root {
+    --rounds-page-bg: #333;
+    --rounds-page-text: #ffffff;
+    --rounds-link-text: #ffffff;
+    --rounds-header-border: #96031A;
+    --rounds-header-text: #ffffff;
+    --rounds-search-bg: #ffffff;
+    --rounds-search-text: #1b2530;
+}
+
+body.site-shell[data-profile-theme="light"] {
+    --rounds-page-bg: #f4f1e8;
+    --rounds-page-text: #1b2530;
+    --rounds-link-text: #1b2530;
+    --rounds-header-border: #c6b9b0;
+    --rounds-header-text: #ffffff;
+    --rounds-search-bg: #ffffff;
+    --rounds-search-text: #1b2530;
+}
+
 body {
   font-family: Arial, sans-serif;
-  background-color: #333;
-  color:white;
+  background-color: var(--rounds-page-bg);
+  color: var(--rounds-page-text);
     height: 100%;
 }
 
@@ -19,17 +39,17 @@ body {
 
 #roundListHead tr th{
     background-color: #96031A;
-    color: white;
+    color: var(--rounds-header-text);
     padding-bottom: 50px;
 }
 
 .title-cell{
     background-color: #96031A;
-    color: white;
+    color: var(--rounds-header-text);
 }
 
 a {
-    color: white;
+    color: var(--rounds-link-text);
 }
 
 
@@ -81,6 +101,15 @@ a {
     position: absolute;
     right:0;
     left:0;
+}
+
+#roundListHead input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 6px;
+    background-color: var(--rounds-search-bg);
+    color: var(--rounds-search-text);
+    border: 1px solid var(--rounds-header-border);
 }
 
 .footer-container {
