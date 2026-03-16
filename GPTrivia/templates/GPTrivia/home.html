@@ -713,11 +713,14 @@ body.site-shell[data-profile-theme="light"] {
 }
 
 .coop-box::before {
-    content: '✔';
-    font-size: 20px;
-    display: none;
-    line-height: 1;
-    color: white;
+    content: '';
+    width: 6px;
+    height: 12px;
+    border-right: 3px solid #ffffff;
+    border-bottom: 3px solid #ffffff;
+    transform: rotate(45deg);
+    opacity: 0;
+    box-sizing: border-box;
 }
 
 .coop-box:checked {
@@ -726,13 +729,13 @@ body.site-shell[data-profile-theme="light"] {
 }
 
 .coop-box:checked::before {
-    display: block;
+    opacity: 1;
 }
 
 body.site-shell[data-profile-theme="light"] .coop-box::before,
 body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
-    color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff;
+    border-right-color: #ffffff !important;
+    border-bottom-color: #ffffff !important;
 }
 
 .coop-box:hover {
