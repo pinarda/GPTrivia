@@ -1,9 +1,43 @@
+:root {
+    --analysis-page-bg: #333;
+    --analysis-page-text: #ffffff;
+    --analysis-panel-bg: rgba(255, 255, 255, 0.1);
+    --analysis-select-bg: #f94144;
+    --analysis-select-text: #ffffff;
+    --analysis-select-option-bg: #ffffff;
+    --analysis-select-option-text: #000000;
+    --analysis-table-border: #ffffff;
+    --analysis-gridline: rgba(255, 255, 255, 0.2);
+    --analysis-button-bg: #f94144;
+    --analysis-button-text: #ffffff;
+    --analysis-button-hover: #e63946;
+}
+
+body.site-shell[data-profile-theme="light"] {
+    --analysis-page-bg: #f4f1e8;
+    --analysis-page-text: #1b2530;
+    --analysis-panel-bg: rgba(244, 241, 232, 0.78);
+    --analysis-select-bg: #f94144;
+    --analysis-select-text: #ffffff;
+    --analysis-select-option-bg: #f4f1e8;
+    --analysis-select-option-text: #1b2530;
+    --analysis-table-border: #1b2530;
+    --analysis-gridline: rgba(27, 37, 48, 0.16);
+    --analysis-button-bg: #f94144;
+    --analysis-button-text: #ffffff;
+    --analysis-button-hover: #e63946;
+}
+
 body {
   font-family: YoungSerif;
   line-height: 1.6;
-  background-color: #333;
-  color: white;
+  background-color: var(--analysis-page-bg);
+  color: var(--analysis-page-text);
   background-image: linear-gradient(78deg, #3a3d40 0%, #181719 100%);
+}
+
+body.site-shell[data-profile-theme="light"] {
+  background-image: linear-gradient(78deg, #f4f1e8 0%, #ece4d3 100%);
 }
 
 #roundsButton {
@@ -21,7 +55,7 @@ body {
 
 .select-dropdown {
     border: none;
-    color: white;
+    color: var(--analysis-select-text);
     padding: 10px 24px;
     text-align: center;
     text-decoration: none;
@@ -30,13 +64,13 @@ body {
     margin: 4px 2px;
     cursor: pointer;
     transition-duration: 0.4s;
-    background-color: #f94144;
+    background-color: var(--analysis-select-bg);
     font-family: YoungSerif;
     border-radius: 2px;
 }
 
 .select-label {
-    color: white;
+    color: var(--analysis-page-text);
     font-family: YoungSerif;
     margin-bottom: 5px;
 }
@@ -48,17 +82,17 @@ body {
 }
 
 .select-dropdown option {
-    color: black;
-    background-color: white;
+    color: var(--analysis-select-option-text);
+    background-color: var(--analysis-select-option-bg);
 }
 
 .select-dropdown:focus {
     outline: none;
-    box-shadow: 0 0 10px #f94144;
+    box-shadow: 0 0 10px rgba(249, 65, 68, 0.45);
 }
 
 .select-dropdown:hover {
-    background-color: #e63946;
+    background-color: var(--analysis-button-hover);
 }
 
 #bar-chart{
@@ -132,7 +166,7 @@ body {
 }
 
 .plot-div {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--analysis-panel-bg);
     padding: 10px;
     border-radius: 4px;
     margin-bottom: 20px;
@@ -159,7 +193,7 @@ body {
 
 .table-class th {
     text-align: center;
-    border-bottom: 2px solid white;
+    border-bottom: 2px solid var(--analysis-table-border);
     padding: 8px;
 }
 
@@ -205,7 +239,7 @@ body {
     align-items: center;
     justify-content: center;
     /* Add the following styles */
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--analysis-panel-bg);
     padding: 20px; /* Add some padding */
     border-radius: 2px; /* Rounded corners */
     margin-bottom: 20px; /* Space below the wrapper */
@@ -249,7 +283,7 @@ button, .expand-collapse-button {
     padding: 12px;
     margin: 0px auto; /* Center the button horizontally */
     background-color: #f94144;
-    color: white;
+    color: var(--analysis-button-text);
     font-size: 16px;
     font-weight: bold;
     border: none;
@@ -258,7 +292,7 @@ button, .expand-collapse-button {
 }
 
 .expand-collapse-button:hover {
-    background-color: #e63946;
+    background-color: var(--analysis-button-hover);
 }
 
 /* Optional: Center the button on smaller screens if needed */
