@@ -1232,7 +1232,7 @@ const PlayerTable = () => {
 
     const theme = useTheme();
     const isLightProfileTheme = typeof document !== 'undefined' && document.body?.dataset?.profileTheme === 'light';
-    const dateFieldBg = isLightProfileTheme ? '#fbf8f0' : '#333';
+    const dateFieldBg = isLightProfileTheme ? '#f4f1e8' : '#333';
     const dateFieldText = isLightProfileTheme ? '#1b2530' : '#fff';
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
     const isCompactScreen = useMediaQuery('(max-width:1000px)');

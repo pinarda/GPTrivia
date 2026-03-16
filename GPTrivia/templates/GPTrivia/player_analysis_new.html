@@ -88,96 +88,6 @@
     let rounds = {{ rounds|safe }};
     let mapping = {{ mapping|safe }};
     let playerTextMapping = {{ player_text_mapping|safe }};
-    const isLightTheme = document.body.dataset.profileTheme === 'light';
-    const analysisTextColor = isLightTheme ? '#1b2530' : '#ffffff';
-    const analysisGridColor = isLightTheme ? 'rgba(27, 37, 48, 0.16)' : 'rgba(255, 255, 255, 0.2)';
-
-    function applyAxisTheme(axis = {}) {
-        const themedAxis = { ...axis };
-
-        if (Object.prototype.hasOwnProperty.call(themedAxis, 'gridcolor') || themedAxis.showgrid !== false) {
-            themedAxis.gridcolor = analysisGridColor;
-        }
-
-        if (themedAxis.title && typeof themedAxis.title === 'object') {
-            themedAxis.title = {
-                ...themedAxis.title,
-                font: {
-                    ...(themedAxis.title.font || {}),
-                    color: analysisTextColor,
-                },
-            };
-        }
-
-        themedAxis.tickfont = {
-            ...(themedAxis.tickfont || {}),
-            color: analysisTextColor,
-        };
-
-        return themedAxis;
-    }
-
-    function applySceneAxisTheme(axis = {}) {
-        const themedAxis = { ...axis };
-
-        if (themedAxis.title && typeof themedAxis.title === 'object') {
-            themedAxis.title = {
-                ...themedAxis.title,
-                font: {
-                    ...(themedAxis.title.font || {}),
-                    color: analysisTextColor,
-                },
-            };
-        }
-
-        themedAxis.color = analysisTextColor;
-        themedAxis.gridcolor = analysisGridColor;
-        themedAxis.linecolor = analysisTextColor;
-        themedAxis.zerolinecolor = analysisGridColor;
-        themedAxis.tickfont = {
-            ...(themedAxis.tickfont || {}),
-            color: analysisTextColor,
-        };
-
-        return themedAxis;
-    }
-
-    function applyPlotTheme(layout = {}) {
-        const themedLayout = {
-            ...layout,
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            font: {
-                ...(layout.font || {}),
-                color: analysisTextColor,
-                family: 'YoungSerif',
-            },
-        };
-
-        if (layout.xaxis) {
-            themedLayout.xaxis = applyAxisTheme(layout.xaxis);
-        }
-
-        if (layout.yaxis) {
-            themedLayout.yaxis = applyAxisTheme(layout.yaxis);
-        }
-
-        if (layout.scene) {
-            themedLayout.scene = {
-                ...layout.scene,
-                xaxis: applySceneAxisTheme(layout.scene.xaxis || {}),
-                yaxis: applySceneAxisTheme(layout.scene.yaxis || {}),
-                zaxis: applySceneAxisTheme(layout.scene.zaxis || {}),
-            };
-        }
-
-        return themedLayout;
-    }
-
-    const originalPlotlyNewPlot = Plotly.newPlot.bind(Plotly);
-    Plotly.newPlot = function(target, data, layout, config) {
-        return originalPlotlyNewPlot(target, data, applyPlotTheme(layout || {}), config);
-    };
 
     // Initialize with default values
     let playerName = "";
@@ -1262,7 +1172,7 @@
             text: data.loadings.variables,
             textposition: 'top center',
             font: {
-                color: analysisTextColor,
+                color: "#ffffff",
                 family: "YoungSerif",
                 size: 6
             },
