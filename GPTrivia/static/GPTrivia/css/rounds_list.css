@@ -24,7 +24,6 @@ body.site-shell[data-profile-theme="light"] table,
 body.site-shell[data-profile-theme="light"] tbody,
 body.site-shell[data-profile-theme="light"] tr,
 body.site-shell[data-profile-theme="light"] td,
-body.site-shell[data-profile-theme="light"] a,
 body.site-shell[data-profile-theme="light"] #roundList tbody tr td {
     color: #1b2530 !important;
 }
@@ -64,7 +63,8 @@ body {
     color: var(--rounds-header-text);
 }
 
-a {
+#roundList a,
+.table-container a {
     color: var(--rounds-link-text);
 }
 
