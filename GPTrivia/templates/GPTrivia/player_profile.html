@@ -3,6 +3,11 @@
 {% load static %}
 
 {% block extra_css %}
+  <style>
+    body.site-shell {
+      --shell-chrome-color: #2d3047;
+    }
+  </style>
   <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}">
 {% endblock %}
 
