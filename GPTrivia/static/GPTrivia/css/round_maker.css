@@ -437,8 +437,8 @@ body.site-shell[data-profile-theme="light"] .intro-text strong {
 body.site-shell[data-profile-theme="light"] .panel,
 body.site-shell[data-profile-theme="light"] #chat-response,
 body.site-shell[data-profile-theme="light"] #question-response {
-    background-color: rgba(255, 255, 255, 0.72);
-    color: #1b2530;
+    background-color: rgba(255, 255, 255, 0.72) !important;
+    color: #1b2530 !important;
 }
 
 body.site-shell[data-profile-theme="light"] .panel p,
@@ -450,25 +450,25 @@ body.site-shell[data-profile-theme="light"] .intro-text + .accordion-container,
 body.site-shell[data-profile-theme="light"] .content-wrapper,
 body.site-shell[data-profile-theme="light"] #chat-response,
 body.site-shell[data-profile-theme="light"] #question-response {
-    color: #1b2530;
+    color: #1b2530 !important;
 }
 
 body.site-shell[data-profile-theme="light"] .question-answer-pair {
-    background-color: rgba(255, 255, 255, 0.55);
+    background-color: rgba(255, 255, 255, 0.55) !important;
 }
 
 body.site-shell[data-profile-theme="light"] #round-suggestion,
 body.site-shell[data-profile-theme="light"] #submission-message,
 body.site-shell[data-profile-theme="light"] .panel .button-with-spinner {
-    color: #1b2530;
+    color: #1b2530 !important;
 }
 
 body.site-shell[data-profile-theme="light"] .form-group input[type="text"],
 body.site-shell[data-profile-theme="light"] .form-group input[type="password"],
 body.site-shell[data-profile-theme="light"] .form-group select {
-    background-color: #ffffff;
-    color: #1b2530;
-    border-color: #d4cbbb;
+    background-color: #ffffff !important;
+    color: #1b2530 !important;
+    border-color: #d4cbbb !important;
 }
 
 body.site-shell[data-profile-theme="light"] .form-group input[type="text"]::placeholder {
@@ -476,11 +476,30 @@ body.site-shell[data-profile-theme="light"] .form-group input[type="text"]::plac
 }
 
 body.site-shell[data-profile-theme="light"] select {
-    background-color: #ffffff;
-    color: #1b2530;
+    background-color: #ffffff !important;
+    color: #1b2530 !important;
 }
 
 body.site-shell[data-profile-theme="light"] select option {
-    background-color: #ffffff;
+    background-color: #ffffff !important;
+    color: #1b2530 !important;
+}
+
+body.site-shell[data-profile-theme="light"] .panel *,
+body.site-shell[data-profile-theme="light"] .question-answer-pair *,
+body.site-shell[data-profile-theme="light"] .alternative-option *,
+body.site-shell[data-profile-theme="light"] #chat-response *,
+body.site-shell[data-profile-theme="light"] #question-response * {
     color: #1b2530;
+}
+
+body.site-shell[data-profile-theme="light"] .panel button,
+body.site-shell[data-profile-theme="light"] .alternative-option button,
+body.site-shell[data-profile-theme="light"] #copy-generated-qna,
+body.site-shell[data-profile-theme="light"] #preview-button,
+body.site-shell[data-profile-theme="light"] #submit-button,
+body.site-shell[data-profile-theme="light"] #generate-round-button,
+body.site-shell[data-profile-theme="light"] #gpt-submit,
+body.site-shell[data-profile-theme="light"] #question-submit {
+    color: #ffffff !important;
 }

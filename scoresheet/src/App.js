@@ -1231,6 +1231,9 @@ const PlayerTable = () => {
 
 
     const theme = useTheme();
+    const isLightProfileTheme = typeof document !== 'undefined' && document.body?.dataset?.profileTheme === 'light';
+    const dateFieldBg = isLightProfileTheme ? '#fbf8f0' : '#333';
+    const dateFieldText = isLightProfileTheme ? '#1b2530' : '#fff';
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
     const isCompactScreen = useMediaQuery('(max-width:1000px)');
 
@@ -2860,34 +2863,34 @@ const PlayerTable = () => {
                     minWidth: isCompactScreen ? (isSmallScreen ? '9.6rem' : '10.25rem') : '9.5rem',
                     maxWidth: isCompactScreen ? (isSmallScreen ? '9.6rem' : '10.25rem') : '10.25rem',
                     margin: isCompactScreen ? 0 : '0.4rem',
-                    backgroundColor: 'var(--scoresheet-surface-alt, var(--scoresheet-surface, #333))',
+                    backgroundColor: dateFieldBg,
                     '& .MuiInputBase-root': {
-                      backgroundColor: 'var(--scoresheet-surface-alt, var(--scoresheet-surface, #333)) !important',
-                      color: 'var(--scoresheet-text, #fff) !important',
+                      backgroundColor: `${dateFieldBg} !important`,
+                      color: `${dateFieldText} !important`,
                       fontFamily: 'Monaco',
                       borderRadius: 0,
                       cursor: 'pointer',
                     },
                     '& .MuiOutlinedInput-root, & .MuiPickersInputBase-root, & .MuiPickersOutlinedInput-root': {
-                      backgroundColor: 'var(--scoresheet-surface-alt, var(--scoresheet-surface, #333)) !important',
-                      color: 'var(--scoresheet-text, #fff) !important',
+                      backgroundColor: `${dateFieldBg} !important`,
+                      color: `${dateFieldText} !important`,
                     },
                     '& .MuiPickersSectionList-root, & .MuiPickersInputBase-sectionsContainer, & .MuiPickersSectionList-sectionContent, & .MuiInputBase-input': {
-                      color: 'var(--scoresheet-text, #fff) !important',
+                      color: `${dateFieldText} !important`,
                     },
                     '& .MuiInputAdornment-root': {
                       marginLeft: 0,
                       marginRight: '0.2rem',
                     },
                     '& .MuiIconButton-root': {
-                      color: 'var(--scoresheet-text, #fff) !important',
+                      color: `${dateFieldText} !important`,
                       padding: '4px',
                     },
                     '& .MuiOutlinedInput-notchedOutline': {
                       border: 'none',
                     },
                     '& input': {
-                      color: 'var(--scoresheet-text, #fff)',
+                      color: dateFieldText,
                       fontFamily: 'Monaco',
                       textAlign: 'center',
                       fontSize: isCompactScreen ? '1rem' : undefined,
