@@ -153,6 +153,17 @@
         connectWebSocket();
     });
 
+    function blurInitialTextFocus() {
+        const usernameInput = document.getElementById('username');
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+            activeElement.blur();
+        }
+        if (usernameInput) {
+            usernameInput.blur();
+        }
+    }
+
 
 
     // Send press to WebSocket
@@ -302,6 +313,7 @@
 
     // Set up event listeners on DOM content load
     document.addEventListener('DOMContentLoaded', () => {
+        blurInitialTextFocus();
         const mainButton = document.getElementById('action-button');
         const unlockButton = document.getElementById('unlock-button');
         const lockButton = document.getElementById('lock-button');
@@ -328,6 +340,10 @@
         // Ensure the locked state is set visually on load
         mainButton.classList.add('locked');
         console.log("Main button starts in hard lock.");
+    });
+
+    window.addEventListener('pageshow', () => {
+        blurInitialTextFocus();
     });
 
     document.addEventListener('visibilitychange', () => {

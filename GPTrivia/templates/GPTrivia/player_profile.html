@@ -532,12 +532,6 @@
             });
 
             targetPanel.hidden = !willOpen;
-            if (willOpen) {
-                const searchInput = targetPanel.querySelector('.profile-table-search');
-                if (searchInput) {
-                    searchInput.focus({ preventScroll: true });
-                }
-            }
         }
 
         function initializeProfilePanels() {
