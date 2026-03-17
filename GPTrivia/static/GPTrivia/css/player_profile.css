@@ -58,6 +58,8 @@ a {
 
 .profile-actions-container {
     display: block;
+    width: min(100%, 860px);
+    margin: 0 auto;
 }
 
 .profile-settings-form,
@@ -72,8 +74,8 @@ a {
     place-items: center;
     width: 100%;
     max-width: 320px;
-    justify-self: start;
-    margin: 0 0 0.1rem;
+    justify-self: center;
+    margin: 0 auto 0.1rem;
     padding: 0;
     background: transparent;
     border: 0;
@@ -89,10 +91,11 @@ a {
 }
 
 .profile-control-stack {
-    order: 1;
     display: grid;
     gap: 0.9rem;
     min-width: 0;
+    width: 100%;
+    margin: 0 auto;
 }
 
 .profile-control-heading {
@@ -594,6 +597,14 @@ a {
     padding: 0;
     border-top: 0;
     background: transparent;
+}
+
+.profile-round-slides-row:not([hidden]) {
+    display: table-row;
+}
+
+.profile-round-slides-row:not([hidden]) > td {
+    display: table-cell;
 }
 
 .profile-round-detail-grid {
