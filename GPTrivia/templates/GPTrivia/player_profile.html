@@ -114,7 +114,7 @@
 
                     {% if created_rounds %}
                     <div class="profile-table-shell">
-                        <div class="profile-table-wrap">
+                        <div class="profile-table-wrap profile-rounds-desktop-shell">
                             <table cellpadding="0" cellspacing="0" id="playerRoundsTable">
                                 <thead>
                                     <tr>
@@ -239,6 +239,91 @@
                                     </tbody>
                                 {% endfor %}
                             </table>
+                        </div>
+                        <div class="profile-rounds-mobile-list" id="playerRoundsMobileList">
+                            {% for round in created_rounds %}
+                                <div
+                                    class="profile-round-mobile-card"
+                                    data-search-group
+                                    data-search="{{ round.title|lower }} {{ round.date }} {{ round.major_category|lower }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }} {{ round.high_score_display|lower }} {{ round.average_score_display|lower }}"
+                                >
+                                    <div class="profile-round-mobile-summary">
+                                        <button
+                                            class="profile-round-expander"
+                                            type="button"
+                                            data-details-target="profile-round-mobile-details-{{ forloop.counter0 }}"
+                                            aria-expanded="false"
+                                            aria-label="Show more information for {{ round.title }}"
+                                        >
+                                            <span class="profile-round-expander-icon" aria-hidden="true">+</span>
+                                        </button>
+                                        <a
+                                            class="profile-round-link profile-round-mobile-title"
+                                            href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}"
+                                        >
+                                            {{ round.title }}
+                                        </a>
+                                        <div class="profile-round-mobile-date">{{ round.date }}</div>
+                                    </div>
+                                    <div id="profile-round-mobile-details-{{ forloop.counter0 }}" class="profile-round-mobile-details" hidden>
+                                        <div class="profile-round-detail-grid">
+                                            <div class="profile-round-detail-item">
+                                                <span class="profile-round-detail-label">Category</span>
+                                                <span class="profile-round-detail-value">{{ round.major_category|default:"—" }}</span>
+                                            </div>
+                                            <div class="profile-round-detail-item">
+                                                <span class="profile-round-detail-label">Round</span>
+                                                <span class="profile-round-detail-value">{{ round.round_number }}</span>
+                                            </div>
+                                            <div class="profile-round-detail-item">
+                                                <span class="profile-round-detail-label">Co-op</span>
+                                                <span class="profile-round-detail-value">{{ round.cooperative|yesno:"Yes,No" }}</span>
+                                            </div>
+                                            <div class="profile-round-detail-item profile-round-detail-item--scores">
+                                                <span class="profile-round-detail-label">Scores</span>
+                                                <div class="profile-round-score-strip">
+                                                    <div class="profile-round-score-chip">
+                                                        <span class="profile-round-score-chip-label">Max</span>
+                                                        <span class="profile-round-score-chip-value">{{ round.max_score|default:"—" }}</span>
+                                                    </div>
+                                                    <div class="profile-round-score-chip">
+                                                        <span class="profile-round-score-chip-label">High</span>
+                                                        <span class="profile-round-score-chip-value">{{ round.high_score_display }}</span>
+                                                    </div>
+                                                    <div class="profile-round-score-chip">
+                                                        <span class="profile-round-score-chip-label">Average</span>
+                                                        <span class="profile-round-score-chip-value">{{ round.average_score_display }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="profile-round-detail-item profile-round-detail-item--action">
+                                                <span class="profile-round-detail-label">Slides</span>
+                                                <button
+                                                    class="slides-button profile-player-button profile-round-detail-slides-button"
+                                                    type="button"
+                                                    data-presentation-url="{{ round.link }}"
+                                                    data-slides-target="profile-round-mobile-slides-{{ forloop.counter0 }}"
+                                                    aria-expanded="false"
+                                                >
+                                                    Slides
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div id="profile-round-mobile-slides-{{ forloop.counter0 }}" class="profile-round-mobile-slides" hidden>
+                                            <div class="profile-round-slides-shell">
+                                                <iframe
+                                                    class="profile-round-slides-frame"
+                                                    title="{{ round.title }} slides"
+                                                    loading="lazy"
+                                                    allowfullscreen="true"
+                                                    mozallowfullscreen="true"
+                                                    webkitallowfullscreen="true"
+                                                ></iframe>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
                         </div>
                         <p class="profile-table-empty profile-table-empty--hidden" data-empty-message>No created rounds match your search.</p>
                     </div>
@@ -696,7 +781,7 @@
                     }
 
                     const willOpen = slidesRow.hidden;
-                    document.querySelectorAll('.profile-round-slides-row').forEach(otherRow => {
+                    document.querySelectorAll('.profile-round-slides-row, .profile-round-mobile-slides').forEach(otherRow => {
                         otherRow.hidden = true;
                     });
                     document.querySelectorAll('.slides-button').forEach(otherButton => {
@@ -819,7 +904,7 @@
                     }
 
                     const willOpen = detailsRow.hidden;
-                    document.querySelectorAll('.profile-round-detail-row').forEach(otherRow => {
+                    document.querySelectorAll('.profile-round-detail-row, .profile-round-mobile-details').forEach(otherRow => {
                         otherRow.hidden = true;
                     });
                     document.querySelectorAll('.profile-round-expander').forEach(otherButton => {

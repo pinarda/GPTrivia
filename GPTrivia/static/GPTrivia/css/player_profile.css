@@ -379,6 +379,10 @@ a {
     overflow-x: auto;
 }
 
+.profile-rounds-mobile-list {
+    display: none;
+}
+
 #createdRoundsTable,
 #playerRoundsTable {
     width: 100%;
@@ -706,6 +710,10 @@ a {
     .profile-round-detail-row {
         display: none !important;
     }
+
+    .profile-rounds-mobile-list {
+        display: none !important;
+    }
 }
 
 @media screen and (max-width: 899px) {
@@ -768,6 +776,48 @@ a {
     #playerRoundsTable td {
         padding: 0.65rem 0.7rem;
         font-size: 0.94rem;
+    }
+
+    .profile-rounds-desktop-shell {
+        display: none;
+    }
+
+    .profile-rounds-mobile-list {
+        display: grid;
+        gap: 0.7rem;
+    }
+
+    .profile-round-mobile-card {
+        border: 1px solid var(--profile-border);
+        background: var(--profile-table-row-bg);
+    }
+
+    .profile-round-mobile-card[hidden] {
+        display: none !important;
+    }
+
+    .profile-round-mobile-summary {
+        display: grid;
+        grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+        gap: 0.65rem;
+        align-items: center;
+        padding: 0.7rem 0.75rem;
+    }
+
+    .profile-round-mobile-title {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .profile-round-mobile-date {
+        font-size: 0.92rem;
+        color: var(--profile-page-text);
+        white-space: nowrap;
+    }
+
+    .profile-round-mobile-details[hidden],
+    .profile-round-mobile-slides[hidden] {
+        display: none !important;
     }
 
     #playerRoundsTable th:nth-child(1),
