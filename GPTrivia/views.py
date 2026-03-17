@@ -1200,6 +1200,29 @@ def _ready_presentations_queryset():
     return MergedPresentation.objects.filter(status=MergedPresentation.STATUS_READY).exclude(presentation_id="")
 
 
+def _delete_stale_ready_presentations_without_rounds():
+    round_dates = set(GPTriviaRound.objects.values_list("date", flat=True).distinct())
+    stale_ids = [
+        presentation.id
+        for presentation in _ready_presentations_queryset().order_by("id")
+        if (presentation_date := _parse_presentation_name_date(presentation.name)) is not None
+        and presentation_date not in round_dates
+    ]
+    if stale_ids:
+        MergedPresentation.objects.filter(id__in=stale_ids).delete()
+
+
+def _home_visible_presentations():
+    _delete_stale_ready_presentations_without_rounds()
+    round_dates = set(GPTriviaRound.objects.values_list("date", flat=True).distinct())
+    presentations = list(_ready_presentations_queryset().order_by("id"))
+    return [
+        presentation
+        for presentation in presentations
+        if _parse_presentation_name_date(presentation.name) in round_dates
+    ]
+
+
 def _stale_home_build_cutoff():
     return timezone.now() - datetime.timedelta(minutes=HOME_BUILD_STALE_MINUTES)
 
@@ -1397,7 +1420,7 @@ def _is_ajax_home_request(request):
 
 
 def _get_selected_home_presentation(selected_presentation_id=None):
-    presentations = list(_ready_presentations_queryset().order_by("id"))
+    presentations = _home_visible_presentations()
     latest_presentation = presentations[-1] if presentations else None
     selected_presentation = latest_presentation
 

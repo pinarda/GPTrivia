@@ -6,13 +6,15 @@ from django.test import TestCase
 from django.urls import reverse
 
 from GPTrivia.mail import PresentationBuildError
-from GPTrivia.models import MergedPresentation, PresentationBuildState, SubmittedRound
+from GPTrivia.models import GPTriviaRound, MergedPresentation, PresentationBuildState, SubmittedRound
 
 
 class HomeViewPresentationSelectionTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="alex", password="test-pass")
         self.client.force_login(self.user)
+        self._create_round(date=datetime.date(2026, 3, 5), round_number=1, title="Round A", creator="Alex")
+        self._create_round(date=datetime.date(2026, 3, 12), round_number=1, title="Round B", creator="Megan")
         self.older_presentation = self._create_presentation(
             name="3.05.2026",
             presentation_id="presentation-old",
@@ -38,6 +40,20 @@ class HomeViewPresentationSelectionTests(TestCase):
             style_points={},
             notes="",
             tiebreak_winner="",
+        )
+
+    def _create_round(self, *, date, round_number, title, creator):
+        return GPTriviaRound.objects.create(
+            creator=creator,
+            title=title,
+            major_category="",
+            minor_category1="",
+            minor_category2="",
+            date=date,
+            round_number=round_number,
+            max_score=10,
+            cooperative=False,
+            link=f"https://example.com/{title.casefold().replace(' ', '-')}",
         )
 
     def test_home_defaults_to_latest_presentation_and_calendar_context(self):
@@ -119,6 +135,21 @@ class HomeViewPresentationSelectionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["selected_presentation_id"], "presentation-latest")
         self.assertNotIn("2026-03-14", response.context["presentation_calendar"])
+
+    def test_home_ignores_presentations_without_rounds_for_selection_and_calendar(self):
+        stale_presentation = self._create_presentation(
+            name="03.16.2026",
+            presentation_id="presentation-stale",
+            round_names=["Stale Round"],
+            creator_list=["Alex"],
+        )
+
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_presentation_id"], "presentation-latest")
+        self.assertNotIn("2026-03-16", response.context["presentation_calendar"])
+        self.assertFalse(MergedPresentation.objects.filter(id=stale_presentation.id).exists())
 
     def test_home_context_includes_active_build_state(self):
         PresentationBuildState.objects.create(
