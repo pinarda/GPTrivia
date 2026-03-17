@@ -44,7 +44,7 @@ a {
 }
 
 .profile-page {
-    width: min(1100px, calc(100% - 24px));
+    width: min(1260px, calc(100% - 24px));
     margin: 0 auto 28px;
     color: var(--profile-page-text);
 }
@@ -58,7 +58,7 @@ a {
 
 .profile-actions-container {
     display: block;
-    width: min(100%, 860px);
+    width: min(100%, 1180px);
     margin: 0 auto;
 }
 
@@ -96,6 +96,21 @@ a {
     min-width: 0;
     width: 100%;
     margin: 0 auto;
+}
+
+@media screen and (min-width: 701px) {
+    .profile-control-stack > .profile-panel-toggle,
+    .profile-control-stack > .profile-inline-form,
+    .profile-control-stack > #notificationbtn {
+        width: min(100%, 360px);
+        justify-self: center;
+    }
+
+    .profile-control-stack > .profile-control-heading,
+    .profile-control-stack > .profile-account-heading,
+    .profile-control-stack > .profile-hero-card {
+        justify-self: center;
+    }
 }
 
 .profile-control-heading {

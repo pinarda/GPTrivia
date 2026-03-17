@@ -875,6 +875,13 @@
                     const willOpen = slidesRow.hidden;
                     document.querySelectorAll('.profile-round-slides-row, .profile-round-mobile-slides').forEach(otherRow => {
                         otherRow.hidden = true;
+                        if (otherRow.classList.contains('profile-round-slides-row')) {
+                            otherRow.style.display = 'none';
+                            const otherCell = otherRow.querySelector('td');
+                            if (otherCell) {
+                                otherCell.style.display = 'none';
+                            }
+                        }
                     });
                     document.querySelectorAll('.slides-button').forEach(otherButton => {
                         otherButton.setAttribute('aria-expanded', 'false');
@@ -891,6 +898,13 @@
                         iframe.src = embedUrl;
                     }
                     slidesRow.hidden = false;
+                    if (slidesRow.classList.contains('profile-round-slides-row')) {
+                        slidesRow.style.display = 'table-row';
+                        const slidesCell = slidesRow.querySelector('td');
+                        if (slidesCell) {
+                            slidesCell.style.display = 'table-cell';
+                        }
+                    }
                     button.setAttribute('aria-expanded', 'true');
                     button.textContent = 'Hide Slides';
                 });
