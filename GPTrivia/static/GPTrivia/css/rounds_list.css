@@ -199,8 +199,8 @@ body.site-shell[data-profile-theme="light"] #roundList tbody .title-cell a {
 
     .table-container {
         width: 100%;
-        height: calc(100dvh - var(--mobile-header-offset, 62px) - var(--mobile-footer-offset, 40px) - 12px);
-        max-height: calc(100dvh - var(--mobile-header-offset, 62px) - var(--mobile-footer-offset, 40px) - 12px);
+        height: calc(100dvh - var(--mobile-header-offset, 62px) - var(--mobile-footer-offset, 40px) - 20px);
+        max-height: calc(100dvh - var(--mobile-header-offset, 62px) - var(--mobile-footer-offset, 40px) - 20px);
     }
 
     #roundList tbody::before {
