@@ -225,21 +225,64 @@
           let playerColorMapping = {{ player_color_mapping|safe }};
           let playerName = "{{ player_name }}";
           let textColor = "{{ text_color }}";
+          let notificationsEnabledForDevice = false;
 
           document.addEventListener('DOMContentLoaded', () => {
                 const notifyBtn = document.getElementById('notificationbtn');
                 if (notifyBtn) {
-                    notifyBtn.addEventListener('click', askPermission);
+                    initializeNotificationButton(notifyBtn);
+                    notifyBtn.addEventListener('click', toggleNotificationsForDevice);
                 }
             });
+
+          function getCsrfToken() {
+                const csrfInput = document.querySelector('input[name=csrfmiddlewaretoken]');
+                return csrfInput ? csrfInput.value : '';
+            }
+
+          function setNotificationButtonState(button, { enabled = false, disabled = false, label = '' } = {}) {
+                if (!button) {
+                    return;
+                }
+                notificationsEnabledForDevice = enabled;
+                button.disabled = disabled;
+                button.textContent = label || (enabled ? 'Disable Notifications' : 'Enable Notifications');
+            }
+
+          async function initializeNotificationButton(button) {
+                if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+                    setNotificationButtonState(button, {
+                        enabled: false,
+                        disabled: true,
+                        label: 'Notifications Unsupported',
+                    });
+                    return;
+                }
+
+                try {
+                    const registration = await navigator.serviceWorker.ready;
+                    const existingSubscription = await registration.pushManager.getSubscription();
+                    setNotificationButtonState(button, {
+                        enabled: Boolean(existingSubscription),
+                        disabled: false,
+                    });
+                } catch (err) {
+                    console.error('Error checking notification state:', err);
+                    setNotificationButtonState(button, {
+                        enabled: false,
+                        disabled: false,
+                    });
+                }
+            }
 
           async function askPermission() {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
                     console.log('Notification permission granted.');
-                    subscribeUser();
+                    return true;
                 } else {
                     console.warn('Permission not granted for notifications.');
+                    return false;
                 }
             }
 
@@ -268,15 +311,81 @@
                         body: JSON.stringify(subscription),
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRFToken': 'SbPQytYxlWI1xU8jYh18IRC9xFFIKcj2mAOfWAmBVB0MQGm3Yvzwxn05dugLqchV'
+                            'X-CSRFToken': getCsrfToken(),
                         }
                     });
 
                     console.log('Subscription saved:', await response.json());
+                    return true;
                 } catch (err) {
                     console.error('Error in subscribeUser():', err);
-                    debugger; // Hit this if anything goes wrong
+                    return false;
                 }
+            }
+
+            async function unsubscribeUser() {
+                try {
+                    const registration = await navigator.serviceWorker.ready;
+                    const subscription = await registration.pushManager.getSubscription();
+                    if (!subscription) {
+                        return true;
+                    }
+
+                    const endpoint = subscription.endpoint;
+                    await subscription.unsubscribe();
+
+                    const response = await fetch('/api/save-subscription/', {
+                        method: 'DELETE',
+                        body: JSON.stringify({ endpoint: endpoint }),
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCsrfToken(),
+                        }
+                    });
+
+                    console.log('Subscription removed:', await response.json());
+                    return true;
+                } catch (err) {
+                    console.error('Error in unsubscribeUser():', err);
+                    return false;
+                }
+            }
+
+            async function toggleNotificationsForDevice() {
+                const notifyBtn = document.getElementById('notificationbtn');
+                if (!notifyBtn) {
+                    return;
+                }
+
+                setNotificationButtonState(notifyBtn, {
+                    enabled: notificationsEnabledForDevice,
+                    disabled: true,
+                    label: notificationsEnabledForDevice ? 'Disabling…' : 'Enabling…',
+                });
+
+                if (notificationsEnabledForDevice) {
+                    const success = await unsubscribeUser();
+                    setNotificationButtonState(notifyBtn, {
+                        enabled: success ? false : true,
+                        disabled: false,
+                    });
+                    return;
+                }
+
+                const permissionGranted = await askPermission();
+                if (!permissionGranted) {
+                    setNotificationButtonState(notifyBtn, {
+                        enabled: false,
+                        disabled: false,
+                    });
+                    return;
+                }
+
+                const success = await subscribeUser();
+                setNotificationButtonState(notifyBtn, {
+                    enabled: success,
+                    disabled: false,
+                });
             }
 
 

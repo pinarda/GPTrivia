@@ -415,31 +415,38 @@ class PushSubscriptionAdminAgain(admin.ModelAdmin):
         self.message_user(request, "Push notification sent to all subscriptions.", messages.SUCCESS)
     send_test_push.short_description = "Send test push notification to all"
 
-def send_push_to_all(title, body):
-    subscriptions = PushSubscription.objects.all()
+
+def _send_push_to_subscription(subscription, title, body):
     payload = {
         "title": title,
         "body": body,
     }
+    sub_info = {
+        "endpoint": subscription.endpoint,
+        "keys": {
+            "p256dh": subscription.p256dh,
+            "auth": subscription.auth,
+        }
+    }
+    try:
+        webpush(
+            subscription_info=sub_info,
+            data=json.dumps(payload),
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims=VAPID_CLAIMS.copy(),
+        )
+        print(f"Notification sent to {subscription.endpoint}")
+        return True
+    except WebPushException as ex:
+        print(f"Failed to send notification: {ex}")
+        return False
+
+
+def send_push_to_all(title, body):
+    subscriptions = PushSubscription.objects.all()
     for sub in subscriptions:
         print(f"Endpoint: {sub.endpoint}")
-        sub_info = {
-            "endpoint": sub.endpoint,
-            "keys": {
-                "p256dh": sub.p256dh,
-                "auth": sub.auth,
-            }
-        }
-        try:
-            webpush(
-                subscription_info=sub_info,
-                data=json.dumps(payload),
-                vapid_private_key=VAPID_PRIVATE_KEY,
-                vapid_claims=VAPID_CLAIMS.copy(),
-            )
-            print(f"Notification sent to {sub.endpoint}")
-        except WebPushException as ex:
-            print(f"Failed to send notification: {ex}")
+        _send_push_to_subscription(sub, title, body)
 
 def get_j_question(request, question_id):
     question = get_object_or_404(JeopardyQuestion, id=question_id)
@@ -477,7 +484,25 @@ def save_subscription(request):
                 sub.user = request.user
             sub.save()
 
-            return JsonResponse({'success': True})
+            test_notification_sent = _send_push_to_subscription(
+                sub,
+                "Notifications Enabled",
+                "Hail Science notifications are now enabled on this device.",
+            )
+
+            return JsonResponse({'success': True, 'test_notification_sent': test_notification_sent})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+    if request.method == 'DELETE':
+        try:
+            data = json.loads(request.body or '{}')
+            endpoint = data.get('endpoint')
+            if not endpoint:
+                return JsonResponse({'success': False, 'error': 'Endpoint is required'}, status=400)
+
+            deleted_count, _ = PushSubscription.objects.filter(endpoint=endpoint).delete()
+            return JsonResponse({'success': True, 'deleted': bool(deleted_count)})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
