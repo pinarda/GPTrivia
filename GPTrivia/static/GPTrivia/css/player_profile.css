@@ -769,13 +769,14 @@ a {
 
     #playerRoundsTable {
         table-layout: fixed;
+        width: 100%;
     }
 
     #playerRoundsTable th:nth-child(2),
     #playerRoundsTable td:nth-child(2) {
-        width: calc(100% - 9.4rem);
+        width: auto;
         min-width: 0;
-        max-width: calc(100% - 9.4rem);
+        max-width: none;
     }
 
     .profile-round-expander {
@@ -798,6 +799,17 @@ a {
         grid-template-columns: 1fr;
         gap: 0.55rem;
         padding: 0.8rem;
+    }
+
+    .profile-round-detail-row,
+    .profile-round-slides-row {
+        display: block;
+    }
+
+    .profile-round-detail-row td,
+    .profile-round-slides-row td {
+        display: block;
+        width: auto;
     }
 
     .profile-round-slides-shell {
