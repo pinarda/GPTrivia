@@ -61,7 +61,6 @@ a {
     align-items: start;
 }
 
-.profile-hero-card,
 .profile-settings-form,
 .profile-data-panel,
 .summary-stats {
@@ -73,13 +72,17 @@ a {
     order: 2;
     display: grid;
     place-items: center;
-    padding: 1rem;
+    width: 330px;
+    justify-self: end;
+    padding: 0;
+    background: transparent;
+    border: 0;
 }
 
 .profile-hero-image {
     display: block;
-    width: min(100%, 320px);
-    aspect-ratio: 1 / 1;
+    width: 320px;
+    height: 320px;
     object-fit: cover;
     object-position: center;
     border-radius: 0;
@@ -467,11 +470,13 @@ a {
     }
 
     .profile-hero-card {
-        padding: 0.8rem;
+        width: 100%;
+        justify-self: center;
     }
 
     .profile-hero-image {
-        width: min(100%, 300px);
+        width: min(100%, 280px);
+        height: min(calc(100vw - 32px), 280px);
     }
 }
 
@@ -488,6 +493,11 @@ a {
     .profile-accordion-stack,
     .summary-stats {
         gap: 0.8rem;
+    }
+
+    .profile-hero-image {
+        width: min(100%, 260px);
+        height: min(calc(100vw - 24px), 260px);
     }
 
     .profile-control-stack .expand-collapse-button,
