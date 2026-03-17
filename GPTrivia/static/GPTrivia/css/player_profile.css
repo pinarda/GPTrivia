@@ -104,6 +104,10 @@ a {
     width: 100%;
 }
 
+.profile-panel-button-row > .profile-data-panel {
+    width: 100%;
+}
+
 @media screen and (min-width: 701px) {
     .profile-control-stack > .profile-control-heading,
     .profile-control-stack > .profile-account-heading,
@@ -124,6 +128,11 @@ a {
         width: auto;
         min-width: 220px;
         max-width: 320px;
+    }
+
+    .profile-panel-button-row > .profile-data-panel {
+        flex: 0 0 100%;
+        width: 100%;
     }
 
     .profile-panel-button-row > .profile-inline-form > button {

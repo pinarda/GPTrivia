@@ -28,7 +28,13 @@
 
                 <div class="profile-control-heading">
                     <h2>Creator Information</h2>
-                    <p>Browse the categories this player creates most often and search through every round they’ve made.</p>
+                    <p>
+                        {% if is_own_profile %}
+                            Browse the categories you create most often and search through every round you’ve made.
+                        {% else %}
+                            Browse the categories this player creates most often and search through every round they’ve made.
+                        {% endif %}
+                    </p>
                 </div>
 
                 <div class="profile-panel-button-row profile-panel-button-row--creator">
@@ -376,89 +382,89 @@
                         Profile Appearance
                     </button>
 
+                    <section id="profile-appearance-panel" class="profile-data-panel" hidden>
+                        <div class="profile-data-panel-header">
+                            <div>
+                                <h2>Profile Appearance</h2>
+                                <p>Change your picture, profile color, and theme from one place.</p>
+                            </div>
+                        </div>
+
+                        <div class="profile-settings-panel">
+                            <form
+                                id="profile-settings-form"
+                                class="profile-settings-form"
+                                method="post"
+                                action="{% url 'upload_profile_picture' %}"
+                                enctype="multipart/form-data"
+                            >
+                                {% csrf_token %}
+                                <div class="profile-settings-group">
+                                    <label class="profile-settings-label" for="{{ form.profile_picture.id_for_label }}">
+                                        Profile Picture
+                                    </label>
+                                    {{ form.profile_picture }}
+                                    {% for error in form.profile_picture.errors %}
+                                        <p class="profile-settings-error">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+
+                                <div id="profile-crop-editor" class="profile-crop-editor profile-crop-editor--hidden">
+                                    <div class="profile-crop-editor-header">
+                                        <span>Square Crop</span>
+                                        <span class="profile-crop-helper">Drag to reposition</span>
+                                    </div>
+                                    <div id="profile-crop-frame" class="profile-crop-frame">
+                                        <img id="profile-crop-image" class="profile-crop-image" alt="Crop preview">
+                                    </div>
+                                    <div class="profile-crop-zoom-row">
+                                        <label class="profile-settings-label" for="profile-crop-zoom">Zoom</label>
+                                        <input id="profile-crop-zoom" type="range" min="100" max="280" step="1" value="100">
+                                    </div>
+                                </div>
+
+                                <div class="profile-settings-group profile-color-group">
+                                    <label class="profile-settings-label" for="{{ form.profile_color.id_for_label }}">
+                                        Profile Color
+                                    </label>
+                                    <div class="profile-color-input-row">
+                                        {{ form.profile_color }}
+                                        <span id="profile-color-value" class="profile-color-value">{{ form.profile_color.value|default_if_none:'' }}</span>
+                                    </div>
+                                    {% for error in form.profile_color.errors %}
+                                        <p class="profile-settings-error">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="profile-settings-group">
+                                    <label class="profile-settings-label" for="{{ form.site_theme.id_for_label }}">
+                                        Theme
+                                    </label>
+                                    {{ form.site_theme }}
+                                    {% for error in form.site_theme.errors %}
+                                        <p class="profile-settings-error">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+
+                                {{ form.crop_x }}
+                                {{ form.crop_y }}
+                                {{ form.crop_size }}
+
+                                {% for error in form.non_field_errors %}
+                                    <p class="profile-settings-error">{{ error }}</p>
+                                {% endfor %}
+
+                                <button class="expand-collapse-button profile-player-button" type="submit">Save Appearance</button>
+                            </form>
+                        </div>
+                    </section>
+
                     <form class="profile-inline-form" action="{% url 'password_change' %}">
                         <button class="expand-collapse-button profile-player-button" id="passwordbtn" type="submit">Change Password</button>
                     </form>
 
                     <button class="expand-collapse-button profile-player-button" id="notificationbtn" type="button">Enable Notifications</button>
                 </div>
-
-                <section id="profile-appearance-panel" class="profile-data-panel" hidden>
-                    <div class="profile-data-panel-header">
-                        <div>
-                            <h2>Profile Appearance</h2>
-                            <p>Change your picture, profile color, and theme from one place.</p>
-                        </div>
-                    </div>
-
-                    <div class="profile-settings-panel">
-                        <form
-                            id="profile-settings-form"
-                            class="profile-settings-form"
-                            method="post"
-                            action="{% url 'upload_profile_picture' %}"
-                            enctype="multipart/form-data"
-                        >
-                            {% csrf_token %}
-                            <div class="profile-settings-group">
-                                <label class="profile-settings-label" for="{{ form.profile_picture.id_for_label }}">
-                                    Profile Picture
-                                </label>
-                                {{ form.profile_picture }}
-                                {% for error in form.profile_picture.errors %}
-                                    <p class="profile-settings-error">{{ error }}</p>
-                                {% endfor %}
-                            </div>
-
-                            <div id="profile-crop-editor" class="profile-crop-editor profile-crop-editor--hidden">
-                                <div class="profile-crop-editor-header">
-                                    <span>Square Crop</span>
-                                    <span class="profile-crop-helper">Drag to reposition</span>
-                                </div>
-                                <div id="profile-crop-frame" class="profile-crop-frame">
-                                    <img id="profile-crop-image" class="profile-crop-image" alt="Crop preview">
-                                </div>
-                                <div class="profile-crop-zoom-row">
-                                    <label class="profile-settings-label" for="profile-crop-zoom">Zoom</label>
-                                    <input id="profile-crop-zoom" type="range" min="100" max="280" step="1" value="100">
-                                </div>
-                            </div>
-
-                            <div class="profile-settings-group profile-color-group">
-                                <label class="profile-settings-label" for="{{ form.profile_color.id_for_label }}">
-                                    Profile Color
-                                </label>
-                                <div class="profile-color-input-row">
-                                    {{ form.profile_color }}
-                                    <span id="profile-color-value" class="profile-color-value">{{ form.profile_color.value|default_if_none:'' }}</span>
-                                </div>
-                                {% for error in form.profile_color.errors %}
-                                    <p class="profile-settings-error">{{ error }}</p>
-                                {% endfor %}
-                            </div>
-
-                            <div class="profile-settings-group">
-                                <label class="profile-settings-label" for="{{ form.site_theme.id_for_label }}">
-                                    Theme
-                                </label>
-                                {{ form.site_theme }}
-                                {% for error in form.site_theme.errors %}
-                                    <p class="profile-settings-error">{{ error }}</p>
-                                {% endfor %}
-                            </div>
-
-                            {{ form.crop_x }}
-                            {{ form.crop_y }}
-                            {{ form.crop_size }}
-
-                            {% for error in form.non_field_errors %}
-                                <p class="profile-settings-error">{{ error }}</p>
-                            {% endfor %}
-
-                            <button class="expand-collapse-button profile-player-button" type="submit">Save Appearance</button>
-                        </form>
-                    </div>
-                </section>
 
                 {% endif %}
             </div>
