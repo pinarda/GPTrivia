@@ -9,6 +9,23 @@ from GPTrivia.models import SubmittedRound
 
 
 class RoundMakerTests(TestCase):
+    def test_build_responses_input_marks_assistant_messages_as_output_text(self):
+        response_input = views._build_responses_input(
+            [
+                {"role": "system", "content": views.SWOOP_SYSTEM_PROMPT},
+                {"role": "user", "content": "Give me a round idea"},
+                {"role": "assistant", "content": "Swoop! Try fossils."},
+            ]
+        )
+
+        self.assertEqual(
+            response_input,
+            [
+                {"role": "user", "content": [{"type": "input_text", "text": "Give me a round idea"}]},
+                {"role": "assistant", "content": [{"type": "output_text", "text": "Swoop! Try fossils."}]},
+            ],
+        )
+
     @patch("GPTrivia.views.requests.post")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"})
     def test_openai_text_response_uses_http_responses_api_for_legacy_clients(self, post_mock):

@@ -196,10 +196,11 @@ def _build_responses_input(messages):
         content = str((message or {}).get('content', '')).strip()
         if role == 'system' or not content:
             continue
+        content_type = "output_text" if role == "assistant" else "input_text"
         response_messages.append(
             {
                 "role": role,
-                "content": [{"type": "input_text", "text": content}],
+                "content": [{"type": content_type, "text": content}],
             }
         )
     return response_messages
