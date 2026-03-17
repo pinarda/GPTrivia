@@ -164,6 +164,7 @@ a {
 .profile-settings-panel {
     display: grid;
     gap: 0.75rem;
+    min-width: 0;
 }
 
 .profile-settings-form {
@@ -171,6 +172,7 @@ a {
     gap: 0.85rem;
     padding: 0.95rem;
     color: var(--profile-page-text);
+    min-width: 0;
 }
 
 .profile-settings-group {
@@ -192,6 +194,8 @@ a {
 
 .profile-settings-form input[type="file"] {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     box-sizing: border-box;
     border: 1px solid var(--profile-input-border);
     background: var(--profile-input-bg);
@@ -199,11 +203,17 @@ a {
     font-family: Monaco, monospace;
     font-size: 0.82rem;
     padding: 0.4rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .profile-settings-form input[type="file"]::file-selector-button,
 .profile-settings-form input[type="file"]::-webkit-file-upload-button {
     margin-right: 0.8rem;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: var(--profile-file-button-text, #ffffff);
     background: var(--profile-file-button-bg, #2d3047);
     border: 1px solid rgba(255, 255, 255, 0.12);
