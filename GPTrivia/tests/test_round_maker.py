@@ -203,6 +203,8 @@ class RoundMakerTests(TestCase):
             response_mock.call_args.kwargs["instructions"],
             views.SWOOP_SAMPLE_QUESTION_PROMPT,
         )
+        self.assertEqual(response_mock.call_args.kwargs["max_output_tokens"], 220)
+        self.assertEqual(response_mock.call_args.kwargs["reasoning_effort"], "low")
 
     @patch("GPTrivia.views.share_slides")
     def test_share_view_uses_authenticated_username_for_creator(self, share_slides_mock):

@@ -982,8 +982,8 @@ class AutoGenView(View):
                 client=client,
                 instructions=SWOOP_SAMPLE_QUESTION_PROMPT,
                 input_items=user_input,
-                max_output_tokens=250,
-                reasoning_effort="medium",
+                max_output_tokens=220,
+                reasoning_effort="low",
             )
         except Exception as e:
             auto_resp = str(e)

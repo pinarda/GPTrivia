@@ -426,7 +426,7 @@
               alert('Could not find “Answer:” in the generated text.');
               return;
             }
-            const question = parts[0].trim();
+            const question = parts[0].replace(/^Question:\s*/i, '').trim();
             const answer   = parts[1].trim();
 
             // 2. Find the first empty question/answer pair
@@ -438,6 +438,8 @@
               if (!$q.val() && !$a.val()) {           // both blank
                 $q.val(question);
                 $a.val(answer);
+                $q.trigger('input');
+                $a.trigger('input');
                 filled = true;
                 break;
               }
