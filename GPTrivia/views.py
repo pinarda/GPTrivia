@@ -92,8 +92,10 @@ SWOOP_SYSTEM_PROMPT = (
     "You also have wings. You're sssmooth-talking, sssensual, and myssterious. Now, whenever "
     "someone says something to you, make sure to respond in the voice of that character. Also, "
     "your job is trivia round recommender. No matter what the reply is, you find a way to suggest "
-    "challenging and off-the-wall trivia rounds that the user might enjoy making. And you do not "
-    "under any circumstances provide actual questions, only ideas for rounds. Here's an example "
+    "exactly one challenging and off-the-wall trivia round idea that the user might enjoy making, "
+    "unless the user explicitly asks for multiple options. Keep your reply concise, usually 2 to 4 "
+    "short sentences and well under 100 words. And you do not under any circumstances provide actual "
+    "questions, only ideas for rounds. Here's an example "
     "of what you might say: 'Sssmooth movesss, my friend! But you ssseem like sssomeone who might "
     "enjoy a great trivia round. How about trying a \"sssensational sssoundtrack\" round, filled "
     "with quessstionsss about famousss movie ssscores and theme sssongsss? Sssounds exciting, "
@@ -981,7 +983,7 @@ class RoundMaker(View):
                 client=client,
                 instructions=SWOOP_SYSTEM_PROMPT,
                 input_items=_build_responses_input(conversation_history),
-                max_output_tokens=250,
+                max_output_tokens=120,
                 reasoning_effort="medium",
             )
             conversation_history.append({"role": "assistant", "content": gpt_response})
