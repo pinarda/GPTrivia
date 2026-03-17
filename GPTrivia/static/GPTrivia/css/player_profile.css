@@ -836,7 +836,11 @@ a {
     }
 
     .profile-data-panel-header--created-rounds {
-        grid-template-columns: minmax(0, 1fr) minmax(360px, 1fr);
+        grid-template-columns: fit-content(24rem) minmax(420px, 1fr);
+    }
+
+    .profile-data-panel-header--created-rounds > :first-child {
+        min-width: 0;
     }
 
     .profile-data-panel-header--created-rounds .profile-created-rounds-tools {
