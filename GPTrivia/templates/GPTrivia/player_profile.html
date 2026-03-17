@@ -28,7 +28,7 @@
             <div id="roundbuttons" class="profile-control-stack">
                 <div class="profile-control-heading">
                     <h2>Creator Information</h2>
-                    <p>Open your created-round panels, review appearance settings, and manage account options here.</p>
+                    <p>Use these tables to browse every category this player has created and review each created round with its stats and slides.</p>
                 </div>
 
                 <button
@@ -45,7 +45,7 @@
                     <div class="profile-data-panel-header">
                         <div>
                             <h2>Created Round Categories</h2>
-                            <p>Search categories and counts the same way you browse rounds elsewhere on the site.</p>
+                            <p>These are the categories for every round created by this player.</p>
                         </div>
                         {% if created_rounds_cat %}
                         <input
@@ -116,6 +116,8 @@
                                 <option value="date-asc">Date: Oldest</option>
                                 <option value="title-asc">Title: A-Z</option>
                                 <option value="title-desc">Title: Z-A</option>
+                                <option value="high-desc">High Score</option>
+                                <option value="average-desc">Average Score</option>
                             </select>
                         </div>
                         {% endif %}
@@ -257,6 +259,8 @@
                                     data-search="{{ round.title|lower }} {{ round.date }} {{ round.major_category|lower }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }} {% if round.cooperative %}coop cooperative co-op{% endif %} {{ round.high_score_display|lower }} {{ round.average_score_display|lower }}"
                                     data-sort-title="{{ round.title|lower }}"
                                     data-sort-date="{{ round.date|date:'Y-m-d' }}"
+                                    data-sort-high="{{ round.high_score|default_if_none:'-1' }}"
+                                    data-sort-average="{{ round.average_score|default_if_none:'-1' }}"
                                 >
                                     <div class="profile-round-mobile-summary">
                                         <button
@@ -762,6 +766,18 @@
                 const sortValue = sortSelect.value || 'date-desc';
 
                 groups.sort((leftGroup, rightGroup) => {
+                    if (sortValue.startsWith('high')) {
+                        const leftValue = Number(leftGroup.dataset.sortHigh || -1);
+                        const rightValue = Number(rightGroup.dataset.sortHigh || -1);
+                        return rightValue - leftValue;
+                    }
+
+                    if (sortValue.startsWith('average')) {
+                        const leftValue = Number(leftGroup.dataset.sortAverage || -1);
+                        const rightValue = Number(rightGroup.dataset.sortAverage || -1);
+                        return rightValue - leftValue;
+                    }
+
                     if (sortValue.startsWith('title')) {
                         const leftValue = leftGroup.dataset.sortTitle || '';
                         const rightValue = rightGroup.dataset.sortTitle || '';

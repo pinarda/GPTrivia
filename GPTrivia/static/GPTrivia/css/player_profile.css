@@ -182,12 +182,15 @@ a {
     width: 100%;
     max-width: 100%;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .profile-settings-group {
     display: grid;
     gap: 0.35rem;
     min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .profile-settings-label {
@@ -249,6 +252,8 @@ a {
     align-items: center;
     gap: 0.7rem;
     flex-wrap: wrap;
+    min-width: 0;
+    width: 100%;
 }
 
 .profile-color-input-row input[type="color"] {
@@ -258,12 +263,34 @@ a {
     border: 1px solid var(--profile-input-border);
     background: transparent;
     cursor: pointer;
+    border-radius: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    overflow: hidden;
+    flex: 0 0 54px;
+    box-sizing: border-box;
+}
+
+.profile-color-input-row input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.profile-color-input-row input[type="color"]::-webkit-color-swatch {
+    border: 0;
+    border-radius: 0;
+}
+
+.profile-color-input-row input[type="color"]::-moz-color-swatch {
+    border: 0;
+    border-radius: 0;
 }
 
 .profile-color-value {
     font-family: Monaco, monospace;
     font-size: 0.9rem;
     color: var(--profile-page-text);
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .profile-crop-editor {
