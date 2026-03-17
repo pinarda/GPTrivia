@@ -7,7 +7,7 @@
       --shell-chrome-color: #2d3047;
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260317d">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260317e">
 {% endblock %}
 
 {% block extra_meta %}
@@ -31,15 +31,29 @@
                     <p>Browse the categories this player creates most often and search through every round they’ve made.</p>
                 </div>
 
-                <button
-                    class="expand-collapse-button profile-player-button profile-panel-toggle"
-                    id="toggleTable"
-                    type="button"
-                    data-panel-target="created-categories-panel"
-                    aria-expanded="false"
-                >
-                    Created Round Categories
-                </button>
+                <div class="profile-panel-button-row profile-panel-button-row--creator">
+                    <button
+                        class="expand-collapse-button profile-player-button profile-panel-toggle"
+                        id="toggleTable"
+                        type="button"
+                        data-panel-target="created-categories-panel"
+                        data-panel-group="creator"
+                        aria-expanded="false"
+                    >
+                        Created Round Categories
+                    </button>
+
+                    <button
+                        class="expand-collapse-button profile-player-button profile-panel-toggle"
+                        id="roundsButton"
+                        type="button"
+                        data-panel-target="created-rounds-panel"
+                        data-panel-group="creator"
+                        aria-expanded="false"
+                    >
+                        Created Rounds
+                    </button>
+                </div>
 
                 <section id="created-categories-panel" class="profile-data-panel" hidden>
                     <div class="profile-data-panel-header">
@@ -91,16 +105,6 @@
                         <p class="profile-table-empty">No created round categories yet.</p>
                     {% endif %}
                 </section>
-
-                <button
-                    class="expand-collapse-button profile-player-button profile-panel-toggle"
-                    id="roundsButton"
-                    type="button"
-                    data-panel-target="created-rounds-panel"
-                    aria-expanded="false"
-                >
-                    Created Rounds
-                </button>
 
                 <section id="created-rounds-panel" class="profile-data-panel" hidden>
                     <div class="profile-data-panel-header">
@@ -360,15 +364,24 @@
                     <p>Update your appearance, password, and notifications here.</p>
                 </div>
 
-                <button
-                    class="expand-collapse-button profile-player-button profile-panel-toggle"
-                    id="appearanceButton"
-                    type="button"
-                    data-panel-target="profile-appearance-panel"
-                    aria-expanded="false"
-                >
-                    Profile Appearance
-                </button>
+                <div class="profile-panel-button-row profile-panel-button-row--account">
+                    <button
+                        class="expand-collapse-button profile-player-button profile-panel-toggle"
+                        id="appearanceButton"
+                        type="button"
+                        data-panel-target="profile-appearance-panel"
+                        data-panel-group="account"
+                        aria-expanded="false"
+                    >
+                        Profile Appearance
+                    </button>
+
+                    <form class="profile-inline-form" action="{% url 'password_change' %}">
+                        <button class="expand-collapse-button profile-player-button" id="passwordbtn" type="submit">Change Password</button>
+                    </form>
+
+                    <button class="expand-collapse-button profile-player-button" id="notificationbtn" type="button">Enable Notifications</button>
+                </div>
 
                 <section id="profile-appearance-panel" class="profile-data-panel" hidden>
                     <div class="profile-data-panel-header">
@@ -447,11 +460,6 @@
                     </div>
                 </section>
 
-                <form class="profile-inline-form" action="{% url 'password_change' %}">
-                    <button class="expand-collapse-button profile-player-button" id="passwordbtn" type="submit">Change Password</button>
-                </form>
-
-                <button class="expand-collapse-button profile-player-button" id="notificationbtn" type="button">Enable Notifications</button>
                 {% endif %}
             </div>
         </div>
@@ -741,21 +749,29 @@
             }
         }
 
-        function toggleProfilePanel(panelId) {
-            const panels = document.querySelectorAll('.profile-data-panel');
+        function toggleProfilePanel(button) {
+            const panelId = button.dataset.panelTarget;
+            const groupName = button.dataset.panelGroup || '';
             const targetPanel = document.getElementById(panelId);
             if (!targetPanel) {
                 return;
             }
 
             const willOpen = targetPanel.hidden;
-            panels.forEach(panel => {
+            const groupedButtons = Array.from(document.querySelectorAll('.profile-panel-toggle')).filter(otherButton => {
+                return (otherButton.dataset.panelGroup || '') === groupName;
+            });
+            const groupedPanels = groupedButtons
+                .map(otherButton => document.getElementById(otherButton.dataset.panelTarget))
+                .filter(Boolean);
+
+            groupedPanels.forEach(panel => {
                 panel.hidden = true;
             });
 
-            document.querySelectorAll('.profile-panel-toggle').forEach(button => {
-                const expanded = willOpen && button.dataset.panelTarget === panelId;
-                button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            groupedButtons.forEach(otherButton => {
+                const expanded = willOpen && otherButton === button;
+                otherButton.setAttribute('aria-expanded', expanded ? 'true' : 'false');
             });
 
             targetPanel.hidden = !willOpen;
@@ -768,7 +784,7 @@
 
             document.querySelectorAll('.profile-panel-toggle').forEach(button => {
                 button.addEventListener('click', () => {
-                    toggleProfilePanel(button.dataset.panelTarget);
+                    toggleProfilePanel(button);
                 });
             });
 

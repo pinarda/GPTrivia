@@ -98,18 +98,36 @@ a {
     margin: 0 auto;
 }
 
-@media screen and (min-width: 701px) {
-    .profile-control-stack > .profile-panel-toggle,
-    .profile-control-stack > .profile-inline-form,
-    .profile-control-stack > #notificationbtn {
-        width: min(100%, 360px);
-        justify-self: center;
-    }
+.profile-panel-button-row {
+    display: grid;
+    gap: 0.75rem;
+    width: 100%;
+}
 
+@media screen and (min-width: 701px) {
     .profile-control-stack > .profile-control-heading,
     .profile-control-stack > .profile-account-heading,
     .profile-control-stack > .profile-hero-card {
         justify-self: center;
+    }
+
+    .profile-panel-button-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: stretch;
+    }
+
+    .profile-panel-button-row > .profile-player-button,
+    .profile-panel-button-row > .profile-inline-form {
+        flex: 0 1 auto;
+        width: auto;
+        min-width: 220px;
+        max-width: 320px;
+    }
+
+    .profile-panel-button-row > .profile-inline-form > button {
+        width: 100%;
     }
 }
 
@@ -175,6 +193,10 @@ a {
     opacity: 0.9;
 }
 
+.profile-panel-button-row .profile-panel-toggle[aria-expanded="true"]::after {
+    content: " — Open";
+}
+
 .profile-player-button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -192,6 +214,10 @@ a {
 
 .profile-account-heading {
     margin-top: 0.15rem;
+}
+
+.profile-panel-button-row + .profile-data-panel {
+    margin-top: 0.05rem;
 }
 
 .profile-settings-form {
