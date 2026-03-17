@@ -7,7 +7,7 @@
       --shell-chrome-color: #2d3047;
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260317b">
 {% endblock %}
 
 {% block extra_meta %}
@@ -41,6 +41,50 @@
                     Created Round Categories
                 </button>
 
+                <section id="created-categories-panel" class="profile-data-panel" hidden>
+                    <div class="profile-data-panel-header">
+                        <div>
+                            <h2>Created Round Categories</h2>
+                            <p>Search categories and counts the same way you browse rounds elsewhere on the site.</p>
+                        </div>
+                        {% if created_rounds_cat %}
+                        <input
+                            id="created-categories-search"
+                            class="profile-table-search"
+                            type="search"
+                            placeholder="Search categories"
+                            aria-label="Search created round categories"
+                        >
+                        {% endif %}
+                    </div>
+
+                    {% if created_rounds_cat %}
+                    <div class="profile-table-shell">
+                        <div class="profile-table-wrap">
+                            <table cellpadding="0" cellspacing="0" id="createdRoundsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Major Category</th>
+                                        <th>Rounds</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for round in created_rounds_cat %}
+                                        <tr data-search="{{ round.major_category|lower }} {{ round.num_rounds }}">
+                                            <td>{{ round.major_category }}</td>
+                                            <td>{{ round.num_rounds }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="profile-table-empty profile-table-empty--hidden" data-empty-message>No category results match your search.</p>
+                    </div>
+                    {% else %}
+                        <p class="profile-table-empty">No created round categories yet.</p>
+                    {% endif %}
+                </section>
+
                 <button
                     class="expand-collapse-button profile-player-button profile-panel-toggle"
                     id="roundsButton"
@@ -50,6 +94,75 @@
                 >
                     Created Rounds
                 </button>
+
+                <section id="created-rounds-panel" class="profile-data-panel" hidden>
+                    <div class="profile-data-panel-header">
+                        <div>
+                            <h2>Created Rounds</h2>
+                            <p>Open a round in the full rounds list by clicking the title, or jump to its slides directly.</p>
+                        </div>
+                        {% if created_rounds %}
+                        <input
+                            id="created-rounds-search"
+                            class="profile-table-search"
+                            type="search"
+                            placeholder="Search title, category, date, or co-op"
+                            aria-label="Search created rounds"
+                        >
+                        {% endif %}
+                    </div>
+
+                    {% if created_rounds %}
+                    <div class="profile-table-shell">
+                        <div class="profile-table-wrap">
+                            <table cellpadding="0" cellspacing="0" id="playerRoundsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Date</th>
+                                        <th>Category</th>
+                                        <th>Max</th>
+                                        <th>Rd</th>
+                                        <th>Co-op</th>
+                                        <th>Slides</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for round in created_rounds %}
+                                        <tr data-search="{{ round.title|lower }} {{ round.date }} {{ round.major_category|lower }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }}">
+                                            <td>
+                                                <a
+                                                    class="profile-round-link"
+                                                    href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}"
+                                                >
+                                                    {{ round.title }}
+                                                </a>
+                                            </td>
+                                            <td>{{ round.date }}</td>
+                                            <td>{{ round.major_category }}</td>
+                                            <td>{{ round.max_score }}</td>
+                                            <td>{{ round.round_number }}</td>
+                                            <td>{{ round.cooperative|yesno:"Yes,No" }}</td>
+                                            <td>
+                                                <button
+                                                    class="slides-button profile-player-button"
+                                                    type="button"
+                                                    data-presentation-url="{{ round.link }}"
+                                                >
+                                                    Slides
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="profile-table-empty profile-table-empty--hidden" data-empty-message>No created rounds match your search.</p>
+                    </div>
+                    {% else %}
+                        <p class="profile-table-empty">No created rounds yet.</p>
+                    {% endif %}
+                </section>
 
                 {% if is_own_profile %}
                 <div class="profile-settings-panel">
@@ -128,121 +241,6 @@
                 <button class="expand-collapse-button profile-player-button" id="notificationbtn" type="button">Enable Notifications</button>
                 {% endif %}
             </div>
-        </div>
-
-        <div class="profile-accordion-stack">
-            <section id="created-categories-panel" class="profile-data-panel" hidden>
-                <div class="profile-data-panel-header">
-                    <div>
-                        <h2>Created Round Categories</h2>
-                        <p>Search categories and counts the same way you browse rounds elsewhere on the site.</p>
-                    </div>
-                    {% if created_rounds_cat %}
-                    <input
-                        id="created-categories-search"
-                        class="profile-table-search"
-                        type="search"
-                        placeholder="Search categories"
-                        aria-label="Search created round categories"
-                    >
-                    {% endif %}
-                </div>
-
-                {% if created_rounds_cat %}
-                <div class="profile-table-shell">
-                    <div class="profile-table-wrap">
-                        <table cellpadding="0" cellspacing="0" id="createdRoundsTable">
-                            <thead>
-                                <tr>
-                                    <th>Major Category</th>
-                                    <th>Rounds</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for round in created_rounds_cat %}
-                                    <tr data-search="{{ round.major_category|lower }} {{ round.num_rounds }}">
-                                        <td>{{ round.major_category }}</td>
-                                        <td>{{ round.num_rounds }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <p class="profile-table-empty profile-table-empty--hidden" data-empty-message>No category results match your search.</p>
-                </div>
-                {% else %}
-                    <p class="profile-table-empty">No created round categories yet.</p>
-                {% endif %}
-            </section>
-
-            <section id="created-rounds-panel" class="profile-data-panel" hidden>
-                <div class="profile-data-panel-header">
-                    <div>
-                        <h2>Created Rounds</h2>
-                        <p>Open a round in the full rounds list by clicking the title, or jump to its slides directly.</p>
-                    </div>
-                    {% if created_rounds %}
-                    <input
-                        id="created-rounds-search"
-                        class="profile-table-search"
-                        type="search"
-                        placeholder="Search title, category, date, or co-op"
-                        aria-label="Search created rounds"
-                    >
-                    {% endif %}
-                </div>
-
-                {% if created_rounds %}
-                <div class="profile-table-shell">
-                    <div class="profile-table-wrap">
-                        <table cellpadding="0" cellspacing="0" id="playerRoundsTable">
-                            <thead>
-                                <tr>
-                                    <th>Title</th>
-                                    <th>Date</th>
-                                    <th>Category</th>
-                                    <th>Max</th>
-                                    <th>Rd</th>
-                                    <th>Co-op</th>
-                                    <th>Slides</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for round in created_rounds %}
-                                    <tr data-search="{{ round.title|lower }} {{ round.date }} {{ round.major_category|lower }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }}">
-                                        <td>
-                                            <a
-                                                class="profile-round-link"
-                                                href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}"
-                                            >
-                                                {{ round.title }}
-                                            </a>
-                                        </td>
-                                        <td>{{ round.date }}</td>
-                                        <td>{{ round.major_category }}</td>
-                                        <td>{{ round.max_score }}</td>
-                                        <td>{{ round.round_number }}</td>
-                                        <td>{{ round.cooperative|yesno:"Yes,No" }}</td>
-                                        <td>
-                                            <button
-                                                class="slides-button profile-player-button"
-                                                type="button"
-                                                data-presentation-url="{{ round.link }}"
-                                            >
-                                                Slides
-                                            </button>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <p class="profile-table-empty profile-table-empty--hidden" data-empty-message>No created rounds match your search.</p>
-                </div>
-                {% else %}
-                    <p class="profile-table-empty">No created rounds yet.</p>
-                {% endif %}
-            </section>
         </div>
 
         <div class="summary-stats">
