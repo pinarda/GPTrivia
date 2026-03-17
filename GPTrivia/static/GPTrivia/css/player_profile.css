@@ -153,7 +153,7 @@ a {
     cursor: pointer;
 }
 
-.profile-player-button[aria-expanded="true"]::after {
+.profile-panel-toggle[aria-expanded="true"]::after {
     content: " — Open";
     font-size: 0.8em;
     opacity: 0.9;
@@ -368,6 +368,36 @@ a {
     font-family: Monaco, monospace;
     font-size: 0.98rem;
     border-radius: 0;
+}
+
+.profile-created-rounds-tools {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.profile-mobile-sort-label,
+.profile-mobile-sort {
+    display: none;
+}
+
+.profile-mobile-sort-label {
+    font-family: Monaco, monospace;
+    font-size: 0.82rem;
+    color: var(--profile-muted-text);
+}
+
+.profile-mobile-sort {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.7rem 0.75rem;
+    border: 1px solid var(--profile-input-border);
+    background: var(--profile-input-bg);
+    color: var(--profile-input-text);
+    font-family: Monaco, monospace;
+    font-size: 0.9rem;
+    border-radius: 0;
+    appearance: none;
+    -webkit-appearance: none;
 }
 
 .profile-table-shell {
@@ -785,6 +815,15 @@ a {
     .profile-rounds-mobile-list {
         display: grid;
         gap: 0.7rem;
+    }
+
+    .profile-created-rounds-tools {
+        gap: 0.5rem;
+    }
+
+    .profile-mobile-sort-label,
+    .profile-mobile-sort {
+        display: block;
     }
 
     .profile-round-mobile-card {
