@@ -298,6 +298,14 @@ def _extract_google_presentation_id(link_value):
     return match.group(1) if match else ''
 
 
+def _normalize_round_link(link_value):
+    return str(link_value or '').strip()
+
+
+def _normalize_round_title(title_value):
+    return re.sub(r'\s+', ' ', str(title_value or '').strip()).casefold()
+
+
 def _build_submitted_round_link(presentation_id):
     if not presentation_id:
         return ''
@@ -1013,12 +1021,35 @@ def _collect_rounds():
         submitted_round.presentation_id: submitted_round
         for submitted_round in submitted_rounds
     }
+    submitted_rounds_by_link = {}
+    submitted_rounds_by_title = {}
+    duplicate_title_keys = set()
+    for submitted_round in submitted_rounds:
+        normalized_link = _normalize_round_link(submitted_round.link)
+        if normalized_link:
+            submitted_rounds_by_link[normalized_link] = submitted_round
+
+        title_key = _normalize_round_title(submitted_round.title)
+        if not title_key:
+            continue
+        if title_key in submitted_rounds_by_title:
+            duplicate_title_keys.add(title_key)
+        else:
+            submitted_rounds_by_title[title_key] = submitted_round
+
     matched_submitted_round_ids = set()
     new_rounds = []
     for title, creator, link, old_link, shared_date in zip(titles, creators, links, old_links, shared_dates):
+        title_key = _normalize_round_title(title)
         submitted_round = submitted_rounds_by_presentation_id.get(
             _extract_google_presentation_id(link) or _extract_google_presentation_id(old_link)
         )
+        if not submitted_round:
+            submitted_round = submitted_rounds_by_link.get(_normalize_round_link(link)) or submitted_rounds_by_link.get(
+                _normalize_round_link(old_link)
+            )
+        if not submitted_round and title_key and title_key not in duplicate_title_keys:
+            submitted_round = submitted_rounds_by_title.get(title_key)
         if submitted_round:
             matched_submitted_round_ids.add(submitted_round.presentation_id)
         new_rounds.append(

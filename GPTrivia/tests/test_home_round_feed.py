@@ -101,6 +101,31 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual(payload["rounds"][0]["title"], "Fresh Swoop Round")
         self.assertTrue(payload["rounds"][0]["is_new"])
 
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_dedupes_submitted_round_when_gmail_link_shape_differs(self, mock_get_round_titles_and_links):
+        mock_get_round_titles_and_links.return_value = (
+            ["https://mail.google.com/share-link-that-does-not-preserve-id"],
+            ["Winged Science"],
+            ["Unknown"],
+            ["https://mail.google.com/share-link-that-does-not-preserve-id"],
+            ["2026-03-15"],
+        )
+        SubmittedRound.objects.create(
+            presentation_id="swoop-123",
+            title="Winged Science",
+            creator="Alex",
+            cooperative=True,
+            link="https://docs.google.com/presentation/d/swoop-123/edit",
+        )
+
+        response = self.client.get(reverse("collect_rounds_api"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["rounds"]
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["title"], "Winged Science")
+        self.assertEqual(payload[0]["creator"], "Alex")
+
     @patch(
         "GPTrivia.views.create_presentation",
         return_value=(
