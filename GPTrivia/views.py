@@ -645,6 +645,9 @@ def rounds_list(request):
     # can we reverse the order of the rounds
     rounds = rounds[::-1]
     initial_title_search = (request.GET.get('title_search') or '').strip()
+    initial_creator_search = (request.GET.get('creator_search') or '').strip()
+    initial_category_search = (request.GET.get('category_search') or '').strip()
+    initial_date_search = (request.GET.get('date_search') or '').strip()
 
     player_fields = _get_global_player_fields()
     player_names = [display_name_for_player_field(field) for field in player_fields]
@@ -662,6 +665,9 @@ def rounds_list(request):
         'playerColorMapping': player_color_mapping,
         'text_color_mapping': text_color,
         'initial_title_search': initial_title_search,
+        'initial_creator_search': initial_creator_search,
+        'initial_category_search': initial_category_search,
+        'initial_date_search': initial_date_search,
     }
 
     return render(request, 'GPTrivia/rounds_list.html', context)

@@ -71,7 +71,14 @@
                                 <tbody>
                                     {% for round in created_rounds_cat %}
                                         <tr data-search="{{ round.major_category|lower }} {{ round.num_rounds }}">
-                                            <td>{{ round.major_category }}</td>
+                                            <td>
+                                                <a
+                                                    class="profile-round-link"
+                                                    href="{% url 'rounds_list' %}?creator_search={{ player_name|urlencode }}&category_search={{ round.major_category|urlencode }}"
+                                                >
+                                                    {{ round.major_category }}
+                                                </a>
+                                            </td>
                                             <td>{{ round.num_rounds }}</td>
                                         </tr>
                                     {% endfor %}
@@ -162,7 +169,7 @@
                                             <td>
                                                 <a
                                                     class="profile-round-link"
-                                                    href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}"
+                                                    href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}&creator_search={{ player_name|urlencode }}&date_search={{ round.date|urlencode }}"
                                                 >
                                                     {{ round.title }}
                                                 </a>
@@ -274,7 +281,7 @@
                                         </button>
                                         <a
                                             class="profile-round-link profile-round-mobile-title"
-                                            href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}"
+                                            href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}&creator_search={{ player_name|urlencode }}&date_search={{ round.date|urlencode }}"
                                         >
                                             {{ round.title }}
                                         </a>
