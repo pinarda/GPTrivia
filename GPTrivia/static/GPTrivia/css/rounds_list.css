@@ -40,23 +40,23 @@ body {
 }
 
 .content-container {
-    min-height: calc(95vh - 106px);
-    margin: 0;
-    padding: 20px 0 0;
-    position: absolute;
-    right: 0;
-    left: 0;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 20px 10px 12px !important;
+    position: static !important;
+    box-sizing: border-box;
 }
 
 .table-container {
-    width: min(100%, calc(100vw - 20px));
-    margin: 0 auto;
-    min-height: calc(95vh - 126px);
-    max-height: calc(95vh - 126px);
+    width: 100%;
+    margin: 0;
+    height: calc(100dvh - 170px);
+    max-height: calc(100dvh - 170px);
     overflow: auto;
     border: 1px solid var(--rounds-header-border);
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.16);
     background: var(--rounds-page-bg);
+    box-sizing: border-box;
 }
 
 #roundList {
@@ -80,7 +80,7 @@ body {
     color: var(--rounds-header-text);
     text-align: left;
     vertical-align: top;
-    padding: 0.55rem 0.7rem 0.7rem;
+    padding: 0.45rem 0.65rem 0.55rem;
     border-bottom: 1px solid var(--rounds-header-border);
     white-space: nowrap;
 }
@@ -93,18 +93,19 @@ body {
 
 .rounds-column-label {
     display: block;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.25rem;
+    line-height: 1.1;
 }
 
 .rounds-column-search {
     width: 100%;
     min-width: 90px;
     box-sizing: border-box;
-    padding: 0.38rem 0.45rem;
+    padding: 0.3rem 0.4rem;
     border: 1px solid var(--rounds-search-border);
     background-color: var(--rounds-search-bg);
     color: var(--rounds-search-text);
-    font-size: 0.82rem;
+    font-size: 0.78rem;
 }
 
 #roundList tbody td {
@@ -119,8 +120,8 @@ body {
     position: sticky;
     left: 0;
     z-index: 2;
-    min-width: 240px;
-    max-width: 280px;
+    min-width: 200px;
+    max-width: 240px;
     white-space: normal;
     word-break: break-word;
     background-color: #96031A;
@@ -177,26 +178,35 @@ body.site-shell[data-profile-theme="light"] #roundList tbody .title-cell a {
 }
 
 @media screen and (max-width: 790px) {
+    .content-container {
+        padding: 10px !important;
+    }
+
     .table-container {
-        width: min(100%, calc(100vw - 12px));
-        min-height: calc(94vh - 116px);
-        max-height: calc(94vh - 116px);
+        width: 100%;
+        height: calc(100dvh - var(--mobile-header-offset, 62px) - var(--mobile-footer-offset, 40px) - 20px);
+        max-height: calc(100dvh - var(--mobile-header-offset, 62px) - var(--mobile-footer-offset, 40px) - 20px);
     }
 
     #roundList thead th,
     #roundList tbody td {
-        padding: 0.45rem 0.55rem;
-        font-size: 0.86rem;
+        padding: 0.4rem 0.45rem;
+        font-size: 0.82rem;
     }
 
     #roundList tbody td:first-child {
-        min-width: 180px;
-        max-width: 220px;
+        min-width: 120px;
+        max-width: 150px;
     }
 
     .rounds-column-search {
-        min-width: 72px;
-        font-size: 0.76rem;
-        padding: 0.32rem 0.38rem;
+        min-width: 62px;
+        font-size: 0.72rem;
+        padding: 0.28rem 0.32rem;
+    }
+
+    .rounds-column-label {
+        margin-bottom: 0.2rem;
+        font-size: 0.78rem;
     }
 }
