@@ -121,6 +121,12 @@
                                         <th scope="col" class="profile-round-action-heading">+</th>
                                         <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Title</th>
                                         <th class="profile-sortable-header" data-sort-type="date" tabindex="0" scope="col">Date</th>
+                                        <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Category</th>
+                                        <th class="profile-sortable-header" data-sort-type="number" tabindex="0" scope="col">Round</th>
+                                        <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Co-op</th>
+                                        <th class="profile-sortable-header" data-sort-type="number" tabindex="0" scope="col">Max</th>
+                                        <th class="profile-sortable-header" data-sort-type="number" tabindex="0" scope="col">High</th>
+                                        <th class="profile-sortable-header" data-sort-type="number" tabindex="0" scope="col">Average</th>
                                         <th scope="col">Slides</th>
                                     </tr>
                                 </thead>
@@ -151,6 +157,12 @@
                                                 </a>
                                             </td>
                                             <td data-sort-value="{{ round.date|date:'Y-m-d' }}">{{ round.date }}</td>
+                                            <td>{{ round.major_category|default:"—" }}</td>
+                                            <td data-sort-value="{{ round.round_number }}">{{ round.round_number }}</td>
+                                            <td data-sort-value="{{ round.cooperative|yesno:'1,0' }}">{{ round.cooperative|yesno:"Yes,No" }}</td>
+                                            <td data-sort-value="{{ round.max_score|default_if_none:'' }}">{{ round.max_score|default:"—" }}</td>
+                                            <td data-sort-value="{{ round.high_score|default_if_none:'' }}">{{ round.high_score_display }}</td>
+                                            <td data-sort-value="{{ round.average_score|default_if_none:'' }}">{{ round.average_score_display }}</td>
                                             <td>
                                                 <button
                                                     class="slides-button profile-player-button"
@@ -164,7 +176,7 @@
                                             </td>
                                         </tr>
                                         <tr id="profile-round-details-{{ forloop.counter0 }}" class="profile-round-detail-row" hidden>
-                                            <td colspan="4">
+                                            <td colspan="10">
                                                 <div class="profile-round-detail-grid">
                                                     <div class="profile-round-detail-item">
                                                         <span class="profile-round-detail-label">Category</span>
@@ -190,11 +202,23 @@
                                                         <span class="profile-round-detail-label">Average Score</span>
                                                         <span class="profile-round-detail-value">{{ round.average_score_display }}</span>
                                                     </div>
+                                                    <div class="profile-round-detail-item profile-round-detail-item--action">
+                                                        <span class="profile-round-detail-label">Slides</span>
+                                                        <button
+                                                            class="slides-button profile-player-button profile-round-detail-slides-button"
+                                                            type="button"
+                                                            data-presentation-url="{{ round.link }}"
+                                                            data-slides-target="profile-round-slides-{{ forloop.counter0 }}"
+                                                            aria-expanded="false"
+                                                        >
+                                                            Slides
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>
                                         <tr id="profile-round-slides-{{ forloop.counter0 }}" class="profile-round-slides-row" hidden>
-                                            <td colspan="4">
+                                            <td colspan="10">
                                                 <div class="profile-round-slides-shell">
                                                     <iframe
                                                         class="profile-round-slides-frame"

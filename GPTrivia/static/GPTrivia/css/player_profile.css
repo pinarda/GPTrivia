@@ -439,7 +439,7 @@ a {
 }
 
 #playerRoundsTable {
-    table-layout: fixed;
+    table-layout: auto;
 }
 
 #playerRoundsTable th:nth-child(1),
@@ -453,9 +453,25 @@ a {
     width: 8rem;
 }
 
-#playerRoundsTable th:nth-child(4),
-#playerRoundsTable td:nth-child(4) {
-    width: 8.8rem;
+#playerRoundsTable th:nth-child(5),
+#playerRoundsTable td:nth-child(5),
+#playerRoundsTable th:nth-child(6),
+#playerRoundsTable td:nth-child(6) {
+    width: 5.8rem;
+}
+
+#playerRoundsTable th:nth-child(7),
+#playerRoundsTable td:nth-child(7),
+#playerRoundsTable th:nth-child(8),
+#playerRoundsTable td:nth-child(8),
+#playerRoundsTable th:nth-child(9),
+#playerRoundsTable td:nth-child(9) {
+    width: 6.8rem;
+}
+
+#playerRoundsTable th:nth-child(10),
+#playerRoundsTable td:nth-child(10) {
+    width: 8.2rem;
 }
 
 .profile-round-summary-row td {
@@ -517,6 +533,10 @@ a {
     min-width: 0;
 }
 
+.profile-round-detail-item--action {
+    align-content: start;
+}
+
 .profile-round-detail-label {
     font-family: Monaco, monospace;
     font-size: 0.8rem;
@@ -556,6 +576,11 @@ a {
     min-height: 42px;
     padding: 0.65rem 0.8rem;
     white-space: nowrap;
+}
+
+.profile-round-detail-slides-button {
+    width: auto;
+    min-width: 8rem;
 }
 
 .profile-round-link:hover,
@@ -632,6 +657,17 @@ a {
     }
 }
 
+@media screen and (min-width: 701px) {
+    #playerRoundsTable th:nth-child(1),
+    #playerRoundsTable td:nth-child(1) {
+        display: none;
+    }
+
+    .profile-round-detail-row {
+        display: none !important;
+    }
+}
+
 @media screen and (max-width: 899px) {
     .profile-actions-container {
         grid-template-columns: 1fr;
@@ -705,14 +741,40 @@ a {
     }
 
     #playerRoundsTable th:nth-child(4),
-    #playerRoundsTable td:nth-child(4) {
-        width: 7.2rem;
+    #playerRoundsTable td:nth-child(4),
+    #playerRoundsTable th:nth-child(5),
+    #playerRoundsTable td:nth-child(5),
+    #playerRoundsTable th:nth-child(6),
+    #playerRoundsTable td:nth-child(6),
+    #playerRoundsTable th:nth-child(7),
+    #playerRoundsTable td:nth-child(7),
+    #playerRoundsTable th:nth-child(8),
+    #playerRoundsTable td:nth-child(8),
+    #playerRoundsTable th:nth-child(9),
+    #playerRoundsTable td:nth-child(9),
+    #playerRoundsTable th:nth-child(10),
+    #playerRoundsTable td:nth-child(10) {
+        display: none;
+    }
+
+    #playerRoundsTable {
+        table-layout: fixed;
+    }
+
+    #playerRoundsTable th:nth-child(2),
+    #playerRoundsTable td:nth-child(2) {
+        width: auto;
+        min-width: 0;
     }
 
     .profile-round-expander {
         width: 2rem;
         height: 2rem;
         font-size: 1.2rem;
+    }
+
+    .profile-round-summary-row td:nth-child(2) {
+        padding-right: 0.4rem;
     }
 
     .profile-round-detail-grid {
@@ -727,6 +789,11 @@ a {
 
     .profile-round-slides-frame {
         height: 220px;
+    }
+
+    .profile-round-detail-slides-button {
+        width: 100%;
+        min-width: 0;
     }
 
     .summary-stats {
