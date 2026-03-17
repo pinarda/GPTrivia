@@ -992,8 +992,8 @@ class RoundMaker(View):
                 client=client,
                 instructions=SWOOP_SYSTEM_PROMPT,
                 input_items=_build_responses_input(conversation_history),
-                max_output_tokens=120,
-                reasoning_effort="medium",
+                max_output_tokens=180,
+                reasoning_effort="low",
             )
             conversation_history.append({"role": "assistant", "content": gpt_response})
             request.session['conversation_history'] = conversation_history

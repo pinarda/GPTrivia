@@ -151,7 +151,8 @@ class RoundMakerTests(TestCase):
             response_mock.call_args.kwargs["instructions"],
             views.SWOOP_SYSTEM_PROMPT,
         )
-        self.assertEqual(response_mock.call_args.kwargs["max_output_tokens"], 120)
+        self.assertEqual(response_mock.call_args.kwargs["max_output_tokens"], 180)
+        self.assertEqual(response_mock.call_args.kwargs["reasoning_effort"], "low")
         self.assertIn("exactly one challenging and off-the-wall trivia round idea", views.SWOOP_SYSTEM_PROMPT)
 
     @patch("GPTrivia.views._create_openai_text_response", return_value="Swoop! Try a fossils round.")
