@@ -103,7 +103,7 @@
                             </select>
                         {% endif %}
                         <label for="coop" class="checkbox-label">
-                            <input type="checkbox" id="coop" name="coop"> Coop?
+                            <input type="checkbox" id="coop" name="coop" class="swoop-coop-box"> Coop?
                         </label>
                         <input type="hidden" id="coop-choice-set" value="">
                     </div>
@@ -140,8 +140,9 @@
                     </select>
                 </div>
                 <div class="form-group hidden" id="icon-group">
-                    <label id="iconLabel" for="iconCheckbox">Generate Icons</label>
-                    <input type="checkbox" id="iconCheckbox" name="iconCheckbox">
+                    <label id="iconLabel" for="iconCheckbox" class="checkbox-label">
+                        <input type="checkbox" id="iconCheckbox" name="iconCheckbox" class="swoop-coop-box"> Generate Icons
+                    </label>
                 </div>
                 <!-- Preview Button -->
                 <div class="form-group button-with-spinner">

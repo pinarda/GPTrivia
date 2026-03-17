@@ -151,8 +151,66 @@ br {
 .checkbox-label {
     display: inline-flex;
     align-items: center;
+    gap: 10px;
     margin-top: 10px;
     color: var(--swoop-panel-text, #fff);
+}
+
+.swoop-coop-box {
+    width: 25px;
+    height: 25px;
+    border: 2px solid #9d4edd;
+    background-color: #fff;
+    color: #9d4edd;
+    cursor: pointer;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    margin: 0;
+    padding: 0;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 0 !important;
+    outline: none;
+    box-shadow: none;
+    line-height: 1;
+}
+
+.form-group input[type="checkbox"].swoop-coop-box {
+    margin-right: 0;
+}
+
+.swoop-coop-box::before {
+    content: '';
+    width: 6px;
+    height: 12px;
+    border-right: 3px solid #ffffff;
+    border-bottom: 3px solid #ffffff;
+    transform: rotate(45deg);
+    opacity: 0;
+    box-sizing: border-box;
+}
+
+.swoop-coop-box:checked {
+    background-color: #9d4edd;
+    color: #ffffff;
+}
+
+.swoop-coop-box:checked::before {
+    opacity: 1;
+}
+
+.swoop-coop-box:hover,
+.swoop-coop-box:focus {
+    border-color: #7b38c0;
+}
+
+.swoop-coop-box:focus {
+    box-shadow: 0 0 0 2px rgba(157, 78, 221, 0.18);
 }
 
 .creator-note {
