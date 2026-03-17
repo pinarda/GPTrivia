@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from GPTrivia.models import GPTriviaRound, MergedPresentation
+from GPTrivia.models import GPTriviaRound, MergedPresentation, SubmittedRound
 
 
 class HomeRoundFeedTests(TestCase):
@@ -56,6 +56,50 @@ class HomeRoundFeedTests(TestCase):
         self.assertContains(response, "Page 1 of 1")
         self.assertContains(response, ">New<", html=False)
         self.assertNotContains(response, "Past rounds are display-only for now.")
+
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_overlays_submitted_round_metadata_on_gmail_rounds(self, mock_get_round_titles_and_links):
+        mock_get_round_titles_and_links.return_value = (
+            ["https://docs.google.com/presentation/d/swoop-123/edit"],
+            ["Shared Deck Title"],
+            ["hailsciencetrivia@gmail.com"],
+            ["https://docs.google.com/presentation/d/swoop-123/edit"],
+            ["2026-03-15"],
+        )
+        SubmittedRound.objects.create(
+            presentation_id="swoop-123",
+            title="Winged Science",
+            creator="Alex",
+            cooperative=True,
+            link="https://docs.google.com/presentation/d/swoop-123/edit",
+        )
+
+        response = self.client.get(reverse("collect_rounds_api"))
+
+        self.assertEqual(response.status_code, 200)
+        round_payload = response.json()["rounds"][0]
+        self.assertEqual(round_payload["title"], "Winged Science")
+        self.assertEqual(round_payload["creator"], "Alex")
+        self.assertTrue(round_payload["coop"])
+
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_includes_submitted_rounds_not_yet_seen_in_gmail(self, mock_get_round_titles_and_links):
+        mock_get_round_titles_and_links.return_value = ([], [], [], [], [])
+        SubmittedRound.objects.create(
+            presentation_id="pending-123",
+            title="Fresh Swoop Round",
+            creator="Megan",
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/pending-123/edit",
+        )
+
+        response = self.client.get(reverse("collect_rounds_api"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload["rounds"]), 1)
+        self.assertEqual(payload["rounds"][0]["title"], "Fresh Swoop Round")
+        self.assertTrue(payload["rounds"][0]["is_new"])
 
     @patch(
         "GPTrivia.views.create_presentation",

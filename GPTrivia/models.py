@@ -35,6 +35,7 @@ class Profile(models.Model):
     profile_icon = models.ImageField(upload_to='profile_icons', blank=True, default='')
     profile_color = models.CharField(max_length=7, blank=True, default='')
     site_theme = models.CharField(max_length=16, choices=THEME_CHOICES, default=THEME_DEFAULT)
+    swoop_conversation_history = jsonfield.JSONField(default=list, blank=True)
 
     def __str__(self):
         return f'{self.user.username} Profile'
@@ -174,6 +175,20 @@ class MergedPresentation(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class SubmittedRound(models.Model):
+    presentation_id = models.CharField(max_length=255, unique=True)
+    title = models.CharField(max_length=255)
+    creator = models.CharField(max_length=100)
+    cooperative = models.BooleanField(default=False)
+    link = models.CharField(max_length=255, blank=True, default='')
+    submitted_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.creator})"
 
 
 class PresentationBuildState(models.Model):

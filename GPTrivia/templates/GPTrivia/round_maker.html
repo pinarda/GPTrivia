@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/round_maker.css' %}?v=20260316b">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/round_maker.css' %}?v=20260316c">
   <style>
     @media (max-width: 750px) {
       .logo span {
@@ -95,9 +95,20 @@
                     <div class="form-group">
                         <label for="round-title">Round Title</label>
                         <input type="text" id="round-title" name="round_title" placeholder="Enter Round Title">
-{#                        <label for="coop" class="checkbox-label">#}
-{#                            <input type="checkbox" id="coop" name="coop"> Coop?#}
-{#                        </label>#}
+                        {% if user.is_authenticated %}
+                            <p class="creator-note">Creator will be saved as {{ round_maker_default_creator }}.</p>
+                        {% else %}
+                            <label for="round-creator">Creator</label>
+                            <select id="round-creator" name="creator" required>
+                                <option value="">Select a creator</option>
+                                {% for creator_name in round_maker_creator_options %}
+                                    <option value="{{ creator_name }}">{{ creator_name }}</option>
+                                {% endfor %}
+                            </select>
+                        {% endif %}
+                        <label for="coop" class="checkbox-label">
+                            <input type="checkbox" id="coop" name="coop"> Coop?
+                        </label>
                     </div>
                     <!-- Question and Answer Fields -->
                     {% for i in 10|get_range %}
@@ -177,6 +188,48 @@
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
+    const persistedFieldSelectorList = [
+        '#question-1', '#question-2', '#question-3', '#question-4', '#question-5',
+        '#question-6', '#question-7', '#question-8', '#question-9', '#question-10',
+        '#answer-1', '#answer-2', '#answer-3', '#answer-4', '#answer-5',
+        '#answer-6', '#answer-7', '#answer-8', '#answer-9', '#answer-10',
+        '#round-title', '#round-creator', '#coop'
+    ];
+
+    function getPersistedFields() {
+        return document.querySelectorAll(persistedFieldSelectorList.join(', '));
+    }
+
+    function getPersistedFieldValue(field) {
+        if (field.type === 'checkbox') {
+            return field.checked ? '1' : '';
+        }
+        return field.value;
+    }
+
+    function setPersistedFieldValue(field, value) {
+        if (field.type === 'checkbox') {
+            field.checked = value === '1';
+            return;
+        }
+        field.value = value;
+    }
+
+    function clearStoredRoundMakerData() {
+        getPersistedFields().forEach((field) => {
+            if (isLocalStorageAvailable()) {
+                localStorage.removeItem(field.id);
+            } else {
+                clearCookie(field.id);
+            }
+            setPersistedFieldValue(field, '');
+        });
+
+        const form = document.querySelector('#question-entry-form');
+        if (form) {
+            form.reset();
+        }
+    }
 
     // Check if localStorage is available
     function isLocalStorageAvailable() {
@@ -225,69 +278,32 @@
 
     // Saving data to storage
     function saveData() {
-        const textboxes = document.querySelectorAll(
-            '#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title'
-        );
-
-        textboxes.forEach((textbox) => {
-            textbox.addEventListener("input", () => {
+        getPersistedFields().forEach((field) => {
+            const persistField = () => {
                 if (isLocalStorageAvailable()) {
-                    localStorage.setItem(textbox.id, textbox.value);
+                    localStorage.setItem(field.id, getPersistedFieldValue(field));
                 } else {
-                    setCookie(textbox.id, textbox.value, 7);
+                    setCookie(field.id, getPersistedFieldValue(field), 7);
                 }
-            });
+            };
+
+            field.addEventListener("input", persistField);
+            field.addEventListener("change", persistField);
         });
     }
 
     // Loading data from storage
     function loadData() {
-        const textboxes = document.querySelectorAll(
-            '#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title'
-        );
-
-        textboxes.forEach((textbox) => {
+        getPersistedFields().forEach((field) => {
             let savedValue;
             if (isLocalStorageAvailable()) {
-                savedValue = localStorage.getItem(textbox.id);
+                savedValue = localStorage.getItem(field.id);
             } else {
-                savedValue = getCookie(textbox.id);
+                savedValue = getCookie(field.id);
             }
-            if (savedValue) {
-                textbox.value = savedValue;
+            if (savedValue !== null && savedValue !== undefined) {
+                setPersistedFieldValue(field, savedValue);
             }
-        });
-    }
-
-    // Clear data from storage on submit button click
-    function clearData() {
-        const submitButton = document.querySelector('#submit-button');
-        submitButton.addEventListener('click', (event) => {
-            event.preventDefault(); // Prevent default action if necessary
-
-            // Proceed with your form submission logic here (e.g., AJAX call)
-            // ...
-
-            // After submission logic, clear stored data
-            if (isLocalStorageAvailable()) {
-                localStorage.clear();
-            } else {
-                document
-                    .querySelectorAll(
-                        '#question-1, #question-2, #question-3, #question-4, #question-5, #question-6, #question-7, #question-8, #question-9, #question-10, #answer-1, #answer-2, #answer-3, #answer-4, #answer-5, #answer-6, #answer-7, #answer-8, #answer-9, #answer-10, #round-title'
-                    )
-                    .forEach((textbox) => {
-                        clearCookie(textbox.id);
-                    });
-            }
-
-            // Reset the form fields
-            const form = document.querySelector('#question-entry-form');
-            if (form) {
-                form.reset();
-            }
-
-            {#alert('Form submitted and data cleared.');#}
         });
     }
 
@@ -295,7 +311,6 @@
     document.addEventListener('DOMContentLoaded', () => {
         loadData();
         saveData();
-        clearData();
     });
 
 
@@ -320,7 +335,7 @@
             e.stopPropagation();
             $('#submit-spinner1').show();  // Hide spinner
             $.ajax({
-                url: '/round_maker/',
+                url: "{% url 'round_maker' %}",
                 method: 'POST',
                 data: {
                     user_input: $('#user-input').val(),
@@ -344,7 +359,7 @@
     function generateDalleImage(words, e) {
         e.preventDefault();
         $.ajax({
-            url: '/generate_image/', // Endpoint for DALL-E image generation
+            url: "{% url 'generate_image' %}", // Endpoint for DALL-E image generation
             method: 'POST',
             data: {
                 gpt_text: words,
@@ -421,7 +436,7 @@
             };
 
             $.ajax({
-                url: '/autogen/?t=' + Date.now(),
+                url: "{% url 'autogen' %}" + '?t=' + Date.now(),
                 method: 'POST',
                 cache: false,
                 data: payload,
@@ -447,7 +462,7 @@
     $(document).ready(function() {
         $('#generate-round-button').on('click', function() {
             $.ajax({
-                url: '/generate_idea/',
+                url: "{% url 'generate_round' %}",
                 method: 'POST',
                 data: {
                     csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
@@ -498,12 +513,23 @@
 
     $(document).ready(function() {
         $('#submit-button').on('click', function() {
+            const creatorField = $('#round-creator');
+            const creatorValue = creatorField.length ? creatorField.val() : '';
+
+            if (creatorField.length && !creatorValue) {
+                $('#submission-message').text('Please choose a creator before submitting.');
+                return;
+            }
+
             $('#submit-spinner2').show();  // Show spinner
             $.ajax({
-                url: '/share/',  // URL to the Django view
+                url: "{% url 'share' %}",  // URL to the Django view
                 method: 'POST',
                 data: {
                     presentation_id: presentationId,
+                    round_title: $('#round-title').val(),
+                    cooperative: $('#coop').is(':checked'),
+                    creator: creatorValue,
                     csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
                 },
                 success: function(data) {
@@ -512,6 +538,12 @@
                     var submissionMessage = 'Submitted ' + roundTitle + '! \n Note: all changes made to the presentation above are saved automatically.';  // Construct the submission message
                     $('#submission-message').text(submissionMessage);  // Display the submission message
                     $('#submit-button').hide();  // Hide the submit button
+                    clearStoredRoundMakerData();
+                },
+                error: function(error) {
+                    $('#submit-spinner2').hide();
+                    const errorMessage = error.responseJSON?.error || 'Could not submit this round.';
+                    $('#submission-message').text(errorMessage);
                 }
             });
         });
@@ -578,7 +610,7 @@
                 if (questionText != "") {
                     // AJAX call to Django view
                     $.ajax({
-                        url: '/icon_view/', // Change to the URL of your Django view
+                        url: "{% url 'icon_view' %}", // Change to the URL of your Django view
                         method: 'POST',
                         data: {
                             'question_text': questionText,
@@ -603,66 +635,65 @@
 
         $('#preview-button').on('click', function() {
             $('#preview-spinner').show();  // Show spinner
-            iurls = {}
+            const iurls = {};
             var requests = 10;
-            var halfRequests = requests / 2;
             var ajaxPromises = []; // Array to hold promises
             console.log("Checkbox status: ", $('#iconCheckbox').is(':checked'))
             if ($('#iconCheckbox').is(':checked')) {
-                for (let j = 1; j <= halfRequests; j++) {
+                for (let j = 1; j <= requests; j++) {
                     ajaxPromises.push(sendAjaxRequest(j, iurls));
                 }
             }
 
-            setTimeout(function() {
-                for (let j = halfRequests + 1; j <= requests; j++) {
-                    ajaxPromises.push(sendAjaxRequest(j, iurls));
+            Promise.all(ajaxPromises).then(function() {
+                console.log("All AJAX calls completed");
+                console.log("iurls: ", iurls)
+
+
+                var roundTitle = $('#round-title').val();  // Assuming your round title input has id 'round-title'
+
+                // Initialize an empty qas dictionary
+                var qas = {};
+
+                // Loop through each question and answer, and add them to the qas dictionary
+                for (var i = 1; i <= 10; i++) {
+                    var questionText = $('#question-' + i).val();
+                    var answerText = $('#answer-' + i).val();
+                    if (i == 10) {
+                        qas['Question' + 0] = questionText;
+                        qas['Answer' + 0] = answerText;
+                    } else {
+                        qas['Question' + i] = questionText;
+                        qas['Answer' + i] = answerText;
+                    }
                 }
 
-                // Wait for all AJAX requests to complete
-                Promise.all(ajaxPromises).then(function() {
-                    console.log("All AJAX calls completed");
-                    console.log("iurls: ", iurls)
-
-
-                    var roundTitle = $('#round-title').val();  // Assuming your round title input has id 'round-title'
-
-                    // Initialize an empty qas dictionary
-                    var qas = {};
-
-                    // Loop through each question and answer, and add them to the qas dictionary
-                    for (var i = 1; i <= 10; i++) {
-                        var questionText = $('#question-' + i).val();
-                        var answerText = $('#answer-' + i).val();
-                        if (i == 10) {
-                            qas['Question' + 0] = questionText;
-                            qas['Answer' + 0] = answerText;
-                        } else {
-                            qas['Question' + i] = questionText;
-                            qas['Answer' + i] = answerText;
-                        }
+                $.ajax({
+                    url: "{% url 'preview' %}",  // URL to the Django view
+                    method: 'POST',
+                    data: {
+                        round_title: roundTitle,
+                        presentation_id: presentationId,
+                        qas: JSON.stringify(qas),
+                        icon_urls: JSON.stringify(iurls),
+                        csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function (data) {
+                        $('#preview-spinner').hide();  // Hide spinner
+                        presentationId = data.new_id;  // Update the presentationId variable with the new id
+                        updateIframeSrc()
+                        $('#slides-preview').css('display', 'block');
+                        $('#submit-button').css('display', 'block');
+                    },
+                    error: function(error) {
+                        $('#preview-spinner').hide();
+                        console.error('Error generating preview:', error);
                     }
-
-                    $.ajax({
-                        url: '/preview/',  // URL to the Django view
-                        method: 'POST',
-                        data: {
-                            round_title: roundTitle,
-                            presentation_id: presentationId,
-                            qas: JSON.stringify(qas),
-                            icon_urls: JSON.stringify(iurls),
-                            csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
-                        },
-                        success: function (data) {
-                            $('#preview-spinner').hide();  // Hide spinner
-                            presentationId = data.new_id;  // Update the presentationId variable with the new id
-                            updateIframeSrc()
-                            $('#slides-preview').css('display', 'block');
-                            $('#submit-button').css('display', 'block');
-                        }
-                    });
                 });
-            }, 60000); // 60000 milliseconds = 1 minute
+            }).catch(function(error) {
+                $('#preview-spinner').hide();
+                console.error('Error generating icons:', error);
+            });
         });
     });
 </script>

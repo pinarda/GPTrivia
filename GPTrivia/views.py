@@ -52,7 +52,7 @@ from django.core import serializers
 from rest_framework.renderers import JSONRenderer
 from datetime import date
 from django.utils import timezone
-from .models import JeopardyQuestion, JeopardyRound, PushSubscription
+from .models import JeopardyQuestion, JeopardyRound, PushSubscription, SubmittedRound
 from .player_scores import (
     FIXED_SCORE_FIELDS,
     MIN_ANALYSIS_ROUNDS,
@@ -68,6 +68,7 @@ from .player_scores import (
     player_field_for_name,
     set_round_score_map,
 )
+import re
 
 
 gmail_key = '8f35edc691b918094035b22807266a1e468bf5f0'
@@ -83,6 +84,37 @@ logger = logging.getLogger(__name__)
 HOME_BUILD_GROUP_NAME = 'home_build_updates'
 HOME_BUILD_STATE_KEY = 'home_page'
 HOME_BUILD_STALE_MINUTES = 30
+SWOOP_MODEL = "gpt-5.4"
+SWOOP_SYSTEM_PROMPT = (
+    "Your name is Swooper, the swoop snake. At the very beginning of every conversation "
+    "(but NOT every single reply), the first thing you say is 'Swoop!' in a high pitched voice. "
+    "You also have wings. You're sssmooth-talking, sssensual, and myssterious. Now, whenever "
+    "someone says something to you, make sure to respond in the voice of that character. Also, "
+    "your job is trivia round recommender. No matter what the reply is, you find a way to suggest "
+    "challenging and off-the-wall trivia rounds that the user might enjoy making. And you do not "
+    "under any circumstances provide actual questions, only ideas for rounds. Here's an example "
+    "of what you might say: 'Sssmooth movesss, my friend! But you ssseem like sssomeone who might "
+    "enjoy a great trivia round. How about trying a \"sssensational sssoundtrack\" round, filled "
+    "with quessstionsss about famousss movie ssscores and theme sssongsss? Sssounds exciting, "
+    "doesssn't it?' Also, if someone starts their message with 'SWOOP', you break out of character "
+    "entirely and answer like a normal helpful assistant."
+)
+SWOOP_SAMPLE_QUESTION_PROMPT = (
+    "You generate exactly one creative trivia question and a short correct answer based on the "
+    "round idea provided by the user. Keep it unusual but still fair for a general-audience trivia "
+    "night. If the user includes previous sample questions, avoid repeating them and make a new "
+    "one. Return exactly this format and nothing else:\n"
+    "Question: <question text>\n\n"
+    "Answer: <short answer>"
+)
+SWOOP_THEME_SUMMARY_PROMPT = (
+    "Summarize the theme of the suggested trivia round in a few words and nothing else."
+)
+SWOOP_ICON_KEYWORD_PROMPT = (
+    "Provide no more than two keywords that summarize the following trivia question. "
+    "Return only the keywords and nothing else."
+)
+GOOGLE_PRESENTATION_ID_PATTERN = re.compile(r"/presentation/d/([A-Za-z0-9_-]+)")
 
 
 def create_presentation(*args, **kwargs):
@@ -127,14 +159,147 @@ def _get_openai_client():
 
     return OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
+def _extract_openai_text(response):
+    output_text = getattr(response, 'output_text', None)
+    if output_text:
+        return output_text.strip()
 
-def _get_autogen_config_list():
-    return [
-        {
-            'model': 'o3',
-            'api_key': os.getenv('OPENAI_API_KEY')
+    collected_chunks = []
+    for output in getattr(response, 'output', []) or []:
+        for content in getattr(output, 'content', []) or []:
+            text = getattr(content, 'text', None)
+            if text:
+                collected_chunks.append(text)
+
+    return ''.join(collected_chunks).strip()
+
+
+def _build_responses_input(messages):
+    response_messages = []
+    for message in messages:
+        role = (message or {}).get('role')
+        content = str((message or {}).get('content', '')).strip()
+        if role == 'system' or not content:
+            continue
+        response_messages.append(
+            {
+                "role": role,
+                "content": [{"type": "input_text", "text": content}],
+            }
+        )
+    return response_messages
+
+
+def _create_openai_text_response(client, *, instructions, input_items, max_output_tokens=250, reasoning_effort="medium"):
+    if hasattr(client, 'responses'):
+        request_kwargs = {
+            "model": SWOOP_MODEL,
+            "instructions": instructions,
+            "input": input_items,
+            "max_output_tokens": max_output_tokens,
         }
-    ]
+        if reasoning_effort:
+            request_kwargs["reasoning"] = {"effort": reasoning_effort}
+
+        response = client.responses.create(**request_kwargs)
+        return _extract_openai_text(response)
+
+    messages = []
+    if instructions:
+        messages.append({"role": "system", "content": instructions})
+
+    if isinstance(input_items, str):
+        messages.append({"role": "user", "content": input_items})
+    else:
+        for item in input_items:
+            role = item.get("role", "user")
+            content = item.get("content", "")
+            if isinstance(content, list):
+                content = ''.join(
+                    block.get("text", "")
+                    for block in content
+                    if isinstance(block, dict) and block.get("type") == "input_text"
+                )
+            if content:
+                messages.append({"role": role, "content": content})
+
+    response = client.chat.completions.create(
+        model=SWOOP_MODEL,
+        messages=messages,
+        max_completion_tokens=max_output_tokens,
+    )
+    return (response.choices[0].message.content or "").strip()
+
+
+def _get_round_maker_conversation_history(request):
+    conversation_history = None
+
+    if request.user.is_authenticated:
+        profile = getattr(request.user, 'profile', None)
+        if profile is not None:
+            stored_history = profile.swoop_conversation_history
+            session_history = request.session.get('conversation_history')
+            if (not isinstance(stored_history, list) or not stored_history) and isinstance(session_history, list) and session_history:
+                conversation_history = session_history
+            else:
+                conversation_history = stored_history
+
+    if not isinstance(conversation_history, list):
+        conversation_history = request.session.get('conversation_history')
+    if not isinstance(conversation_history, list):
+        conversation_history = []
+
+    if not conversation_history:
+        conversation_history = [{"role": "system", "content": SWOOP_SYSTEM_PROMPT}]
+    elif conversation_history[0].get("role") != "system":
+        conversation_history = [{"role": "system", "content": SWOOP_SYSTEM_PROMPT}, *conversation_history]
+
+    if request.user.is_authenticated:
+        profile = getattr(request.user, 'profile', None)
+        if profile is not None and profile.swoop_conversation_history != conversation_history:
+            profile.swoop_conversation_history = conversation_history
+            profile.save(update_fields=['swoop_conversation_history'])
+
+    request.session['conversation_history'] = conversation_history
+    request.session.modified = True
+    return conversation_history
+
+
+def _is_truthy_form_value(value):
+    return str(value or '').strip().lower() in {'1', 'true', 'on', 'yes'}
+
+
+def _extract_google_presentation_id(link_value):
+    match = GOOGLE_PRESENTATION_ID_PATTERN.search(str(link_value or ''))
+    return match.group(1) if match else ''
+
+
+def _build_submitted_round_link(presentation_id):
+    if not presentation_id:
+        return ''
+    return f"https://docs.google.com/presentation/d/{presentation_id}/edit"
+
+
+def _build_round_maker_creator_options():
+    player_names = {
+        display_name_for_player_field(player_field)
+        for player_field in collect_player_fields(
+            rounds=list(GPTriviaRound.objects.all()),
+            presentations=list(MergedPresentation.objects.all()),
+            include_fixed=True,
+        )
+    }
+    player_names.update(
+        display_name_for_player_field(submitted_round.creator)
+        for submitted_round in SubmittedRound.objects.only('creator')
+        if submitted_round.creator
+    )
+    player_names.update(
+        display_name_for_player_field(user.username)
+        for user in User.objects.only('username').order_by('username')
+        if user.username
+    )
+    return sorted(name for name in player_names if name)
 
 
 @admin.register(PushSubscription)
@@ -319,8 +484,31 @@ class PreviewView(View):
 
 class ShareView(View):
     def post(self, request, *args, **kwargs):
-        presentation_id = request.POST.get('presentation_id')
+        presentation_id = (request.POST.get('presentation_id') or '').strip()
+        round_title = (request.POST.get('round_title') or '').strip() or 'Untitled Round'
+        cooperative = _is_truthy_form_value(request.POST.get('cooperative'))
+        creator = (
+            display_name_for_player_field(request.user.username)
+            if request.user.is_authenticated
+            else display_name_for_player_field(request.POST.get('creator'))
+        )
+
+        if not presentation_id:
+            return JsonResponse({'success': False, 'error': 'Presentation id is required.'}, status=400)
+        if not creator:
+            return JsonResponse({'success': False, 'error': 'Creator is required.'}, status=400)
+
         share_slides(presentation_id)
+        SubmittedRound.objects.update_or_create(
+            presentation_id=presentation_id,
+            defaults={
+                'title': round_title,
+                'creator': creator,
+                'cooperative': cooperative,
+                'link': _build_submitted_round_link(presentation_id),
+                'submitted_by': request.user if request.user.is_authenticated else None,
+            },
+        )
         return JsonResponse({'success': True})
 
 @login_required
@@ -683,51 +871,21 @@ class GenerateIdeaView(View):
 
 class AutoGenView(View):
     def post(self, request, *args, **kwargs):
+        user_input = (request.POST.get('user_input') or '').strip()
+        client = _get_openai_client()
+
         try:
-            import autogen
-        except ImportError:
-            return JsonResponse({'error': 'autogen is not installed'}, status=503)
+            auto_resp = _create_openai_text_response(
+                client=client,
+                instructions=SWOOP_SAMPLE_QUESTION_PROMPT,
+                input_items=user_input,
+                max_output_tokens=250,
+                reasoning_effort="medium",
+            )
+        except Exception as e:
+            auto_resp = str(e)
 
-        llm_config = {"config_list": _get_autogen_config_list(), "seed": random.randint(1, 100000)}
-        user_proxy = autogen.UserProxyAgent(
-            name="User_proxy",
-            system_message="""
-    Reply TERMINATE if the task has been solved at full satisfaction. 
-    Otherwise, reply RETRY, or the reason why the task is not solved yet.""",
-            human_input_mode="NEVER",
-            is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
-            llm_config=llm_config,
-
-        )
-        qm = autogen.AssistantAgent(
-            name="QuestionMaster",
-            llm_config=llm_config,
-            system_message="You provide creative ideas for ONE SINGLE trivia question based on a theme provided to you by the User_proxy. You also provide a SHORT answer to your question. You start the question with the word 'Question:' and the answer with the word 'Answer:'. You are careful to make sure that the selected trivia idea is creative and unusual, but not too niche of a topic for a general-audience trivia night."
-        )
-        ap = autogen.AssistantAgent(
-            name="Analyzer",
-            system_message="You analyze the question provided by the QuestionMaster and check if the question is appropriate for a general-audience trivia night. If not, you request a new question from the QuestionMaster.",
-            llm_config=llm_config,
-        )
-        cr = autogen.AssistantAgent(
-            name="Critic",
-            system_message="You look through answers provided by the QuestionMaster after review by the Analyzer to check if the answer is wrong. If not correct, either request a new question or if possible, provide a corrected answer. You should be very particular about the correctness of the answer.",
-            llm_config=llm_config,
-        )
-        final = autogen.AssistantAgent(
-            name="Finalizer",
-            system_message="Once the Critic says the answer is correct, simply state the question provided by the QuestionMaster and answer provided by the Critic, absolutely nothing else. Start the question with the format 'Question:' and the answer after two newlines with the format 'Answer:' (with NO PERIOD) and end the message with the statement with the word `TERMINATE` (all caps, no period).",
-            llm_config=llm_config,
-            is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
-        )
-        groupchat = autogen.GroupChat(agents=[qm, ap, cr, final, user_proxy], messages=[], max_round= 10)
-        manager = autogen.GroupChatManager(groupchat=groupchat, llm_config=llm_config, is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"), system_message="Reply `TERMINATE` in the end when everything is done.")
-
-        user_proxy.initiate_chat(manager, message=request.POST.get('user_input'))
-
-        auto_resp = manager.last_message(final)
-
-        return JsonResponse({'autogen_response': auto_resp["content"]})
+        return JsonResponse({'autogen_response': auto_resp})
 
 class GenerateImageView(View):
     def post(self, request, *args, **kwargs):
@@ -735,21 +893,14 @@ class GenerateImageView(View):
         client = _get_openai_client()
 
         try:
-            # Get the conversation history from the session
-            conversation_history = request.session.get('conversation_history', [])
-            # Append the user's message to the conversation history
-            conversation_history.append({"role": "user", "content": f"SWOOP I want you to condense this text by summarizing the theme of the round being suggested in this prompt in a few words and nothing else: {gpt_response}"})
-
             try:
-                response = client.chat.completions.create(# model="gpt-3.5-turbo",
-                # model="gpt-4",
-                model="o3",
-                temperature=1,
-                messages=conversation_history,
-                max_completion_tokens=150)
-                print(f"RESPONSE: {response}")
-                second_response = response.choices[0].message.content
-                print(f"SECOND RESPONSE: {second_response}")
+                second_response = _create_openai_text_response(
+                    client=client,
+                    instructions=SWOOP_THEME_SUMMARY_PROMPT,
+                    input_items=gpt_response,
+                    max_output_tokens=60,
+                    reasoning_effort="low",
+                )
             except Exception as e:
                 second_response = str(e)
                 return JsonResponse({'dalle_image_url': None})
@@ -776,24 +927,14 @@ class IconView(View):
 
 
         try:
-            # Get the conversation history from the session
-
-            # conversation_history = request.session.get('conversation_history', [])
-            # actually, let's just start a new conversation history
-            conversation_history = []
-            # Append the user's message to the conversation history
-            conversation_history.append({"role": "user", "content": f"I want you to provide key words (no more than two) that summarize the following question. For example, if the question was about dinosaurs, you could response with the word \"dinosaur\" and nothing else. Here's the question: {gpt_response}"})
-
             try:
-                response = client.chat.completions.create(# model="gpt-3.5-turbo",
-                # model="gpt-4",
-                model="gpt-4o",
-                temperature=1,
-                messages=conversation_history,
-                max_tokens=150)
-                print(f"RESPONSE: {response}")
-                second_response = response.choices[0].message.content
-                print(f"SECOND RESPONSE: {second_response}")
+                second_response = _create_openai_text_response(
+                    client=client,
+                    instructions=SWOOP_ICON_KEYWORD_PROMPT,
+                    input_items=gpt_response,
+                    max_output_tokens=40,
+                    reasoning_effort="low",
+                )
             except Exception as e:
                 second_response = str(e)
                 print(f"EXCEPTION: {second_response}")
@@ -823,42 +964,44 @@ class RoundMaker(View):
     template_name = 'GPTrivia/round_maker.html'
 
     def get(self, request, *args, **kwargs):
-        request.session['conversation_history'] = [
-            {"role": "system", "content": "Your name is Swooper, the swoop snake. At the very beginning of every conversation (but NOT every single reply), the first thing you say is 'Swoop!' in a high pitched voice. You also have wings. You're sssmooth-talking, sssensual, and myssterious. Now, whenever someone says something to you, make sure to respond in the voice of that character. Also, your job is trivia round recommender. No matter what the reply is, you find a way to suggest challenging and off-the-wall trivia rounds that the user might enjoy making. And you do not under any circumstances provide actual question, only ideas for rounds. Here's an example of what you might say:'Sssmooth movesss, my friend! But you ssseem like sssomeone who might enjoy a great trivia round. How about trying a \"sssensational sssoundtrack\" round, filled with quessstionsss about famousss movie ssscores and theme sssongsss? Sssounds exciting, doesssn't it?' Also, if someone starts their message with 'SWOOP', you break out of character entirely and answer like a normal helpful assistant."}
-        ]
-        return render(request, self.template_name)
+        _get_round_maker_conversation_history(request)
+        return render(
+            request,
+            self.template_name,
+            {
+                'round_maker_creator_options': _build_round_maker_creator_options(),
+                'round_maker_default_creator': (
+                    display_name_for_player_field(request.user.username)
+                    if request.user.is_authenticated
+                    else ''
+                ),
+            },
+        )
 
     def post(self, request, *args, **kwargs):
-        user_input = request.POST.get('user_input')
+        user_input = (request.POST.get('user_input') or '').strip()
         client = _get_openai_client()
 
 
         # Get the conversation history from the session
-        conversation_history = request.session.get('conversation_history', [])
+        conversation_history = _get_round_maker_conversation_history(request)
         # Append the user's message to the conversation history
         conversation_history.append({"role": "user", "content": user_input})
 
         try:
-            response = client.chat.completions.create(# model="gpt-3.5-turbo",
-            # model="gpt-4",
-            model = "o3",
-            temperature=1,
-            messages=conversation_history,
-            max_completion_tokens=150)
-            print(f"RESPONSE: {response}")
-            gpt_response = response.choices[0].message.content
+            gpt_response = _create_openai_text_response(
+                client=client,
+                instructions=SWOOP_SYSTEM_PROMPT,
+                input_items=_build_responses_input(conversation_history),
+                max_output_tokens=250,
+                reasoning_effort="medium",
+            )
             conversation_history.append({"role": "assistant", "content": gpt_response})
             request.session['conversation_history'] = conversation_history
-
-            # # Call to DALL-E to generate an image based on the conversation
-            # dalle_response = openai.Image.create(
-            #     prompt=f"Draw an image of the following creature: Swooper, the swoop snake. You have wings. You're sssmooth-talking, and myssterious. Swooper's job is trivia round recommender. Swooper has just suggested the following round: {gpt_response} I want you to draw Swooper, and have him be dressed up and have his surroundings reflect the theme of the suggested round. Make sure the image is artistic and stylized, NOT photorealistic or computer-generated.",
-            #     # This assumes you want to generate an image based on the last text response from GPT-4
-            #     n=1,  # Number of images to generate
-            #     size="1024x1024",  # The size of the image
-            #     model='dall-e-3'
-            # )
-            # image_url = dalle_response['data'][0]['url']  # URL of the generated image
+            request.session.modified = True
+            if request.user.is_authenticated and hasattr(request.user, 'profile'):
+                request.user.profile.swoop_conversation_history = conversation_history
+                request.user.profile.save(update_fields=['swoop_conversation_history'])
 
         except Exception as e:
             gpt_response = str(e)
@@ -874,14 +1017,48 @@ def player_profile(request, player_name):
 @sync_to_async          # runs blocking code in a thread-pool
 def _collect_rounds():
     links, titles, creators, old_links, shared_dates = get_round_titles_and_links()
-    new_rounds = [
+    submitted_rounds = list(SubmittedRound.objects.order_by('-submitted_at'))
+    submitted_rounds_by_presentation_id = {
+        submitted_round.presentation_id: submitted_round
+        for submitted_round in submitted_rounds
+    }
+    matched_submitted_round_ids = set()
+    new_rounds = []
+    for title, creator, link, old_link, shared_date in zip(titles, creators, links, old_links, shared_dates):
+        submitted_round = submitted_rounds_by_presentation_id.get(
+            _extract_google_presentation_id(link) or _extract_google_presentation_id(old_link)
+        )
+        if submitted_round:
+            matched_submitted_round_ids.add(submitted_round.presentation_id)
+        new_rounds.append(
+            {
+                "title": submitted_round.title if submitted_round and submitted_round.title else title,
+                "creator": submitted_round.creator if submitted_round and submitted_round.creator else creator,
+                "link": link,
+                "old_link": old_link,
+                "shared_date": shared_date
+                or (
+                    submitted_round.submitted_at.date().isoformat()
+                    if submitted_round and submitted_round.submitted_at
+                    else ""
+                ),
+                "coop": bool(submitted_round.cooperative) if submitted_round else False,
+                "is_new": True,
+            }
+        )
+
+    pending_submitted_rounds = [
         {
-            "title": t, "creator": c, "link": l,
-            "old_link": o, "shared_date": d,
-            "coop": False,
+            "title": submitted_round.title,
+            "creator": submitted_round.creator,
+            "link": submitted_round.link or _build_submitted_round_link(submitted_round.presentation_id),
+            "old_link": submitted_round.link or _build_submitted_round_link(submitted_round.presentation_id),
+            "shared_date": submitted_round.submitted_at.date().isoformat() if submitted_round.submitted_at else "",
+            "coop": bool(submitted_round.cooperative),
             "is_new": True,
         }
-        for t, c, l, o, d in zip(titles, creators, links, old_links, shared_dates)
+        for submitted_round in submitted_rounds
+        if submitted_round.presentation_id not in matched_submitted_round_ids
     ]
     historical_rounds = [
         {
@@ -895,7 +1072,7 @@ def _collect_rounds():
         }
         for trivia_round in GPTriviaRound.objects.order_by('-date', 'round_number', 'title')
     ]
-    return new_rounds + historical_rounds
+    return pending_submitted_rounds + new_rounds + historical_rounds
 
 async def collect_rounds_api(request):
     if request.method != "GET":
