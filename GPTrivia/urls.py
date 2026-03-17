@@ -56,7 +56,6 @@ urlpatterns = [
     path('create_round/<str:date>/<int:number>/', csrf_exempt(views.create_round), name='create_round'),
     path('delete_round/<int:round_id>/', csrf_exempt(views.delete_round), name='delete_round'),
     path('round_maker/', views.RoundMaker.as_view(), name='round_maker'),
-    path('generate_image/', views.GenerateImageView.as_view(), name='generate_image'),
     path('icon_view/', views.IconView.as_view(), name='icon_view'),
     path('autogen/', views.AutoGenView.as_view(), name='autogen'),
     path('generate_idea/', views.GenerateIdeaView.as_view(), name='generate_round'),

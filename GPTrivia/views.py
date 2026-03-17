@@ -107,9 +107,6 @@ SWOOP_SAMPLE_QUESTION_PROMPT = (
     "Question: <question text>\n\n"
     "Answer: <short answer>"
 )
-SWOOP_THEME_SUMMARY_PROMPT = (
-    "Summarize the theme of the suggested trivia round in a few words and nothing else."
-)
 SWOOP_ICON_KEYWORD_PROMPT = (
     "Provide no more than two keywords that summarize the following trivia question. "
     "Return only the keywords and nothing else."
@@ -894,39 +891,6 @@ class AutoGenView(View):
             auto_resp = str(e)
 
         return JsonResponse({'autogen_response': auto_resp})
-
-class GenerateImageView(View):
-    def post(self, request, *args, **kwargs):
-        gpt_response = request.POST.get('gpt_text')
-        client = _get_openai_client()
-
-        try:
-            try:
-                second_response = _create_openai_text_response(
-                    client=client,
-                    instructions=SWOOP_THEME_SUMMARY_PROMPT,
-                    input_items=gpt_response,
-                    max_output_tokens=60,
-                    reasoning_effort="low",
-                )
-            except Exception as e:
-                second_response = str(e)
-                return JsonResponse({'dalle_image_url': None})
-
-            # Call to DALL-E to generate an image based on the conversation
-            dalle_response = client.images.generate(prompt=f"Swooper, a snake with wings. He's mysterious and sly. Draw Swooper, and have his surroundings and clothing reflect the theme of this sentence: {second_response}. Make sure the image is artistic and stylized.",
-            # This assumes you want to generate an image based on the last text response from GPT-4
-            n=1,  # Number of images to generate
-            size="1024x1024",  # The size of the image
-            model='gpt-image-1')
-            image_url = dalle_response.data[0].url  # URL of the generated image
-            print(image_url)
-
-        except Exception as e:
-            image_url = None  # No image if there's an error
-            print(image_url)
-
-        return JsonResponse({'dalle_image_url': image_url})
 
 class IconView(View):
     def post(self, request, *args, **kwargs):

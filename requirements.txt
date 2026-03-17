@@ -79,7 +79,7 @@ numexpr=2.8.4=py38h79ee842_1
 numpy=1.24.3=py38h1398885_0
 numpy-base=1.24.3=py38h90707a3_0
 oauthlib=3.2.2=py38hca03da5_0
-openai=2.26.0
+openai
 openjpeg=2.3.0=h7a6adac_2
 openssl=3.0.12=h1a28f6b_0
 pandas=2.0.3=py38h46d7db6_0
