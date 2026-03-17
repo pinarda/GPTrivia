@@ -9,7 +9,7 @@
 .auth-card {
     width: min(100%, 470px);
     border: 1px solid rgba(0, 115, 204, 0.34);
-    border-radius: 18px;
+    border-radius: 0;
     overflow: hidden;
     background: linear-gradient(180deg, rgba(27, 37, 48, 0.98), rgba(19, 26, 34, 0.95));
     box-shadow: 0 22px 50px rgba(0, 0, 0, 0.28);
@@ -68,7 +68,7 @@
 .auth-field input[type="password"] {
     width: 100%;
     border: 1px solid rgba(125, 166, 207, 0.34);
-    border-radius: 12px;
+    border-radius: 0;
     background: rgba(8, 14, 20, 0.9);
     color: #fff;
     padding: 12px 14px;
@@ -94,7 +94,7 @@
 .auth-submit {
     width: 100%;
     border: none;
-    border-radius: 12px;
+    border-radius: 0;
     background: linear-gradient(135deg, #0073cc 0%, #00539b 100%);
     color: #fff;
     padding: 13px 16px;
@@ -122,7 +122,7 @@
 
 .auth-errors,
 .auth-field-errors {
-    border-radius: 12px;
+    border-radius: 0;
     background: rgba(255, 93, 115, 0.12);
     border: 1px solid rgba(255, 93, 115, 0.34);
     color: #ffd7dd;
@@ -137,6 +137,43 @@
 .auth-field.has-error input[type="text"],
 .auth-field.has-error input[type="password"] {
     border-color: rgba(255, 93, 115, 0.56);
+}
+
+.auth-help-text {
+    border: 1px solid rgba(125, 166, 207, 0.24);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.78);
+    padding: 10px 12px;
+    font-size: 0.92rem;
+    line-height: 1.55;
+}
+
+.auth-help-text ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.auth-help-text li + li {
+    margin-top: 6px;
+}
+
+.auth-message-body {
+    display: grid;
+    gap: 18px;
+}
+
+.auth-message-copy {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.6;
+}
+
+.auth-link-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    box-sizing: border-box;
 }
 
 body.site-shell[data-profile-theme="light"] .auth-card {
@@ -172,13 +209,19 @@ body.site-shell[data-profile-theme="light"] .auth-field-errors {
     color: #7a1d2d;
 }
 
+body.site-shell[data-profile-theme="light"] .auth-help-text {
+    background: rgba(27, 37, 48, 0.04);
+    border-color: rgba(127, 169, 207, 0.42);
+    color: rgba(27, 37, 48, 0.78);
+}
+
+body.site-shell[data-profile-theme="light"] .auth-message-copy {
+    color: #1b2530;
+}
+
 @media (max-width: 750px) {
     .auth-shell {
         padding: 18px 10px 22px;
-    }
-
-    .auth-card {
-        border-radius: 16px;
     }
 
     .auth-header {
