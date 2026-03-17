@@ -1,4 +1,3 @@
-<!-- GPTrivia/player_profile.html -->
 {% extends 'base.html' %}
 {% load static %}
 
@@ -12,28 +11,49 @@
 {% endblock %}
 
 {% block extra_meta %}
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>
     <meta name="theme-color" content="#2d3047">
 {% endblock %}
 
 {% block content %}
-    <h1><a href="{% url 'player_profile' player_name=player_name %}" class="player_name" data-player='{{ player_name }}'>{{ player_name }}</a>'s Profile</h1>
+    <div class="profile-page">
+        <h1 class="profile-page-title">
+            <a href="{% url 'player_profile' player_name=player_name %}" class="player_name" data-player="{{ player_name }}">{{ player_name }}</a>'s Profile
+        </h1>
 
-    <div class="content-wrapper">
         <div class="profile-actions-container">
-            <div id="picdiv_mob">
-                <div>
-                    <img id="profpic_mob" src="{{ profile_picture_url }}" alt="{{ player_name }}'s Profile Picture">
-                </div>
+            <div class="profile-hero-card">
+                <img class="profile-hero-image" src="{{ profile_picture_url }}" alt="{{ player_name }}'s Profile Picture">
             </div>
 
-            <div id="roundbuttons">
-                <h2>Creator Information:</h2>
-                <button class="expand-collapse-button" id="toggleTable" onclick="toggleCreatedRounds()">Created Round Category Counts</button>
-                <button class="expand-collapse-button" id="roundsButton" onclick="toggleRounds()">Show/Hide Created Rounds</button>
+            <div id="roundbuttons" class="profile-control-stack">
+                <div class="profile-control-heading">
+                    <h2>Creator Information</h2>
+                    <p>Open your created-round panels, review appearance settings, and manage account options here.</p>
+                </div>
+
+                <button
+                    class="expand-collapse-button profile-player-button profile-panel-toggle"
+                    id="toggleTable"
+                    type="button"
+                    data-panel-target="created-categories-panel"
+                    aria-expanded="false"
+                >
+                    Created Round Categories
+                </button>
+
+                <button
+                    class="expand-collapse-button profile-player-button profile-panel-toggle"
+                    id="roundsButton"
+                    type="button"
+                    data-panel-target="created-rounds-panel"
+                    aria-expanded="false"
+                >
+                    Created Rounds
+                </button>
+
                 {% if is_own_profile %}
                 <div class="profile-settings-panel">
-                    <h2>Profile Appearance:</h2>
+                    <h2>Profile Appearance</h2>
                     <form
                         id="profile-settings-form"
                         class="profile-settings-form"
@@ -44,7 +64,7 @@
                         {% csrf_token %}
                         <div class="profile-settings-group">
                             <label class="profile-settings-label" for="{{ form.profile_picture.id_for_label }}">
-                                Select Photo
+                                Profile Picture
                             </label>
                             {{ form.profile_picture }}
                             {% for error in form.profile_picture.errors %}
@@ -97,86 +117,136 @@
                             <p class="profile-settings-error">{{ error }}</p>
                         {% endfor %}
 
-                        <button class="expand-collapse-button" type="submit">Save Appearance</button>
+                        <button class="expand-collapse-button profile-player-button" type="submit">Save Appearance</button>
                     </form>
                 </div>
-                {% endif %}
-                {% if is_own_profile %}
-                    <form action={% url 'password_change' %}>
-                        <button class="expand-collapse-button" id="passwordbtn">Change Password</button>
-                    </form>
-                {% endif %}
-                {% if is_own_profile %}
-                    <button class="expand-collapse-button" id="notificationbtn">Enable Notifications</button>
+
+                <form class="profile-inline-form" action="{% url 'password_change' %}">
+                    <button class="expand-collapse-button profile-player-button" id="passwordbtn" type="submit">Change Password</button>
+                </form>
+
+                <button class="expand-collapse-button profile-player-button" id="notificationbtn" type="button">Enable Notifications</button>
                 {% endif %}
             </div>
-
-            <div id="picdiv_reg">
-                <div>
-                    <img id="profpic_reg" src="{{ profile_picture_url }}" alt="{{ player_name }}'s Profile Picture">
-                </div>
-            </div>
-
         </div>
 
-                <div class="table-container">
+        <div class="profile-accordion-stack">
+            <section id="created-categories-panel" class="profile-data-panel" hidden>
+                <div class="profile-data-panel-header">
+                    <div>
+                        <h2>Created Round Categories</h2>
+                        <p>Search categories and counts the same way you browse rounds elsewhere on the site.</p>
+                    </div>
+                    {% if created_rounds_cat %}
+                    <input
+                        id="created-categories-search"
+                        class="profile-table-search"
+                        type="search"
+                        placeholder="Search categories"
+                        aria-label="Search created round categories"
+                    >
+                    {% endif %}
+                </div>
+
                 {% if created_rounds_cat %}
-                    <table cellpadding="5" cellspacing="0" id="createdRoundsTable" style="display: none;">
-                        <thead>
-                            <tr>
-                                <th>Major Category</th>
-                                <th>Number of Rounds</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for round in created_rounds_cat %}
+                <div class="profile-table-shell">
+                    <div class="profile-table-wrap">
+                        <table cellpadding="0" cellspacing="0" id="createdRoundsTable">
+                            <thead>
                                 <tr>
-                                    <td>{{ round.major_category }}</td>
-                                    <td>{{ round.num_rounds }}</td>
+                                    <th>Major Category</th>
+                                    <th>Rounds</th>
                                 </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {% for round in created_rounds_cat %}
+                                    <tr data-search="{{ round.major_category|lower }} {{ round.num_rounds }}">
+                                        <td>{{ round.major_category }}</td>
+                                        <td>{{ round.num_rounds }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="profile-table-empty profile-table-empty--hidden" data-empty-message>No category results match your search.</p>
+                </div>
                 {% else %}
-                    <p>No rounds created.</p>
+                    <p class="profile-table-empty">No created round categories yet.</p>
                 {% endif %}
+            </section>
+
+            <section id="created-rounds-panel" class="profile-data-panel" hidden>
+                <div class="profile-data-panel-header">
+                    <div>
+                        <h2>Created Rounds</h2>
+                        <p>Open a round in the full rounds list by clicking the title, or jump to its slides directly.</p>
+                    </div>
+                    {% if created_rounds %}
+                    <input
+                        id="created-rounds-search"
+                        class="profile-table-search"
+                        type="search"
+                        placeholder="Search title, category, date, or co-op"
+                        aria-label="Search created rounds"
+                    >
+                    {% endif %}
+                </div>
 
                 {% if created_rounds %}
-                    <table cellpadding="5" cellspacing="0" id="playerRoundsTable" style="display: none;">
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Date</th>
-                                <th>Category</th>
-                                <th class="score-col">Max Score</th>
-                                <th>Rd</th>
-                                <th>Coop</th>
-                                <th>Link</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for round in created_rounds %}
+                <div class="profile-table-shell">
+                    <div class="profile-table-wrap">
+                        <table cellpadding="0" cellspacing="0" id="playerRoundsTable">
+                            <thead>
                                 <tr>
-                                    <td>{{ round.title }}</td>
-                                    <td>{{ round.date }}</td>
-                                    <td>{{ round.major_category }}</td>
-                                    <td class="score-col">{{ round.max_score }}</td>
-                                    <td>{{ round.round_number }}</td>
-                                    <td>{{ round.cooperative }}</td>
-                                    <td><button class="slides-button" type="button" data-presentation-url={{ round.link }}>Slides</button></td>
+                                    <th>Title</th>
+                                    <th>Date</th>
+                                    <th>Category</th>
+                                    <th>Max</th>
+                                    <th>Rd</th>
+                                    <th>Co-op</th>
+                                    <th>Slides</th>
                                 </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {% for round in created_rounds %}
+                                    <tr data-search="{{ round.title|lower }} {{ round.date }} {{ round.major_category|lower }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }}">
+                                        <td>
+                                            <a
+                                                class="profile-round-link"
+                                                href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}"
+                                            >
+                                                {{ round.title }}
+                                            </a>
+                                        </td>
+                                        <td>{{ round.date }}</td>
+                                        <td>{{ round.major_category }}</td>
+                                        <td>{{ round.max_score }}</td>
+                                        <td>{{ round.round_number }}</td>
+                                        <td>{{ round.cooperative|yesno:"Yes,No" }}</td>
+                                        <td>
+                                            <button
+                                                class="slides-button profile-player-button"
+                                                type="button"
+                                                data-presentation-url="{{ round.link }}"
+                                            >
+                                                Slides
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="profile-table-empty profile-table-empty--hidden" data-empty-message>No created rounds match your search.</p>
+                </div>
                 {% else %}
-                    <p>No rounds created.</p>
+                    <p class="profile-table-empty">No created rounds yet.</p>
                 {% endif %}
-            </div>
-
-
+            </section>
+        </div>
 
         <div class="summary-stats">
-            <h2>Summary Stats:</h2>
+            <h2>Summary Stats</h2>
             <p>Number of Rounds Played: {{ total_rounds }}</p>
             <p>Number of Rounds Created: {{ created_rounds_count }}</p>
             <p>Strongest Category: {{ max_avg }}</p>
@@ -210,342 +280,297 @@
                 {% endif %}
             </p>
         </div>
-
     </div>
 
-
-
-{#    {% if user.is_authenticated and user.username == player_name %}#}
-{#        <form action={% url 'profilepic' %}>#}
-{#            <button class="expand-collapse-button" id="picbtn">Upload Profile Pic</button>#}
-{#        </form>#}
-{#    {% endif %}#}
-
     <script>
-          let playerColorMapping = {{ player_color_mapping|safe }};
-          let playerName = "{{ player_name }}";
-          let textColor = "{{ text_color }}";
-          let notificationsEnabledForDevice = false;
+        const playerColorMapping = {{ player_color_mapping|safe }};
+        const playerName = "{{ player_name }}";
+        const textColor = "{{ text_color }}";
+        let notificationsEnabledForDevice = false;
 
-          document.addEventListener('DOMContentLoaded', () => {
-                const notifyBtn = document.getElementById('notificationbtn');
-                if (notifyBtn) {
-                    initializeNotificationButton(notifyBtn);
-                    notifyBtn.addEventListener('click', toggleNotificationsForDevice);
-                }
+        function getCsrfToken() {
+            const csrfInput = document.querySelector('input[name=csrfmiddlewaretoken]');
+            return csrfInput ? csrfInput.value : '';
+        }
+
+        function darkenColor(hexColor) {
+            if (hexColor.startsWith('#')) {
+                hexColor = hexColor.slice(1);
+            }
+            const rgb = hexColor.match(/.{1,2}/g).map(color => parseInt(color, 16));
+            const darkenedRgb = rgb.map(color => {
+                const darkenedValue = Math.round(color * 0.85);
+                return Math.max(0, Math.min(255, darkenedValue));
             });
+            const darkenedHex = darkenedRgb.map(color => color.toString(16).padStart(2, '0')).join('');
+            return `#${darkenedHex}`;
+        }
 
-          function getCsrfToken() {
-                const csrfInput = document.querySelector('input[name=csrfmiddlewaretoken]');
-                return csrfInput ? csrfInput.value : '';
+        function setNotificationButtonState(button, { enabled = false, disabled = false, label = '' } = {}) {
+            if (!button) {
+                return;
             }
+            notificationsEnabledForDevice = enabled;
+            button.disabled = disabled;
+            button.textContent = label || (enabled ? 'Disable Notifications' : 'Enable Notifications');
+        }
 
-          function setNotificationButtonState(button, { enabled = false, disabled = false, label = '' } = {}) {
-                if (!button) {
-                    return;
-                }
-                notificationsEnabledForDevice = enabled;
-                button.disabled = disabled;
-                button.textContent = label || (enabled ? 'Disable Notifications' : 'Enable Notifications');
-            }
-
-          async function initializeNotificationButton(button) {
-                if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-                    setNotificationButtonState(button, {
-                        enabled: false,
-                        disabled: true,
-                        label: 'Notifications Unsupported',
-                    });
-                    return;
-                }
-
-                try {
-                    const registration = await navigator.serviceWorker.ready;
-                    const existingSubscription = await registration.pushManager.getSubscription();
-                    setNotificationButtonState(button, {
-                        enabled: Boolean(existingSubscription),
-                        disabled: false,
-                    });
-                } catch (err) {
-                    console.error('Error checking notification state:', err);
-                    setNotificationButtonState(button, {
-                        enabled: false,
-                        disabled: false,
-                    });
-                }
-            }
-
-          async function askPermission() {
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    console.log('Notification permission granted.');
-                    return true;
-                } else {
-                    console.warn('Permission not granted for notifications.');
-                    return false;
-                }
-            }
-
-            function urlBase64ToUint8Array(base64String) {
-              const padding = '='.repeat((4 - base64String.length % 4) % 4);
-              const base64 = (base64String + padding)
-                .replace(/\-/g, '+')
-                .replace(/_/g, '/');
-              const rawData = atob(base64);
-              return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
-            }
-
-            async function subscribeUser() {
-                try {
-                    const registration = await navigator.serviceWorker.ready;
-                    console.log('Service worker ready:', registration);
-
-                    const subscription = await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: urlBase64ToUint8Array('BHoGFkOJ_KwoRtcP_qIR2zzDFOhMrMlIo1fLKL5_ed5PTEee1ky78J7vhugar72ALkAhyblefsrZAlCfOKYWtfM')
-                    });
-                    console.log('Push subscription created:', subscription);
-
-                    const response = await fetch('/api/save-subscription/', {
-                        method: 'POST',
-                        body: JSON.stringify(subscription),
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCsrfToken(),
-                        }
-                    });
-
-                    console.log('Subscription saved:', await response.json());
-                    return true;
-                } catch (err) {
-                    console.error('Error in subscribeUser():', err);
-                    return false;
-                }
-            }
-
-            async function unsubscribeUser() {
-                try {
-                    const registration = await navigator.serviceWorker.ready;
-                    const subscription = await registration.pushManager.getSubscription();
-                    if (!subscription) {
-                        return true;
-                    }
-
-                    const endpoint = subscription.endpoint;
-                    await subscription.unsubscribe();
-
-                    const response = await fetch('/api/save-subscription/', {
-                        method: 'DELETE',
-                        body: JSON.stringify({ endpoint: endpoint }),
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCsrfToken(),
-                        }
-                    });
-
-                    console.log('Subscription removed:', await response.json());
-                    return true;
-                } catch (err) {
-                    console.error('Error in unsubscribeUser():', err);
-                    return false;
-                }
-            }
-
-            async function toggleNotificationsForDevice() {
-                const notifyBtn = document.getElementById('notificationbtn');
-                if (!notifyBtn) {
-                    return;
-                }
-
-                setNotificationButtonState(notifyBtn, {
-                    enabled: notificationsEnabledForDevice,
+        async function initializeNotificationButton(button) {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+                setNotificationButtonState(button, {
+                    enabled: false,
                     disabled: true,
-                    label: notificationsEnabledForDevice ? 'Disabling…' : 'Enabling…',
+                    label: 'Notifications Unsupported',
                 });
+                return;
+            }
 
-                if (notificationsEnabledForDevice) {
-                    const success = await unsubscribeUser();
-                    setNotificationButtonState(notifyBtn, {
-                        enabled: success ? false : true,
-                        disabled: false,
-                    });
-                    return;
-                }
-
-                const permissionGranted = await askPermission();
-                if (!permissionGranted) {
-                    setNotificationButtonState(notifyBtn, {
-                        enabled: false,
-                        disabled: false,
-                    });
-                    return;
-                }
-
-                const success = await subscribeUser();
-                setNotificationButtonState(notifyBtn, {
-                    enabled: success,
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const existingSubscription = await registration.pushManager.getSubscription();
+                setNotificationButtonState(button, {
+                    enabled: Boolean(existingSubscription),
+                    disabled: false,
+                });
+            } catch (err) {
+                console.error('Error checking notification state:', err);
+                setNotificationButtonState(button, {
+                    enabled: false,
                     disabled: false,
                 });
             }
+        }
 
-
-
-          function setButtonColors() {
-            let playerColor = playerColorMapping[playerName];
-            const categoryButton = document.getElementById("categoryButton");
-            const roundsButton = document.getElementById("roundsButton");
-            expandCollapseButton = document.getElementsByClassName("expand-collapse-button");
-            for (let i = 0; i < expandCollapseButton.length; i++) {
-                expandCollapseButton[i].style.backgroundColor = playerColor;
-                expandCollapseButton[i].style.color = textColor;
+        async function askPermission() {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                return true;
             }
-            let slidesButton = document.getElementsByClassName("slides-button");
-            for (let i = 0; i < slidesButton.length; i++) {
-                slidesButton[i].style.backgroundColor = playerColor;
-                slidesButton[i].style.color = textColor;
-                // no border
-                slidesButton[i].style.border = "none";
-                // on hover, darken the color
-                slidesButton[i].addEventListener("mouseover", function() {
-                    slidesButton[i].style.backgroundColor = darkenColor(playerColor);
-                });
-                // on mouseout, reset the color
-                slidesButton[i].addEventListener("mouseout", function() {
-                    slidesButton[i].style.backgroundColor = playerColor;
-                });
-            }
-          }
+            console.warn('Permission not granted for notifications.');
+            return false;
+        }
 
-          //darken the color by 10% (the color is represented as a hex string
-            //so we need to convert it to a number, darken it, and then convert it back)
-            function darkenColor(hexColor) {
-                // Convert the hex color to RGB
-                if (hexColor.startsWith('#')) {
-                    hexColor = hexColor.slice(1);
-                }
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\-/g, '+')
+                .replace(/_/g, '/');
+            const rawData = atob(base64);
+            return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
+        }
 
-                // Convert the hex color to RGB
-                const rgb = hexColor.match(/.{1,2}/g).map((color) => parseInt(color, 16));
-
-
-                // Calculate the darkened RGB components
-                const darkenedRgb = rgb.map((color) => {
-                    const darkenedValue = Math.round(color * 0.85);
-                    return Math.max(0, Math.min(255, darkenedValue));
+        async function subscribeUser() {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array('BHoGFkOJ_KwoRtcP_qIR2zzDFOhMrMlIo1fLKL5_ed5PTEee1ky78J7vhugar72ALkAhyblefsrZAlCfOKYWtfM')
                 });
 
-                // Convert the darkened RGB components back to hexadecimal
-                const darkenedHex = darkenedRgb.map((color) => color.toString(16).padStart(2, '0')).join('');
+                const response = await fetch('/api/save-subscription/', {
+                    method: 'POST',
+                    body: JSON.stringify(subscription),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken(),
+                    }
+                });
 
-                return `#${darkenedHex}`;
-            }
-
-
-        function toggleRounds() {
-            const roundsList = document.getElementById('playerRoundsTable');
-            const createList = document.getElementById('createdRoundsTable');
-            if (roundsList.style.display === "none") {
-                roundsList.style.display = "block";
-                if (createList.style.display === "table") {
-                    createList.style.display = "none";
-                }
-            } else {
-                roundsList.style.display = "none";
+                console.log('Subscription saved:', await response.json());
+                return true;
+            } catch (err) {
+                console.error('Error in subscribeUser():', err);
+                return false;
             }
         }
 
-        function toggleCreatedRounds() {
-            const roundsList = document.getElementById('playerRoundsTable');
-            const createList = document.getElementById('createdRoundsTable');
-            if (createList.style.display === "none") {
-                createList.style.display = "table";
-                if (roundsList.style.display === "block") {
-                    roundsList.style.display = "none";
+        async function unsubscribeUser() {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.getSubscription();
+                if (!subscription) {
+                    return true;
                 }
-            } else {
-                createList.style.display = "none";
+
+                const endpoint = subscription.endpoint;
+                await subscription.unsubscribe();
+
+                const response = await fetch('/api/save-subscription/', {
+                    method: 'DELETE',
+                    body: JSON.stringify({ endpoint }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken(),
+                    }
+                });
+
+                console.log('Subscription removed:', await response.json());
+                return true;
+            } catch (err) {
+                console.error('Error in unsubscribeUser():', err);
+                return false;
             }
         }
 
-        {#document.getElementById("toggleTable").addEventListener("click", function() {#}
-        {#    let table = document.getElementById("createdRoundsTable");#}
-        {#    if (table.style.display === "none") {#}
-        {#        table.style.display = "block";#}
-        {#    } else {#}
-        {#        table.style.display = "none";#}
-        {#    }#}
-        {#});#}
+        async function toggleNotificationsForDevice() {
+            const notifyBtn = document.getElementById('notificationbtn');
+            if (!notifyBtn) {
+                return;
+            }
 
+            setNotificationButtonState(notifyBtn, {
+                enabled: notificationsEnabledForDevice,
+                disabled: true,
+                label: notificationsEnabledForDevice ? 'Disabling…' : 'Enabling…',
+            });
 
+            if (notificationsEnabledForDevice) {
+                const success = await unsubscribeUser();
+                setNotificationButtonState(notifyBtn, {
+                    enabled: success ? false : true,
+                    disabled: false,
+                });
+                return;
+            }
 
-        window.onload = setButtonColors;
+            const permissionGranted = await askPermission();
+            if (!permissionGranted) {
+                setNotificationButtonState(notifyBtn, {
+                    enabled: false,
+                    disabled: false,
+                });
+                return;
+            }
 
-        const buttons = document.querySelectorAll(".expand-collapse-button");
+            const success = await subscribeUser();
+            setNotificationButtonState(notifyBtn, {
+                enabled: success,
+                disabled: false,
+            });
+        }
 
-        buttons.forEach(link => {
+        function setButtonColors() {
             const playerColor = playerColorMapping[playerName];
-
-            link.addEventListener('mouseover', () => {
-                link.style.backgroundColor = darkenColor(playerColorMapping[playerName]);
+            const actionButtons = document.querySelectorAll('.profile-player-button');
+            actionButtons.forEach(button => {
+                button.style.backgroundColor = playerColor;
+                button.style.color = textColor;
             });
 
-            link.addEventListener('mouseout', () => {
-                link.style.backgroundColor = playerColorMapping[playerName];
+            const fileInput = document.getElementById('profile-picture-input');
+            if (fileInput) {
+                fileInput.style.setProperty('--profile-file-button-bg', playerColor);
+                fileInput.style.setProperty('--profile-file-button-text', textColor);
+            }
+
+            const slidesButtons = document.querySelectorAll('.slides-button');
+            slidesButtons.forEach(button => {
+                button.style.backgroundColor = playerColor;
+                button.style.color = textColor;
+                button.style.border = 'none';
+                button.addEventListener('mouseover', () => {
+                    button.style.backgroundColor = darkenColor(playerColor);
+                });
+                button.addEventListener('mouseout', () => {
+                    button.style.backgroundColor = playerColor;
+                });
             });
-        });
+        }
 
-    const playerLinks = document.querySelectorAll(".player_name");
-
-        playerLinks.forEach(link => {
-            const playerName = link.getAttribute('data-player');
-            const playerColor = playerColorMapping[playerName];
-
-            link.addEventListener('mouseover', () => {
-                link.style.color = playerColor;
+        function setPlayerLinkHoverColors() {
+            document.querySelectorAll('.player_name').forEach(link => {
+                const linkedPlayerName = link.getAttribute('data-player');
+                const playerColor = playerColorMapping[linkedPlayerName];
+                link.addEventListener('mouseover', () => {
+                    link.style.color = playerColor;
+                });
+                link.addEventListener('mouseout', () => {
+                    link.style.color = '';
+                });
             });
+        }
 
-            link.addEventListener('mouseout', () => {
-                link.style.color = '';
-            });
-        });
+        function filterProfileTableRows(panelId, searchTerm) {
+            const panel = document.getElementById(panelId);
+            if (!panel) {
+                return;
+            }
+            const rows = panel.querySelectorAll('tbody tr[data-search]');
+            const emptyMessage = panel.querySelector('[data-empty-message]');
+            const tokens = String(searchTerm || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+            let visibleRows = 0;
 
-        $(document).ready(function () {
-            $(".slides-button").click(function () {
-                var presentationUrl = $(this).data("presentation-url");
-
-                // Find the row containing the clicked button
-                var $row = $(this).closest("tr");
-
-                // Check if the iframe already exists
-                var $iframe = $row.next("tr.slides-iframe-row");
-
-                if ($iframe.length) {
-                    // If the iframe exists, toggle its visibility
-                    $iframe.toggle();
-                } else {
-                    // If the iframe doesn't exist, create a new row and the iframe
-                    var $newRow = $('<tr class="slides-iframe-row"><td colspan="7" height="500px"></td></tr>');
-                    var $iframeCell = $newRow.children("td");
-
-                    var iframe = $('<iframe>', {
-                        src: presentationUrl,
-                        width: "100%",
-                        height: "100%",
-                        aspectRatio: "16:9",
-                        frameborder: "0",
-                        allowfullscreen: "true",
-                        mozallowfullscreen: "true",
-                        webkitallowfullscreen: "true"
-                    });
-
-                    // Append the iframe to the new cell and insert the row after the current row
-                    $iframeCell.append(iframe);
-                    $row.after($newRow);
+            rows.forEach(row => {
+                const haystack = row.dataset.search || row.textContent.toLowerCase();
+                const matches = !tokens.length || tokens.every(token => haystack.includes(token));
+                row.hidden = !matches;
+                if (matches) {
+                    visibleRows += 1;
                 }
             });
-        });
 
-        (function initializeProfileAppearanceEditor() {
+            if (emptyMessage) {
+                emptyMessage.classList.toggle('profile-table-empty--hidden', visibleRows > 0);
+            }
+        }
+
+        function toggleProfilePanel(panelId) {
+            const panels = document.querySelectorAll('.profile-data-panel');
+            const targetPanel = document.getElementById(panelId);
+            if (!targetPanel) {
+                return;
+            }
+
+            const willOpen = targetPanel.hidden;
+            panels.forEach(panel => {
+                panel.hidden = true;
+            });
+
+            document.querySelectorAll('.profile-panel-toggle').forEach(button => {
+                const expanded = willOpen && button.dataset.panelTarget === panelId;
+                button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            });
+
+            targetPanel.hidden = !willOpen;
+            if (willOpen) {
+                const searchInput = targetPanel.querySelector('.profile-table-search');
+                if (searchInput) {
+                    searchInput.focus({ preventScroll: true });
+                }
+            }
+        }
+
+        function initializeProfilePanels() {
+            document.querySelectorAll('.profile-panel-toggle').forEach(button => {
+                button.addEventListener('click', () => {
+                    toggleProfilePanel(button.dataset.panelTarget);
+                });
+            });
+
+            document.querySelectorAll('.profile-table-search').forEach(input => {
+                const panel = input.closest('.profile-data-panel');
+                if (!panel) {
+                    return;
+                }
+                input.addEventListener('input', () => {
+                    filterProfileTableRows(panel.id, input.value);
+                });
+                filterProfileTableRows(panel.id, input.value);
+            });
+        }
+
+        function initializeSlidesButtons() {
+            document.querySelectorAll('.slides-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const presentationUrl = button.dataset.presentationUrl;
+                    if (presentationUrl) {
+                        window.open(presentationUrl, '_blank', 'noopener,noreferrer');
+                    }
+                });
+            });
+        }
+
+        function initializeProfileAppearanceEditor() {
             const fileInput = document.getElementById('profile-picture-input');
             const cropEditor = document.getElementById('profile-crop-editor');
             const cropFrame = document.getElementById('profile-crop-frame');
@@ -558,6 +583,9 @@
             const colorValue = document.getElementById('profile-color-value');
 
             if (!fileInput || !cropEditor || !cropFrame || !cropImage || !zoomInput || !cropXInput || !cropYInput || !cropSizeInput) {
+                if (colorInput && colorValue) {
+                    colorValue.textContent = (colorInput.value || '').toUpperCase();
+                }
                 return;
             }
 
@@ -626,7 +654,7 @@
                 const viewport = viewportSize();
                 cropState.baseScale = Math.max(
                     viewport / cropState.naturalWidth,
-                    viewport / cropState.naturalHeight,
+                    viewport / cropState.naturalHeight
                 );
                 cropState.zoom = Number(zoomInput.value) / 100;
 
@@ -729,9 +757,30 @@
                 syncColorValue();
                 colorInput.addEventListener('input', syncColorValue);
             }
-        })();
+        }
 
+        document.addEventListener('DOMContentLoaded', () => {
+            const notifyBtn = document.getElementById('notificationbtn');
+            if (notifyBtn) {
+                initializeNotificationButton(notifyBtn);
+                notifyBtn.addEventListener('click', toggleNotificationsForDevice);
+            }
 
+            setButtonColors();
+            setPlayerLinkHoverColors();
+            initializeProfilePanels();
+            initializeSlidesButtons();
+            initializeProfileAppearanceEditor();
 
+            document.querySelectorAll('.profile-player-button').forEach(button => {
+                const playerColor = playerColorMapping[playerName];
+                button.addEventListener('mouseover', () => {
+                    button.style.backgroundColor = darkenColor(playerColor);
+                });
+                button.addEventListener('mouseout', () => {
+                    button.style.backgroundColor = playerColor;
+                });
+            });
+        });
     </script>
 {% endblock %}

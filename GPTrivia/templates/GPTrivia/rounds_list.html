@@ -19,20 +19,20 @@
     <table id="roundList">
         <thead id="roundListHead">
             <tr>
-                <th class="left-column">Title <input type="text" placeholder="Search" onkeyup="filterTable(this, 1)"></th>
-                <th>Creator <input type="text" placeholder="Search" onkeyup="filterTable(this, 2)"></th>
-                <th>Major Category <input type="text" placeholder="Search" onkeyup="filterTable(this, 3)"></th>
-                <th>Minor Category 1 <input type="text" placeholder="Search" onkeyup="filterTable(this, 4)"></th>
-                <th>Date <input type="text" placeholder="Search" onkeyup="filterTable(this, 5)"></th>
-                <th>Round Number <input type="text" placeholder="Search" onkeyup="filterTable(this, 6)"></th>
-                <th>Max Score <input type="text" placeholder="Search" onkeyup="filterTable(this, 7)"></th>
-                <th>Coop<input type="text" placeholder="Search" onkeyup="filterTable(this, 8)"></th>
-                <th>Replay<input type="text" placeholder="Search" onkeyup="filterTable(this, 9)"></th>
-                <th>Link<input type="text" placeholder="Search" onkeyup="filterTable(this, 10)"></th>
+                <th class="left-column">Title <input id="round-title-search" type="text" value="{{ initial_title_search }}" placeholder="Search" oninput="filterTable(this, 1)"></th>
+                <th>Creator <input type="text" placeholder="Search" oninput="filterTable(this, 2)"></th>
+                <th>Major Category <input type="text" placeholder="Search" oninput="filterTable(this, 3)"></th>
+                <th>Minor Category 1 <input type="text" placeholder="Search" oninput="filterTable(this, 4)"></th>
+                <th>Date <input type="text" placeholder="Search" oninput="filterTable(this, 5)"></th>
+                <th>Round Number <input type="text" placeholder="Search" oninput="filterTable(this, 6)"></th>
+                <th>Max Score <input type="text" placeholder="Search" oninput="filterTable(this, 7)"></th>
+                <th>Coop<input type="text" placeholder="Search" oninput="filterTable(this, 8)"></th>
+                <th>Replay<input type="text" placeholder="Search" oninput="filterTable(this, 9)"></th>
+                <th>Link<input type="text" placeholder="Search" oninput="filterTable(this, 10)"></th>
                 {% for player_name in player_names %}
                 <th>
                     <a href="{% url 'player_profile' player_name=player_name %}" class="player_name" data-player="{{ player_name }}">{{ player_name }}</a>
-                    <input type="text" placeholder="Search" onkeyup="filterTable(this, {{ forloop.counter|add:10 }})">
+                    <input type="text" placeholder="Search" oninput="filterTable(this, {{ forloop.counter|add:10 }})">
                 </th>
                 {% endfor %}
             </tr>
@@ -101,11 +101,6 @@
 
 
     function filterTable(input, index) {
-        // If the key pressed was not enter, do nothing
-        if (event.keyCode != 13) {
-            return;
-        }
-
         // Update the filter value for the current column
         columnFilters[index] = input.value.toUpperCase();
 
@@ -191,6 +186,18 @@ function createClonedCells() {
 
 // Call the function to create cloned cells
 createClonedCells();
+
+function applyInitialFilters() {
+    const filterInputs = document.querySelectorAll('#roundListHead input[type="text"]');
+    filterInputs.forEach((input, inputIndex) => {
+        if (!input.value) {
+            return;
+        }
+        filterTable(input, inputIndex + 1);
+    });
+}
+
+applyInitialFilters();
 
 const playerLinks = document.querySelectorAll(".player_name");
 
