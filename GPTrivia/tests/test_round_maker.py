@@ -9,6 +9,33 @@ from GPTrivia.models import SubmittedRound
 
 
 class RoundMakerTests(TestCase):
+    def test_openai_text_response_falls_back_to_max_tokens_for_older_chat_clients(self):
+        class LegacyChatCompletions:
+            def create(self, **kwargs):
+                if "max_completion_tokens" in kwargs:
+                    raise TypeError("create() got an unexpected keyword argument 'max_completion_tokens'")
+
+                message = type("Message", (), {"content": "Swoop! Legacy client works."})()
+                choice = type("Choice", (), {"message": message})()
+                return type("Response", (), {"choices": [choice]})()
+
+        class LegacyClient:
+            def __init__(self):
+                self.chat = type(
+                    "ChatNamespace",
+                    (),
+                    {"completions": LegacyChatCompletions()},
+                )()
+
+        response = views._create_openai_text_response(
+            client=LegacyClient(),
+            instructions="Test instructions",
+            input_items="Test input",
+            max_output_tokens=42,
+        )
+
+        self.assertEqual(response, "Swoop! Legacy client works.")
+
     def test_round_maker_get_shows_creator_selector_for_anonymous_users(self):
         response = self.client.get(reverse("round_maker"))
 

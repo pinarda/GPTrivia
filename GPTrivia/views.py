@@ -223,11 +223,19 @@ def _create_openai_text_response(client, *, instructions, input_items, max_outpu
             if content:
                 messages.append({"role": role, "content": content})
 
-    response = client.chat.completions.create(
-        model=SWOOP_MODEL,
-        messages=messages,
-        max_completion_tokens=max_output_tokens,
-    )
+    chat_kwargs = {
+        "model": SWOOP_MODEL,
+        "messages": messages,
+        "max_completion_tokens": max_output_tokens,
+    }
+    try:
+        response = client.chat.completions.create(**chat_kwargs)
+    except TypeError as exc:
+        if "max_completion_tokens" not in str(exc):
+            raise
+        chat_kwargs.pop("max_completion_tokens", None)
+        chat_kwargs["max_tokens"] = max_output_tokens
+        response = client.chat.completions.create(**chat_kwargs)
     return (response.choices[0].message.content or "").strip()
 
 
