@@ -306,6 +306,76 @@ def _normalize_round_title(title_value):
     return re.sub(r'\s+', ' ', str(title_value or '').strip()).casefold()
 
 
+def _build_submitted_round_lookup(submitted_rounds):
+    submitted_rounds_by_presentation_id = {
+        submitted_round.presentation_id: submitted_round
+        for submitted_round in submitted_rounds
+    }
+    submitted_rounds_by_link = {}
+    submitted_rounds_by_title = {}
+    duplicate_title_keys = set()
+
+    for submitted_round in submitted_rounds:
+        normalized_link = _normalize_round_link(submitted_round.link)
+        if normalized_link:
+            submitted_rounds_by_link[normalized_link] = submitted_round
+
+        title_key = _normalize_round_title(submitted_round.title)
+        if not title_key:
+            continue
+        if title_key in submitted_rounds_by_title:
+            duplicate_title_keys.add(title_key)
+        else:
+            submitted_rounds_by_title[title_key] = submitted_round
+
+    return (
+        submitted_rounds_by_presentation_id,
+        submitted_rounds_by_link,
+        submitted_rounds_by_title,
+        duplicate_title_keys,
+    )
+
+
+def _find_matching_submitted_round(title, link, old_link, submitted_round_lookup):
+    (
+        submitted_rounds_by_presentation_id,
+        submitted_rounds_by_link,
+        submitted_rounds_by_title,
+        duplicate_title_keys,
+    ) = submitted_round_lookup
+
+    title_key = _normalize_round_title(title)
+    submitted_round = submitted_rounds_by_presentation_id.get(
+        _extract_google_presentation_id(link) or _extract_google_presentation_id(old_link)
+    )
+    if not submitted_round:
+        submitted_round = submitted_rounds_by_link.get(_normalize_round_link(link)) or submitted_rounds_by_link.get(
+            _normalize_round_link(old_link)
+        )
+    if not submitted_round and title_key and title_key not in duplicate_title_keys:
+        submitted_round = submitted_rounds_by_title.get(title_key)
+    return submitted_round
+
+
+def _mark_selected_submitted_rounds_consumed(rounds):
+    submitted_rounds = list(SubmittedRound.objects.filter(is_consumed=False))
+    submitted_round_lookup = _build_submitted_round_lookup(submitted_rounds)
+    matched_ids = []
+
+    for round_data in rounds or []:
+        submitted_round = _find_matching_submitted_round(
+            round_data.get("title"),
+            round_data.get("link"),
+            round_data.get("old_link"),
+            submitted_round_lookup,
+        )
+        if submitted_round:
+            matched_ids.append(submitted_round.id)
+
+    if matched_ids:
+        SubmittedRound.objects.filter(id__in=set(matched_ids)).update(is_consumed=True)
+
+
 def _build_submitted_round_link(presentation_id):
     if not presentation_id:
         return ''
@@ -538,6 +608,7 @@ class ShareView(View):
                 'creator': creator,
                 'cooperative': cooperative,
                 'link': _build_submitted_round_link(presentation_id),
+                'is_consumed': False,
                 'submitted_by': request.user if request.user.is_authenticated else None,
             },
         )
@@ -1017,41 +1088,15 @@ def player_profile(request, player_name):
 def _collect_rounds():
     links, titles, creators, old_links, shared_dates = get_round_titles_and_links()
     submitted_rounds = list(SubmittedRound.objects.order_by('-submitted_at'))
-    submitted_rounds_by_presentation_id = {
-        submitted_round.presentation_id: submitted_round
-        for submitted_round in submitted_rounds
-    }
-    submitted_rounds_by_link = {}
-    submitted_rounds_by_title = {}
-    duplicate_title_keys = set()
-    for submitted_round in submitted_rounds:
-        normalized_link = _normalize_round_link(submitted_round.link)
-        if normalized_link:
-            submitted_rounds_by_link[normalized_link] = submitted_round
-
-        title_key = _normalize_round_title(submitted_round.title)
-        if not title_key:
-            continue
-        if title_key in submitted_rounds_by_title:
-            duplicate_title_keys.add(title_key)
-        else:
-            submitted_rounds_by_title[title_key] = submitted_round
-
+    submitted_round_lookup = _build_submitted_round_lookup(submitted_rounds)
     matched_submitted_round_ids = set()
     new_rounds = []
     for title, creator, link, old_link, shared_date in zip(titles, creators, links, old_links, shared_dates):
-        title_key = _normalize_round_title(title)
-        submitted_round = submitted_rounds_by_presentation_id.get(
-            _extract_google_presentation_id(link) or _extract_google_presentation_id(old_link)
-        )
-        if not submitted_round:
-            submitted_round = submitted_rounds_by_link.get(_normalize_round_link(link)) or submitted_rounds_by_link.get(
-                _normalize_round_link(old_link)
-            )
-        if not submitted_round and title_key and title_key not in duplicate_title_keys:
-            submitted_round = submitted_rounds_by_title.get(title_key)
+        submitted_round = _find_matching_submitted_round(title, link, old_link, submitted_round_lookup)
         if submitted_round:
             matched_submitted_round_ids.add(submitted_round.presentation_id)
+            if submitted_round.is_consumed:
+                continue
         new_rounds.append(
             {
                 "title": submitted_round.title if submitted_round and submitted_round.title else title,
@@ -1080,7 +1125,7 @@ def _collect_rounds():
             "is_new": True,
         }
         for submitted_round in submitted_rounds
-        if submitted_round.presentation_id not in matched_submitted_round_ids
+        if not submitted_round.is_consumed and submitted_round.presentation_id not in matched_submitted_round_ids
     ]
     historical_rounds = [
         {
@@ -1575,6 +1620,8 @@ def home(request):
                 new_round.link = round_links[round_index]
                 new_round.save()
 
+            _mark_selected_submitted_rounds_consumed(ordered_rounds)
+
         elif action == 'update':
 
             round_order = {}
@@ -1717,6 +1764,8 @@ def home(request):
                 new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
                 new_round.link = new_links[round_index]
                 new_round.save()
+
+            _mark_selected_submitted_rounds_consumed(ordered_rounds)
 
         if ajax_request and response_presentation is not None:
             return JsonResponse(

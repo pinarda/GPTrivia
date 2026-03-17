@@ -183,6 +183,7 @@ class SubmittedRound(models.Model):
     creator = models.CharField(max_length=100)
     cooperative = models.BooleanField(default=False)
     link = models.CharField(max_length=255, blank=True, default='')
+    is_consumed = models.BooleanField(default=False)
     submitted_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
     submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

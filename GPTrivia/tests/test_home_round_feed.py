@@ -126,6 +126,29 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual(payload[0]["title"], "Winged Science")
         self.assertEqual(payload[0]["creator"], "Alex")
 
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_excludes_consumed_submitted_rounds(self, mock_get_round_titles_and_links):
+        mock_get_round_titles_and_links.return_value = (
+            ["https://docs.google.com/presentation/d/swoop-123/edit"],
+            ["Shared Deck Title"],
+            ["hailsciencetrivia@gmail.com"],
+            ["https://docs.google.com/presentation/d/swoop-123/edit"],
+            ["2026-03-15"],
+        )
+        SubmittedRound.objects.create(
+            presentation_id="swoop-123",
+            title="Winged Science",
+            creator="Alex",
+            cooperative=True,
+            link="https://docs.google.com/presentation/d/swoop-123/edit",
+            is_consumed=True,
+        )
+
+        response = self.client.get(reverse("collect_rounds_api"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["rounds"], [])
+
     @patch(
         "GPTrivia.views.create_presentation",
         return_value=(

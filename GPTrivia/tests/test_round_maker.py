@@ -60,6 +60,8 @@ class RoundMakerTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="round-creator"', html=False)
+        self.assertContains(response, 'id="coop-choice-set"', html=False)
+        self.assertContains(response, 'id="preview-button" disabled', html=False)
         self.assertContains(response, "Select a creator")
 
     def test_round_maker_get_hides_creator_selector_for_authenticated_users(self):
@@ -70,6 +72,8 @@ class RoundMakerTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'id="round-creator"', html=False)
+        self.assertContains(response, 'id="coop-choice-set"', html=False)
+        self.assertContains(response, 'id="preview-button" disabled', html=False)
         self.assertContains(response, "Creator will be saved as Alex.")
 
     def test_round_maker_get_preserves_existing_conversation_history(self):

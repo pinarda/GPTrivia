@@ -191,6 +191,25 @@ button:active {
     transform: translateY(0);
 }
 
+button:disabled {
+    background-color: #6f6f6f;
+    color: rgba(255, 255, 255, 0.75);
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.8;
+}
+
+button:disabled:hover {
+    background-color: #6f6f6f;
+    transform: none;
+}
+
+.preview-requirements-message {
+    margin: 6px 0 0;
+    color: var(--swoop-panel-text, #fff);
+    font-size: 0.95rem;
+}
+
 /* Select Styles */
 select {
     background-color: #9d4edd;

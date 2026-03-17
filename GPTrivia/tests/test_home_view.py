@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from GPTrivia.mail import PresentationBuildError
-from GPTrivia.models import MergedPresentation, PresentationBuildState
+from GPTrivia.models import MergedPresentation, PresentationBuildState, SubmittedRound
 
 
 class HomeViewPresentationSelectionTests(TestCase):
@@ -171,6 +171,36 @@ class HomeViewPresentationSelectionTests(TestCase):
         self.assertEqual(refresh_broadcast_mock.call_args.kwargs["action"], "generate")
         self.assertEqual(refresh_broadcast_mock.call_args.args[1], "presentation-generated")
 
+    @patch("GPTrivia.views.create_presentation", return_value="presentation-generated")
+    def test_generate_marks_matching_submitted_round_consumed(self, create_mock):
+        submitted_round = SubmittedRound.objects.create(
+            presentation_id="swoop-123",
+            title="Round C",
+            creator="Alex",
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/swoop-123/edit",
+            is_consumed=False,
+        )
+
+        with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 6, 5)):
+            response = self.client.post(
+                reverse("home"),
+                data={
+                    "action": "generate",
+                    "round_order_0": "1",
+                    "round_title_0": "Round C",
+                    "round_creator_0": "Alex",
+                    "round_link_0": "https://docs.google.com/presentation/d/swoop-123/edit",
+                    "round_old_link_0": "https://docs.google.com/presentation/d/swoop-123/edit",
+                    "round_shared_date_0": "03.12.2026",
+                },
+            )
+
+        self.assertEqual(response.status_code, 302)
+        create_mock.assert_called_once()
+        submitted_round.refresh_from_db()
+        self.assertTrue(submitted_round.is_consumed)
+
     @patch(
         "GPTrivia.views.create_presentation",
         side_effect=PresentationBuildError(
@@ -257,6 +287,36 @@ class HomeViewPresentationSelectionTests(TestCase):
         refresh_broadcast_mock.assert_called_once()
         self.assertEqual(refresh_broadcast_mock.call_args.kwargs["action"], "update")
         self.assertEqual(refresh_broadcast_mock.call_args.args[1], "presentation-old-updated")
+
+    @patch("GPTrivia.views.update_merged_presentation", return_value=("presentation-old-updated", ["Jenny"], ["Round D"], ["https://example.com/round-d"]))
+    def test_update_marks_matching_submitted_round_consumed(self, update_mock):
+        submitted_round = SubmittedRound.objects.create(
+            presentation_id="swoop-123",
+            title="Round C",
+            creator="Alex",
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/swoop-123/edit",
+            is_consumed=False,
+        )
+
+        response = self.client.post(
+            reverse("home"),
+            data={
+                "action": "update",
+                "selected_presentation_id": self.older_presentation.presentation_id,
+                "round_order_0": "1",
+                "round_title_0": "Round C",
+                "round_creator_0": "Alex",
+                "round_link_0": "https://docs.google.com/presentation/d/swoop-123/edit",
+                "round_old_link_0": "https://docs.google.com/presentation/d/swoop-123/edit",
+                "round_shared_date_0": "03.12.2026",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        update_mock.assert_called_once()
+        submitted_round.refresh_from_db()
+        self.assertTrue(submitted_round.is_consumed)
 
     @patch("GPTrivia.views.update_merged_presentation", return_value=("presentation-old", [], [], []))
     def test_update_uses_selected_presentation_id(self, update_mock):
