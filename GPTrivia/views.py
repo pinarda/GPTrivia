@@ -759,6 +759,38 @@ def _build_player_icon_map():
 def _build_player_color_override_map():
     return build_profile_color_override_mapping()
 
+
+def _format_profile_round_score(value):
+    if value is None:
+        return ''
+    if float(value).is_integer():
+        return str(int(value))
+    return f"{value:.2f}".rstrip('0').rstrip('.')
+
+
+def _summarize_profile_round_scores(round_obj):
+    score_values = [
+        score
+        for score in get_round_score_map(round_obj, include_null_fixed=False).values()
+        if score is not None
+    ]
+    if not score_values:
+        return {
+            'high_score': None,
+            'average_score': None,
+            'high_score_display': '',
+            'average_score_display': '',
+        }
+
+    high_score = max(score_values)
+    average_score = sum(score_values) / len(score_values)
+    return {
+        'high_score': high_score,
+        'average_score': average_score,
+        'high_score_display': _format_profile_round_score(high_score),
+        'average_score_display': _format_profile_round_score(average_score),
+    }
+
 @login_required
 def player_profile_dict(request, player_name, form=None, include_form=False):
     player_name = display_name_for_player_field(player_name)
@@ -785,6 +817,12 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         round_obj for round_obj in all_rounds
         if display_name_for_player_field(round_obj.creator) == player_name
     ]
+    for round_obj in created_rounds:
+        round_summary = _summarize_profile_round_scores(round_obj)
+        round_obj.high_score = round_summary['high_score']
+        round_obj.average_score = round_summary['average_score']
+        round_obj.high_score_display = round_summary['high_score_display']
+        round_obj.average_score_display = round_summary['average_score_display']
     created_rounds_count = len(created_rounds)
 
     all_categories = sorted({
