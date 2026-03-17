@@ -328,6 +328,10 @@ a {
     padding: 1rem;
 }
 
+.profile-data-panel[hidden] {
+    display: none !important;
+}
+
 .profile-data-panel-header {
     display: grid;
     gap: 0.9rem;

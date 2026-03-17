@@ -495,13 +495,15 @@
             if (!panel) {
                 return;
             }
-            const rows = panel.querySelectorAll('tbody tr[data-search]');
+            const rows = panel.querySelectorAll('tbody tr');
             const emptyMessage = panel.querySelector('[data-empty-message]');
             const tokens = String(searchTerm || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
             let visibleRows = 0;
 
             rows.forEach(row => {
-                const haystack = row.dataset.search || row.textContent.toLowerCase();
+                const explicitSearchText = row.dataset.search || '';
+                const rowText = row.textContent || '';
+                const haystack = `${explicitSearchText} ${rowText}`.toLowerCase();
                 const matches = !tokens.length || tokens.every(token => haystack.includes(token));
                 row.hidden = !matches;
                 if (matches) {
@@ -541,6 +543,10 @@
         }
 
         function initializeProfilePanels() {
+            document.querySelectorAll('.profile-data-panel').forEach(panel => {
+                panel.hidden = true;
+            });
+
             document.querySelectorAll('.profile-panel-toggle').forEach(button => {
                 button.addEventListener('click', () => {
                     toggleProfilePanel(button.dataset.panelTarget);
