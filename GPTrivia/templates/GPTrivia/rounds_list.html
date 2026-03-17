@@ -3,11 +3,10 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/rounds_list.css' %}?v=20260315d">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/rounds_list.css' %}?v=20260317a">
 {% endblock %}
 
 {% block extra_meta %}
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>
     <meta name="theme-color" content="#96031A">
 {% endblock %}
 
@@ -19,20 +18,52 @@
     <table id="roundList">
         <thead id="roundListHead">
             <tr>
-                <th class="left-column">Title <input id="round-title-search" type="text" value="{{ initial_title_search }}" placeholder="Search" oninput="filterTable(this, 1)"></th>
-                <th>Creator <input type="text" placeholder="Search" oninput="filterTable(this, 2)"></th>
-                <th>Major Category <input type="text" placeholder="Search" oninput="filterTable(this, 3)"></th>
-                <th>Minor Category 1 <input type="text" placeholder="Search" oninput="filterTable(this, 4)"></th>
-                <th>Date <input type="text" placeholder="Search" oninput="filterTable(this, 5)"></th>
-                <th>Round Number <input type="text" placeholder="Search" oninput="filterTable(this, 6)"></th>
-                <th>Max Score <input type="text" placeholder="Search" oninput="filterTable(this, 7)"></th>
-                <th>Coop<input type="text" placeholder="Search" oninput="filterTable(this, 8)"></th>
-                <th>Replay<input type="text" placeholder="Search" oninput="filterTable(this, 9)"></th>
-                <th>Link<input type="text" placeholder="Search" oninput="filterTable(this, 10)"></th>
+                <th class="left-column">
+                    <div class="rounds-column-label">Title</div>
+                    <input id="round-title-search" class="rounds-column-search" type="text" value="{{ initial_title_search }}" placeholder="Search" data-column-index="0">
+                </th>
+                <th>
+                    <div class="rounds-column-label">Creator</div>
+                    <input class="rounds-column-search" type="text" placeholder="Search" data-column-index="1">
+                </th>
+                <th>
+                    <div class="rounds-column-label">Major Category</div>
+                    <input class="rounds-column-search" type="text" placeholder="Search" data-column-index="2">
+                </th>
+                <th>
+                    <div class="rounds-column-label">Minor Category 1</div>
+                    <input class="rounds-column-search" type="text" placeholder="Search" data-column-index="3">
+                </th>
+                <th>
+                    <div class="rounds-column-label">Date</div>
+                    <input class="rounds-column-search" type="text" placeholder="Search" data-column-index="4">
+                </th>
+                <th>
+                    <div class="rounds-column-label">Round Number</div>
+                    <input class="rounds-column-search" type="text" placeholder="Search" data-column-index="5">
+                </th>
+                <th>
+                    <div class="rounds-column-label">Max Score</div>
+                    <input class="rounds-column-search" type="text" placeholder="Search" data-column-index="6">
+                </th>
+                <th>
+                    <div class="rounds-column-label">Coop</div>
+                    <input class="rounds-column-search" type="text" placeholder="Search" data-column-index="7">
+                </th>
+                <th>
+                    <div class="rounds-column-label">Replay</div>
+                    <input class="rounds-column-search" type="text" placeholder="Search" data-column-index="8">
+                </th>
+                <th>
+                    <div class="rounds-column-label">Link</div>
+                    <input class="rounds-column-search" type="text" placeholder="Search" data-column-index="9">
+                </th>
                 {% for player_name in player_names %}
                 <th>
-                    <a href="{% url 'player_profile' player_name=player_name %}" class="player_name" data-player="{{ player_name }}">{{ player_name }}</a>
-                    <input type="text" placeholder="Search" oninput="filterTable(this, {{ forloop.counter|add:10 }})">
+                    <div class="rounds-column-label">
+                        <a href="{% url 'player_profile' player_name=player_name %}" class="player_name" data-player="{{ player_name }}">{{ player_name }}</a>
+                    </div>
+                    <input class="rounds-column-search" type="text" placeholder="Search" data-column-index="{{ forloop.counter|add:9 }}">
                 </th>
                 {% endfor %}
             </tr>
@@ -68,159 +99,83 @@
 </div>
 
 <script>
-    // Define an object to store the filter values for each column
-    var columnFilters = {};
+    const columnFilters = {};
+    const playerColorMapping = {{ playerColorMapping|safe }};
+    const textColorMapping = {{ text_color_mapping|safe }};
 
-    playerColorMapping = {{ playerColorMapping|safe }}
-    textColorMapping = {{ text_color_mapping|safe }};
+    function applyColumnFilters() {
+        const rows = document.querySelectorAll('#roundList tbody tr');
+        rows.forEach(row => {
+            let displayRow = true;
+            Object.entries(columnFilters).forEach(([columnIndex, filterValue]) => {
+                if (!displayRow || !filterValue) {
+                    return;
+                }
+                const cell = row.children[Number(columnIndex)];
+                const cellText = (cell ? (cell.textContent || cell.innerText) : '').toUpperCase();
+                if (!cellText.includes(filterValue)) {
+                    displayRow = false;
+                }
+            });
+            row.style.display = displayRow ? '' : 'none';
+        });
+    }
 
     function updateSlidesButtonColor() {
-        $('.slides-button').each(function () {
-            // Get the creator's name from the corresponding cell in the row
-            var creatorName = $(this).closest('tr').find('.player_name').text();
+        document.querySelectorAll('.slides-button').forEach(button => {
+            const creatorLink = button.closest('tr')?.querySelector('td:nth-child(2) .player_name');
+            const creatorName = creatorLink ? creatorLink.textContent.trim() : '';
+            const creatorColor = playerColorMapping[creatorName];
 
-            // Get the color for the creator from the playerColorMapping object
-            var creatorColor = playerColorMapping[creatorName];
+            if (creatorColor) {
+                button.style.backgroundColor = creatorColor;
+                button.style.color = textColorMapping[creatorName] || '#ffffff';
+            }
 
-            // Set the background color of the slides button
-            $(this).css('background-color', creatorColor);
-            // set the text color of the slides button
-
-            $(this).css('color', textColorMapping[creatorName]);
-            // remove the border from the slides button
-            $(this).css('border', 'none');
-            // add hover effect to the slides button
-            $(this).hover(function () {
-                $(this).css('opacity', '0.5');
-            }, function () {
-                $(this).css('opacity', '1');
+            button.style.border = 'none';
+            button.addEventListener('mouseover', () => {
+                button.style.opacity = '0.5';
+            });
+            button.addEventListener('mouseout', () => {
+                button.style.opacity = '1';
+            });
+            button.addEventListener('click', () => {
+                window.open(button.dataset.presentationUrl, '_blank', 'noopener,noreferrer');
             });
         });
     }
 
-
-
-    function filterTable(input, index) {
-        // Update the filter value for the current column
-        columnFilters[index] = input.value.toUpperCase();
-
-        var table, tr, td, i, txtValue;
-        table = document.getElementsByTagName("table")[0];
-        tr = table.getElementsByTagName("tr");
-
-        // Loop through all table rows
-        for (i = 0; i < tr.length; i++) {
-            // Assume the row should be displayed initially
-            var displayRow = true;
-
-            // Loop through all columns and their filters
-            for (const [columnIndex, filter] of Object.entries(columnFilters)) {
-                // Skip if the filter is empty
-                if (!filter) {
-                    continue;
-                }
-
-                td = tr[i].getElementsByTagName("td")[parseInt(columnIndex)];
-
-                // If there's a value in the cell, check if it matches the filter
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) === -1) {
-                        // If the cell value doesn't match the filter, the row should not be displayed
-                        displayRow = false;
-                        break;
-                    }
-                }
+    function wireRoundListFilters() {
+        document.querySelectorAll('.rounds-column-search').forEach(input => {
+            const columnIndex = input.dataset.columnIndex;
+            input.addEventListener('input', () => {
+                columnFilters[columnIndex] = input.value.trim().toUpperCase();
+                applyColumnFilters();
+            });
+            if (input.value) {
+                columnFilters[columnIndex] = input.value.trim().toUpperCase();
             }
-
-            // Set the row display based on the displayRow variable
-            tr[i].style.display = displayRow ? "" : "none";
-        }
-        // Remove existing cloned cells
-        // Remove existing cloned cells and show original cells
-        const clonedCells = document.getElementsByClassName("cloned-cell");
-        const originalCells = document.getElementsByClassName("hide-original-cell");
-        while (clonedCells[0]) {
-            clonedCells[0].parentNode.removeChild(clonedCells[0]);
-            originalCells[0].classList.remove("hide-original-cell");
-        }
-        // Recreate cloned cells and hide original cells
-        createClonedCells();
-    }
-
-
-function addStickyHeader() {
-    const table = document.getElementById("roundList");
-    const headerCells = table.querySelectorAll("th");
-
-    // Loop through all header cells and add the sticky-header class
-    for (let i = 0; i < headerCells.length; i++) {
-        headerCells[i].classList.add("sticky-header");
-    }
-
-    // Add the sticky-top-left class to the top-left header cell
-    headerCells[0].classList.add("sticky-top-left");
-}
-
-// Call the function to add the sticky-header class to header cells
-addStickyHeader();
-
-
-function createClonedCells() {
-    const table = document.getElementById("roundList");
-    const rows = table.getElementsByTagName("tr");
-
-    // Loop through all rows in the table
-    for (let i = 0; i < rows.length; i++) {
-        const originalCell = rows[i].getElementsByTagName("td")[0] || rows[i].getElementsByTagName("th")[0];
-        const clonedCell = originalCell.cloneNode(true);
-        clonedCell.classList.add("cloned-cell");
-
-        // Insert the cloned cell before the original cell
-        rows[i].insertBefore(clonedCell, originalCell);
-
-        // Hide the original cell
-        originalCell.classList.add("hide-original-cell");
-    }
-}
-
-// Call the function to create cloned cells
-createClonedCells();
-
-function applyInitialFilters() {
-    const filterInputs = document.querySelectorAll('#roundListHead input[type="text"]');
-    filterInputs.forEach((input, inputIndex) => {
-        if (!input.value) {
-            return;
-        }
-        filterTable(input, inputIndex + 1);
-    });
-}
-
-applyInitialFilters();
-
-const playerLinks = document.querySelectorAll(".player_name");
-
-    playerLinks.forEach(link => {
-        const playerName = link.getAttribute('data-player');
-        const playerColor = playerColorMapping[playerName];
-
-        link.addEventListener('mouseover', () => {
-            link.style.color = playerColor;
         });
+        applyColumnFilters();
+    }
 
-        link.addEventListener('mouseout', () => {
-            link.style.color = '';
+    function wirePlayerLinkHoverColors() {
+        document.querySelectorAll('.player_name').forEach(link => {
+            const playerName = link.getAttribute('data-player');
+            const playerColor = playerColorMapping[playerName];
+            link.addEventListener('mouseover', () => {
+                link.style.color = playerColor;
+            });
+            link.addEventListener('mouseout', () => {
+                link.style.color = '';
+            });
         });
-    });
+    }
 
-
-    $(document).ready(function() {
+    document.addEventListener('DOMContentLoaded', () => {
+        wireRoundListFilters();
+        wirePlayerLinkHoverColors();
         updateSlidesButtonColor();
-        // on click, open the slides in a new tab
-        $('.slides-button').click(function() {
-            window.open($(this).data('presentation-url'), '_blank');
-        });
     });
 </script>
 

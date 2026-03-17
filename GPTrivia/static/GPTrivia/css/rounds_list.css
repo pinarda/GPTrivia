@@ -1,66 +1,70 @@
 :root {
     --shell-chrome-color: #96031A;
-    --rounds-page-bg: #333;
+    --rounds-page-bg: #333333;
     --rounds-page-text: #ffffff;
     --rounds-link-text: #ffffff;
-    --rounds-header-border: #96031A;
+    --rounds-header-bg: #96031A;
+    --rounds-header-border: #760014;
     --rounds-header-text: #ffffff;
+    --rounds-cell-border: rgba(255, 255, 255, 0.1);
     --rounds-search-bg: #ffffff;
     --rounds-search-text: #1b2530;
+    --rounds-search-border: #760014;
+    --rounds-sticky-shadow: rgba(0, 0, 0, 0.22);
 }
 
 body.site-shell[data-profile-theme="light"] {
     --rounds-page-bg: #f4f1e8;
     --rounds-page-text: #1b2530;
     --rounds-link-text: #1b2530;
-    --rounds-header-border: #c6b9b0;
-    --rounds-header-text: #ffffff;
-    --rounds-search-bg: #ffffff;
+    --rounds-cell-border: rgba(45, 48, 71, 0.12);
+    --rounds-search-bg: #fbf7f0;
     --rounds-search-text: #1b2530;
-}
-
-body.site-shell[data-profile-theme="light"],
-body.site-shell[data-profile-theme="light"] table,
-body.site-shell[data-profile-theme="light"] tbody,
-body.site-shell[data-profile-theme="light"] tr,
-body.site-shell[data-profile-theme="light"] td,
-body.site-shell[data-profile-theme="light"] #roundList tbody tr td {
-    color: #1b2530 !important;
-}
-
-body.site-shell[data-profile-theme="light"] .title-cell,
-body.site-shell[data-profile-theme="light"] #roundList tbody .title-cell {
-    color: #ffffff !important;
+    --rounds-search-border: #c6b9b0;
 }
 
 body {
-  font-family: Arial, sans-serif;
-  background-color: var(--rounds-page-bg);
-  color: var(--rounds-page-text);
+    font-family: Arial, sans-serif;
+    background-color: var(--rounds-page-bg);
+    color: var(--rounds-page-text);
     height: 100%;
 }
 
-.header-container{
+.header-container,
+.footer-container {
     background-color: #96031A;
 }
 
 .footer-container {
-    background-color: #96031A;
+    font-family: YoungSerif, serif;
+}
+
+.content-container {
+    min-height: calc(95vh - 106px);
+    margin: 0;
+    padding: 20px 0 0;
     position: absolute;
-    font-family: YoungSerif;
-    min-height: 5vh;
+    right: 0;
+    left: 0;
 }
 
-
-#roundListHead tr th{
-    background-color: #96031A;
-    color: var(--rounds-header-text);
-    padding-bottom: 50px;
+.table-container {
+    width: min(100%, calc(100vw - 20px));
+    margin: 0 auto;
+    min-height: calc(95vh - 126px);
+    max-height: calc(95vh - 126px);
+    overflow: auto;
+    border: 1px solid var(--rounds-header-border);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.16);
+    background: var(--rounds-page-bg);
 }
 
-.title-cell{
-    background-color: #96031A;
-    color: var(--rounds-header-text);
+#roundList {
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: max-content;
+    width: max-content;
+    color: var(--rounds-page-text);
 }
 
 #roundList a,
@@ -68,75 +72,87 @@ body {
     color: var(--rounds-link-text);
 }
 
-
-.table-container {
-    overflow: auto;
-    /*min-height: 150px !important;*/
-    height: 100%;
-      min-height: calc(95vh - 106px);
-    margin-top: 0px;
+#roundList thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background-color: var(--rounds-header-bg);
+    color: var(--rounds-header-text);
+    text-align: left;
+    vertical-align: top;
+    padding: 0.55rem 0.7rem 0.7rem;
+    border-bottom: 1px solid var(--rounds-header-border);
+    white-space: nowrap;
 }
 
-
-@media screen and (max-width: 790px) {
-    #roundList {
-      border-collapse: collapse; /* Collapse borders */
-      width: 100%; /* Full-width */
-      border: none;
-      font-size: 14px; /* Increase font-size */
-      line-height: 1;
-    }
-
-    #roundList tbody tr td {
-        padding: 5px;
-        margin:5px;
-        text-align: center;
-    }
-
-    .cloned-cell {
-        font-size: small;
-        width: min-content;
-    }
-
-
-    .table-container {
-        overflow: auto;
-        /*min-height: 150px !important;*/
-        height: 100%;
-        max-height: calc(94vh - 106px);
-    }
-
+#roundList thead th:first-child {
+    left: 0;
+    z-index: 5;
+    box-shadow: 2px 0 6px var(--rounds-sticky-shadow);
 }
 
-.content-container {
-      min-height: calc(95vh - 106px);
-    margin-bottom: 0px;
-    padding-bottom: 0px;
-    margin-top: 0px;
-    padding-top: 20px;
-    position: absolute;
-    right:0;
-    left:0;
+.rounds-column-label {
+    display: block;
+    margin-bottom: 0.35rem;
 }
 
-#roundListHead input[type="text"] {
+.rounds-column-search {
     width: 100%;
+    min-width: 90px;
     box-sizing: border-box;
-    margin-top: 6px;
+    padding: 0.38rem 0.45rem;
+    border: 1px solid var(--rounds-search-border);
     background-color: var(--rounds-search-bg);
     color: var(--rounds-search-text);
-    border: 1px solid var(--rounds-header-border);
+    font-size: 0.82rem;
 }
 
-.footer-container {
-    bottom: auto;
-    display: none;
+#roundList tbody td {
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--rounds-cell-border);
+    background: var(--rounds-page-bg);
+    color: var(--rounds-page-text);
+    white-space: nowrap;
 }
 
-/*https://coolors.co/palette/f94144-f3722c-f8961e-f9c74f-90be6d-43aa8b-577590*/
+#roundList tbody td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    min-width: 240px;
+    max-width: 280px;
+    white-space: normal;
+    word-break: break-word;
+    background-color: #96031A;
+    color: #ffffff;
+    box-shadow: 2px 0 6px var(--rounds-sticky-shadow);
+}
 
+#roundList tbody .title-cell,
+#roundList tbody .title-cell a {
+    color: #ffffff !important;
+}
 
-.red{
+#roundList thead th a {
+    color: #ffffff !important;
+}
+
+.slides-button {
+    cursor: pointer;
+}
+
+body.site-shell[data-profile-theme="light"] #roundList tbody td,
+body.site-shell[data-profile-theme="light"] #roundList tbody tr td {
+    color: #1b2530;
+}
+
+body.site-shell[data-profile-theme="light"] #roundList tbody td:first-child,
+body.site-shell[data-profile-theme="light"] #roundList tbody .title-cell,
+body.site-shell[data-profile-theme="light"] #roundList tbody .title-cell a {
+    color: #ffffff !important;
+}
+
+.red {
     color: #f94144;
 }
 
@@ -158,4 +174,29 @@ body {
 
 .purple {
     color: #577590;
+}
+
+@media screen and (max-width: 790px) {
+    .table-container {
+        width: min(100%, calc(100vw - 12px));
+        min-height: calc(94vh - 116px);
+        max-height: calc(94vh - 116px);
+    }
+
+    #roundList thead th,
+    #roundList tbody td {
+        padding: 0.45rem 0.55rem;
+        font-size: 0.86rem;
+    }
+
+    #roundList tbody td:first-child {
+        min-width: 180px;
+        max-width: 220px;
+    }
+
+    .rounds-column-search {
+        min-width: 72px;
+        font-size: 0.76rem;
+        padding: 0.32rem 0.38rem;
+    }
 }
