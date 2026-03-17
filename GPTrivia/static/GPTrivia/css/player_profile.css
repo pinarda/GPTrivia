@@ -52,6 +52,8 @@ a {
 .profile-page-title {
     margin: 0 0 1.2rem;
     text-align: center;
+    font-size: 2.2rem;
+    line-height: 1.1;
 }
 
 .profile-actions-container {
@@ -105,14 +107,15 @@ a {
 .profile-data-panel-header h2,
 .summary-stats h2 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1.24rem;
 }
 
 .profile-control-heading p,
 .profile-data-panel-header p {
     margin: 0;
     color: var(--profile-muted-text);
-    line-height: 1.4;
+    line-height: 1.45;
+    font-size: 0.98rem;
 }
 
 .profile-inline-form,
@@ -132,7 +135,7 @@ a {
 .profile-settings-form input[type="file"]::file-selector-button,
 .profile-settings-form input[type="file"]::-webkit-file-upload-button {
     font-family: Monaco, monospace;
-    font-size: 0.92rem;
+    font-size: 1rem;
     line-height: 1.2;
     min-height: 48px;
     padding: 0.8rem 1rem;
@@ -189,7 +192,7 @@ a {
 
 .profile-settings-label {
     font-family: Monaco, monospace;
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     color: var(--profile-page-text);
 }
 
@@ -208,7 +211,7 @@ a {
     background: var(--profile-input-bg);
     color: var(--profile-input-text);
     font-family: Monaco, monospace;
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     padding: 0.4rem;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -235,7 +238,7 @@ a {
     background: var(--profile-input-bg);
     color: var(--profile-input-text);
     font-family: Monaco, monospace;
-    font-size: 0.86rem;
+    font-size: 0.92rem;
     border-radius: 0;
     appearance: none;
     -webkit-appearance: none;
@@ -259,7 +262,7 @@ a {
 
 .profile-color-value {
     font-family: Monaco, monospace;
-    font-size: 0.84rem;
+    font-size: 0.9rem;
     color: var(--profile-page-text);
 }
 
@@ -363,7 +366,7 @@ a {
     background: var(--profile-search-bg);
     color: var(--profile-search-text);
     font-family: Monaco, monospace;
-    font-size: 0.9rem;
+    font-size: 0.98rem;
     border-radius: 0;
 }
 
@@ -390,7 +393,7 @@ a {
     text-align: left;
     padding: 0.75rem 0.85rem;
     font-family: Monaco, monospace;
-    font-size: 0.84rem;
+    font-size: 0.92rem;
 }
 
 .profile-sortable-header {
@@ -426,12 +429,133 @@ a {
     border-top: 1px solid var(--profile-table-row-border);
     background: var(--profile-table-row-bg);
     color: var(--profile-page-text);
-    font-size: 0.95rem;
+    font-size: 1.02rem;
+}
+
+.profile-round-group[hidden],
+.profile-round-detail-row[hidden],
+.profile-round-slides-row[hidden] {
+    display: none !important;
+}
+
+#playerRoundsTable {
+    table-layout: fixed;
+}
+
+#playerRoundsTable th:nth-child(1),
+#playerRoundsTable td:nth-child(1) {
+    width: 3.5rem;
+    text-align: center;
+}
+
+#playerRoundsTable th:nth-child(3),
+#playerRoundsTable td:nth-child(3) {
+    width: 8rem;
+}
+
+#playerRoundsTable th:nth-child(4),
+#playerRoundsTable td:nth-child(4) {
+    width: 8.8rem;
+}
+
+.profile-round-summary-row td {
+    vertical-align: middle;
+}
+
+.profile-round-summary-row td:nth-child(2) {
+    white-space: normal;
+    line-height: 1.35;
+}
+
+.profile-round-action-heading {
+    text-align: center !important;
+    padding-right: 0.85rem !important;
+}
+
+.profile-round-action-cell {
+    text-align: center;
+}
+
+.profile-round-expander {
+    width: 2.3rem;
+    height: 2.3rem;
+    padding: 0;
+    border: 1px solid var(--profile-border);
+    background: var(--profile-surface-alt);
+    color: var(--profile-page-text);
+    font-family: Monaco, monospace;
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 0;
+}
+
+.profile-round-expander[aria-expanded="true"] {
+    background: var(--profile-table-header-bg);
+    color: #ffffff;
+}
+
+.profile-round-detail-row td,
+.profile-round-slides-row td {
+    padding: 0;
+    border-top: 0;
+    background: transparent;
+}
+
+.profile-round-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+    padding: 0.9rem;
+    background: var(--profile-surface-alt);
+    border-top: 1px solid var(--profile-border);
+}
+
+.profile-round-detail-item {
+    display: grid;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.profile-round-detail-label {
+    font-family: Monaco, monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--profile-muted-text);
+}
+
+.profile-round-detail-value {
+    font-size: 1rem;
+    color: var(--profile-page-text);
+    word-break: break-word;
+}
+
+.profile-round-slides-shell {
+    padding: 0.9rem;
+    background: var(--profile-surface-alt);
+    border-top: 1px solid var(--profile-border);
+}
+
+.profile-round-slides-frame {
+    display: block;
+    width: 100%;
+    height: 300px;
+    border: 1px solid var(--profile-border);
+    background: #00000010;
 }
 
 .profile-round-link {
+    display: inline-block;
     font-weight: 700;
     text-decoration: none;
+    font-size: 1.04rem;
+}
+
+#playerRoundsTable .slides-button {
+    min-height: 42px;
+    padding: 0.65rem 0.8rem;
+    white-space: nowrap;
 }
 
 .profile-round-link:hover,
@@ -465,6 +589,7 @@ a {
 .summary-stats p {
     margin: 0;
     min-width: 0;
+    font-size: 1rem;
 }
 
 .header-container {
@@ -534,7 +659,7 @@ a {
     }
 
     .profile-page-title {
-        font-size: 1.65rem;
+        font-size: 1.82rem;
     }
 
     .profile-control-stack,
@@ -566,7 +691,42 @@ a {
     #createdRoundsTable td,
     #playerRoundsTable td {
         padding: 0.65rem 0.7rem;
-        font-size: 0.88rem;
+        font-size: 0.94rem;
+    }
+
+    #playerRoundsTable th:nth-child(1),
+    #playerRoundsTable td:nth-child(1) {
+        width: 3rem;
+    }
+
+    #playerRoundsTable th:nth-child(3),
+    #playerRoundsTable td:nth-child(3) {
+        width: 6.4rem;
+    }
+
+    #playerRoundsTable th:nth-child(4),
+    #playerRoundsTable td:nth-child(4) {
+        width: 7.2rem;
+    }
+
+    .profile-round-expander {
+        width: 2rem;
+        height: 2rem;
+        font-size: 1.2rem;
+    }
+
+    .profile-round-detail-grid {
+        grid-template-columns: 1fr;
+        gap: 0.55rem;
+        padding: 0.8rem;
+    }
+
+    .profile-round-slides-shell {
+        padding: 0.8rem;
+    }
+
+    .profile-round-slides-frame {
+        height: 220px;
     }
 
     .summary-stats {
