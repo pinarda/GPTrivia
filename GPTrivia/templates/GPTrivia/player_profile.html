@@ -169,7 +169,7 @@
                                             <td>
                                                 <a
                                                     class="profile-round-link"
-                                                    href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}&creator_search={{ player_name|urlencode }}&date_search={{ round.date|urlencode }}"
+                                                    href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}&creator_search={{ player_name|urlencode }}&date_search={{ round.date|date:'F j, Y'|urlencode }}"
                                                 >
                                                     {{ round.title }}
                                                 </a>
@@ -281,7 +281,7 @@
                                         </button>
                                         <a
                                             class="profile-round-link profile-round-mobile-title"
-                                            href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}&creator_search={{ player_name|urlencode }}&date_search={{ round.date|urlencode }}"
+                                            href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}&creator_search={{ player_name|urlencode }}&date_search={{ round.date|date:'F j, Y'|urlencode }}"
                                         >
                                             {{ round.title }}
                                         </a>
