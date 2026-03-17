@@ -1,12 +1,62 @@
 {% extends "base.html" %}
 {% load static %}
-{% load static GPTrivia_extras %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/auth.css' %}?v=20260317a">
+{% endblock %}
 
 {% block content %}
-  <h2>Login</h2>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Login</button>
-  </form>
+  <section class="auth-shell">
+    <div class="auth-card">
+      <div class="auth-header">
+        <p class="auth-kicker">Welcome back</p>
+        <h1>Login</h1>
+        <p class="auth-subtitle">Sign in to update scoresheets, use S.W.O.O.P., and manage your profile.</p>
+      </div>
+
+      <div class="auth-body">
+        {% if form.non_field_errors %}
+          <div class="auth-errors">
+            {% for error in form.non_field_errors %}
+              <p>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="post" class="auth-form" novalidate>
+          {% csrf_token %}
+
+          <div class="auth-field{% if form.username.errors %} has-error{% endif %}">
+            <label for="{{ form.username.id_for_label }}">Username</label>
+            {{ form.username }}
+            {% if form.username.errors %}
+              <div class="auth-field-errors">
+                {% for error in form.username.errors %}
+                  <p>{{ error }}</p>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="auth-field{% if form.password.errors %} has-error{% endif %}">
+            <label for="{{ form.password.id_for_label }}">Password</label>
+            {{ form.password }}
+            {% if form.password.errors %}
+              <div class="auth-field-errors">
+                {% for error in form.password.errors %}
+                  <p>{{ error }}</p>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
+          {% if next %}
+            <input type="hidden" name="next" value="{{ next }}">
+          {% endif %}
+
+          <button type="submit" class="auth-submit">Log In</button>
+        </form>
+      </div>
+    </div>
+  </section>
 {% endblock %}
