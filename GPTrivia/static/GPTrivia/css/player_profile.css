@@ -547,6 +547,10 @@ a {
     align-content: start;
 }
 
+.profile-round-detail-item--scores {
+    grid-column: 1 / -1;
+}
+
 .profile-round-detail-label {
     font-family: Monaco, monospace;
     font-size: 0.8rem;
@@ -559,6 +563,32 @@ a {
     font-size: 1rem;
     color: var(--profile-page-text);
     word-break: break-word;
+}
+
+.profile-round-score-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+}
+
+.profile-round-score-chip {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--profile-border);
+    background: var(--profile-table-row-bg);
+}
+
+.profile-round-score-chip-label {
+    font-family: Monaco, monospace;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    color: var(--profile-muted-text);
+}
+
+.profile-round-score-chip-value {
+    font-size: 1rem;
+    color: var(--profile-page-text);
 }
 
 .profile-round-slides-shell {
@@ -801,15 +831,30 @@ a {
         padding: 0.8rem;
     }
 
+    .profile-round-score-strip {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.45rem;
+    }
+
+    .profile-round-score-chip {
+        padding: 0.5rem 0.45rem;
+    }
+
+    .profile-round-score-chip-label {
+        font-size: 0.72rem;
+    }
+
     .profile-round-detail-row,
     .profile-round-slides-row {
         display: block;
+        width: 100%;
     }
 
     .profile-round-detail-row td,
     .profile-round-slides-row td {
         display: block;
-        width: auto;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .profile-round-slides-shell {

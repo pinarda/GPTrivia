@@ -183,10 +183,6 @@
                                                         <span class="profile-round-detail-value">{{ round.major_category|default:"—" }}</span>
                                                     </div>
                                                     <div class="profile-round-detail-item">
-                                                        <span class="profile-round-detail-label">Max Score</span>
-                                                        <span class="profile-round-detail-value">{{ round.max_score|default:"—" }}</span>
-                                                    </div>
-                                                    <div class="profile-round-detail-item">
                                                         <span class="profile-round-detail-label">Round</span>
                                                         <span class="profile-round-detail-value">{{ round.round_number }}</span>
                                                     </div>
@@ -194,13 +190,22 @@
                                                         <span class="profile-round-detail-label">Co-op</span>
                                                         <span class="profile-round-detail-value">{{ round.cooperative|yesno:"Yes,No" }}</span>
                                                     </div>
-                                                    <div class="profile-round-detail-item">
-                                                        <span class="profile-round-detail-label">High Score</span>
-                                                        <span class="profile-round-detail-value">{{ round.high_score_display }}</span>
-                                                    </div>
-                                                    <div class="profile-round-detail-item">
-                                                        <span class="profile-round-detail-label">Average Score</span>
-                                                        <span class="profile-round-detail-value">{{ round.average_score_display }}</span>
+                                                    <div class="profile-round-detail-item profile-round-detail-item--scores">
+                                                        <span class="profile-round-detail-label">Scores</span>
+                                                        <div class="profile-round-score-strip">
+                                                            <div class="profile-round-score-chip">
+                                                                <span class="profile-round-score-chip-label">Max</span>
+                                                                <span class="profile-round-score-chip-value">{{ round.max_score|default:"—" }}</span>
+                                                            </div>
+                                                            <div class="profile-round-score-chip">
+                                                                <span class="profile-round-score-chip-label">High</span>
+                                                                <span class="profile-round-score-chip-value">{{ round.high_score_display }}</span>
+                                                            </div>
+                                                            <div class="profile-round-score-chip">
+                                                                <span class="profile-round-score-chip-label">Average</span>
+                                                                <span class="profile-round-score-chip-value">{{ round.average_score_display }}</span>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                     <div class="profile-round-detail-item profile-round-detail-item--action">
                                                         <span class="profile-round-detail-label">Slides</span>
