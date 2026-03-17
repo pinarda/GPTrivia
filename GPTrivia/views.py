@@ -36,6 +36,7 @@ import json
 from django.core.serializers.json import DjangoJSONEncoder
 import datetime
 import logging
+import requests
 
 ## API Libs
 from rest_framework import generics
@@ -171,6 +172,21 @@ def _extract_openai_text(response):
     return ''.join(collected_chunks).strip()
 
 
+def _extract_openai_text_from_payload(payload):
+    output_text = str((payload or {}).get('output_text', '') or '').strip()
+    if output_text:
+        return output_text
+
+    collected_chunks = []
+    for output in (payload or {}).get('output', []) or []:
+        for content in (output or {}).get('content', []) or []:
+            text = (content or {}).get('text')
+            if text:
+                collected_chunks.append(text)
+
+    return ''.join(collected_chunks).strip()
+
+
 def _build_responses_input(messages):
     response_messages = []
     for message in messages:
@@ -187,6 +203,33 @@ def _build_responses_input(messages):
     return response_messages
 
 
+def _create_openai_text_response_http(*, instructions, input_items, max_output_tokens=250, reasoning_effort="medium"):
+    api_key = os.getenv('OPENAI_API_KEY')
+    if not api_key:
+        raise RuntimeError('OPENAI_API_KEY is not configured.')
+
+    request_kwargs = {
+        "model": SWOOP_MODEL,
+        "instructions": instructions,
+        "input": input_items,
+        "max_output_tokens": max_output_tokens,
+    }
+    if reasoning_effort:
+        request_kwargs["reasoning"] = {"effort": reasoning_effort}
+
+    response = requests.post(
+        "https://api.openai.com/v1/responses",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json=request_kwargs,
+        timeout=60,
+    )
+    response.raise_for_status()
+    return _extract_openai_text_from_payload(response.json())
+
+
 def _create_openai_text_response(client, *, instructions, input_items, max_output_tokens=250, reasoning_effort="medium"):
     if hasattr(client, 'responses'):
         request_kwargs = {
@@ -201,39 +244,12 @@ def _create_openai_text_response(client, *, instructions, input_items, max_outpu
         response = client.responses.create(**request_kwargs)
         return _extract_openai_text(response)
 
-    messages = []
-    if instructions:
-        messages.append({"role": "system", "content": instructions})
-
-    if isinstance(input_items, str):
-        messages.append({"role": "user", "content": input_items})
-    else:
-        for item in input_items:
-            role = item.get("role", "user")
-            content = item.get("content", "")
-            if isinstance(content, list):
-                content = ''.join(
-                    block.get("text", "")
-                    for block in content
-                    if isinstance(block, dict) and block.get("type") == "input_text"
-                )
-            if content:
-                messages.append({"role": role, "content": content})
-
-    chat_kwargs = {
-        "model": SWOOP_MODEL,
-        "messages": messages,
-        "max_completion_tokens": max_output_tokens,
-    }
-    try:
-        response = client.chat.completions.create(**chat_kwargs)
-    except TypeError as exc:
-        if "max_completion_tokens" not in str(exc):
-            raise
-        chat_kwargs.pop("max_completion_tokens", None)
-        chat_kwargs["max_tokens"] = max_output_tokens
-        response = client.chat.completions.create(**chat_kwargs)
-    return (response.choices[0].message.content or "").strip()
+    return _create_openai_text_response_http(
+        instructions=instructions,
+        input_items=input_items,
+        max_output_tokens=max_output_tokens,
+        reasoning_effort=reasoning_effort,
+    )
 
 
 def _get_round_maker_conversation_history(request):
