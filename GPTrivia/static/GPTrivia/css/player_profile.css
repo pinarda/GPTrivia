@@ -453,9 +453,19 @@ a {
     gap: 0.65rem;
 }
 
+.profile-created-rounds-helper {
+    margin: 0;
+}
+
 .profile-mobile-sort-label,
 .profile-mobile-sort {
     display: none;
+}
+
+@media screen and (min-width: 701px) {
+    .profile-created-rounds-helper {
+        display: none;
+    }
 }
 
 .profile-mobile-sort-label {
