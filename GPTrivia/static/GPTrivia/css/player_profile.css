@@ -165,6 +165,9 @@ a {
     display: grid;
     gap: 0.75rem;
     min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .profile-settings-form {
@@ -173,11 +176,15 @@ a {
     padding: 0.95rem;
     color: var(--profile-page-text);
     min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .profile-settings-group {
     display: grid;
     gap: 0.35rem;
+    min-width: 0;
 }
 
 .profile-settings-label {
@@ -384,6 +391,33 @@ a {
     padding: 0.75rem 0.85rem;
     font-family: Monaco, monospace;
     font-size: 0.84rem;
+}
+
+.profile-sortable-header {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 1.6rem !important;
+}
+
+.profile-sortable-header::after {
+    content: "↕";
+    position: absolute;
+    right: 0.55rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.78rem;
+    opacity: 0.7;
+}
+
+.profile-sortable-header[data-sort-direction="asc"]::after {
+    content: "↑";
+    opacity: 1;
+}
+
+.profile-sortable-header[data-sort-direction="desc"]::after {
+    content: "↓";
+    opacity: 1;
 }
 
 #createdRoundsTable td,

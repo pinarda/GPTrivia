@@ -28,6 +28,7 @@ class ProfilePictureForm(forms.ModelForm):
         model = Profile
         fields = ['profile_picture', 'profile_color', 'site_theme']
         widgets = {
+            'profile_picture': forms.FileInput(),
             'profile_color': forms.TextInput(attrs={'type': 'color'}),
             'site_theme': forms.Select(),
         }
