@@ -57,10 +57,7 @@ a {
 }
 
 .profile-actions-container {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 1.2rem;
-    align-items: start;
+    display: block;
 }
 
 .profile-settings-form,
@@ -71,11 +68,12 @@ a {
 }
 
 .profile-hero-card {
-    order: 2;
     display: grid;
     place-items: center;
-    width: 330px;
-    justify-self: end;
+    width: 100%;
+    max-width: 320px;
+    justify-self: start;
+    margin: 0 0 0.1rem;
     padding: 0;
     background: transparent;
     border: 0;
@@ -171,6 +169,11 @@ a {
     width: 100%;
     max-width: 100%;
     overflow: hidden;
+    box-sizing: border-box;
+}
+
+.profile-account-heading {
+    margin-top: 0.15rem;
 }
 
 .profile-settings-form {
@@ -220,6 +223,10 @@ a {
     text-overflow: ellipsis;
 }
 
+.profile-settings-form > * {
+    min-width: 0;
+}
+
 .profile-settings-form input[type="file"]::file-selector-button,
 .profile-settings-form input[type="file"]::-webkit-file-upload-button {
     margin-right: 0.8rem;
@@ -263,7 +270,7 @@ a {
     border: 1px solid var(--profile-input-border);
     background: transparent;
     cursor: pointer;
-    border-radius: 0;
+    border-radius: 0 !important;
     -webkit-appearance: none;
     appearance: none;
     overflow: hidden;
@@ -277,12 +284,12 @@ a {
 
 .profile-color-input-row input[type="color"]::-webkit-color-swatch {
     border: 0;
-    border-radius: 0;
+    border-radius: 0 !important;
 }
 
 .profile-color-input-row input[type="color"]::-moz-color-swatch {
     border: 0;
-    border-radius: 0;
+    border-radius: 0 !important;
 }
 
 .profile-color-value {
@@ -774,15 +781,6 @@ a {
 }
 
 @media screen and (max-width: 899px) {
-    .profile-actions-container {
-        grid-template-columns: 1fr;
-    }
-
-    .profile-hero-card,
-    .profile-control-stack {
-        order: initial;
-    }
-
     .profile-hero-card {
         width: 100%;
         justify-self: center;
