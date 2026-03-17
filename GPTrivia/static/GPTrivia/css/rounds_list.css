@@ -42,7 +42,7 @@ body {
 .content-container {
     min-height: 0 !important;
     margin: 0 !important;
-    padding: 20px 10px 12px !important;
+    padding: 8px 8px 8px !important;
     position: static !important;
     box-sizing: border-box;
 }
@@ -50,8 +50,8 @@ body {
 .table-container {
     width: 100%;
     margin: 0;
-    height: calc(100dvh - 170px);
-    max-height: calc(100dvh - 170px);
+    height: calc(100dvh - 154px);
+    max-height: calc(100dvh - 154px);
     overflow: auto;
     border: 1px solid var(--rounds-header-border);
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.16);
@@ -80,7 +80,7 @@ body {
     color: var(--rounds-header-text);
     text-align: left;
     vertical-align: top;
-    padding: 0.45rem 0.65rem 0.55rem;
+    padding: 0.34rem 0.55rem 0.42rem;
     border-bottom: 1px solid var(--rounds-header-border);
     white-space: nowrap;
 }
@@ -93,7 +93,7 @@ body {
 
 .rounds-column-label {
     display: block;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.18rem;
     line-height: 1.1;
 }
 
@@ -101,11 +101,11 @@ body {
     width: 100%;
     min-width: 90px;
     box-sizing: border-box;
-    padding: 0.3rem 0.4rem;
+    padding: 0.24rem 0.34rem;
     border: 1px solid var(--rounds-search-border);
     background-color: var(--rounds-search-bg);
     color: var(--rounds-search-text);
-    font-size: 0.78rem;
+    font-size: 0.74rem;
 }
 
 #roundList tbody td {
@@ -179,34 +179,34 @@ body.site-shell[data-profile-theme="light"] #roundList tbody .title-cell a {
 
 @media screen and (max-width: 790px) {
     .content-container {
-        padding: 10px !important;
+        padding: 4px 6px 6px !important;
     }
 
     .table-container {
         width: 100%;
-        height: calc(100dvh - var(--mobile-header-offset, 62px) - var(--mobile-footer-offset, 40px) - 20px);
-        max-height: calc(100dvh - var(--mobile-header-offset, 62px) - var(--mobile-footer-offset, 40px) - 20px);
+        height: calc(100dvh - var(--mobile-header-offset, 62px) - var(--mobile-footer-offset, 40px) - 34px);
+        max-height: calc(100dvh - var(--mobile-header-offset, 62px) - var(--mobile-footer-offset, 40px) - 34px);
     }
 
     #roundList thead th,
     #roundList tbody td {
-        padding: 0.4rem 0.45rem;
-        font-size: 0.82rem;
+        padding: 0.34rem 0.38rem;
+        font-size: 0.78rem;
     }
 
     #roundList tbody td:first-child {
-        min-width: 120px;
-        max-width: 150px;
+        min-width: 92px;
+        max-width: 116px;
     }
 
     .rounds-column-search {
-        min-width: 62px;
-        font-size: 0.72rem;
-        padding: 0.28rem 0.32rem;
+        min-width: 54px;
+        font-size: 0.68rem;
+        padding: 0.2rem 0.24rem;
     }
 
     .rounds-column-label {
-        margin-bottom: 0.2rem;
-        font-size: 0.78rem;
+        margin-bottom: 0.12rem;
+        font-size: 0.72rem;
     }
 }
