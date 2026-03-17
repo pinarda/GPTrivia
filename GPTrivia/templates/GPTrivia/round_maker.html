@@ -219,6 +219,8 @@
         field.value = value;
     }
 
+    let suppressPreviewRequirementsMessage = false;
+
     function clearStoredRoundMakerData() {
         getPersistedFields().forEach((field) => {
             if (isLocalStorageAvailable()) {
@@ -351,7 +353,7 @@
         previewButton.setAttribute('aria-disabled', String(!isReady));
 
         if (requirementsMessage) {
-            requirementsMessage.style.display = isReady ? 'none' : 'block';
+            requirementsMessage.style.display = (isReady || suppressPreviewRequirementsMessage) ? 'none' : 'block';
         }
     }
 
@@ -373,6 +375,7 @@
 
     $(document).ready(function() {
         $('#round-title, #round-creator').on('input change', function() {
+            suppressPreviewRequirementsMessage = false;
             updatePreviewButtonState();
         });
 
@@ -382,6 +385,7 @@
                 coopChoiceField.value = '1';
                 persistRoundMakerField(coopChoiceField);
             }
+            suppressPreviewRequirementsMessage = false;
             updatePreviewButtonState();
         });
 
@@ -569,6 +573,7 @@
                     var submissionMessage = 'Submitted ' + roundTitle + '! \n Note: all changes made to the presentation above are saved automatically.';  // Construct the submission message
                     $('#submission-message').text(submissionMessage);  // Display the submission message
                     $('#submit-button').hide();  // Hide the submit button
+                    suppressPreviewRequirementsMessage = true;
                     clearStoredRoundMakerData();
                 },
                 error: function(error) {

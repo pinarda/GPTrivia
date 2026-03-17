@@ -334,3 +334,27 @@ class ScoresheetSyncTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(GPTriviaRound.objects.filter(date=datetime.date(2026, 3, 12)).exists())
         self.assertFalse(MergedPresentation.objects.filter(id=unpadded_presentation.id).exists())
+
+    def test_patch_save_does_not_create_blank_presentation_placeholder(self):
+        MergedPresentation.objects.all().delete()
+
+        payload = {
+            "presentation_id": "",
+            "selected_date": "2026-03-12",
+            "client_id": "client-placeholder",
+            "mutation_id": "mutation-placeholder",
+            "round_updates": [],
+            "presentation_updates": {
+                "host": "Jenny",
+                "notes": "Should not create placeholder presentation",
+            },
+        }
+
+        response = self.client.post(
+            reverse("save_scores"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(MergedPresentation.objects.count(), 0)

@@ -1172,6 +1172,8 @@ def _build_presentation_calendar(presentations):
     presentation_calendar = {}
 
     for presentation in presentations:
+        if not presentation.presentation_id:
+            continue
         presentation_date = _parse_presentation_name_date(presentation.name)
         if presentation_date is None:
             continue
@@ -1195,7 +1197,7 @@ def _delete_presentations_for_date(presentation_date):
 
 
 def _ready_presentations_queryset():
-    return MergedPresentation.objects.filter(status=MergedPresentation.STATUS_READY)
+    return MergedPresentation.objects.filter(status=MergedPresentation.STATUS_READY).exclude(presentation_id="")
 
 
 def _stale_home_build_cutoff():
@@ -2009,7 +2011,9 @@ def _save_scores_patch(data):
             setattr(presentation, field, value)
             dirty_fields.append(field)
 
-        if dirty_fields or presentation.pk is None:
+        should_persist_presentation = bool(presentation.pk or presentation.presentation_id)
+
+        if should_persist_presentation and (dirty_fields or presentation.pk is None):
             presentation.save()
 
         message = {
@@ -2247,7 +2251,9 @@ def save_scores(request):
             return JsonResponse({"message": "Presentation not found."}, status=400)
     elif date_str:
         try:
-            presentation = MergedPresentation.objects.get(name=datetime.datetime.strptime(date_str, '%Y-%m-%d').date().strftime("%m.%d.%Y"))
+            presentation = _ready_presentations_queryset().get(
+                name=datetime.datetime.strptime(date_str, '%Y-%m-%d').date().strftime("%m.%d.%Y")
+            )
             presentation.joker_round_indices = joker_round_indices
             presentation.creator_list = creator_list
             presentation.player_list = all_player_list
@@ -2260,42 +2266,9 @@ def save_scores(request):
             presentation.tiebreak_winner = tiebreak_winner
             presentation.save()
         except ObjectDoesNotExist:
-            try:
-                MergedPresentation.objects.create(
-                    name=datetime.datetime.strptime(date_str, '%Y-%m-%d').date().strftime("%m.%d.%Y"),
-                    presentation_id="",
-                    creator_list=creator_list,
-                    round_names=round_names,
-                    joker_round_indices=joker_round_indices,
-                    player_list=all_player_list,
-                    host = host,
-                    scorekeeper=scorekeeper,
-                    style_points=style_points,
-                    notes=notes,
-                    tiebreak_winner=tiebreak_winner,
-                )
-            except Exception as e:
-                print(f"Error creating MergedPresentation object: {e}")
-                return JsonResponse({"message": "Error creating MergedPresentation object."}, status=400)
+            pass
     else:
-        # create a new MergedPresentation object
-        try:
-            MergedPresentation.objects.create(
-                name=datetime.datetime.strptime(date_str, '%Y-%m-%d').date().strftime("%m.%d.%Y"),
-                presentation_id="",
-                creator_list=creator_list,
-                round_names=round_names,
-                joker_round_indices=joker_round_indices,
-                player_list=all_player_list,
-                host=host,
-                scorekeeper=scorekeeper,
-                style_points=style_points,
-                notes=notes,
-                tiebreak_winner=tiebreak_winner,
-            )
-        except Exception as e:
-            print(f"Error creating MergedPresentation object: {e}")
-            return JsonResponse({"message": "Error creating MergedPresentation object."}, status=400)
+        pass
 
 
     return JsonResponse({"message": "Data saved successfully!"})

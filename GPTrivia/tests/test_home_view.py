@@ -106,6 +106,20 @@ class HomeViewPresentationSelectionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["selected_presentation_id"], "presentation-latest")
 
+    def test_home_ignores_blank_presentation_ids_for_selection_and_calendar(self):
+        self._create_presentation(
+            name="03.14.2026",
+            presentation_id="",
+            round_names=["Blank Placeholder"],
+            creator_list=["Alex"],
+        )
+
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_presentation_id"], "presentation-latest")
+        self.assertNotIn("2026-03-14", response.context["presentation_calendar"])
+
     def test_home_context_includes_active_build_state(self):
         PresentationBuildState.objects.create(
             key="home_page",
