@@ -189,7 +189,7 @@
                                             </td>
                                             <td data-sort-value="{{ round.date|date:'Y-m-d' }}">{{ round.date }}</td>
                                             <td>
-                                                {% if is_own_profile %}
+                                                {% if can_edit_round_categories %}
                                                     <form
                                                         class="profile-round-category-form"
                                                         method="post"
@@ -234,7 +234,7 @@
                                                 <div class="profile-round-detail-grid">
                                                     <div class="profile-round-detail-item">
                                                         <span class="profile-round-detail-label">Category</span>
-                                                        {% if is_own_profile %}
+                                                        {% if can_edit_round_categories %}
                                                             <form
                                                                 class="profile-round-category-form"
                                                                 method="post"
@@ -358,7 +358,7 @@
                                         <div class="profile-round-detail-grid">
                                             <div class="profile-round-detail-item">
                                                 <span class="profile-round-detail-label">Category</span>
-                                                {% if is_own_profile %}
+                                                {% if can_edit_round_categories %}
                                                     <form
                                                         class="profile-round-category-form"
                                                         method="post"

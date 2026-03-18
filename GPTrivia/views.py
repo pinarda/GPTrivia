@@ -842,6 +842,17 @@ def _format_profile_gap_stat(value):
     return "0 points"
 
 
+def _can_edit_profile_round_categories(request_user, profile_user=None):
+    if not request_user or not request_user.is_authenticated:
+        return False
+
+    request_user_name = display_name_for_player_field(request_user.username)
+    if request_user_name == 'Alex':
+        return True
+
+    return bool(profile_user and request_user.pk == profile_user.pk)
+
+
 def _build_scoresheet_date_link(target_date):
     if not target_date:
         return ''
@@ -1328,6 +1339,7 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         and request.user.is_authenticated
         and request.user.pk == profile_user.pk
     )
+    can_edit_round_categories = _can_edit_profile_round_categories(request.user, profile_user)
 
     context = {
         'profile_user': profile_user,
@@ -1353,6 +1365,7 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         ),
         'page_profile_theme': getattr(profile, 'profile_page_theme', Profile.THEME_DEFAULT) or Profile.THEME_DEFAULT,
         'is_own_profile': is_own_profile,
+        'can_edit_round_categories': can_edit_round_categories,
         'profile_picture_url': profile_picture_url,
         'player_name': player_name,
         'created_rounds_cat': created_rounds_cat_list,
@@ -1386,8 +1399,9 @@ def update_profile_round_category(request, round_id):
         raise Http404("Category updates must be submitted with POST.")
 
     round_obj = get_object_or_404(GPTriviaRound, id=round_id)
-    current_user_name = display_name_for_player_field(request.user.username)
-    if display_name_for_player_field(round_obj.creator) != current_user_name:
+    round_creator_name = display_name_for_player_field(round_obj.creator)
+    profile_user = User.objects.filter(username__iexact=round_creator_name).first()
+    if not _can_edit_profile_round_categories(request.user, profile_user):
         raise Http404("Round not found.")
 
     new_category = (request.POST.get('major_category') or '').strip()
@@ -1402,7 +1416,7 @@ def update_profile_round_category(request, round_id):
     round_obj.major_category = new_category
     round_obj.save(update_fields=['major_category'])
 
-    redirect_url = reverse('player_profile', kwargs={'player_name': request.user.username})
+    redirect_url = reverse('player_profile', kwargs={'player_name': round_creator_name})
     panel = (request.POST.get('next_panel') or '').strip()
     if panel:
         redirect_url = f"{redirect_url}?{urlencode({'panel': panel})}"
