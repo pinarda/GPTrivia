@@ -73,6 +73,17 @@ def _format_summary_list(values, *, empty_text: str) -> str:
     return ", ".join(preview) + suffix
 
 
+def _format_text_preview(value, *, empty_text: str, limit: int = 160) -> str:
+    if not value:
+        return empty_text
+    value = str(value).strip()
+    if not value:
+        return empty_text
+    if len(value) <= limit:
+        return value
+    return value[: limit - 3] + "..."
+
+
 def _print_duplicate_group(group_index: int, total_groups: int, iso_date: str, presentations):
     print("\n" + "=" * 80)
     print(f"[{group_index}/{total_groups}] Duplicate presentation date: {iso_date}")
@@ -86,8 +97,25 @@ def _print_duplicate_group(group_index: int, total_groups: int, iso_date: str, p
         )
         print(f"   creators: {_format_summary_list(presentation.creator_list or [], empty_text='(none)')}")
         print(f"   rounds: {_format_summary_list(presentation.round_names or [], empty_text='(none)')}")
+        print(f"   players: {_format_summary_list(presentation.player_list or [], empty_text='(none)')}")
+        print(f"   jokers: {_format_summary_list(presentation.joker_round_indices or [], empty_text='(none)')}")
+        print(f"   host/scorekeeper: {presentation.host or '(none)'} / {presentation.scorekeeper or '(none)'}")
+        print(
+            "   winners: "
+            f"crowned={presentation.crowned_winner or '(none)'} | "
+            f"tiebreak={presentation.tiebreak_winner or '(none)'}"
+        )
+        style_points = presentation.style_points or {}
+        if isinstance(style_points, dict):
+            style_preview = ", ".join(
+                f"{player}={points}" for player, points in list(style_points.items())[:6]
+            ) or "(none)"
+        else:
+            style_preview = _format_text_preview(style_points, empty_text="(none)")
+        print(f"   style points: {style_preview}")
+        print(f"   notes: {_format_text_preview(presentation.notes, empty_text='(none)')}")
         if presentation.error_message:
-            print(f"   error: {presentation.error_message[:160]}")
+            print(f"   error: {_format_text_preview(presentation.error_message, empty_text='(none)')}")
 
 
 def resolve_duplicate_groups(duplicate_groups):
