@@ -797,6 +797,12 @@ def _summarize_profile_round_scores(round_obj):
         'average_score_display': _format_profile_round_score(average_score),
     }
 
+
+def _get_profile_page_color_value(profile, field_name, default_value):
+    if not profile:
+        return default_value
+    return getattr(profile, field_name, '') or default_value
+
 @login_required
 def player_profile_dict(request, player_name, form=None, include_form=False):
     player_name = display_name_for_player_field(player_name)
@@ -965,9 +971,10 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         min_bias_avg_value = "0.00"
 
     profile_user = User.objects.filter(username__iexact=player_name).first()
+    profile = profile_user.profile if profile_user else None
     if form is None and include_form:
-        form = ProfilePictureForm(instance=profile_user.profile if profile_user else None)
-    profile_picture_url = profile_user.profile.profile_picture.url if profile_user else '/media/default.jpg'
+        form = ProfilePictureForm(instance=profile)
+    profile_picture_url = profile.profile_picture.url if profile else '/media/default.jpg'
     is_own_profile = bool(
         profile_user
         and request.user.is_authenticated
@@ -976,6 +983,26 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
 
     context = {
         'profile_user': profile_user,
+        'profile_page_chrome_color': _get_profile_page_color_value(
+            profile,
+            'profile_page_chrome_color',
+            Profile.PROFILE_PAGE_CHROME_DEFAULT,
+        ),
+        'profile_page_trivia_color_one': _get_profile_page_color_value(
+            profile,
+            'profile_page_trivia_color_one',
+            Profile.PROFILE_PAGE_TRIVIA_COLOR_ONE_DEFAULT,
+        ),
+        'profile_page_trivia_color_two': _get_profile_page_color_value(
+            profile,
+            'profile_page_trivia_color_two',
+            Profile.PROFILE_PAGE_TRIVIA_COLOR_TWO_DEFAULT,
+        ),
+        'profile_page_trivia_color_three': _get_profile_page_color_value(
+            profile,
+            'profile_page_trivia_color_three',
+            Profile.PROFILE_PAGE_TRIVIA_COLOR_THREE_DEFAULT,
+        ),
         'is_own_profile': is_own_profile,
         'profile_picture_url': profile_picture_url,
         'player_name': player_name,

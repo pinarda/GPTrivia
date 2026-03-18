@@ -1,5 +1,9 @@
 body.site-shell {
-    --shell-chrome-color: #2d3047;
+    --shell-chrome-color: var(--profile-page-chrome-color, #2d3047);
+    --profile-header-footer-color: var(--profile-page-chrome-color, #2d3047);
+    --profile-trivia-color-one: var(--profile-page-trivia-color-one, #588b8b);
+    --profile-trivia-color-two: var(--profile-page-trivia-color-two, #ffd5c2);
+    --profile-trivia-color-three: var(--profile-page-trivia-color-three, #c8553d);
     --profile-page-text: #ffffff;
     --profile-muted-text: rgba(255, 255, 255, 0.72);
     --profile-surface: #2d3047;
@@ -259,6 +263,13 @@ a {
     margin: 0;
     color: #ffd5c2;
     font-size: 0.82rem;
+}
+
+.profile-settings-help {
+    margin: 0;
+    color: var(--profile-muted-text);
+    font-size: 0.82rem;
+    line-height: 1.35;
 }
 
 .profile-settings-form input[type="file"] {
@@ -805,37 +816,28 @@ a {
 }
 
 .header-container {
-    background-color: #2d3047;
+    background-color: var(--profile-header-footer-color);
     min-height: 61px;
 }
 
 .footer-container {
-    background-color: #2d3047;
+    background-color: var(--profile-header-footer-color);
     font-family: YoungSerif, serif;
 }
 
-.red {
-    color: #588b8b;
-}
-
+.red,
 .orange {
-    color: #ffffff;
+    color: var(--profile-trivia-color-one);
 }
 
-.yellow {
-    color: #ffd5c2;
-}
-
+.yellow,
 .green {
-    color: #f28f3b;
+    color: var(--profile-trivia-color-two);
 }
 
-.blue {
-    color: #c8553d;
-}
-
+.blue,
 .purple {
-    color: #93b7be;
+    color: var(--profile-trivia-color-three);
 }
 
 @media screen and (min-width: 900px) {

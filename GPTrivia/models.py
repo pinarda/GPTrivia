@@ -25,6 +25,10 @@ def save_user_profile(sender, instance, **kwargs):
 class Profile(models.Model):
     THEME_DEFAULT = 'default'
     THEME_LIGHT = 'light'
+    PROFILE_PAGE_CHROME_DEFAULT = '#2d3047'
+    PROFILE_PAGE_TRIVIA_COLOR_ONE_DEFAULT = '#588b8b'
+    PROFILE_PAGE_TRIVIA_COLOR_TWO_DEFAULT = '#ffd5c2'
+    PROFILE_PAGE_TRIVIA_COLOR_THREE_DEFAULT = '#c8553d'
     THEME_CHOICES = [
         (THEME_DEFAULT, 'Current (default)'),
         (THEME_LIGHT, 'Light'),
@@ -34,6 +38,10 @@ class Profile(models.Model):
     profile_picture = models.ImageField(upload_to='profile_pics', default='./default.jpg')
     profile_icon = models.ImageField(upload_to='profile_icons', blank=True, default='')
     profile_color = models.CharField(max_length=7, blank=True, default='')
+    profile_page_chrome_color = models.CharField(max_length=7, blank=True, default='')
+    profile_page_trivia_color_one = models.CharField(max_length=7, blank=True, default='')
+    profile_page_trivia_color_two = models.CharField(max_length=7, blank=True, default='')
+    profile_page_trivia_color_three = models.CharField(max_length=7, blank=True, default='')
     site_theme = models.CharField(max_length=16, choices=THEME_CHOICES, default=THEME_DEFAULT)
     swoop_conversation_history = jsonfield.JSONField(default=list, blank=True)
 

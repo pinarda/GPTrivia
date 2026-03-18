@@ -4,14 +4,17 @@
 {% block extra_css %}
   <style>
     body.site-shell {
-      --shell-chrome-color: #2d3047;
+      --profile-page-chrome-color: {{ profile_page_chrome_color }};
+      --profile-page-trivia-color-one: {{ profile_page_trivia_color_one }};
+      --profile-page-trivia-color-two: {{ profile_page_trivia_color_two }};
+      --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260317e">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260317f">
 {% endblock %}
 
 {% block extra_meta %}
-    <meta name="theme-color" content="#2d3047">
+    <meta name="theme-color" content="{{ profile_page_chrome_color }}">
 {% endblock %}
 
 {% block content %}
@@ -406,7 +409,7 @@
                         <div class="profile-data-panel-header">
                             <div>
                                 <h2>Profile Appearance</h2>
-                                <p>Change your picture, profile color, and theme from one place.</p>
+                                <p>Change your picture, player color, page chrome, and theme from one place.</p>
                             </div>
                         </div>
 
@@ -445,13 +448,66 @@
 
                                 <div class="profile-settings-group profile-color-group">
                                     <label class="profile-settings-label" for="{{ form.profile_color.id_for_label }}">
-                                        Profile Color
+                                        Player Color
                                     </label>
                                     <div class="profile-color-input-row">
                                         {{ form.profile_color }}
                                         <span id="profile-color-value" class="profile-color-value">{{ form.profile_color.value|default_if_none:'' }}</span>
                                     </div>
                                     {% for error in form.profile_color.errors %}
+                                        <p class="profile-settings-error">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="profile-settings-group profile-color-group">
+                                    <label class="profile-settings-label" for="{{ form.profile_page_chrome_color.id_for_label }}">
+                                        Header / Footer Color
+                                    </label>
+                                    <div class="profile-color-input-row">
+                                        {{ form.profile_page_chrome_color }}
+                                        <span id="profile-page-chrome-value" class="profile-color-value">{{ form.profile_page_chrome_color.value|default_if_none:'' }}</span>
+                                    </div>
+                                    {% for error in form.profile_page_chrome_color.errors %}
+                                        <p class="profile-settings-error">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="profile-settings-group profile-color-group">
+                                    <label class="profile-settings-label" for="{{ form.profile_page_trivia_color_one.id_for_label }}">
+                                        Trivia Color 1
+                                    </label>
+                                    <div class="profile-color-input-row">
+                                        {{ form.profile_page_trivia_color_one }}
+                                        <span id="profile-trivia-color-one-value" class="profile-color-value">{{ form.profile_page_trivia_color_one.value|default_if_none:'' }}</span>
+                                    </div>
+                                    {% for error in form.profile_page_trivia_color_one.errors %}
+                                        <p class="profile-settings-error">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="profile-settings-group profile-color-group">
+                                    <label class="profile-settings-label" for="{{ form.profile_page_trivia_color_two.id_for_label }}">
+                                        Trivia Color 2
+                                    </label>
+                                    <div class="profile-color-input-row">
+                                        {{ form.profile_page_trivia_color_two }}
+                                        <span id="profile-trivia-color-two-value" class="profile-color-value">{{ form.profile_page_trivia_color_two.value|default_if_none:'' }}</span>
+                                    </div>
+                                    {% for error in form.profile_page_trivia_color_two.errors %}
+                                        <p class="profile-settings-error">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="profile-settings-group profile-color-group">
+                                    <label class="profile-settings-label" for="{{ form.profile_page_trivia_color_three.id_for_label }}">
+                                        Trivia Color 3
+                                    </label>
+                                    <div class="profile-color-input-row">
+                                        {{ form.profile_page_trivia_color_three }}
+                                        <span id="profile-trivia-color-three-value" class="profile-color-value">{{ form.profile_page_trivia_color_three.value|default_if_none:'' }}</span>
+                                    </div>
+                                    <p class="profile-settings-help">These three colors repeat across the six “Trivia” letters in the header.</p>
+                                    {% for error in form.profile_page_trivia_color_three.errors %}
                                         <p class="profile-settings-error">{{ error }}</p>
                                     {% endfor %}
                                 </div>
@@ -1093,13 +1149,32 @@
             const cropXInput = document.getElementById('id_crop_x');
             const cropYInput = document.getElementById('id_crop_y');
             const cropSizeInput = document.getElementById('id_crop_size');
-            const colorInput = document.getElementById('profile-color-input');
-            const colorValue = document.getElementById('profile-color-value');
+            const colorBindings = [
+                ['profile-color-input', 'profile-color-value'],
+                ['profile-page-chrome-input', 'profile-page-chrome-value'],
+                ['profile-trivia-color-one-input', 'profile-trivia-color-one-value'],
+                ['profile-trivia-color-two-input', 'profile-trivia-color-two-value'],
+                ['profile-trivia-color-three-input', 'profile-trivia-color-three-value'],
+            ];
+
+            function syncColorValue(inputId, valueId) {
+                const input = document.getElementById(inputId);
+                const value = document.getElementById(valueId);
+                if (!input || !value) {
+                    return;
+                }
+                const updateValue = () => {
+                    value.textContent = (input.value || '').toUpperCase();
+                };
+                updateValue();
+                input.addEventListener('input', updateValue);
+            }
+
+            colorBindings.forEach(([inputId, valueId]) => {
+                syncColorValue(inputId, valueId);
+            });
 
             if (!fileInput || !cropEditor || !cropFrame || !cropImage || !zoomInput || !cropXInput || !cropYInput || !cropSizeInput) {
-                if (colorInput && colorValue) {
-                    colorValue.textContent = (colorInput.value || '').toUpperCase();
-                }
                 return;
             }
 

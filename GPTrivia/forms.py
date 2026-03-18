@@ -26,10 +26,22 @@ class ProfilePictureForm(forms.ModelForm):
 
     class Meta:
         model = Profile
-        fields = ['profile_picture', 'profile_color', 'site_theme']
+        fields = [
+            'profile_picture',
+            'profile_color',
+            'profile_page_chrome_color',
+            'profile_page_trivia_color_one',
+            'profile_page_trivia_color_two',
+            'profile_page_trivia_color_three',
+            'site_theme',
+        ]
         widgets = {
             'profile_picture': forms.FileInput(),
             'profile_color': forms.TextInput(attrs={'type': 'color'}),
+            'profile_page_chrome_color': forms.TextInput(attrs={'type': 'color'}),
+            'profile_page_trivia_color_one': forms.TextInput(attrs={'type': 'color'}),
+            'profile_page_trivia_color_two': forms.TextInput(attrs={'type': 'color'}),
+            'profile_page_trivia_color_three': forms.TextInput(attrs={'type': 'color'}),
             'site_theme': forms.Select(),
         }
 
@@ -49,6 +61,23 @@ class ProfilePictureForm(forms.ModelForm):
         self.fields['profile_color'].widget.attrs.update({
             'id': 'profile-color-input',
         })
+        self.fields['profile_color'].label = 'Player Color'
+        self.fields['profile_page_chrome_color'].required = False
+        self.fields['profile_page_chrome_color'].widget.attrs.update({
+            'id': 'profile-page-chrome-input',
+        })
+        self.fields['profile_page_trivia_color_one'].required = False
+        self.fields['profile_page_trivia_color_one'].widget.attrs.update({
+            'id': 'profile-trivia-color-one-input',
+        })
+        self.fields['profile_page_trivia_color_two'].required = False
+        self.fields['profile_page_trivia_color_two'].widget.attrs.update({
+            'id': 'profile-trivia-color-two-input',
+        })
+        self.fields['profile_page_trivia_color_three'].required = False
+        self.fields['profile_page_trivia_color_three'].widget.attrs.update({
+            'id': 'profile-trivia-color-three-input',
+        })
         self.fields['site_theme'].required = False
         self.fields['site_theme'].choices = [
             (Profile.THEME_DEFAULT, 'Dark (default)'),
@@ -58,14 +87,33 @@ class ProfilePictureForm(forms.ModelForm):
             'id': 'profile-theme-input',
         })
         self.initial.setdefault('profile_color', effective_color or '#333333')
+        self.initial.setdefault('profile_page_chrome_color', profile.profile_page_chrome_color or Profile.PROFILE_PAGE_CHROME_DEFAULT)
+        self.initial.setdefault('profile_page_trivia_color_one', profile.profile_page_trivia_color_one or Profile.PROFILE_PAGE_TRIVIA_COLOR_ONE_DEFAULT)
+        self.initial.setdefault('profile_page_trivia_color_two', profile.profile_page_trivia_color_two or Profile.PROFILE_PAGE_TRIVIA_COLOR_TWO_DEFAULT)
+        self.initial.setdefault('profile_page_trivia_color_three', profile.profile_page_trivia_color_three or Profile.PROFILE_PAGE_TRIVIA_COLOR_THREE_DEFAULT)
 
-    def clean_profile_color(self):
-        color = (self.cleaned_data.get('profile_color') or '').strip()
+    def _clean_hex_color(self, field_name):
+        color = (self.cleaned_data.get(field_name) or '').strip()
         if not color:
             return ''
         if not re.fullmatch(r'#[0-9a-fA-F]{6}', color):
             raise forms.ValidationError('Enter a valid hex color.')
         return color.lower()
+
+    def clean_profile_color(self):
+        return self._clean_hex_color('profile_color')
+
+    def clean_profile_page_chrome_color(self):
+        return self._clean_hex_color('profile_page_chrome_color')
+
+    def clean_profile_page_trivia_color_one(self):
+        return self._clean_hex_color('profile_page_trivia_color_one')
+
+    def clean_profile_page_trivia_color_two(self):
+        return self._clean_hex_color('profile_page_trivia_color_two')
+
+    def clean_profile_page_trivia_color_three(self):
+        return self._clean_hex_color('profile_page_trivia_color_three')
 
     def _build_cropped_profile_picture(self, uploaded_picture):
         crop_x = self.cleaned_data.get('crop_x')
@@ -109,6 +157,14 @@ class ProfilePictureForm(forms.ModelForm):
 
         if 'profile_color' in self.changed_data:
             profile.profile_color = self.cleaned_data.get('profile_color', '') or ''
+        if 'profile_page_chrome_color' in self.changed_data:
+            profile.profile_page_chrome_color = self.cleaned_data.get('profile_page_chrome_color', '') or ''
+        if 'profile_page_trivia_color_one' in self.changed_data:
+            profile.profile_page_trivia_color_one = self.cleaned_data.get('profile_page_trivia_color_one', '') or ''
+        if 'profile_page_trivia_color_two' in self.changed_data:
+            profile.profile_page_trivia_color_two = self.cleaned_data.get('profile_page_trivia_color_two', '') or ''
+        if 'profile_page_trivia_color_three' in self.changed_data:
+            profile.profile_page_trivia_color_three = self.cleaned_data.get('profile_page_trivia_color_three', '') or ''
 
         if commit:
             profile.save()

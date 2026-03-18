@@ -1,11 +1,14 @@
 import io
 import tempfile
+from datetime import date, timedelta
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
+
+from GPTrivia.models import GPTriviaRound
 
 
 class ProfileIconTests(TestCase):
@@ -33,6 +36,23 @@ class ProfileIconTests(TestCase):
         image.save(image_buffer, format='JPEG')
         image_buffer.seek(0)
         return SimpleUploadedFile('profile-wide.jpg', image_buffer.getvalue(), content_type='image/jpeg')
+
+    def _make_profile_round_history(self, creator='Alex', total_rounds=50):
+        base_date = date(2025, 1, 1)
+        GPTriviaRound.objects.bulk_create([
+            GPTriviaRound(
+                creator=creator,
+                title=f'Round {index + 1}',
+                major_category='Science',
+                minor_category1='General',
+                minor_category2='Facts',
+                date=base_date + timedelta(days=index),
+                round_number=index + 1,
+                max_score=10,
+                score_alex=8,
+            )
+            for index in range(total_rounds)
+        ])
 
     def test_profile_save_generates_a_50px_icon_for_custom_photos(self):
         user = User.objects.create_user(username='Alex', password='pw')
@@ -76,6 +96,10 @@ class ProfileIconTests(TestCase):
             {
                 'profile_picture': self._make_split_uploaded_image(),
                 'profile_color': '#123abc',
+                'profile_page_chrome_color': '#654321',
+                'profile_page_trivia_color_one': '#111111',
+                'profile_page_trivia_color_two': '#222222',
+                'profile_page_trivia_color_three': '#333333',
                 'site_theme': 'light',
                 'crop_x': '100',
                 'crop_y': '0',
@@ -88,6 +112,10 @@ class ProfileIconTests(TestCase):
 
         user.profile.refresh_from_db()
         self.assertEqual(user.profile.profile_color, '#123abc')
+        self.assertEqual(user.profile.profile_page_chrome_color, '#654321')
+        self.assertEqual(user.profile.profile_page_trivia_color_one, '#111111')
+        self.assertEqual(user.profile.profile_page_trivia_color_two, '#222222')
+        self.assertEqual(user.profile.profile_page_trivia_color_three, '#333333')
         self.assertEqual(user.profile.site_theme, 'light')
 
         with Image.open(user.profile.profile_picture.path) as cropped_image:
@@ -120,3 +148,23 @@ class ProfileIconTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'scoresheet-player-colors')
         self.assertContains(response, '#123abc')
+
+    def test_profile_view_applies_saved_profile_page_color_customizations(self):
+        user = User.objects.create_user(username='Alex', password='pw')
+        self._make_profile_round_history()
+        profile = user.profile
+        profile.profile_page_chrome_color = '#654321'
+        profile.profile_page_trivia_color_one = '#111111'
+        profile.profile_page_trivia_color_two = '#222222'
+        profile.profile_page_trivia_color_three = '#333333'
+        profile.save()
+
+        self.client.force_login(user)
+        response = self.client.get(reverse('player_profile', args=['Alex']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '--profile-page-chrome-color: #654321;')
+        self.assertContains(response, '--profile-page-trivia-color-one: #111111;')
+        self.assertContains(response, '--profile-page-trivia-color-two: #222222;')
+        self.assertContains(response, '--profile-page-trivia-color-three: #333333;')
+        self.assertContains(response, 'Player Color')
