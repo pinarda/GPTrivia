@@ -423,9 +423,16 @@ class PlayerAnalysisViewTests(TestCase):
             response.context['best_score_ever']['scoresheet_link'],
             f"{reverse('scoresheet_new')}?date=2023-01-08",
         )
+        self.assertEqual(response.context['best_performance_ever']['display_value'], '+8/20 (+40.0%)')
+        self.assertEqual(response.context['best_performance_ever']['date'], datetime.date(2023, 1, 1))
+        self.assertEqual(
+            response.context['best_performance_ever']['scoresheet_link'],
+            f"{reverse('scoresheet_new')}?date=2023-01-01",
+        )
         self.assertContains(response, 'Best Score Ever')
+        self.assertContains(response, 'Best Performance Ever')
         self.assertContains(response, f"{reverse('scoresheet_new')}?date=2023-01-08")
-        self.assertNotContains(response, 'Best Performance Ever')
+        self.assertContains(response, f"{reverse('scoresheet_new')}?date=2023-01-01")
 
     def test_creators_list_not_empty(self):
         # create a sample GPTriviaRound instance

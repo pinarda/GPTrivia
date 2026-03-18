@@ -842,16 +842,23 @@ def _build_scoresheet_date_link(target_date):
 
 def _build_profile_best_night_stats(all_rounds, player_name):
     score_field = player_field_for_name(player_name)
+    other_player_fields = [
+        player_field
+        for player_field in collect_player_fields(rounds=all_rounds)
+        if player_field != score_field
+    ]
 
     rounds_by_date = {}
     for round_obj in all_rounds:
         rounds_by_date.setdefault(round_obj.date, []).append(round_obj)
 
     best_score_stat = None
+    best_performance_stat = None
 
     for night_date, night_rounds in rounds_by_date.items():
         player_total = 0
         best_score_max_total = 0
+        performance_rounds = []
 
         for round_obj in night_rounds:
             score_map = get_round_score_map(round_obj)
@@ -862,6 +869,7 @@ def _build_profile_best_night_stats(all_rounds, player_name):
 
             player_total += player_score
             best_score_max_total += max_score
+            performance_rounds.append((score_map, player_score, max_score))
 
         if best_score_max_total:
             player_percentage = player_total / best_score_max_total
@@ -882,11 +890,56 @@ def _build_profile_best_night_stats(all_rounds, player_name):
             ):
                 best_score_stat = best_score_candidate
 
+        performance_max_total = sum(max_score for _, _, max_score in performance_rounds)
+        if performance_rounds and performance_max_total:
+            eligible_other_totals = []
+            for other_player_field in other_player_fields:
+                other_total = 0
+                has_full_night_scores = True
+                for score_map, _, _max_score in performance_rounds:
+                    other_score = score_map.get(other_player_field)
+                    if other_score is None:
+                        has_full_night_scores = False
+                        break
+                    other_total += other_score
+
+                if has_full_night_scores:
+                    eligible_other_totals.append(other_total)
+
+            if eligible_other_totals:
+                performance_player_total = sum(player_score for _, player_score, _ in performance_rounds)
+                second_place_total = max(eligible_other_totals)
+                performance_gap = performance_player_total - second_place_total
+                performance_gap_percentage = performance_gap / performance_max_total
+                best_performance_candidate = {
+                    'date': night_date,
+                    'display_value': _format_profile_percentage_stat(
+                        performance_gap,
+                        performance_max_total,
+                        signed=True,
+                    ),
+                    'gap_total': performance_gap,
+                    'max_total': performance_max_total,
+                    'percentage': performance_gap_percentage,
+                }
+                if (
+                    best_performance_stat is None
+                    or performance_gap_percentage > best_performance_stat['percentage']
+                    or (
+                        performance_gap_percentage == best_performance_stat['percentage']
+                        and night_date > best_performance_stat['date']
+                    )
+                ):
+                    best_performance_stat = best_performance_candidate
+
     if best_score_stat:
         best_score_stat['scoresheet_link'] = _build_scoresheet_date_link(best_score_stat['date'])
+    if best_performance_stat:
+        best_performance_stat['scoresheet_link'] = _build_scoresheet_date_link(best_performance_stat['date'])
 
     return {
         'best_score_ever': best_score_stat,
+        'best_performance_ever': best_performance_stat,
     }
 
 @login_required
@@ -1109,6 +1162,7 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         'min_cat_avg': min_creator_avg,
         'created_rounds_count': created_rounds_count,
         'best_score_ever': best_night_stats['best_score_ever'],
+        'best_performance_ever': best_night_stats['best_performance_ever'],
     }
 
     if include_form or form is not None:
