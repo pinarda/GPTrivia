@@ -1003,6 +1003,7 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
             'profile_page_trivia_color_three',
             Profile.PROFILE_PAGE_TRIVIA_COLOR_THREE_DEFAULT,
         ),
+        'page_profile_theme': getattr(profile, 'profile_page_theme', Profile.THEME_DEFAULT) or Profile.THEME_DEFAULT,
         'is_own_profile': is_own_profile,
         'profile_picture_url': profile_picture_url,
         'player_name': player_name,

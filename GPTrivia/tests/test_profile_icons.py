@@ -100,6 +100,7 @@ class ProfileIconTests(TestCase):
                 'profile_page_trivia_color_one': '#111111',
                 'profile_page_trivia_color_two': '#222222',
                 'profile_page_trivia_color_three': '#333333',
+                'profile_page_theme': 'light',
                 'site_theme': 'light',
                 'crop_x': '100',
                 'crop_y': '0',
@@ -116,6 +117,7 @@ class ProfileIconTests(TestCase):
         self.assertEqual(user.profile.profile_page_trivia_color_one, '#111111')
         self.assertEqual(user.profile.profile_page_trivia_color_two, '#222222')
         self.assertEqual(user.profile.profile_page_trivia_color_three, '#333333')
+        self.assertEqual(user.profile.profile_page_theme, 'light')
         self.assertEqual(user.profile.site_theme, 'light')
 
         with Image.open(user.profile.profile_picture.path) as cropped_image:
@@ -185,3 +187,18 @@ class ProfileIconTests(TestCase):
         self.assertContains(response, 'value="#ffd5c2"')
         self.assertContains(response, 'id="profile-trivia-color-three-input"')
         self.assertContains(response, 'value="#c8553d"')
+
+    def test_profile_view_uses_viewed_players_profile_page_theme(self):
+        owner = User.objects.create_user(username='Alex', password='pw')
+        viewer = User.objects.create_user(username='Megan', password='pw')
+        self._make_profile_round_history()
+        owner.profile.profile_page_theme = 'light'
+        owner.profile.save()
+        viewer.profile.site_theme = 'default'
+        viewer.profile.save()
+
+        self.client.force_login(viewer)
+        response = self.client.get(reverse('player_profile', args=['Alex']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-profile-theme="light"')

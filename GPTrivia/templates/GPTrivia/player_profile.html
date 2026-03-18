@@ -10,7 +10,7 @@
       --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260317g">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260317h">
 {% endblock %}
 
 {% block extra_meta %}
@@ -409,7 +409,7 @@
                         <div class="profile-data-panel-header">
                             <div>
                                 <h2>Profile Appearance</h2>
-                                <p>Change your picture, player color, page chrome, and theme from one place.</p>
+                                <p>Change your picture, player color, page chrome, profile page theme, and site theme from one place.</p>
                             </div>
                         </div>
 
@@ -513,8 +513,18 @@
                                 </div>
 
                                 <div class="profile-settings-group">
+                                    <label class="profile-settings-label" for="{{ form.profile_page_theme.id_for_label }}">
+                                        Profile Page Theme
+                                    </label>
+                                    {{ form.profile_page_theme }}
+                                    {% for error in form.profile_page_theme.errors %}
+                                        <p class="profile-settings-error">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="profile-settings-group">
                                     <label class="profile-settings-label" for="{{ form.site_theme.id_for_label }}">
-                                        Theme
+                                        Site Theme
                                     </label>
                                     {{ form.site_theme }}
                                     {% for error in form.site_theme.errors %}

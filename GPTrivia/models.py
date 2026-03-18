@@ -43,6 +43,7 @@ class Profile(models.Model):
     profile_page_trivia_color_two = models.CharField(max_length=7, blank=True, default='')
     profile_page_trivia_color_three = models.CharField(max_length=7, blank=True, default='')
     site_theme = models.CharField(max_length=16, choices=THEME_CHOICES, default=THEME_DEFAULT)
+    profile_page_theme = models.CharField(max_length=16, choices=THEME_CHOICES, default=THEME_DEFAULT)
     swoop_conversation_history = jsonfield.JSONField(default=list, blank=True)
 
     def __str__(self):

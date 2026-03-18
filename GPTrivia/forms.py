@@ -33,6 +33,7 @@ class ProfilePictureForm(forms.ModelForm):
             'profile_page_trivia_color_one',
             'profile_page_trivia_color_two',
             'profile_page_trivia_color_three',
+            'profile_page_theme',
             'site_theme',
         ]
         widgets = {
@@ -42,6 +43,7 @@ class ProfilePictureForm(forms.ModelForm):
             'profile_page_trivia_color_one': forms.TextInput(attrs={'type': 'color'}),
             'profile_page_trivia_color_two': forms.TextInput(attrs={'type': 'color'}),
             'profile_page_trivia_color_three': forms.TextInput(attrs={'type': 'color'}),
+            'profile_page_theme': forms.Select(),
             'site_theme': forms.Select(),
         }
 
@@ -78,6 +80,14 @@ class ProfilePictureForm(forms.ModelForm):
         self.fields['profile_page_trivia_color_three'].widget.attrs.update({
             'id': 'profile-trivia-color-three-input',
         })
+        self.fields['profile_page_theme'].required = False
+        self.fields['profile_page_theme'].choices = [
+            (Profile.THEME_DEFAULT, 'Dark (default)'),
+            (Profile.THEME_LIGHT, 'Light'),
+        ]
+        self.fields['profile_page_theme'].widget.attrs.update({
+            'id': 'profile-page-theme-input',
+        })
         self.fields['site_theme'].required = False
         self.fields['site_theme'].choices = [
             (Profile.THEME_DEFAULT, 'Dark (default)'),
@@ -102,6 +112,8 @@ class ProfilePictureForm(forms.ModelForm):
             self.initial['profile_page_trivia_color_three'] = (
                 profile.profile_page_trivia_color_three or Profile.PROFILE_PAGE_TRIVIA_COLOR_THREE_DEFAULT
             )
+        if not self.initial.get('profile_page_theme'):
+            self.initial['profile_page_theme'] = profile.profile_page_theme or Profile.THEME_DEFAULT
 
     def _clean_hex_color(self, field_name):
         color = (self.cleaned_data.get(field_name) or '').strip()
@@ -176,6 +188,8 @@ class ProfilePictureForm(forms.ModelForm):
             profile.profile_page_trivia_color_two = self.cleaned_data.get('profile_page_trivia_color_two', '') or ''
         if 'profile_page_trivia_color_three' in self.changed_data:
             profile.profile_page_trivia_color_three = self.cleaned_data.get('profile_page_trivia_color_three', '') or ''
+        if 'profile_page_theme' in self.changed_data:
+            profile.profile_page_theme = self.cleaned_data.get('profile_page_theme', '') or Profile.THEME_DEFAULT
 
         if commit:
             profile.save()
