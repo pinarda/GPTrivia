@@ -3265,6 +3265,7 @@ const PlayerTable = () => {
                     <CoopRowToggleLabel
                       control={
                         <Checkbox
+                          className="star-ricochet"
                           checked={cooperativeStatus[round.title] || false}
                           onChange={(event) => handleCooperativeChange(round.title, event.target.checked)}
                         />
@@ -3294,6 +3295,7 @@ const PlayerTable = () => {
                           <DetailToggleLabel
                             control={
                               <Checkbox
+                                className="star-ricochet"
                                 checked={Boolean(isReplay[round.title])}
                                 onChange={(event) => handleReplayChange(round.title, event.target.checked)}
                               />
@@ -3303,6 +3305,7 @@ const PlayerTable = () => {
                           <DetailToggleLabel
                             control={
                               <Checkbox
+                                className="star-ricochet"
                                 checked={Boolean(cooperativeStatus[round.title])}
                                 onChange={(event) => handleCooperativeChange(round.title, event.target.checked)}
                               />

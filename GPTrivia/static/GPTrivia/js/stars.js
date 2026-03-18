@@ -104,6 +104,38 @@ function hasRicochetSurface(style) {
   return hasRicochetBackground(style) || hasRicochetBorder(style);
 }
 
+function hasRicochetForeground(style) {
+  return isRicochetColor(style.color);
+}
+
+function collectCollisionNodes(element) {
+  const outlineCandidates = Array.from(
+    element.querySelectorAll('.MuiOutlinedInput-notchedOutline')
+  );
+  if (outlineCandidates.length) {
+    return outlineCandidates.map((node) => ({
+      node,
+      mode: 'surface',
+    }));
+  }
+
+  if (element.classList?.contains('MuiCheckbox-root')) {
+    const icon = element.querySelector('svg');
+    if (icon) {
+      return [{
+        node: icon,
+        mode: 'foreground',
+        colorSource: element,
+      }];
+    }
+  }
+
+  return [{
+    node: element,
+    mode: 'surface',
+  }];
+}
+
 function collectRicochetSurfaces() {
   const seen = new Set();
   const surfaces = [];
@@ -123,18 +155,22 @@ function collectRicochetSurfaces() {
       continue;
     }
 
-    const outlineCandidates = Array.from(
-      element.querySelectorAll('.MuiOutlinedInput-notchedOutline')
-    );
-    const collisionNodes = outlineCandidates.length ? outlineCandidates : [element];
+    const collisionNodes = collectCollisionNodes(element);
 
-    for (const collisionNode of collisionNodes) {
+    for (const collisionCandidate of collisionNodes) {
+      const collisionNode = collisionCandidate.node;
       const style = window.getComputedStyle(collisionNode);
+      const colorSourceStyle = collisionCandidate.colorSource
+        ? window.getComputedStyle(collisionCandidate.colorSource)
+        : style;
+      const isRicochetTarget = collisionCandidate.mode === 'foreground'
+        ? hasRicochetForeground(colorSourceStyle)
+        : hasRicochetSurface(style);
       if (
         style.display === 'none' ||
         style.visibility === 'hidden' ||
         Number.parseFloat(style.opacity) === 0 ||
-        !hasRicochetSurface(style)
+        !isRicochetTarget
       ) {
         continue;
       }
