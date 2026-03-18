@@ -28,8 +28,8 @@ body.site-shell {
     --profile-settings-control-text: #ffffff;
     --profile-settings-control-border: rgba(255, 255, 255, 0.2);
     --profile-empty-bg: rgba(255, 255, 255, 0.05);
-    --profile-streak-column-width: 1.24rem;
-    --profile-streak-column-gap: 0.04rem;
+    --profile-streak-column-width: 0.76rem;
+    --profile-streak-column-gap: 0.01rem;
     --profile-streak-marker-size: 0.56rem;
     --profile-streak-date-height: 4.15rem;
 }
@@ -1316,8 +1316,8 @@ a {
     }
 
     body.site-shell {
-        --profile-streak-column-width: 1.12rem;
-        --profile-streak-column-gap: 0.02rem;
+        --profile-streak-column-width: 0.82rem;
+        --profile-streak-column-gap: 0.01rem;
         --profile-streak-marker-size: 0.5rem;
         --profile-streak-date-height: 3.65rem;
     }
