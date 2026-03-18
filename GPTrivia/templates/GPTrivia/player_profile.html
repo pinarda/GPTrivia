@@ -253,19 +253,16 @@
                                         <tr id="profile-round-slides-{{ forloop.counter0 }}" class="profile-round-slides-row" hidden>
                                             <td colspan="10">
                                                 <div class="profile-round-slides-shell">
-                                                    <div class="profile-round-slides-toolbar">
+                                                    <p class="profile-round-slides-link-row">
                                                         <a
-                                                            class="slides-button profile-player-button profile-round-slides-open-link"
+                                                            class="profile-round-link profile-round-slides-link"
                                                             href="{{ round.link }}"
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                         >
-                                                            Open in Google Slides
+                                                            Open round in Google Slides
                                                         </a>
-                                                        <p class="profile-round-slides-note">
-                                                            If Google blocks the inline preview, open the deck in a new tab.
-                                                        </p>
-                                                    </div>
+                                                    </p>
                                                     <iframe
                                                         class="profile-round-slides-frame"
                                                         title="{{ round.title }} slides"
@@ -356,19 +353,16 @@
                                         </div>
                                         <div id="profile-round-mobile-slides-{{ forloop.counter0 }}" class="profile-round-mobile-slides" hidden>
                                             <div class="profile-round-slides-shell">
-                                                <div class="profile-round-slides-toolbar">
+                                                <p class="profile-round-slides-link-row">
                                                     <a
-                                                        class="slides-button profile-player-button profile-round-slides-open-link"
+                                                        class="profile-round-link profile-round-slides-link"
                                                         href="{{ round.link }}"
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                     >
-                                                        Open in Google Slides
+                                                        Open round in Google Slides
                                                     </a>
-                                                    <p class="profile-round-slides-note">
-                                                        If Google blocks the inline preview, open the deck in a new tab.
-                                                    </p>
-                                                </div>
+                                                </p>
                                                 <iframe
                                                     class="profile-round-slides-frame"
                                                     title="{{ round.title }} slides"
