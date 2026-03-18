@@ -78,6 +78,7 @@ def _check_duplicate_id(presentation_id: str, current_presentation_id: int):
 def interactive_fill(presentations):
     updated = 0
     skipped = 0
+    deleted = 0
 
     for index, presentation in enumerate(presentations, start=1):
         _print_presentation_header(index, len(presentations), presentation)
@@ -85,7 +86,7 @@ def interactive_fill(presentations):
         while True:
             response = input(
                 "Enter presentation ID or Google Slides URL "
-                "(`Enter` to skip, `q` to quit): "
+                "(`Enter` to skip, `d` to delete, `q` to quit): "
             ).strip()
 
             if not response:
@@ -95,7 +96,20 @@ def interactive_fill(presentations):
 
             if response.lower() in {"q", "quit", "exit"}:
                 print("\nStopping early.")
-                return updated, skipped, True
+                return updated, skipped, deleted, True
+
+            if response.lower() in {"d", "delete", "remove"}:
+                confirm = input(
+                    f"Delete MergedPresentation id={presentation.id} ({presentation.name or '(blank)'})? [y/N]: "
+                ).strip().lower()
+                if confirm not in {"y", "yes"}:
+                    print("Delete canceled.")
+                    continue
+
+                presentation.delete()
+                deleted += 1
+                print("Deleted.")
+                break
 
             parsed_id = parse_presentation_id_input(response)
             if parsed_id == "":
@@ -117,7 +131,7 @@ def interactive_fill(presentations):
             print(f"Saved presentation_id={parsed_id}")
             break
 
-    return updated, skipped, False
+    return updated, skipped, deleted, False
 
 
 def main():
@@ -143,12 +157,13 @@ def main():
         return 0
 
     print(f"Found {len(presentations)} presentations with blank presentation_id values.")
-    updated, skipped, stopped_early = interactive_fill(presentations)
+    updated, skipped, deleted, stopped_early = interactive_fill(presentations)
 
     print("\nSummary:")
     print(f"  updated: {updated}")
     print(f"  skipped: {skipped}")
-    print(f"  remaining: {max(len(presentations) - updated - skipped, 0) if stopped_early else 0}")
+    print(f"  deleted: {deleted}")
+    print(f"  remaining: {max(len(presentations) - updated - skipped - deleted, 0) if stopped_early else 0}")
     return 0
 
 
