@@ -1009,6 +1009,30 @@ def _build_profile_night_score_totals(night_rounds, presentation):
     }
 
 
+def _build_profile_style_points_total(player_name):
+    total = 0.0
+
+    for presentation in MergedPresentation.objects.all():
+        style_points_raw = _parse_profile_presentation_json(
+            getattr(presentation, 'style_points', None),
+            {},
+        )
+        if not isinstance(style_points_raw, dict):
+            continue
+
+        for raw_player_name, raw_value in style_points_raw.items():
+            if display_name_for_player_field(raw_player_name) != player_name:
+                continue
+
+            try:
+                numeric_value = float(raw_value)
+            except (TypeError, ValueError):
+                continue
+            total += numeric_value
+
+    return int(total) if float(total).is_integer() else round(total, 2)
+
+
 def _build_profile_night_player_totals(night_rounds, presentation):
     player_fields = set(collect_player_fields(
         rounds=night_rounds,
@@ -1339,6 +1363,7 @@ def player_profile_dict(request, player_name, form=None, intro_form=None, includ
         round_obj.high_score_display = round_summary['high_score_display']
         round_obj.average_score_display = round_summary['average_score_display']
     created_rounds_count = len(created_rounds)
+    style_points_total = _build_profile_style_points_total(player_name)
 
     all_categories = sorted({
         round_data['major_category']
@@ -1552,6 +1577,7 @@ def player_profile_dict(request, player_name, form=None, intro_form=None, includ
         'max_cat_avg': max_creator_avg,
         'min_cat_avg': min_creator_avg,
         'created_rounds_count': created_rounds_count,
+        'style_points_total': style_points_total,
         'best_score_ever': best_night_stats['best_score_ever'],
         'best_performance_ever': best_night_stats['best_performance_ever'],
         'streak_timeline': streak_timeline['timeline'],

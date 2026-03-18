@@ -8,9 +8,10 @@
       --profile-page-trivia-color-one: {{ profile_page_trivia_color_one }};
       --profile-page-trivia-color-two: {{ profile_page_trivia_color_two }};
       --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
+      --profile-player-color: {{ player_color }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318m">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318n">
 {% endblock %}
 
 {% block extra_meta %}
@@ -53,12 +54,17 @@
 
                     <div class="profile-summary-grid">
                         <div class="profile-summary-item">
-                            <span class="profile-summary-label">Rounds Played</span>
-                            <span class="profile-summary-value">{{ total_rounds }}</span>
-                        </div>
-                        <div class="profile-summary-item">
-                            <span class="profile-summary-label">Rounds Created</span>
-                            <span class="profile-summary-value">{{ created_rounds_count }}</span>
+                            <span class="profile-summary-label">Rounds</span>
+                            <div class="profile-summary-pairs">
+                                <span class="profile-summary-pair">
+                                    <span class="profile-summary-pair-name">Played</span>
+                                    <span class="profile-summary-pair-value">{{ total_rounds }}</span>
+                                </span>
+                                <span class="profile-summary-pair">
+                                    <span class="profile-summary-pair-name">Created</span>
+                                    <span class="profile-summary-pair-value">{{ created_rounds_count }}</span>
+                                </span>
+                            </div>
                         </div>
                         <div class="profile-summary-item">
                             <span class="profile-summary-label">Highest Percentage Score</span>
@@ -76,52 +82,71 @@
                             </span>
                         </div>
                         <div class="profile-summary-item">
-                            <span class="profile-summary-label">Strongest Category</span>
-                            <span class="profile-summary-value">{{ max_avg }}</span>
+                            <span class="profile-summary-label">Style Points Received</span>
+                            <span class="profile-summary-value">{{ style_points_total }}</span>
                         </div>
                         <div class="profile-summary-item">
-                            <span class="profile-summary-label">Weakest Category</span>
-                            <span class="profile-summary-value">{{ min_avg }}</span>
+                            <span class="profile-summary-label">Categories</span>
+                            <div class="profile-summary-pairs">
+                                <span class="profile-summary-pair">
+                                    <span class="profile-summary-pair-name">Strongest</span>
+                                    <span class="profile-summary-pair-value">{{ max_avg|default:"N/A" }}</span>
+                                </span>
+                                <span class="profile-summary-pair">
+                                    <span class="profile-summary-pair-name">Weakest</span>
+                                    <span class="profile-summary-pair-value">{{ min_avg|default:"N/A" }}</span>
+                                </span>
+                            </div>
                         </div>
                         <div class="profile-summary-item">
-                            <span class="profile-summary-label">Creator You Score Best Against</span>
-                            <span class="profile-summary-value">
-                                {% if max_cat_avg %}
-                                    <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a>
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </span>
+                            <span class="profile-summary-label">Creator Matchups</span>
+                            <div class="profile-summary-pairs">
+                                <span class="profile-summary-pair">
+                                    <span class="profile-summary-pair-name">Best</span>
+                                    <span class="profile-summary-pair-value">
+                                        {% if max_cat_avg %}
+                                            <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a>
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </span>
+                                </span>
+                                <span class="profile-summary-pair">
+                                    <span class="profile-summary-pair-name">Worst</span>
+                                    <span class="profile-summary-pair-value">
+                                        {% if min_cat_avg %}
+                                            <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a>
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </span>
+                                </span>
+                            </div>
                         </div>
                         <div class="profile-summary-item">
-                            <span class="profile-summary-label">Creator You Score Worst Against</span>
-                            <span class="profile-summary-value">
-                                {% if min_cat_avg %}
-                                    <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a>
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </span>
-                        </div>
-                        <div class="profile-summary-item">
-                            <span class="profile-summary-label">Most Lenient Creator</span>
-                            <span class="profile-summary-value">
-                                {% if max_bias_avg %}
-                                    <a href="{% url 'player_profile' player_name=max_bias_avg %}" class="player_name" data-player="{{ max_bias_avg }}">{{ max_bias_avg }}</a> ({{ max_bias_avg_value }})
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </span>
-                        </div>
-                        <div class="profile-summary-item">
-                            <span class="profile-summary-label">Most Demanding Creator</span>
-                            <span class="profile-summary-value">
-                                {% if min_bias_avg %}
-                                    <a href="{% url 'player_profile' player_name=min_bias_avg %}" class="player_name" data-player="{{ min_bias_avg }}">{{ min_bias_avg }}</a> ({{ min_bias_avg_value }})
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </span>
+                            <span class="profile-summary-label">Biased Creators</span>
+                            <div class="profile-summary-pairs">
+                                <span class="profile-summary-pair">
+                                    <span class="profile-summary-pair-name">Highest</span>
+                                    <span class="profile-summary-pair-value">
+                                        {% if max_bias_avg %}
+                                            <a href="{% url 'player_profile' player_name=max_bias_avg %}" class="player_name" data-player="{{ max_bias_avg }}">{{ max_bias_avg }}</a> ({{ max_bias_avg_value }})
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </span>
+                                </span>
+                                <span class="profile-summary-pair">
+                                    <span class="profile-summary-pair-name">Lowest</span>
+                                    <span class="profile-summary-pair-value">
+                                        {% if min_bias_avg %}
+                                            <a href="{% url 'player_profile' player_name=min_bias_avg %}" class="player_name" data-player="{{ min_bias_avg }}">{{ min_bias_avg }}</a> ({{ min_bias_avg_value }})
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </span>
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </section>

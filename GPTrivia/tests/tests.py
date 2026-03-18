@@ -433,6 +433,7 @@ class PlayerAnalysisViewTests(TestCase):
             presentation_id="presentation-jan-29",
             joker_round_indices={"score_alex": "Joker Only Round"},
             creator_list=["Megan"],
+            style_points={"Alex": 2.5},
         )
 
         response = self.client.get(reverse('player_profile', args=['Alex']))
@@ -441,6 +442,7 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertEqual(response.context['profile_intro'], "Trivia goblin with a science streak.")
         self.assertEqual(response.context['longest_play_streak'], 2)
         self.assertEqual(response.context['longest_creator_streak'], 2)
+        self.assertEqual(response.context['style_points_total'], 2.5)
         self.assertEqual(len(response.context['streak_timeline']), 5)
         self.assertEqual(
             [(entry['played'], entry['created']) for entry in response.context['streak_timeline']],
