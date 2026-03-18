@@ -313,7 +313,7 @@ a {
 
 .profile-streak-date {
     position: absolute;
-    top: 0.55rem;
+    top: 0.82rem;
     left: 50%;
     display: block;
     width: calc(var(--profile-streak-date-height) - 0.35rem);
@@ -1333,7 +1333,7 @@ a {
 
     .profile-streak-date {
         font-size: 0.68rem;
-        top: 0.48rem;
+        top: 0.72rem;
     }
 
     #profile-appearance-panel,
