@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 import argparse
 import base64
+import datetime as dt
 import os
 import pickle
 import re
 import sys
 from dataclasses import dataclass
 from email.utils import parseaddr
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -16,18 +17,19 @@ from googleapiclient.errors import HttpError
 from GPTrivia.mail import (
     CLIENT_SECRET_FILE,
     MAIL_NAME_MAP,
-    SCOPES,
     URL_PATTERN,
     _extract_presentation_link_parts,
     _format_pacific_timestamp,
-    _normalize_round_title,
     build_credentials,
     token_file_path,
 )
 
 
 PLACEHOLDER_PRESENTATION_ID = "1gC9DR9TmQK_9ls8Npw8Sc99qKI6YN9nRqLuVj0W07ns"
-GOOGLE_SLIDES_MIME_TYPE = "application/vnd.google-apps.presentation"
+
+
+def log_progress(message: str):
+    print(message, file=sys.stderr, flush=True)
 
 
 def configure_django():
@@ -101,24 +103,6 @@ def _extract_text_plain_body(payload: dict) -> Optional[str]:
     return None
 
 
-def _first_slide_title_and_id(presentation: dict) -> Tuple[str, Optional[str]]:
-    slides = presentation.get("slides", [])
-    if not slides:
-        return "", None
-
-    first_slide = slides[0]
-    title_chunks: List[str] = []
-    for element in first_slide.get("pageElements", []):
-        shape = element.get("shape", {})
-        for text_element in shape.get("text", {}).get("textElements", []):
-            text_run = text_element.get("textRun")
-            if text_run and "content" in text_run:
-                title_chunks.append(text_run["content"])
-
-    title_text = re.sub(r"\s+", " ", " ".join(title_chunks)).strip()
-    return title_text, first_slide.get("objectId")
-
-
 def _build_round_link(presentation_id: str, slide_id: Optional[str], *, link_style: str) -> str:
     if link_style == "edit":
         base = f"https://docs.google.com/presentation/d/{presentation_id}/edit"
@@ -134,8 +118,6 @@ class SharedRoundCandidate:
     creator: str
     shared_date_iso: str
     shared_date_label: str
-    title: str
-    normalized_title: str
     original_url: str
     repair_link: str
 
@@ -158,12 +140,32 @@ def iter_target_rounds(*, include_blank: bool, creator_filter: Optional[str], li
     return round_objects
 
 
+def _target_creator_date_pairs(rounds) -> set:
+    pairs = set()
+    for round_obj in rounds:
+        if not round_obj.date:
+            continue
+        pairs.add((normalize_creator_name(round_obj.creator), round_obj.date.isoformat()))
+    return pairs
+
+
+def _parse_shared_date(internal_date: str) -> Tuple[str, str]:
+    shared_date_label = _format_pacific_timestamp(internal_date or "0")
+    try:
+        shared_date_iso = dt.datetime.strptime(shared_date_label, "%B %d, %Y").date().isoformat()
+    except ValueError:
+        shared_date_iso = ""
+    return shared_date_iso, shared_date_label
+
+
 def _fetch_message_ids(gmail_service) -> List[str]:
     query = 'subject:"Presentation shared with you:"'
     message_ids: List[str] = []
     page_token = None
+    page_count = 0
 
     while True:
+        page_count += 1
         response = gmail_service.users().messages().list(
             userId="me",
             q=query,
@@ -171,41 +173,77 @@ def _fetch_message_ids(gmail_service) -> List[str]:
             pageToken=page_token,
         ).execute()
         message_ids.extend(message["id"] for message in response.get("messages", []))
+        log_progress(f"[gmail] fetched page {page_count} | messages so far: {len(message_ids)}")
         page_token = response.get("nextPageToken")
         if not page_token:
             return message_ids
 
 
-def collect_shared_round_candidates(*, credentials, link_style: str) -> List[SharedRoundCandidate]:
+def _fetch_message_metadata(gmail_service, message_id: str) -> Optional[dict]:
+    try:
+        return gmail_service.users().messages().get(
+            userId="me",
+            id=message_id,
+            format="metadata",
+            metadataHeaders=["From", "internalDate"],
+        ).execute()
+    except HttpError as exc:
+        print(f"Skipping Gmail metadata {message_id}: {exc}", file=sys.stderr)
+        return None
+
+
+def _fetch_message_full(gmail_service, message_id: str) -> Optional[dict]:
+    try:
+        return gmail_service.users().messages().get(
+            userId="me",
+            id=message_id,
+            format="full",
+        ).execute()
+    except HttpError as exc:
+        print(f"Skipping Gmail message {message_id}: {exc}", file=sys.stderr)
+        return None
+
+
+def collect_shared_round_candidates(
+    *,
+    credentials,
+    link_style: str,
+    progress_every: int,
+    target_pairs,
+) -> List[SharedRoundCandidate]:
     gmail_service = build("gmail", "v1", credentials=credentials)
-    drive_service = build("drive", "v3", credentials=credentials)
-    slides_service = build("slides", "v1", credentials=credentials)
-
     candidates_by_presentation_id: Dict[str, SharedRoundCandidate] = {}
-    presentation_cache: Dict[str, Optional[Tuple[str, Optional[str], str]]] = {}
+    message_ids = _fetch_message_ids(gmail_service)
 
-    for message_id in _fetch_message_ids(gmail_service):
-        try:
-            message = gmail_service.users().messages().get(
-                userId="me",
-                id=message_id,
-                format="full",
-            ).execute()
-        except HttpError as exc:
-            print(f"Skipping Gmail message {message_id}: {exc}", file=sys.stderr)
+    log_progress(f"[gmail] processing {len(message_ids)} shared-presentation messages")
+    matched_metadata = 0
+    fetched_bodies = 0
+
+    for index, message_id in enumerate(message_ids, start=1):
+        if index == 1 or index % progress_every == 0 or index == len(message_ids):
+            log_progress(
+                "[gmail] processing message "
+                f"{index}/{len(message_ids)} | metadata matches: {matched_metadata} | "
+                f"full bodies fetched: {fetched_bodies} | unique candidate decks: {len(candidates_by_presentation_id)}"
+            )
+
+        metadata = _fetch_message_metadata(gmail_service, message_id)
+        if metadata is None:
             continue
 
-        headers = {header["name"]: header["value"] for header in message.get("payload", {}).get("headers", [])}
-        sender_header = headers.get("From", "")
-        creator = _map_sender_to_creator(sender_header)
-        shared_date_label = _format_pacific_timestamp(message.get("internalDate", "0"))
-        shared_date_iso = None
-        try:
-            import datetime as _datetime
+        headers = {header["name"]: header["value"] for header in metadata.get("payload", {}).get("headers", [])}
+        creator = _map_sender_to_creator(headers.get("From", ""))
+        shared_date_iso, shared_date_label = _parse_shared_date(metadata.get("internalDate", "0"))
 
-            shared_date_iso = _datetime.datetime.strptime(shared_date_label, "%B %d, %Y").date().isoformat()
-        except ValueError:
-            shared_date_iso = ""
+        if (normalize_creator_name(creator), shared_date_iso) not in target_pairs:
+            continue
+
+        matched_metadata += 1
+
+        message = _fetch_message_full(gmail_service, message_id)
+        if message is None:
+            continue
+        fetched_bodies += 1
 
         body_text = _extract_text_plain_body(message.get("payload", {}))
         if not body_text:
@@ -216,69 +254,31 @@ def collect_shared_round_candidates(*, credentials, link_style: str) -> List[Sha
             continue
 
         original_url = url_match.group(1)
-        presentation_id, _ = _extract_presentation_link_parts(original_url)
+        presentation_id, slide_id = _extract_presentation_link_parts(original_url)
         if not presentation_id:
             continue
 
-        if presentation_id not in presentation_cache:
-            try:
-                metadata = drive_service.files().get(
-                    fileId=presentation_id,
-                    fields="id,mimeType,name",
-                    supportsAllDrives=True,
-                ).execute()
-            except HttpError as exc:
-                print(f"Skipping Drive file {presentation_id}: {exc}", file=sys.stderr)
-                presentation_cache[presentation_id] = None
-                continue
-
-            if metadata.get("mimeType") != GOOGLE_SLIDES_MIME_TYPE:
-                presentation_cache[presentation_id] = None
-                continue
-
-            try:
-                presentation = slides_service.presentations().get(presentationId=presentation_id).execute()
-            except HttpError as exc:
-                print(f"Skipping Slides presentation {presentation_id}: {exc}", file=sys.stderr)
-                presentation_cache[presentation_id] = None
-                continue
-
-            title_text, first_slide_id = _first_slide_title_and_id(presentation)
-            display_title = title_text or metadata.get("name", "")
-            presentation_cache[presentation_id] = (display_title, first_slide_id, metadata.get("name", ""))
-
-        cached = presentation_cache.get(presentation_id)
-        if not cached:
-            continue
-
-        display_title, first_slide_id, _drive_name = cached
-        normalized_title = _normalize_round_title(display_title)
         candidate = SharedRoundCandidate(
             presentation_id=presentation_id,
             creator=creator,
             shared_date_iso=shared_date_iso,
             shared_date_label=shared_date_label,
-            title=display_title,
-            normalized_title=normalized_title,
             original_url=original_url,
-            repair_link=_build_round_link(presentation_id, first_slide_id, link_style=link_style),
+            repair_link=_build_round_link(presentation_id, slide_id, link_style=link_style),
         )
 
         existing = candidates_by_presentation_id.get(presentation_id)
         if existing is None or candidate.shared_date_iso >= existing.shared_date_iso:
             candidates_by_presentation_id[presentation_id] = candidate
 
+    log_progress(
+        f"[gmail] finished scanning messages | metadata matches: {matched_metadata} | "
+        f"full bodies fetched: {fetched_bodies} | unique candidate decks: {len(candidates_by_presentation_id)}"
+    )
     return list(candidates_by_presentation_id.values())
 
 
-def _title_contains(candidate_title: str, round_title: str) -> bool:
-    if not candidate_title or not round_title:
-        return False
-    return candidate_title in round_title or round_title in candidate_title
-
-
 def choose_candidate_for_round(round_obj, candidates: Sequence[SharedRoundCandidate], *, allow_date_only: bool):
-    round_title = _normalize_round_title(round_obj.title)
     round_creator = normalize_creator_name(round_obj.creator)
     round_date_iso = round_obj.date.isoformat() if round_obj.date else ""
 
@@ -290,42 +290,26 @@ def choose_candidate_for_round(round_obj, candidates: Sequence[SharedRoundCandid
     if not creator_candidates:
         return None, "no_creator_match", []
 
-    title_exact = [
-        candidate
-        for candidate in creator_candidates
-        if candidate.normalized_title and candidate.normalized_title == round_title
-    ]
-    title_exact_and_date = [
-        candidate for candidate in title_exact if candidate.shared_date_iso == round_date_iso
-    ]
-    if len(title_exact_and_date) == 1:
-        return title_exact_and_date[0], "creator+title+date", title_exact_and_date
-    if len(title_exact) == 1:
-        return title_exact[0], "creator+title", title_exact
-    if len(title_exact_and_date) > 1 or len(title_exact) > 1:
-        return None, "ambiguous_title", title_exact_and_date or title_exact
-
-    fuzzy_title_and_date = [
+    creator_and_date = [
         candidate
         for candidate in creator_candidates
         if candidate.shared_date_iso == round_date_iso
-        and _title_contains(candidate.normalized_title, round_title)
     ]
-    if len(fuzzy_title_and_date) == 1:
-        return fuzzy_title_and_date[0], "creator+date+fuzzy_title", fuzzy_title_and_date
-    if len(fuzzy_title_and_date) > 1:
-        return None, "ambiguous_fuzzy_title", fuzzy_title_and_date
+    if len(creator_and_date) == 1:
+        return creator_and_date[0], "creator+date", creator_and_date
+    if len(creator_and_date) > 1:
+        return None, "ambiguous_date", creator_and_date
 
     if allow_date_only:
         date_only = [
             candidate
-            for candidate in creator_candidates
+            for candidate in candidates
             if candidate.shared_date_iso == round_date_iso
         ]
         if len(date_only) == 1:
-            return date_only[0], "creator+date", date_only
+            return date_only[0], "date_only", date_only
         if len(date_only) > 1:
-            return None, "ambiguous_date", date_only
+            return None, "ambiguous_date_only", date_only
 
     return None, "no_safe_match", creator_candidates
 
@@ -334,7 +318,7 @@ def main():
     parser = argparse.ArgumentParser(
         description=(
             "Find GPTrivia rounds still using the placeholder link and repair them "
-            "by matching against shared Google Slides rounds."
+            "by matching against shared Google Slides rounds using creator and shared date."
         )
     )
     parser.add_argument(
@@ -359,13 +343,19 @@ def main():
     parser.add_argument(
         "--allow-date-only",
         action="store_true",
-        help="Allow a unique creator+date match even when title matching fails.",
+        help="Allow a unique date-only match when creator matching fails.",
     )
     parser.add_argument(
         "--link-style",
         choices=("embed", "edit"),
         default="embed",
         help="Write repaired links in embed or edit form. Default: embed.",
+    )
+    parser.add_argument(
+        "--progress-every",
+        type=int,
+        default=25,
+        help="Print progress every N processed messages/rounds. Default: 25.",
     )
     args = parser.parse_args()
 
@@ -388,16 +378,32 @@ def main():
         print("No placeholder rounds found.")
         return 0
 
-    candidates = collect_shared_round_candidates(credentials=credentials, link_style=args.link_style)
+    log_progress(f"[rounds] found {len(rounds)} placeholder rounds to inspect")
+    target_pairs = _target_creator_date_pairs(rounds)
+    log_progress(f"[rounds] unique creator/date pairs to search: {len(target_pairs)}")
+
+    candidates = collect_shared_round_candidates(
+        credentials=credentials,
+        link_style=args.link_style,
+        progress_every=max(1, args.progress_every),
+        target_pairs=target_pairs,
+    )
     if not candidates:
         print("No shared presentation candidates were found in Gmail.", file=sys.stderr)
         return 1
+    log_progress(f"[gmail] candidate pool ready: {len(candidates)} unique decks")
 
     updated = 0
     unmatched = 0
     ambiguous = 0
 
-    for round_obj in rounds:
+    for index, round_obj in enumerate(rounds, start=1):
+        if index == 1 or index % max(1, args.progress_every) == 0 or index == len(rounds):
+            log_progress(
+                "[rounds] matching "
+                f"{index}/{len(rounds)} | updated={updated} unmatched={unmatched} ambiguous={ambiguous}"
+            )
+
         candidate, reason, related_candidates = choose_candidate_for_round(
             round_obj,
             candidates,
@@ -411,11 +417,10 @@ def main():
 
         if candidate is None:
             print(f"SKIP  {round_label} | {reason}")
-            preview_candidates = related_candidates[:3]
-            for preview in preview_candidates:
+            for preview in related_candidates[:3]:
                 print(
                     "      candidate="
-                    f"{preview.creator} | {preview.shared_date_label} | {preview.title} | {preview.original_url}"
+                    f"{preview.creator} | {preview.shared_date_label} | {preview.original_url}"
                 )
             if reason.startswith("ambiguous"):
                 ambiguous += 1
