@@ -1223,10 +1223,17 @@
                             body: new FormData(control.form),
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRFToken': getCsrfToken(),
+                                'Accept': 'application/json',
                             },
                         });
                         if (!response.ok) {
                             throw new Error(`Save failed with status ${response.status}`);
+                        }
+                        const contentType = response.headers.get('content-type') || '';
+                        if (!contentType.includes('application/json')) {
+                            const responseText = await response.text();
+                            throw new Error(`Expected JSON response, got ${contentType || 'unknown content type'}: ${responseText.slice(0, 200)}`);
                         }
                         const payload = await response.json();
                         if (!payload.success) {

@@ -1439,7 +1439,11 @@ def update_profile_round_category(request, round_id):
         setattr(round_obj, field_name, field_value)
     round_obj.save(update_fields=list(fields_to_update.keys()))
 
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
+    if wants_json:
         return JsonResponse(
             {
                 'success': True,
