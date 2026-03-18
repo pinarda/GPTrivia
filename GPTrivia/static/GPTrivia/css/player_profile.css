@@ -468,6 +468,24 @@ a {
     border-radius: 0;
 }
 
+.profile-round-category-form {
+    margin: 0;
+}
+
+.profile-round-category-select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--profile-input-border);
+    background: var(--profile-input-bg);
+    color: var(--profile-input-text);
+    font-family: Monaco, monospace;
+    font-size: 0.9rem;
+    border-radius: 0;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
 .profile-created-rounds-tools {
     display: grid;
     gap: 0.65rem;

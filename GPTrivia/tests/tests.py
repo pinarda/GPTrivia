@@ -502,6 +502,73 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertEqual(response.context['max_cat_avg'], 'Megan')
         self.assertNotEqual(response.context['max_cat_avg'], 'Debi')
 
+    def test_profile_owner_can_update_created_round_category(self):
+        trivia_round = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Category Update Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-05-01",
+            round_number=1,
+            max_score=10,
+            score_alex=None,
+            score_megan=7,
+        )
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Existing History Round",
+            major_category="History",
+            minor_category1="Ancient",
+            minor_category2="Rome",
+            date="2023-05-08",
+            round_number=1,
+            max_score=10,
+            score_alex=8,
+            score_megan=None,
+        )
+
+        response = self.client.post(
+            reverse('update_profile_round_category', args=[trivia_round.id]),
+            {
+                'major_category': 'History',
+                'next_panel': 'created-rounds-panel',
+            },
+        )
+
+        trivia_round.refresh_from_db()
+        self.assertRedirects(
+            response,
+            f"{reverse('player_profile', args=['Alex'])}?panel=created-rounds-panel",
+        )
+        self.assertEqual(trivia_round.major_category, 'History')
+
+    def test_profile_owner_cannot_update_other_players_round_category(self):
+        trivia_round = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Locked Category Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-05-01",
+            round_number=1,
+            max_score=10,
+            score_alex=8,
+            score_megan=None,
+        )
+
+        response = self.client.post(
+            reverse('update_profile_round_category', args=[trivia_round.id]),
+            {
+                'major_category': 'History',
+                'next_panel': 'created-rounds-panel',
+            },
+        )
+
+        trivia_round.refresh_from_db()
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(trivia_round.major_category, 'Science')
+
     def test_profile_best_night_stats_use_jokers_and_allow_creator_blanks(self):
         MergedPresentation.objects.create(
             name="02.06.2023",

@@ -37,6 +37,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 import datetime
 import logging
 import requests
+from urllib.parse import urlencode
 
 ## API Libs
 from rest_framework import generics
@@ -1356,6 +1357,7 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         'player_name': player_name,
         'created_rounds_cat': created_rounds_cat_list,
         'created_rounds': created_rounds,
+        'available_major_categories': all_categories,
         'player_color_mapping': build_player_color_mapping(global_player_names),
         'text_color': text_color,
         'max_avg': max_avg,
@@ -1376,6 +1378,35 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         context['form'] = form
 
     return context
+
+
+@login_required
+def update_profile_round_category(request, round_id):
+    if request.method != 'POST':
+        raise Http404("Category updates must be submitted with POST.")
+
+    round_obj = get_object_or_404(GPTriviaRound, id=round_id)
+    current_user_name = display_name_for_player_field(request.user.username)
+    if display_name_for_player_field(round_obj.creator) != current_user_name:
+        raise Http404("Round not found.")
+
+    new_category = (request.POST.get('major_category') or '').strip()
+    available_categories = {
+        category
+        for category in GPTriviaRound.objects.values_list('major_category', flat=True)
+        if category
+    }
+    if new_category and new_category not in available_categories:
+        raise Http404("Category not found.")
+
+    round_obj.major_category = new_category
+    round_obj.save(update_fields=['major_category'])
+
+    redirect_url = reverse('player_profile', kwargs={'player_name': request.user.username})
+    panel = (request.POST.get('next_panel') or '').strip()
+    if panel:
+        redirect_url = f"{redirect_url}?{urlencode({'panel': panel})}"
+    return redirect(redirect_url)
 
 # views.py
 class GenerateIdeaView(View):

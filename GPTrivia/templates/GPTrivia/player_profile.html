@@ -10,7 +10,7 @@
       --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260317h">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318a">
 {% endblock %}
 
 {% block extra_meta %}
@@ -188,7 +188,30 @@
                                                 </a>
                                             </td>
                                             <td data-sort-value="{{ round.date|date:'Y-m-d' }}">{{ round.date }}</td>
-                                            <td>{{ round.major_category|default:"—" }}</td>
+                                            <td>
+                                                {% if is_own_profile %}
+                                                    <form
+                                                        class="profile-round-category-form"
+                                                        method="post"
+                                                        action="{% url 'update_profile_round_category' round.id %}"
+                                                    >
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="next_panel" value="created-rounds-panel">
+                                                        <select
+                                                            class="profile-round-category-select"
+                                                            name="major_category"
+                                                            aria-label="Set category for {{ round.title }}"
+                                                        >
+                                                            <option value="">—</option>
+                                                            {% for category in available_major_categories %}
+                                                                <option value="{{ category }}" {% if round.major_category == category %}selected{% endif %}>{{ category }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </form>
+                                                {% else %}
+                                                    {{ round.major_category|default:"—" }}
+                                                {% endif %}
+                                            </td>
                                             <td data-sort-value="{{ round.round_number }}">{{ round.round_number }}</td>
                                             <td data-sort-value="{{ round.cooperative|yesno:'1,0' }}">{{ round.cooperative|yesno:"Yes,No" }}</td>
                                             <td data-sort-value="{{ round.max_score|default_if_none:'' }}">{{ round.max_score|default:"—" }}</td>
@@ -211,7 +234,28 @@
                                                 <div class="profile-round-detail-grid">
                                                     <div class="profile-round-detail-item">
                                                         <span class="profile-round-detail-label">Category</span>
-                                                        <span class="profile-round-detail-value">{{ round.major_category|default:"—" }}</span>
+                                                        {% if is_own_profile %}
+                                                            <form
+                                                                class="profile-round-category-form"
+                                                                method="post"
+                                                                action="{% url 'update_profile_round_category' round.id %}"
+                                                            >
+                                                                {% csrf_token %}
+                                                                <input type="hidden" name="next_panel" value="created-rounds-panel">
+                                                                <select
+                                                                    class="profile-round-category-select"
+                                                                    name="major_category"
+                                                                    aria-label="Set category for {{ round.title }}"
+                                                                >
+                                                                    <option value="">—</option>
+                                                                    {% for category in available_major_categories %}
+                                                                        <option value="{{ category }}" {% if round.major_category == category %}selected{% endif %}>{{ category }}</option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </form>
+                                                        {% else %}
+                                                            <span class="profile-round-detail-value">{{ round.major_category|default:"—" }}</span>
+                                                        {% endif %}
                                                     </div>
                                                     <div class="profile-round-detail-item">
                                                         <span class="profile-round-detail-label">Round</span>
@@ -314,7 +358,28 @@
                                         <div class="profile-round-detail-grid">
                                             <div class="profile-round-detail-item">
                                                 <span class="profile-round-detail-label">Category</span>
-                                                <span class="profile-round-detail-value">{{ round.major_category|default:"—" }}</span>
+                                                {% if is_own_profile %}
+                                                    <form
+                                                        class="profile-round-category-form"
+                                                        method="post"
+                                                        action="{% url 'update_profile_round_category' round.id %}"
+                                                    >
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="next_panel" value="created-rounds-panel">
+                                                        <select
+                                                            class="profile-round-category-select"
+                                                            name="major_category"
+                                                            aria-label="Set category for {{ round.title }}"
+                                                        >
+                                                            <option value="">—</option>
+                                                            {% for category in available_major_categories %}
+                                                                <option value="{{ category }}" {% if round.major_category == category %}selected{% endif %}>{{ category }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </form>
+                                                {% else %}
+                                                    <span class="profile-round-detail-value">{{ round.major_category|default:"—" }}</span>
+                                                {% endif %}
                                             </div>
                                             <div class="profile-round-detail-item">
                                                 <span class="profile-round-detail-label">Round</span>
@@ -914,6 +979,29 @@
                 });
                 filterProfileTableRows(panel.id, input.value);
             });
+
+            const params = new URLSearchParams(window.location.search);
+            const requestedPanel = params.get('panel');
+            if (requestedPanel) {
+                const panelButton = document.querySelector(`.profile-panel-toggle[data-panel-target="${requestedPanel}"]`);
+                if (panelButton) {
+                    toggleProfilePanel(panelButton);
+                }
+                params.delete('panel');
+                const nextQuery = params.toString();
+                const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash || ''}`;
+                window.history.replaceState({}, '', nextUrl);
+            }
+        }
+
+        function initializeProfileRoundCategoryForms() {
+            document.querySelectorAll('.profile-round-category-select').forEach(select => {
+                select.addEventListener('change', () => {
+                    if (select.form) {
+                        select.form.submit();
+                    }
+                });
+            });
         }
 
         function initializeProfileMobileSorting() {
@@ -1391,8 +1479,9 @@
 
             setButtonColors();
             setPlayerLinkHoverColors();
-            initializeProfilePanels();
-            initializeProfileMobileSorting();
+        initializeProfilePanels();
+        initializeProfileRoundCategoryForms();
+        initializeProfileMobileSorting();
             initializeProfileRoundRowToggles();
             initializeSlidesButtons();
             initializeProfileTableSorting();
