@@ -181,7 +181,7 @@ a {
 .profile-settings-form button,
 .profile-settings-form input[type="file"]::file-selector-button,
 .profile-settings-form input[type="file"]::-webkit-file-upload-button {
-    font-family: Monaco, monospace;
+    font-family: YoungSerif, serif;
     font-size: 1rem;
     line-height: 1.2;
     min-height: 48px;
