@@ -560,7 +560,7 @@
             <h2>Summary Stats</h2>
             <p>Number of Rounds Played: {{ total_rounds }}</p>
             <p>Number of Rounds Created: {{ created_rounds_count }}</p>
-            <p>Best Score Ever:
+            <p>Highest Percentage Score:
                 {% if best_score_ever %}
                     {{ best_score_ever.display_value }} on
                     {% if best_score_ever.scoresheet_link %}
@@ -572,7 +572,7 @@
                     N/A
                 {% endif %}
             </p>
-            <p>Best Performance Ever:
+            <p>Biggest Win:
                 {% if best_performance_ever %}
                     {{ best_performance_ever.display_value }} on
                     {% if best_performance_ever.scoresheet_link %}
@@ -586,14 +586,14 @@
             </p>
             <p>Strongest Category: {{ max_avg }}</p>
             <p>Weakest Category: {{ min_avg }}</p>
-            <p>Easiest Creator:
+            <p>Creator You Score Best Against:
                 {% if max_cat_avg %}
                     <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a>
                 {% else %}
                     N/A
                 {% endif %}
             </p>
-            <p>Hardest Creator:
+            <p>Creator You Score Worst Against:
                 {% if min_cat_avg %}
                     <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a>
                 {% else %}

@@ -840,6 +840,28 @@ def _build_scoresheet_date_link(target_date):
     return f"{reverse('scoresheet_new')}?date={target_date_str}"
 
 
+def _get_recently_active_profile_player_names(all_rounds):
+    cutoff_date = _current_trivia_date() - datetime.timedelta(days=365)
+    active_player_names = set()
+
+    for round_obj in all_rounds:
+        if not round_obj.date or round_obj.date < cutoff_date:
+            continue
+
+        creator_name = display_name_for_player_field(round_obj.creator)
+        if creator_name:
+            active_player_names.add(creator_name)
+
+        for player_field, score_value in get_round_score_map(round_obj, include_null_fixed=False).items():
+            if score_value is None:
+                continue
+            player_name = display_name_for_player_field(player_field)
+            if player_name:
+                active_player_names.add(player_name)
+
+    return active_player_names
+
+
 def _parse_profile_presentation_json(value, fallback):
     if value in (None, '', []):
         return fallback
@@ -950,13 +972,14 @@ def _build_profile_night_final_totals(night_rounds, presentation):
     return final_totals
 
 
-def _build_profile_best_night_stats(all_rounds, player_name):
+def _build_profile_best_night_stats(all_rounds, player_name, active_player_names):
     score_field = player_field_for_name(player_name)
     other_player_fields = [
-        player_field
-        for player_field in collect_player_fields(rounds=all_rounds)
-        if player_field != score_field
+        player_field_for_name(active_player_name)
+        for active_player_name in active_player_names
+        if active_player_name != player_name
     ]
+    other_player_fields = [player_field for player_field in other_player_fields if player_field]
 
     rounds_by_date = {}
     for round_obj in all_rounds:
@@ -1065,6 +1088,7 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
     global_player_names = _get_global_player_names()
     if player_name not in global_player_names:
         raise Http404("Player profile not available")
+    active_player_names = _get_recently_active_profile_player_names(all_rounds)
 
     player_color = get_player_color(player_name)
     brightness = (0.5 * int(player_color[1:3], 16)) + int(player_color[3:5], 16) + (0.25 * int(player_color[5:7], 16))
@@ -1104,7 +1128,7 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         for round_data in flattened_rounds
         if round_data.get(score_field) is not None
     ]
-    best_night_stats = _build_profile_best_night_stats(all_rounds, player_name)
+    best_night_stats = _build_profile_best_night_stats(all_rounds, player_name, active_player_names)
     player_avg = (sum(player_values) / len(player_values)) if player_values else None
     total_rounds = len(player_values)
 
@@ -1154,7 +1178,12 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
     eligible_creator_averages = [
         creator_avg
         for creator_avg in creator_averages
-        if creator_avg['creator'] in global_player_names and creator_avg['creator'] != player_name and creator_avg['avg_score'] is not None
+        if (
+            creator_avg['creator'] in global_player_names
+            and creator_avg['creator'] in active_player_names
+            and creator_avg['creator'] != player_name
+            and creator_avg['avg_score'] is not None
+        )
     ]
     max_creator_avg = eligible_creator_averages[0]['creator'] if eligible_creator_averages else ''
     min_creator_avg = eligible_creator_averages[-1]['creator'] if eligible_creator_averages else ''
@@ -1184,6 +1213,8 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
     biases = {}
     for item in creator_averages:
         creator_name = item['creator']
+        if creator_name not in active_player_names:
+            continue
         if creator_name not in final_averages:
             continue
         if final_averages[creator_name] is not None and item['avg_score'] is not None:

@@ -291,6 +291,9 @@ class PlayerAnalysisViewTests(TestCase):
         self.views_threshold_patcher = patch('GPTrivia.views.MIN_ANALYSIS_ROUNDS', 1)
         self.views_threshold_patcher.start()
         self.addCleanup(self.views_threshold_patcher.stop)
+        self.current_trivia_date_patcher = patch('GPTrivia.views._current_trivia_date', return_value=datetime.date(2023, 6, 1))
+        self.current_trivia_date_patcher.start()
+        self.addCleanup(self.current_trivia_date_patcher.stop)
 
         self.user = User.objects.create_user(username='Alex', password='Rapt0rpusia')
         self.client.force_login(self.user)
@@ -462,10 +465,42 @@ class PlayerAnalysisViewTests(TestCase):
             response.context['best_performance_ever']['scoresheet_link'],
             f"{reverse('scoresheet_new')}?date=2023-01-01",
         )
-        self.assertContains(response, 'Best Score Ever')
-        self.assertContains(response, 'Best Performance Ever')
+        self.assertContains(response, 'Highest Percentage Score')
+        self.assertContains(response, 'Biggest Win')
         self.assertContains(response, f"{reverse('scoresheet_new')}?date=2023-01-08")
         self.assertContains(response, f"{reverse('scoresheet_new')}?date=2023-01-01")
+
+    def test_profile_creator_stats_ignore_players_inactive_for_over_a_year(self):
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Recent Active Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date="2023-05-01",
+            round_number=1,
+            max_score=10,
+            score_alex=6,
+            score_megan=5,
+        )
+        GPTriviaRound.objects.create(
+            creator="Debi",
+            title="Old Inactive Round",
+            major_category="Science",
+            minor_category1="Chemistry",
+            minor_category2="Atoms",
+            date="2021-01-01",
+            round_number=1,
+            max_score=10,
+            score_alex=10,
+            score_debi=2,
+        )
+
+        response = self.client.get(reverse('player_profile', args=['Alex']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['max_cat_avg'], 'Megan')
+        self.assertNotEqual(response.context['max_cat_avg'], 'Debi')
 
     def test_creators_list_not_empty(self):
         # create a sample GPTriviaRound instance
