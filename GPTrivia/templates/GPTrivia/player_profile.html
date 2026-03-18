@@ -10,7 +10,7 @@
       --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318h">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318i">
 {% endblock %}
 
 {% block extra_meta %}
@@ -1058,6 +1058,9 @@
             document.body.style.setProperty('--profile-category-bg', playerColor);
             document.body.style.setProperty('--profile-category-text', textColor);
             document.body.style.setProperty('--profile-category-border', borderColor);
+            document.body.style.setProperty('--profile-settings-bg', playerColor);
+            document.body.style.setProperty('--profile-settings-text', textColor);
+            document.body.style.setProperty('--profile-settings-border', borderColor);
             const actionButtons = document.querySelectorAll('.profile-player-button');
             actionButtons.forEach(button => {
                 button.style.backgroundColor = playerColor;
