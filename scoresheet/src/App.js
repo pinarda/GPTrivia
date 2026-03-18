@@ -1159,6 +1159,7 @@ const PlayerTable = () => {
         players.reduce((acc, curr) => ({...acc, [curr]: ''}), {})
     );
     const [roundCreators, setRoundCreators] = useState({});
+    const [secondaryRoundCreators, setSecondaryRoundCreators] = useState({});
     const [scores, setScores] = useState({});
     const [medianScores, setMedianScores] = useState([]);
     const [isSortAscending, setIsSortAscending] = useState(true);
@@ -1285,6 +1286,34 @@ const PlayerTable = () => {
       setIsSaved(false);
       setSaveRequestCount(prev => prev + 1);
     }, []);
+
+    const transformName = useCallback((name) => {
+      if (name === 'Dad') {
+        return 'Dan';
+      } else if (name === 'Mom') {
+        return 'Debi';
+      } else {
+        return name;
+      }
+    }, []);
+
+    const getNormalizedCreatorName = useCallback((name) => transformName(name || ''), [transformName]);
+
+    const getRoundCreatorPair = useCallback((roundTitle, roundOverride = null) => {
+      const round = roundOverride || rounds.find(candidate => candidate.title === roundTitle);
+      return [
+        roundCreators[roundTitle] || round?.creator || '',
+        secondaryRoundCreators[roundTitle] || round?.secondary_creator || '',
+      ].map(getNormalizedCreatorName);
+    }, [getNormalizedCreatorName, roundCreators, rounds, secondaryRoundCreators]);
+
+    const getRoundCreatorDisplayNames = useCallback((roundTitle, roundOverride = null) => {
+      return getRoundCreatorPair(roundTitle, roundOverride).filter(Boolean);
+    }, [getRoundCreatorPair]);
+
+    const roundIncludesCreator = useCallback((roundTitle, playerDisplayName, roundOverride = null) => {
+      return getRoundCreatorDisplayNames(roundTitle, roundOverride).includes(playerDisplayName);
+    }, [getRoundCreatorDisplayNames]);
 
     const clearJokerRouletteForPlayer = useCallback((player) => {
       const playerTimeouts = jokerRouletteTimeoutsRef.current[player] || [];
@@ -1531,21 +1560,21 @@ const PlayerTable = () => {
             setMaxScores(initialMaxScores);
 
           let roundCreators = {};
-            for (let round of json) {
-              roundCreators[round.title] = round.creator;
-            }
-            // in the roundCreators object, replace the values "Dad" and "Mom" with "Dan" and "Debi", respectively
-            roundCreators = Object.keys(roundCreators).reduce((acc, key) => {
-                if (roundCreators[key] === 'Dad') {
-                    acc[key] = 'Dan';
-                } else if (roundCreators[key] === 'Mom') {
-                    acc[key] = 'Debi';
-                } else {
-                    acc[key] = roundCreators[key];
-                }
-                return acc;
-            }, {});
-            setRoundCreators(roundCreators);
+          let secondaryCreators = {};
+          for (let round of json) {
+            roundCreators[round.title] = round.creator;
+            secondaryCreators[round.title] = round.secondary_creator || '';
+          }
+          roundCreators = Object.keys(roundCreators).reduce((acc, key) => {
+            acc[key] = getNormalizedCreatorName(roundCreators[key]);
+            return acc;
+          }, {});
+          secondaryCreators = Object.keys(secondaryCreators).reduce((acc, key) => {
+            acc[key] = getNormalizedCreatorName(secondaryCreators[key]);
+            return acc;
+          }, {});
+          setRoundCreators(roundCreators);
+          setSecondaryRoundCreators(secondaryCreators);
 
           // start by setting the playerNames to the default players
             let playerNames = [...defaultPlayers, ...extractPlayersFromRounds(json)];
@@ -1566,7 +1595,7 @@ const PlayerTable = () => {
         .catch(function() {
             //setErrorMessage("Failed to fetch rounds");
         });
-    }, [selectedDate, defaultPlayers, dates.length, tempTitles.length, tempLinks.length, url, updateFlag]);
+    }, [defaultPlayers, getNormalizedCreatorName, selectedDate, dates.length, tempTitles.length, tempLinks.length, url, updateFlag]);
 
     useEffect(() => {
         const hydrationKey = `${selectedDate}:${updateFlag}`;
@@ -1707,30 +1736,33 @@ const PlayerTable = () => {
 
         // Compute median scores
         const medianScores = rounds.map(round => {
-            const transformedCreatorName = transformName(round.creator);
-            const formattedName = getScoreFieldForName(transformedCreatorName);
-            if (players.includes(formattedName)) {
-                const scores = Object.entries(getMergedRoundScoreMap(round))
-                  .filter(([scoreKey, scoreValue]) => formattedName !== scoreKey && typeof scoreValue === 'number')
-                  .map(([, scoreValue]) => scoreValue);
+            const creatorFields = new Set(
+              getRoundCreatorDisplayNames(round.title, round)
+                .map(creatorName => getScoreFieldForName(creatorName))
+                .filter(scoreField => players.includes(scoreField))
+            );
+            const scores = Object.entries(getMergedRoundScoreMap(round))
+              .filter(([scoreKey, scoreValue]) => !creatorFields.has(scoreKey) && typeof scoreValue === 'number')
+              .map(([, scoreValue]) => scoreValue);
 
-                scores.sort((a, b) => a - b);
+            if (!scores.length) {
+              return null;
+            }
 
-                let median;
-                if (scores.length % 2 === 0) { // even length
-                  median = (scores[scores.length / 2 - 1] + scores[scores.length / 2]) / 2;
-                } else { // odd length
-                  median = scores[Math.floor(scores.length / 2)];
+            scores.sort((a, b) => a - b);
+
+            let median;
+            if (scores.length % 2 === 0) { // even length
+              median = (scores[scores.length / 2 - 1] + scores[scores.length / 2]) / 2;
+            } else { // odd length
+              median = scores[Math.floor(scores.length / 2)];
             }
 
             return median;
-          } else {
-            return null;
-          }
         });
         setMedianScores(medianScores);
       }
-    }, [players, rounds, roundCreators]);
+    }, [getRoundCreatorDisplayNames, players, rounds]);
 
     useEffect(() => {
         console.log('sortedDates:', sortedDates);
@@ -1755,6 +1787,7 @@ const PlayerTable = () => {
         rounds,
         selectedRounds,
         roundCreators,
+        secondaryRoundCreators,
         scores,
         players,
         host,
@@ -1781,6 +1814,7 @@ const PlayerTable = () => {
       players,
       presID,
       roundCreators,
+      secondaryRoundCreators,
       rounds,
       scorekeeper,
       scores,
@@ -1925,7 +1959,7 @@ const PlayerTable = () => {
                     playerField: player,
                     newScore,
                     players,
-                    creatorName: roundCreators[roundTitle] || round?.creator || '',
+                    creatorNames: getRoundCreatorDisplayNames(roundTitle, round),
                     isCooperative: Boolean(cooperativeStatus[roundTitle]),
                 });
                 const originalScoreMap = getMergedRoundScoreMap(originalRound);
@@ -2292,16 +2326,6 @@ const PlayerTable = () => {
       }
     };
 
-    const transformName = (name) => {
-      if (name === 'Dad') {
-        return 'Dan';
-      } else if (name === 'Mom') {
-        return 'Debi';
-      } else {
-        return name;
-      }
-    };
-
     const handleMajorCategoryChange = (roundTitle, newValue) => {
       setSelectedMajorCategories(prevState => ({
         ...prevState,
@@ -2566,38 +2590,67 @@ const PlayerTable = () => {
     }, []);
 
 
-    const handleCreatorChange = (roundTitle, newCreatorName) => {
-      setRoundCreators(prevRoundCreators => ({
-        ...prevRoundCreators,
-        [roundTitle]: newCreatorName,
-      }));
+    const handleRoundCreatorChange = (roundTitle, creatorSlot, newCreatorName) => {
+      const normalizedCreatorName = getNormalizedCreatorName(newCreatorName);
 
+      if (creatorSlot === 'secondary') {
+        setSecondaryRoundCreators(prevRoundCreators => ({
+          ...prevRoundCreators,
+          [roundTitle]: normalizedCreatorName,
+        }));
+      } else {
+        setRoundCreators(prevRoundCreators => ({
+          ...prevRoundCreators,
+          [roundTitle]: normalizedCreatorName,
+        }));
+      }
+
+      const currentCreatorNames = getRoundCreatorPair(roundTitle);
+      const nextCreatorNames = creatorSlot === 'secondary'
+        ? [currentCreatorNames[0] || '', normalizedCreatorName]
+        : [normalizedCreatorName, currentCreatorNames[1] || ''];
 
       setScores(prevScores => {
-        return clearCreatorScoreForRound(prevScores, players, roundTitle, newCreatorName);
+        return clearCreatorScoreForRound(prevScores, players, roundTitle, nextCreatorNames);
       });
 
-      //call setRounds to trigger the useEffect to recompute medians
-        setRounds(prevRounds => {
-            const newRounds = [...prevRounds];
-            const roundIndex = newRounds.findIndex(round => round.title === roundTitle);
-            if (roundIndex !== -1) {
-                const transformedCreatorName = transformName(newCreatorName);
-                const creatorField = getScoreFieldForName(transformedCreatorName);
-                newRounds[roundIndex].creator = newCreatorName;
-                if (creatorField) {
-                    newRounds[roundIndex][creatorField] = null;
-                    const currentExtraScores = getRoundExtraScores(newRounds[roundIndex]);
-                    if (Object.prototype.hasOwnProperty.call(currentExtraScores, creatorField)) {
-                        const nextExtraScores = { ...currentExtraScores };
-                        delete nextExtraScores[creatorField];
-                        newRounds[roundIndex].extra_scores = nextExtraScores;
-                    }
-                }
+      setRounds(prevRounds => {
+        const newRounds = [...prevRounds];
+        const roundIndex = newRounds.findIndex(round => round.title === roundTitle);
+        if (roundIndex !== -1) {
+          const nextRound = { ...newRounds[roundIndex] };
+          nextRound.creator = nextCreatorNames[0] || '';
+          nextRound.secondary_creator = nextCreatorNames[1] || '';
+
+          nextCreatorNames.forEach(creatorName => {
+            const creatorField = getScoreFieldForName(creatorName);
+            if (!creatorField) {
+              return;
             }
-            return newRounds;
-        });
+
+            nextRound[creatorField] = null;
+            const currentExtraScores = getRoundExtraScores(nextRound);
+            if (Object.prototype.hasOwnProperty.call(currentExtraScores, creatorField)) {
+              const nextExtraScores = { ...currentExtraScores };
+              delete nextExtraScores[creatorField];
+              nextRound.extra_scores = nextExtraScores;
+            }
+          });
+
+          newRounds[roundIndex] = nextRound;
+        }
+        return newRounds;
+      });
+
       markDirty();
+    };
+
+    const handleCreatorChange = (roundTitle, newCreatorName) => {
+      handleRoundCreatorChange(roundTitle, 'primary', newCreatorName);
+    };
+
+    const handleSecondaryCreatorChange = (roundTitle, newCreatorName) => {
+      handleRoundCreatorChange(roundTitle, 'secondary', newCreatorName);
     };
 
     const handleSetCellAsJoker = useCallback(() => {
@@ -2728,6 +2781,7 @@ const PlayerTable = () => {
     const formatRoundData = (round, index) => {
       let formattedData = {
         creator: roundCreators[round.title] || '',
+        secondary_creator: secondaryRoundCreators[round.title] || '',
         title: round.title || '',
         major_category: selectedMajorCategories[round.title] || '',
         minor_category1: selectedMinor1Categories[round.title] || '',
@@ -3014,6 +3068,23 @@ const PlayerTable = () => {
                       onChange={(e) => handleCreatorChange(round.title, e.target.value)}
                     >
                       <MenuItem value="">Unknown</MenuItem>
+                      {creatorOptions.map((player, creatorIndex) => (
+                        <MenuItem key={creatorIndex} value={player}>
+                          {player}
+                        </MenuItem>
+                      ))}
+                    </StyledSelect>
+                  </MetadataFormControl>
+                </DetailsField>
+                <DetailsField>
+                  <MetadataFieldLabel>2nd Creator</MetadataFieldLabel>
+                  <MetadataFormControl>
+                    <StyledSelect
+                      MenuProps={dropdownMenuProps}
+                      value={secondaryRoundCreators[round.title] || ''}
+                      onChange={(e) => handleSecondaryCreatorChange(round.title, e.target.value)}
+                    >
+                      <MenuItem value="">None</MenuItem>
                       {creatorOptions.map((player, creatorIndex) => (
                         <MenuItem key={creatorIndex} value={player}>
                           {player}
@@ -3427,7 +3498,7 @@ const PlayerTable = () => {
                   {rounds.map((round, index) => (
                       (() => {
                         const isJokerCell = !isJokerRouletteSpinning && selectedRounds[player] === round.title;
-                        const isCreatorCell = roundCreators[round.title] === playerDisplayName;
+                        const isCreatorCell = roundIncludesCreator(round.title, playerDisplayName, round);
                         const scoreCellClassName = [
                           index + 2 === selectedColumnIndex ? 'selected-column' : '',
                           (isJokerCell || isCreatorCell) ? 'star-ricochet' : '',

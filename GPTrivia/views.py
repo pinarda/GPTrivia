@@ -978,6 +978,25 @@ def _profile_player_matches_creator(round_creator, player_field):
     return normalized_round_creator == player_name
 
 
+def _profile_player_matches_any_creator(player_field, *round_creators):
+    return any(
+        _profile_player_matches_creator(round_creator, player_field)
+        for round_creator in round_creators
+        if round_creator
+    )
+
+
+def _get_profile_round_creator_fields(round_obj):
+    return {
+        player_field_for_name(creator_name)
+        for creator_name in (
+            getattr(round_obj, 'creator', ''),
+            getattr(round_obj, 'secondary_creator', ''),
+        )
+        if player_field_for_name(creator_name)
+    }
+
+
 def _build_profile_night_final_totals(night_rounds, presentation):
     night_totals = _build_profile_night_player_totals(night_rounds, presentation)
     return {
@@ -992,7 +1011,11 @@ def _player_completed_profile_night(player_field, night_rounds):
         player_score = score_map.get(player_field)
         if isinstance(player_score, (int, float)):
             continue
-        if _profile_player_matches_creator(round_obj.creator, player_field):
+        if _profile_player_matches_any_creator(
+            player_field,
+            round_obj.creator,
+            getattr(round_obj, 'secondary_creator', ''),
+        ):
             continue
         return False
     return True
@@ -1058,11 +1081,11 @@ def _build_profile_night_player_totals(night_rounds, presentation):
     median_scores_by_title = {}
     for round_obj in night_rounds:
         score_map = get_round_score_map(round_obj, include_null_fixed=False)
-        creator_field = player_field_for_name(round_obj.creator)
+        creator_fields = _get_profile_round_creator_fields(round_obj)
         score_values = [
             score
             for candidate_field, score in score_map.items()
-            if candidate_field != creator_field and isinstance(score, (int, float))
+            if candidate_field not in creator_fields and isinstance(score, (int, float))
         ]
         if not score_values:
             median_scores_by_title[round_obj.title] = None
@@ -1094,7 +1117,11 @@ def _build_profile_night_player_totals(night_rounds, presentation):
         for round_obj in night_rounds:
             score_map = get_round_score_map(round_obj, include_null_fixed=False)
             player_score = score_map.get(player_field)
-            is_creator = _profile_player_matches_creator(round_obj.creator, player_field)
+            is_creator = _profile_player_matches_any_creator(
+                player_field,
+                round_obj.creator,
+                getattr(round_obj, 'secondary_creator', ''),
+            )
             median_value = median_scores_by_title.get(round_obj.title)
 
             if not is_creator and round_obj.max_score not in (None, 0):
@@ -1304,7 +1331,11 @@ def _build_profile_streak_timeline(all_rounds, player_name):
             and listed_as_player
         )
         created = any(
-            _profile_player_matches_creator(round_obj.creator, score_field)
+            _profile_player_matches_any_creator(
+                score_field,
+                round_obj.creator,
+                getattr(round_obj, 'secondary_creator', ''),
+            )
             for round_obj in night_rounds
         ) or any(
             _profile_player_matches_creator(creator_name, score_field)
@@ -1354,7 +1385,11 @@ def player_profile_dict(request, player_name, form=None, intro_form=None, includ
 
     created_rounds = [
         round_obj for round_obj in all_rounds
-        if display_name_for_player_field(round_obj.creator) == player_name
+        if _profile_player_matches_any_creator(
+            score_field,
+            round_obj.creator,
+            getattr(round_obj, 'secondary_creator', ''),
+        )
     ]
     for round_obj in created_rounds:
         round_summary = _summarize_profile_round_scores(round_obj)
@@ -1599,9 +1634,19 @@ def update_profile_round_category(request, round_id):
         raise Http404("Category updates must be submitted with POST.")
 
     round_obj = get_object_or_404(GPTriviaRound, id=round_id)
-    round_creator_name = display_name_for_player_field(round_obj.creator)
-    profile_user = User.objects.filter(username__iexact=round_creator_name).first()
-    if not _can_edit_profile_round_categories(request.user, profile_user, round_creator_name):
+    round_creator_names = [
+        display_name_for_player_field(creator_name)
+        for creator_name in (round_obj.creator, getattr(round_obj, 'secondary_creator', ''))
+        if display_name_for_player_field(creator_name)
+    ]
+    primary_round_creator_name = round_creator_names[0] if round_creator_names else ''
+    can_edit_round = False
+    for round_creator_name in round_creator_names or [primary_round_creator_name]:
+        profile_user = User.objects.filter(username__iexact=round_creator_name).first()
+        if _can_edit_profile_round_categories(request.user, profile_user, round_creator_name):
+            can_edit_round = True
+            break
+    if not can_edit_round:
         raise Http404("Round not found.")
 
     allowed_fields = {'major_category', 'minor_category1', 'minor_category2'}
@@ -1635,7 +1680,8 @@ def update_profile_round_category(request, round_id):
             }
         )
 
-    redirect_url = reverse('player_profile', kwargs={'player_name': round_creator_name})
+    redirect_target_name = primary_round_creator_name or display_name_for_player_field(round_obj.creator)
+    redirect_url = reverse('player_profile', kwargs={'player_name': redirect_target_name})
     panel = (request.POST.get('next_panel') or '').strip()
     if panel:
         redirect_url = f"{redirect_url}?{urlencode({'panel': panel})}"
@@ -2587,7 +2633,7 @@ def player_analysis_plot(request, *args, **kwargs):
 
 SCORESHEET_GROUP_NAME = 'scoresheet_scoresheet_updates'
 SCORESHEET_ROUND_FIELDS = {
-    'creator', 'title', 'major_category', 'minor_category1', 'minor_category2', 'date',
+    'creator', 'secondary_creator', 'title', 'major_category', 'minor_category1', 'minor_category2', 'date',
     'round_number', 'max_score', 'replay', 'cooperative', 'notes', 'link', 'extra_scores',
     *FIXED_SCORE_FIELDS,
 }
@@ -2874,6 +2920,7 @@ def save_scores(request):
     for round_data in rounds:
         # Get the round_data fields
         creator = round_data.get('creator')
+        secondary_creator = round_data.get('secondary_creator')
         title = round_data.get('title')
         print(creator)
         date_str = round_data.get('date')
@@ -2904,6 +2951,7 @@ def save_scores(request):
 
         # Assign the round_data fields to the GPTriviaRound instance
         trivia_round.creator = creator
+        trivia_round.secondary_creator = secondary_creator
         trivia_round.title = title
         trivia_round.major_category = round_data.get('major_category')
         trivia_round.minor_category1 = round_data.get('minor_category1')

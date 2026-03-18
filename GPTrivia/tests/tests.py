@@ -340,6 +340,51 @@ class PlayerAnalysisViewTests(TestCase):
         response = self.client.get(reverse('player_profile', args=['Alex']))
         self.assertEqual(response.status_code, 200)
 
+    def test_profile_view_includes_secondary_created_rounds(self):
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            secondary_creator="Alex",
+            title="Shared Creation Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-01-01",
+            round_number=1,
+            max_score=10,
+            score_alex=None,
+            score_megan=None,
+            score_jenny=8,
+        )
+        GPTriviaRound.objects.create(
+            creator="Jenny",
+            title="Alex Played Round",
+            major_category="History",
+            minor_category1="Modern",
+            minor_category2="Europe",
+            date="2023-01-01",
+            round_number=2,
+            max_score=10,
+            score_alex=7,
+            score_jenny=None,
+        )
+
+        response = self.client.get(reverse('player_profile', args=['Alex']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['created_rounds_count'], 1)
+        self.assertEqual(
+            [round_obj.title for round_obj in response.context['created_rounds']],
+            ['Shared Creation Round'],
+        )
+        self.assertEqual(
+            next(
+                item['num_rounds']
+                for item in response.context['created_rounds_cat']
+                if item['major_category'] == 'Science'
+            ),
+            1,
+        )
+
     def test_profile_view_shows_intro_and_streak_timeline(self):
         self.user.profile.profile_intro = "Trivia goblin with a science streak."
         self.user.profile.save(update_fields=['profile_intro'])
@@ -703,6 +748,35 @@ class PlayerAnalysisViewTests(TestCase):
             response,
             f"{reverse('player_profile', args=['Alex'])}?panel=created-rounds-panel",
         )
+        self.assertEqual(trivia_round.major_category, 'History')
+
+    def test_profile_secondary_creator_can_update_created_round_category(self):
+        trivia_round = GPTriviaRound.objects.create(
+            creator="Megan",
+            secondary_creator="Alex",
+            title="Secondary Category Update Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-05-01",
+            round_number=1,
+            max_score=10,
+            score_alex=None,
+            score_megan=None,
+            score_jenny=7,
+        )
+
+        response = self.client.post(
+            reverse('update_profile_round_category', args=[trivia_round.id]),
+            {
+                'major_category': 'History',
+                'next_panel': 'created-rounds-panel',
+            },
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        trivia_round.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(trivia_round.major_category, 'History')
 
     def test_profile_alex_can_update_other_players_round_category(self):

@@ -62,6 +62,7 @@ describe('scoresheet sync helpers', () => {
           id: 1,
           title: 'Round 1',
           creator: 'Alex',
+          secondary_creator: '',
           major_category: 'Science',
           minor_category1: 'Physics',
           minor_category2: 'Space',
@@ -77,6 +78,7 @@ describe('scoresheet sync helpers', () => {
         },
       ],
       roundCreators: { 'Round 1': 'Alex' },
+      secondaryRoundCreators: { 'Round 1': '' },
       selectedMajorCategories: { 'Round 1': 'Science' },
       selectedMinor1Categories: { 'Round 1': 'Physics' },
       selectedMinor2Categories: { 'Round 1': 'Space' },
@@ -98,6 +100,7 @@ describe('scoresheet sync helpers', () => {
       serverRoundSnapshot: {
         1: {
           creator: 'Alex',
+          secondary_creator: '',
           title: 'Round 1',
           major_category: 'Science',
           minor_category1: 'Physics',
@@ -437,6 +440,27 @@ describe('scoresheet player defaults', () => {
     expect(getRoundScoreValue(updatedRound, 'score_megan')).toBe(8);
     expect(getRoundScoreValue(updatedRound, 'score_zach')).toBe(6);
   });
+
+  test('cooperative entry excludes both creators from copied team scores', () => {
+    const updatedRound = applyCooperativeScoreEntry({
+      round: {
+        title: 'Co-op Round',
+        score_alex: null,
+        score_megan: null,
+        score_zach: null,
+        extra_scores: {},
+      },
+      playerField: 'score_zach',
+      newScore: 8,
+      players: ['score_alex', 'score_megan', 'score_zach'],
+      creatorNames: ['Alex', 'Megan'],
+      isCooperative: true,
+    });
+
+    expect(getRoundScoreValue(updatedRound, 'score_alex')).toBeNull();
+    expect(getRoundScoreValue(updatedRound, 'score_megan')).toBeNull();
+    expect(getRoundScoreValue(updatedRound, 'score_zach')).toBe(8);
+  });
 });
 
 describe('scoresheet player icon helpers', () => {
@@ -633,6 +657,24 @@ describe('scoresheet total helpers', () => {
     expect(getSortableFinalTotal(rounds, scores, 'score_alex', 'Round 1', medianScores)).toBe(24);
   });
 
+  test('secondary creators receive creator bonus and joker bonus on their round', () => {
+    const rounds = [
+      { title: 'Round 1', creator: 'Megan', secondary_creator: 'Alex', score_alex: null },
+      { title: 'Round 2', creator: 'Jenny', score_alex: 7 },
+    ];
+    const scores = {
+      score_alex: {
+        'Round 1': null,
+        'Round 2': 7,
+      },
+    };
+    const medianScores = [8.5, 6];
+
+    expect(getDisplayedCreatorBonus(rounds, 'score_alex', 'Round 1', medianScores)).toBe(8.5);
+    expect(getDisplayedJokerBonus(rounds, scores, 'score_alex', 'Round 1', medianScores)).toBe(8.5);
+    expect(getDisplayedFinalTotal(rounds, scores, 'score_alex', 'Round 1', medianScores)).toBe(24);
+  });
+
   test('duplicate titles still produce a total that matches the visible cells', () => {
     const rounds = [
       { title: 'Shared Title', creator: 'Megan', score_alex: 1 },
@@ -663,6 +705,25 @@ describe('scoresheet total helpers', () => {
     ).toEqual({
       score_dan: { 'Round 1': null },
       score_alex: { 'Round 1': 5 },
+    });
+  });
+
+  test('creator change clears both creator scores when a round has two creators', () => {
+    expect(
+      clearCreatorScoreForRound(
+        {
+          score_alex: { 'Round 1': 5 },
+          score_megan: { 'Round 1': 7 },
+          score_zach: { 'Round 1': 9 },
+        },
+        ['score_alex', 'score_megan', 'score_zach'],
+        'Round 1',
+        ['Alex', 'Megan'],
+      ),
+    ).toEqual({
+      score_alex: { 'Round 1': null },
+      score_megan: { 'Round 1': null },
+      score_zach: { 'Round 1': 9 },
     });
   });
 });

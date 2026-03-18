@@ -10,6 +10,7 @@ const SCORE_FIELDS = FIXED_SCORE_FIELDS;
 
 const ROUND_FIELDS = [
   'creator',
+  'secondary_creator',
   'title',
   'major_category',
   'minor_category1',
@@ -151,6 +152,7 @@ export function buildRoundState(round, index, state) {
   const roundState = {
     id: round.id || 0,
     creator: state.roundCreators?.[roundTitle] ?? round.creator ?? '',
+    secondary_creator: state.secondaryRoundCreators?.[roundTitle] ?? round.secondary_creator ?? '',
     title: roundTitle,
     major_category: state.selectedMajorCategories?.[roundTitle] ?? round.major_category ?? '',
     minor_category1: state.selectedMinor1Categories?.[roundTitle] ?? round.minor_category1 ?? '',

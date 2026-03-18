@@ -27,6 +27,12 @@ function getScoreFieldForCreator(name) {
   return getPlayerFieldForName(normalizedName);
 }
 
+function getRoundCreatorNames(round) {
+  return [round?.creator, round?.secondary_creator]
+    .map(name => normalizeCreatorName(name || ''))
+    .filter(Boolean);
+}
+
 function playerMatchesCreator(roundCreator, player) {
   const playerName = getDisplayNameForPlayerField(player);
   if (playerName === 'Dan') {
@@ -36,6 +42,10 @@ function playerMatchesCreator(roundCreator, player) {
     return roundCreator === 'Mom' || roundCreator === 'Debi';
   }
   return roundCreator === playerName;
+}
+
+function playerMatchesAnyCreator(round, player) {
+  return getRoundCreatorNames(round).some(roundCreator => playerMatchesCreator(roundCreator, player));
 }
 
 export function getEffectiveRoundScore(scores, player, round) {
@@ -56,7 +66,7 @@ function getSelectedCreatorRoundMedian(rounds, player, selectedRoundTitle, media
   }
 
   const selectedRoundIndex = (rounds || []).findIndex(round => {
-    return round.title === selectedRoundTitle && playerMatchesCreator(round.creator, player);
+    return round.title === selectedRoundTitle && playerMatchesAnyCreator(round, player);
   });
   if (selectedRoundIndex === -1) {
     return null;
@@ -90,7 +100,7 @@ function getCreatorBonusState(rounds, player, selectedRoundTitle, medianScores) 
   let hasValue = false;
 
   (rounds || [])
-    .filter(round => playerMatchesCreator(round.creator, player))
+    .filter(round => playerMatchesAnyCreator(round, player))
     .forEach(round => {
       const medianScore = medianScores?.[rounds.indexOf(round)];
       if (isNumericScore(medianScore)) {
@@ -155,16 +165,22 @@ export function getDisplayedFinalTotal(rounds, scores, player, selectedRoundTitl
 }
 
 export function clearCreatorScoreForRound(scores, players, roundTitle, newCreatorName) {
-  const scoreField = getScoreFieldForCreator(newCreatorName);
-  if (!scoreField || !(players || []).includes(scoreField)) {
+  const creatorNames = Array.isArray(newCreatorName) ? newCreatorName : [newCreatorName];
+  const creatorFields = [...new Set(
+    creatorNames
+      .map(name => getScoreFieldForCreator(name))
+      .filter(scoreField => scoreField && (players || []).includes(scoreField))
+  )];
+
+  if (!creatorFields.length) {
     return scores;
   }
 
-  return {
-    ...scores,
+  return creatorFields.reduce((nextScores, scoreField) => ({
+    ...nextScores,
     [scoreField]: {
-      ...(scores?.[scoreField] || {}),
+      ...(nextScores?.[scoreField] || {}),
       [roundTitle]: null,
     },
-  };
+  }), scores);
 }

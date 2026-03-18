@@ -171,17 +171,22 @@ export function applyCooperativeScoreEntry({
   newScore,
   players,
   creatorName,
+  creatorNames,
   isCooperative,
 }) {
   const normalizedPlayer = getPlayerFieldForName(playerField);
-  const creatorField = getPlayerFieldForName(creatorName);
+  const creatorFields = [...new Set(
+    (creatorNames || [creatorName])
+      .map(candidate => getPlayerFieldForName(candidate))
+      .filter(Boolean)
+  )];
   const nextRound = setRoundScoreValue(round, normalizedPlayer, newScore);
 
   if (!isCooperative || newScore === null || newScore === undefined || !normalizedPlayer) {
     return nextRound;
   }
 
-  if (creatorField && normalizedPlayer === creatorField) {
+  if (creatorFields.includes(normalizedPlayer)) {
     return nextRound;
   }
 
@@ -190,7 +195,7 @@ export function applyCooperativeScoreEntry({
     .filter(Boolean))];
 
   const otherNonCreatorPlayers = normalizedPlayers.filter(candidate => (
-    candidate !== normalizedPlayer && candidate !== creatorField
+    candidate !== normalizedPlayer && !creatorFields.includes(candidate)
   ));
 
   const hasExistingNonCreatorScore = otherNonCreatorPlayers.some(candidate => {

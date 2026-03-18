@@ -126,6 +126,7 @@ class Profile(models.Model):
 
 class GPTriviaRound(models.Model):
     creator = models.CharField(max_length=100)
+    secondary_creator = models.CharField(max_length=100, blank=True, default='')
     title = models.CharField(max_length=150)
     major_category = models.CharField(max_length=100)
     minor_category1 = models.CharField(max_length=100)
