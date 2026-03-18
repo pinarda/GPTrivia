@@ -6,6 +6,7 @@ from django.test import SimpleTestCase
 from GPTrivia.mail import (
     ROUND_SOURCE_MERGED_DECK,
     ROUND_SOURCE_WHOLE_PRESENTATION,
+    _build_black_text_style_request,
     _build_update_summary_entries,
     _classify_round_source_link,
     _find_slide_index_for_round_title,
@@ -249,6 +250,20 @@ class MailHelpersTests(SimpleTestCase):
             ],
         )
 
+    def test_build_black_text_style_request_sets_text_to_black(self):
+        request = _build_black_text_style_request("shape-1", 4, "Round Title", font_size=20)
+
+        self.assertEqual(request["updateTextStyle"]["objectId"], "shape-1")
+        self.assertEqual(request["updateTextStyle"]["fields"], "foregroundColor,fontSize")
+        self.assertEqual(
+            request["updateTextStyle"]["style"]["foregroundColor"]["opaqueColor"]["rgbColor"],
+            {"red": 0, "green": 0, "blue": 0},
+        )
+        self.assertEqual(
+            request["updateTextStyle"]["style"]["fontSize"],
+            {"magnitude": 20, "unit": "PT"},
+        )
+
     @patch("GPTrivia.mail.os.path.exists", return_value=True)
     @patch("GPTrivia.mail.find_shared_presentations")
     @patch("GPTrivia.mail._copy_presentation_via_apps_script")
@@ -350,9 +365,19 @@ class MailHelpersTests(SimpleTestCase):
             if request.get("insertText", {}).get("objectId") == "summary-shape"
             and request["insertText"]["text"] == "New Round"
         ]
+        black_text_requests = [
+            request["updateTextStyle"]
+            for request_group in recorded_requests
+            for request in request_group
+            if request.get("updateTextStyle", {}).get("objectId") == "summary-shape"
+            and request["updateTextStyle"]["style"].get("foregroundColor", {})
+                .get("opaqueColor", {})
+                .get("rgbColor") == {"red": 0, "green": 0, "blue": 0}
+        ]
 
         self.assertEqual(len(round_insert_requests), 1)
         self.assertEqual(round_insert_requests[0]["insertionIndex"], expected_round2_start_index)
+        self.assertTrue(black_text_requests)
 
     def test_infer_historical_round_slide_range_uses_next_round_title_when_links_are_missing(self):
         slides = [

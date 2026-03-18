@@ -128,6 +128,41 @@ def _inserted_text_end_index(start_index, new_text):
     return start_index + _utf16_code_units(_sanitize_slides_text(new_text))
 
 
+def _build_black_text_style_request(element_id, start_index, new_text, font_size=None):
+    style = {
+        "foregroundColor": {
+            "opaqueColor": {
+                "rgbColor": {
+                    "red": 0,
+                    "green": 0,
+                    "blue": 0,
+                }
+            }
+        }
+    }
+    fields = ["foregroundColor"]
+
+    if font_size is not None:
+        style["fontSize"] = {
+            "magnitude": font_size,
+            "unit": "PT",
+        }
+        fields.append("fontSize")
+
+    return {
+        "updateTextStyle": {
+            "objectId": element_id,
+            "textRange": {
+                "type": "FIXED_RANGE",
+                "startIndex": start_index,
+                "endIndex": _inserted_text_end_index(start_index, new_text),
+            },
+            "style": style,
+            "fields": ",".join(fields),
+        }
+    }
+
+
 def _extract_presentation_link_parts(presentation_url):
     if not presentation_url:
         return None, None
@@ -910,65 +945,40 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
                                 element_id, round_start_index, round_end_index, new_text)
 
                             if len(new_text) > 30:
-                                # Add a request to modify the font size; you can adjust the font size value as needed
-                                font_size_request = {
-                                    "updateTextStyle": {
-                                        "objectId": element_id,
-                                        "textRange": {
-                                            "type": "FIXED_RANGE",  # Explicitly specifying the range type
-                                            "startIndex": round_start_index,
-                                            "endIndex": _inserted_text_end_index(round_start_index, new_text)
-                                        },
-                                        "style": {
-                                            "fontSize": {
-                                                "magnitude": 20,  # Change this to your desired font size
-                                                "unit": "PT"
-                                            }
-                                        },
-                                        "fields": "fontSize"
-                                    }
-                                }
-                                delete_insert_requests.append(font_size_request)
+                                delete_insert_requests.append(
+                                    _build_black_text_style_request(
+                                        element_id,
+                                        round_start_index,
+                                        new_text,
+                                        font_size=20,
+                                    )
+                                )
                             elif len(new_text) > 40:
-                                # Add a request to modify the font size; you can adjust the font size value as needed
-                                font_size_request = {
-                                    "updateTextStyle": {
-                                        "objectId": element_id,
-                                        "textRange": {
-                                            "type": "FIXED_RANGE",  # Explicitly specifying the range type
-                                            "startIndex": round_start_index,
-                                            "endIndex": _inserted_text_end_index(round_start_index, new_text)
-                                        },
-                                        "style": {
-                                            "fontSize": {
-                                                "magnitude": 16,  # Change this to your desired font size
-                                                "unit": "PT"
-                                            }
-                                        },
-                                        "fields": "fontSize"
-                                    }
-                                }
-                                delete_insert_requests.append(font_size_request)
+                                delete_insert_requests.append(
+                                    _build_black_text_style_request(
+                                        element_id,
+                                        round_start_index,
+                                        new_text,
+                                        font_size=16,
+                                    )
+                                )
                             elif len(new_text) > 70:
-                                # Add a request to modify the font size; you can adjust the font size value as needed
-                                font_size_request = {
-                                    "updateTextStyle": {
-                                        "objectId": element_id,
-                                        "textRange": {
-                                            "type": "FIXED_RANGE",  # Explicitly specifying the range type
-                                            "startIndex": round_start_index,
-                                            "endIndex": _inserted_text_end_index(round_start_index, new_text)
-                                        },
-                                        "style": {
-                                            "fontSize": {
-                                                "magnitude": 10,  # Change this to your desired font size
-                                                "unit": "PT"
-                                            }
-                                        },
-                                        "fields": "fontSize"
-                                    }
-                                }
-                                delete_insert_requests.append(font_size_request)
+                                delete_insert_requests.append(
+                                    _build_black_text_style_request(
+                                        element_id,
+                                        round_start_index,
+                                        new_text,
+                                        font_size=10,
+                                    )
+                                )
+                            else:
+                                delete_insert_requests.append(
+                                    _build_black_text_style_request(
+                                        element_id,
+                                        round_start_index,
+                                        new_text,
+                                    )
+                                )
 
                             slides_service.presentations().batchUpdate(
                                 presentationId=merged_presentation_id,
@@ -1000,6 +1010,13 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
 
                             delete_insert_requests = create_delete_insert_text_requests(
                                 element_id, creator_start_index, creator_end_index, new_text)
+                            delete_insert_requests.append(
+                                _build_black_text_style_request(
+                                    element_id,
+                                    creator_start_index,
+                                    new_text,
+                                )
+                            )
 
                             response = slides_service.presentations().batchUpdate(presentationId=merged_presentation_id,
                                                                                   body={
@@ -1425,43 +1442,31 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                                     element_id, round_start_index, round_end_index, new_text)
 
                                 if len(new_text) > 30:
-                                    font_size_request = {
-                                        "updateTextStyle": {
-                                            "objectId": element_id,
-                                            "textRange": {
-                                                "type": "FIXED_RANGE",
-                                                "startIndex": round_start_index,
-                                                "endIndex": _inserted_text_end_index(round_start_index, new_text)
-                                            },
-                                            "style": {
-                                                "fontSize": {
-                                                    "magnitude": 20,
-                                                    "unit": "PT"
-                                                }
-                                            },
-                                            "fields": "fontSize"
-                                        }
-                                    }
-                                    delete_insert_requests.append(font_size_request)
+                                    delete_insert_requests.append(
+                                        _build_black_text_style_request(
+                                            element_id,
+                                            round_start_index,
+                                            new_text,
+                                            font_size=20,
+                                        )
+                                    )
                                 elif len(new_text) > 40:
-                                    font_size_request = {
-                                        "updateTextStyle": {
-                                            "objectId": element_id,
-                                            "textRange": {
-                                                "type": "FIXED_RANGE",
-                                                "startIndex": round_start_index,
-                                                "endIndex": _inserted_text_end_index(round_start_index, new_text)
-                                            },
-                                            "style": {
-                                                "fontSize": {
-                                                    "magnitude": 16,
-                                                    "unit": "PT"
-                                                }
-                                            },
-                                            "fields": "fontSize"
-                                        }
-                                    }
-                                    delete_insert_requests.append(font_size_request)
+                                    delete_insert_requests.append(
+                                        _build_black_text_style_request(
+                                            element_id,
+                                            round_start_index,
+                                            new_text,
+                                            font_size=16,
+                                        )
+                                    )
+                                else:
+                                    delete_insert_requests.append(
+                                        _build_black_text_style_request(
+                                            element_id,
+                                            round_start_index,
+                                            new_text,
+                                        )
+                                    )
 
                                 slides_service.presentations().batchUpdate(
                                     presentationId=new_presentation_id,
@@ -1490,6 +1495,13 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
 
                                 delete_insert_requests = create_delete_insert_text_requests(
                                     element_id, creator_start_index, creator_end_index, new_text)
+                                delete_insert_requests.append(
+                                    _build_black_text_style_request(
+                                        element_id,
+                                        creator_start_index,
+                                        new_text,
+                                    )
+                                )
 
                                 slides_service.presentations().batchUpdate(
                                     presentationId=new_presentation_id,
