@@ -798,7 +798,7 @@ a {
 
 .profile-round-slides-shell {
     padding: 0.9rem;
-    background: var(--profile-surface-alt);
+    background: var(--profile-surface);
     border-top: 1px solid var(--profile-border);
     border-bottom: 1px solid var(--profile-border);
     display: grid;
