@@ -829,6 +829,18 @@ def _format_profile_percentage_stat(numerator, denominator, signed=False):
     return f"{sign_prefix}{numerator_display}/{denominator_display} ({percent_prefix}{abs(percent_value):.1f}%)"
 
 
+def _format_profile_gap_stat(value):
+    if value is None:
+        return ''
+
+    display_value = _format_profile_round_score(abs(value))
+    if value > 0:
+        return f"+{display_value} points"
+    if value < 0:
+        return f"-{display_value} points"
+    return "0 points"
+
+
 def _build_scoresheet_date_link(target_date):
     if not target_date:
         return ''
@@ -901,12 +913,13 @@ def _get_profile_player_storage_key(player_field):
 
 
 def _profile_player_matches_creator(round_creator, player_field):
+    normalized_round_creator = display_name_for_player_field(round_creator)
     player_name = display_name_for_player_field(player_field)
     if player_name == 'Dan':
-        return round_creator in {'Dad', 'Dan'}
+        return normalized_round_creator in {'Dad', 'Dan'}
     if player_name == 'Debi':
-        return round_creator in {'Mom', 'Debi'}
-    return round_creator == player_name
+        return normalized_round_creator in {'Mom', 'Debi'}
+    return normalized_round_creator == player_name
 
 
 def _build_profile_night_final_totals(night_rounds, presentation):
@@ -933,8 +946,8 @@ def _build_profile_night_score_totals(night_rounds, presentation):
     night_totals = _build_profile_night_player_totals(night_rounds, presentation)
     return {
         player_field: {
-            'score_total': totals['final_total'],
-            'possible_total': totals['possible_total'],
+            'score_total': totals['percentage_score_total'],
+            'possible_total': totals['percentage_possible_total'],
         }
         for player_field, totals in night_totals.items()
     }
@@ -992,27 +1005,29 @@ def _build_profile_night_player_totals(night_rounds, presentation):
         round_total = 0
         creator_bonus_total = 0
         joker_bonus = 0
+        percentage_score_total = 0
         has_any_value = False
         completed = True
         selected_round_title = selected_rounds.get(player_field, '')
-        possible_total = 0
+        percentage_possible_total = 0
 
         for round_obj in night_rounds:
             score_map = get_round_score_map(round_obj, include_null_fixed=False)
             player_score = score_map.get(player_field)
             is_creator = _profile_player_matches_creator(round_obj.creator, player_field)
 
+            if not is_creator and round_obj.max_score not in (None, 0):
+                percentage_possible_total += round_obj.max_score
+
             if isinstance(player_score, (int, float)):
                 round_total += player_score
                 has_any_value = True
-                if round_obj.max_score not in (None, 0):
-                    possible_total += round_obj.max_score
-                if round_obj.title == selected_round_title:
+                if not is_creator:
+                    percentage_score_total += player_score
+                if round_obj.title == selected_round_title and not is_creator:
                     joker_bonus = player_score
             elif is_creator:
                 has_any_value = True
-                if round_obj.max_score not in (None, 0):
-                    possible_total += round_obj.max_score
             else:
                 completed = False
 
@@ -1025,10 +1040,11 @@ def _build_profile_night_player_totals(night_rounds, presentation):
         if not has_any_value:
             continue
 
-        denominator = possible_total + (overall_highest_round_max if selected_round_title else 0)
+        denominator = percentage_possible_total + (overall_highest_round_max if selected_round_title else 0)
         totals[player_field] = {
             'final_total': round_total + creator_bonus_total + joker_bonus,
-            'possible_total': denominator,
+            'percentage_score_total': percentage_score_total + joker_bonus,
+            'percentage_possible_total': denominator,
             'completed': completed,
         }
 
@@ -1058,8 +1074,8 @@ def _build_profile_best_night_stats(all_rounds, player_name, active_player_names
         player_score_totals = None
         if player_night_totals:
             player_score_totals = {
-                'score_total': player_night_totals['final_total'],
-                'possible_total': player_night_totals['possible_total'],
+                'score_total': player_night_totals['percentage_score_total'],
+                'possible_total': player_night_totals['percentage_possible_total'],
             }
         if player_score_totals and player_score_totals['possible_total']:
             player_percentage = player_score_totals['score_total'] / player_score_totals['possible_total']
@@ -1083,12 +1099,7 @@ def _build_profile_best_night_stats(all_rounds, player_name, active_player_names
             ):
                 best_score_stat = best_score_candidate
 
-        performance_max_total = (
-            player_night_totals['possible_total']
-            if player_night_totals and player_night_totals.get('completed')
-            else 0
-        )
-        if performance_max_total:
+        if player_night_totals and player_night_totals.get('completed'):
             eligible_other_totals = [
                 totals['final_total']
                 for other_player_field, totals in night_totals.items()
@@ -1105,23 +1116,16 @@ def _build_profile_best_night_stats(all_rounds, player_name, active_player_names
                     continue
                 second_place_total = max(eligible_other_totals)
                 performance_gap = performance_player_total - second_place_total
-                performance_gap_percentage = performance_gap / performance_max_total
                 best_performance_candidate = {
                     'date': night_date,
-                    'display_value': _format_profile_percentage_stat(
-                        performance_gap,
-                        performance_max_total,
-                        signed=True,
-                    ),
+                    'display_value': _format_profile_gap_stat(performance_gap),
                     'gap_total': performance_gap,
-                    'max_total': performance_max_total,
-                    'percentage': performance_gap_percentage,
                 }
                 if (
                     best_performance_stat is None
-                    or performance_gap_percentage > best_performance_stat['percentage']
+                    or performance_gap > best_performance_stat['gap_total']
                     or (
-                        performance_gap_percentage == best_performance_stat['percentage']
+                        performance_gap == best_performance_stat['gap_total']
                         and night_date > best_performance_stat['date']
                     )
                 ):

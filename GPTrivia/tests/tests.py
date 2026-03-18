@@ -459,7 +459,7 @@ class PlayerAnalysisViewTests(TestCase):
             response.context['best_score_ever']['scoresheet_link'],
             f"{reverse('scoresheet_new')}?date=2023-01-08",
         )
-        self.assertEqual(response.context['best_performance_ever']['display_value'], '+4/20 (+20.0%)')
+        self.assertEqual(response.context['best_performance_ever']['display_value'], '+4 points')
         self.assertEqual(response.context['best_performance_ever']['date'], datetime.date(2023, 1, 1))
         self.assertEqual(
             response.context['best_performance_ever']['scoresheet_link'],
@@ -562,13 +562,13 @@ class PlayerAnalysisViewTests(TestCase):
         response = self.client.get(reverse('player_profile', args=['Debi']))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['best_score_ever']['display_value'], '38/40 (95.0%)')
+        self.assertEqual(response.context['best_score_ever']['display_value'], '29.5/30 (98.3%)')
         self.assertEqual(response.context['best_score_ever']['date'], datetime.date(2023, 2, 6))
         self.assertEqual(
             response.context['best_score_ever']['scoresheet_link'],
             f"{reverse('scoresheet_new')}?date=2023-02-06",
         )
-        self.assertEqual(response.context['best_performance_ever']['display_value'], '-0.5/40 (-1.2%)')
+        self.assertEqual(response.context['best_performance_ever']['display_value'], '-0.5 points')
         self.assertEqual(response.context['best_performance_ever']['date'], datetime.date(2023, 2, 6))
         self.assertEqual(
             response.context['best_performance_ever']['scoresheet_link'],
