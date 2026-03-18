@@ -21,9 +21,12 @@ body.site-shell {
     --profile-category-bg: #20233a;
     --profile-category-text: #ffffff;
     --profile-category-border: rgba(255, 255, 255, 0.2);
-    --profile-settings-bg: #20233a;
-    --profile-settings-text: #ffffff;
-    --profile-settings-border: rgba(255, 255, 255, 0.2);
+    --profile-settings-panel-bg: #20233a;
+    --profile-settings-panel-text: #ffffff;
+    --profile-settings-panel-border: rgba(255, 255, 255, 0.2);
+    --profile-settings-control-bg: #20233a;
+    --profile-settings-control-text: #ffffff;
+    --profile-settings-control-border: rgba(255, 255, 255, 0.2);
     --profile-empty-bg: rgba(255, 255, 255, 0.05);
 }
 
@@ -45,9 +48,12 @@ body.site-shell[data-profile-theme="light"] {
     --profile-category-bg: #f8f2ea;
     --profile-category-text: #1b2530;
     --profile-category-border: #bca99d;
-    --profile-settings-bg: #f8f2ea;
-    --profile-settings-text: #1b2530;
-    --profile-settings-border: #bca99d;
+    --profile-settings-panel-bg: #f8f2ea;
+    --profile-settings-panel-text: #1b2530;
+    --profile-settings-panel-border: #bca99d;
+    --profile-settings-control-bg: #f8f2ea;
+    --profile-settings-control-text: #1b2530;
+    --profile-settings-control-border: #bca99d;
     --profile-empty-bg: rgba(45, 48, 71, 0.06);
 }
 
@@ -266,15 +272,15 @@ a {
     width: 100%;
     box-sizing: border-box;
     padding: 0.7rem 0.75rem;
-    background: var(--profile-settings-bg);
-    color: var(--profile-settings-text);
-    border: 1px solid var(--profile-settings-border);
+    background: var(--profile-settings-panel-bg);
+    color: var(--profile-settings-panel-text);
+    border: 1px solid var(--profile-settings-panel-border);
 }
 
 .profile-settings-label {
     font-family: Monaco, monospace;
     font-size: 0.88rem;
-    color: var(--profile-settings-text);
+    color: var(--profile-settings-panel-text);
 }
 
 .profile-settings-error {
@@ -285,7 +291,7 @@ a {
 
 .profile-settings-help {
     margin: 0;
-    color: var(--profile-settings-text);
+    color: var(--profile-settings-panel-text);
     opacity: 0.82;
     font-size: 0.82rem;
     line-height: 1.35;
@@ -296,9 +302,9 @@ a {
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    border: 1px solid var(--profile-settings-border);
-    background: var(--profile-settings-bg);
-    color: var(--profile-settings-text);
+    border: 1px solid var(--profile-settings-control-border);
+    background: var(--profile-settings-control-bg);
+    color: var(--profile-settings-control-text);
     font-family: Monaco, monospace;
     font-size: 0.88rem;
     padding: 0.4rem;
@@ -319,7 +325,7 @@ a {
     white-space: nowrap;
     color: var(--profile-file-button-text, #ffffff);
     background: var(--profile-file-button-bg, #2d3047);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--profile-file-button-border, rgba(255, 255, 255, 0.12));
     cursor: pointer;
 }
 
@@ -327,9 +333,9 @@ a {
     width: 100%;
     box-sizing: border-box;
     padding: 0.7rem 0.75rem;
-    border: 1px solid var(--profile-settings-border);
-    background: var(--profile-settings-bg);
-    color: var(--profile-settings-text);
+    border: 1px solid var(--profile-settings-control-border);
+    background: var(--profile-settings-control-bg);
+    color: var(--profile-settings-control-text);
     font-family: Monaco, monospace;
     font-size: 0.92rem;
     border-radius: 0;

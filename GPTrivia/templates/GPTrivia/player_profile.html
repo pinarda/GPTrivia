@@ -10,7 +10,7 @@
       --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318i">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318j">
 {% endblock %}
 
 {% block extra_meta %}
@@ -906,6 +906,19 @@
             return `#${darkenedHex}`;
         }
 
+        function getReadableTextColor(hexColor) {
+            if (!hexColor) {
+                return '#ffffff';
+            }
+            const normalizedColor = hexColor.startsWith('#') ? hexColor.slice(1) : hexColor;
+            const fullHex = normalizedColor.length === 3
+                ? normalizedColor.split('').map(char => `${char}${char}`).join('')
+                : normalizedColor;
+            const rgb = fullHex.match(/.{1,2}/g).map(color => parseInt(color, 16));
+            const luminance = ((0.299 * rgb[0]) + (0.587 * rgb[1]) + (0.114 * rgb[2])) / 255;
+            return luminance > 0.6 ? '#1b2530' : '#ffffff';
+        }
+
         function setNotificationButtonState(button, { enabled = false, disabled = false, label = '' } = {}) {
             if (!button) {
                 return;
@@ -1051,16 +1064,26 @@
 
         function setButtonColors() {
             const playerColor = playerColorMapping[playerName] || '{{ profile_page_chrome_color }}';
+            const bodyStyles = getComputedStyle(document.body);
+            const triviaColorOne = bodyStyles.getPropertyValue('--profile-trivia-color-one').trim() || '{{ profile_page_trivia_color_one }}';
+            const triviaColorTwo = bodyStyles.getPropertyValue('--profile-trivia-color-two').trim() || '{{ profile_page_trivia_color_two }}';
             const borderColor = darkenColor(playerColor);
-            document.body.style.setProperty('--profile-search-bg', playerColor);
-            document.body.style.setProperty('--profile-search-text', textColor);
-            document.body.style.setProperty('--profile-search-border', borderColor);
-            document.body.style.setProperty('--profile-category-bg', playerColor);
-            document.body.style.setProperty('--profile-category-text', textColor);
-            document.body.style.setProperty('--profile-category-border', borderColor);
-            document.body.style.setProperty('--profile-settings-bg', playerColor);
-            document.body.style.setProperty('--profile-settings-text', textColor);
-            document.body.style.setProperty('--profile-settings-border', borderColor);
+            const triviaOneBorder = darkenColor(triviaColorOne);
+            const triviaTwoBorder = darkenColor(triviaColorTwo);
+            const triviaOneText = getReadableTextColor(triviaColorOne);
+            const triviaTwoText = getReadableTextColor(triviaColorTwo);
+            document.body.style.setProperty('--profile-search-bg', triviaColorOne);
+            document.body.style.setProperty('--profile-search-text', triviaOneText);
+            document.body.style.setProperty('--profile-search-border', triviaOneBorder);
+            document.body.style.setProperty('--profile-category-bg', triviaColorTwo);
+            document.body.style.setProperty('--profile-category-text', triviaTwoText);
+            document.body.style.setProperty('--profile-category-border', triviaTwoBorder);
+            document.body.style.setProperty('--profile-settings-panel-bg', triviaColorOne);
+            document.body.style.setProperty('--profile-settings-panel-text', triviaOneText);
+            document.body.style.setProperty('--profile-settings-panel-border', triviaOneBorder);
+            document.body.style.setProperty('--profile-settings-control-bg', triviaColorTwo);
+            document.body.style.setProperty('--profile-settings-control-text', triviaTwoText);
+            document.body.style.setProperty('--profile-settings-control-border', triviaTwoBorder);
             const actionButtons = document.querySelectorAll('.profile-player-button');
             actionButtons.forEach(button => {
                 button.style.backgroundColor = playerColor;
@@ -1069,8 +1092,9 @@
 
             const fileInput = document.getElementById('profile-picture-input');
             if (fileInput) {
-                fileInput.style.setProperty('--profile-file-button-bg', playerColor);
-                fileInput.style.setProperty('--profile-file-button-text', textColor);
+                fileInput.style.setProperty('--profile-file-button-bg', triviaColorTwo);
+                fileInput.style.setProperty('--profile-file-button-text', triviaTwoText);
+                fileInput.style.setProperty('--profile-file-button-border', triviaTwoBorder);
             }
 
             const slidesButtons = document.querySelectorAll('.slides-button');
