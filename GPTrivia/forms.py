@@ -204,7 +204,7 @@ class ProfileIntroForm(forms.Form):
             attrs={
                 'rows': 3,
                 'id': 'profile-intro-input',
-                'placeholder': 'Add a short intro, fun fact, or running bit for your profile.',
+                'placeholder': 'Add a short intro.',
                 'maxlength': 280,
             }
         ),

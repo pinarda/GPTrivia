@@ -452,6 +452,55 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertNotContains(response, 'Summary Stats')
         self.assertNotContains(response, 'class="profile-page-title"')
 
+    def test_profile_view_counts_player_list_for_blank_presentation_night(self):
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Warmup Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-01-29",
+            round_number=1,
+            max_score=10,
+            score_alex=8,
+            score_megan=None,
+        )
+        MergedPresentation.objects.create(
+            name="02.05.2023",
+            presentation_id="presentation-feb-05",
+            player_list={"Alex": "Alex", "Megan": "Megan"},
+            creator_list=["Megan"],
+        )
+
+        response = self.client.get(reverse('player_profile', args=['Alex']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['longest_play_streak'], 2)
+        self.assertEqual(
+            response.context['streak_timeline'],
+            [
+                {'date': datetime.date(2023, 1, 29), 'played': True, 'created': False},
+                {'date': datetime.date(2023, 2, 5), 'played': True, 'created': False},
+            ],
+        )
+
+    def test_profile_intro_autosave_returns_json(self):
+        response = self.client.post(
+            reverse('update_profile_intro', args=['Alex']),
+            {'profile_intro': 'Add a short intro.'},
+            HTTP_ACCEPT='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.user.profile.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {
+            'ok': True,
+            'profile_intro': 'Add a short intro.',
+        })
+        self.assertEqual(self.user.profile.profile_intro, 'Add a short intro.')
+
     def test_profile_view_includes_best_score_night_and_counts_coop_rounds(self):
         MergedPresentation.objects.create(
             name="01.01.2023",

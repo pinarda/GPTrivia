@@ -10,7 +10,7 @@
       --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318l">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318m">
 {% endblock %}
 
 {% block extra_meta %}
@@ -30,20 +30,23 @@
                         <h2>About {{ player_name }}</h2>
                     </div>
                     {% if is_own_profile and profile_intro_form %}
-                        <form class="profile-intro-form" method="post" action="{% url 'update_profile_intro' player_name=player_name %}">
+                        <form class="profile-intro-form" method="post" action="{% url 'update_profile_intro' player_name=player_name %}" data-profile-intro-form>
                             {% csrf_token %}
                             {{ profile_intro_form.profile_intro }}
                             {% for error in profile_intro_form.profile_intro.errors %}
                                 <p class="profile-settings-error">{{ error }}</p>
                             {% endfor %}
-                            <button class="expand-collapse-button profile-player-button" type="submit">Save Intro</button>
+                            <div class="profile-intro-form-footer">
+                                <p class="profile-intro-status" aria-live="polite"></p>
+                                <button class="expand-collapse-button profile-player-button profile-intro-save-button" type="submit">Save Intro</button>
+                            </div>
                         </form>
                     {% else %}
-                        <div class="profile-intro-box">
+                        <div class="profile-intro-box{% if not profile_intro %} profile-intro-box--empty{% endif %}">
                             {% if profile_intro %}
                                 {{ profile_intro|linebreaksbr }}
                             {% else %}
-                                No intro added yet.
+                                Add a short intro.
                             {% endif %}
                         </div>
                     {% endif %}
@@ -129,15 +132,27 @@
                             Trivia Night Timeline
                             <span class="profile-streak-heading-summary">
                                 <span class="profile-streak-summary-line">
-                                    Played streak: {{ longest_play_streak }} night{{ longest_play_streak|pluralize }}
+                                    <span class="profile-streak-summary-word profile-streak-summary-word--player">Player</span>
+                                    streak: {{ longest_play_streak }} night{{ longest_play_streak|pluralize }}
                                 </span>
                                 <span class="profile-streak-summary-line">
-                                    Creator streak: {{ longest_creator_streak }} presentation{{ longest_creator_streak|pluralize }}
+                                    <span class="profile-streak-summary-word profile-streak-summary-word--creator">Creator</span>
+                                    streak: {{ longest_creator_streak }} presentation{{ longest_creator_streak|pluralize }}
                                 </span>
                             </span>
                         </h2>
                     </div>
                     {% if streak_timeline %}
+                        <div class="profile-streak-legend" aria-label="Timeline legend">
+                            <span class="profile-streak-legend-item">
+                                <span class="profile-streak-marker profile-streak-marker--played is-active" style="--player-streak-color: {{ player_color }};"></span>
+                                <span><span class="profile-streak-summary-word profile-streak-summary-word--player">Player</span> played</span>
+                            </span>
+                            <span class="profile-streak-legend-item">
+                                <span class="profile-streak-marker profile-streak-marker--creator is-active"></span>
+                                <span><span class="profile-streak-summary-word profile-streak-summary-word--creator">Creator</span> round</span>
+                            </span>
+                        </div>
                         <div class="profile-streak-timeline-shell" data-scroll-right="true">
                             <div class="profile-streak-timeline">
                                 {% for night in streak_timeline %}
@@ -1317,6 +1332,95 @@
             window.addEventListener('pageshow', scrollToLatest);
         }
 
+        function initializeProfileIntroEditor() {
+            const form = document.querySelector('[data-profile-intro-form]');
+            if (!form) {
+                return;
+            }
+
+            const textarea = form.querySelector('textarea');
+            const status = form.querySelector('.profile-intro-status');
+            if (!textarea || !status) {
+                return;
+            }
+
+            form.classList.add('is-enhanced');
+
+            let lastSavedValue = textarea.value || '';
+            let saveTimer = null;
+            let saveInFlight = false;
+            let pendingSave = false;
+
+            const setStatus = (message, tone = '') => {
+                status.textContent = message;
+                status.dataset.state = tone;
+            };
+
+            const saveIntro = async ({ force = false } = {}) => {
+                const nextValue = textarea.value || '';
+                if (!force && nextValue === lastSavedValue) {
+                    setStatus('Saved', 'saved');
+                    return;
+                }
+                if (saveInFlight) {
+                    pendingSave = true;
+                    return;
+                }
+
+                saveInFlight = true;
+                pendingSave = false;
+                setStatus('Saving…', 'saving');
+
+                try {
+                    const formData = new FormData(form);
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRFToken': getCsrfToken(),
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: formData,
+                    });
+
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok || data.ok === false) {
+                        throw new Error('save_failed');
+                    }
+
+                    lastSavedValue = data.profile_intro || '';
+                    textarea.value = lastSavedValue;
+                    setStatus('Saved', 'saved');
+                } catch (error) {
+                    console.error('Error saving profile intro:', error);
+                    setStatus('Unable to save right now.', 'error');
+                } finally {
+                    saveInFlight = false;
+                    if (pendingSave || textarea.value !== lastSavedValue) {
+                        pendingSave = false;
+                        window.clearTimeout(saveTimer);
+                        saveTimer = window.setTimeout(() => saveIntro({ force: true }), 250);
+                    }
+                }
+            };
+
+            setStatus('Saved', 'saved');
+            textarea.addEventListener('input', () => {
+                setStatus('Unsaved changes', 'dirty');
+                window.clearTimeout(saveTimer);
+                saveTimer = window.setTimeout(() => saveIntro(), 700);
+            });
+            textarea.addEventListener('blur', () => {
+                window.clearTimeout(saveTimer);
+                saveIntro({ force: true });
+            });
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                window.clearTimeout(saveTimer);
+                saveIntro({ force: true });
+            });
+        }
+
         function initializeProfileRoundCategoryForms() {
             const saveButton = document.getElementById('created-rounds-save-button');
             const addNewOptionValue = '__add_new__';
@@ -2003,6 +2107,7 @@
             initializeProfilePanels();
             initializeProfileRoundCategoryForms();
             initializeProfileMobileSorting();
+            initializeProfileIntroEditor();
             initializeProfileStreakTimeline();
             initializeProfileRoundRowToggles();
             initializeSlidesButtons();

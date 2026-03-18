@@ -748,10 +748,25 @@ def update_profile_intro(request, player_name):
 
     profile = profile_user.profile
     form = ProfileIntroForm(request.POST)
+    expects_json = (
+        'application/json' in (request.headers.get('Accept') or '')
+        or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    )
     if form.is_valid():
         profile.profile_intro = (form.cleaned_data.get('profile_intro') or '').strip()
         profile.save(update_fields=['profile_intro'])
+        if expects_json:
+            return JsonResponse({
+                'ok': True,
+                'profile_intro': profile.profile_intro,
+            })
         return redirect('player_profile', player_name=profile_user.username)
+
+    if expects_json:
+        return JsonResponse({
+            'ok': False,
+            'errors': form.errors.get_json_data(),
+        }, status=400)
 
     appearance_form = ProfilePictureForm(instance=profile)
     context = player_profile_dict(
@@ -1224,15 +1239,46 @@ def _build_profile_streak_timeline(all_rounds, player_name):
             getattr(presentation, 'creator_list', None) if presentation else None,
             [],
         )
+        presentation_players_raw = _parse_profile_presentation_json(
+            getattr(presentation, 'player_list', None) if presentation else None,
+            {},
+        )
+        valid_saved_jokers = {
+            storage_key: value
+            for storage_key, value in (joker_rounds_raw or {}).items()
+            if value and str(value).strip() and str(value).strip().lower() != 'select'
+        }
         has_saved_joker = any(
-            (joker_rounds_raw or {}).get(storage_key)
+            valid_saved_jokers.get(storage_key)
             for storage_key in (player_storage_key, score_field)
             if storage_key
+        )
+        has_any_scores_recorded = any(
+            isinstance(score_value, (int, float))
+            for round_obj in night_rounds
+            for score_value in get_round_score_map(round_obj, include_null_fixed=False).values()
+        )
+        presentation_player_names = []
+        if isinstance(presentation_players_raw, dict):
+            presentation_player_names.extend(presentation_players_raw.values())
+            presentation_player_names.extend(presentation_players_raw.keys())
+        elif isinstance(presentation_players_raw, list):
+            presentation_player_names.extend(presentation_players_raw)
+        elif presentation_players_raw:
+            presentation_player_names.append(presentation_players_raw)
+        listed_as_player = any(
+            display_name_for_player_field(player_entry) == player_name
+            for player_entry in presentation_player_names
+            if player_entry
         )
         played = any(
             isinstance(get_round_score_map(round_obj, include_null_fixed=False).get(score_field), (int, float))
             for round_obj in night_rounds
-        ) or has_saved_joker
+        ) or has_saved_joker or (
+            not has_any_scores_recorded
+            and not valid_saved_jokers
+            and listed_as_player
+        )
         created = any(
             _profile_player_matches_creator(round_obj.creator, score_field)
             for round_obj in night_rounds
