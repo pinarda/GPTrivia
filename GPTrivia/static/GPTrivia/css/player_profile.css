@@ -1319,7 +1319,7 @@ a {
         --profile-streak-column-width: 0.82rem;
         --profile-streak-column-gap: 0.01rem;
         --profile-streak-marker-size: 0.5rem;
-        --profile-streak-date-height: 3.65rem;
+        --profile-streak-date-height: 4.55rem;
     }
 
     .profile-streak-legend {
@@ -1328,12 +1328,13 @@ a {
     }
 
     .profile-streak-date-wrap {
-        margin-top: 0.58rem;
+        margin-top: 0.9rem;
     }
 
     .profile-streak-date {
         font-size: 0.68rem;
-        top: 1.02rem;
+        top: 1.7rem;
+        width: calc(var(--profile-streak-date-height) - 0.15rem);
     }
 
     #profile-appearance-panel,
