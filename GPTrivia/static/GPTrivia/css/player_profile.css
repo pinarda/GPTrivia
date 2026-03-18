@@ -28,10 +28,10 @@ body.site-shell {
     --profile-settings-control-text: #ffffff;
     --profile-settings-control-border: rgba(255, 255, 255, 0.2);
     --profile-empty-bg: rgba(255, 255, 255, 0.05);
-    --profile-streak-column-width: 1.2rem;
+    --profile-streak-column-width: 1.24rem;
     --profile-streak-column-gap: 0.04rem;
-    --profile-streak-marker-size: 0.52rem;
-    --profile-streak-date-height: 3.8rem;
+    --profile-streak-marker-size: 0.56rem;
+    --profile-streak-date-height: 4.15rem;
 }
 
 body.site-shell[data-profile-theme="light"] {
@@ -278,7 +278,7 @@ a {
     display: grid;
     justify-items: center;
     align-content: start;
-    gap: 0.12rem;
+    gap: 0.1rem;
     width: var(--profile-streak-column-width);
     min-width: var(--profile-streak-column-width);
     max-width: var(--profile-streak-column-width);
@@ -303,26 +303,27 @@ a {
 }
 
 .profile-streak-date-wrap {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
+    position: relative;
+    display: block;
     width: 100%;
     height: var(--profile-streak-date-height);
-    margin-top: 0.7rem;
-    overflow: visible;
+    margin-top: 0.55rem;
+    overflow: hidden;
 }
 
 .profile-streak-date {
-    display: inline-block;
+    position: absolute;
+    top: 0.55rem;
+    left: 50%;
+    display: block;
+    width: calc(var(--profile-streak-date-height) - 0.35rem);
     font-family: Monaco, monospace;
     font-size: 0.78rem;
     line-height: 1;
     color: var(--profile-muted-text);
     text-align: center;
     white-space: nowrap;
-    position: relative;
-    top: 0.95rem;
-    transform: rotate(90deg);
+    transform: translateX(-50%) rotate(90deg);
     transform-origin: center;
 }
 
@@ -1315,23 +1316,24 @@ a {
     }
 
     body.site-shell {
-        --profile-streak-column-width: 1rem;
-        --profile-streak-marker-size: 0.44rem;
-        --profile-streak-date-height: 3.15rem;
+        --profile-streak-column-width: 1.12rem;
+        --profile-streak-column-gap: 0.02rem;
+        --profile-streak-marker-size: 0.5rem;
+        --profile-streak-date-height: 3.65rem;
     }
 
     .profile-streak-legend {
         gap: 0.28rem 0.85rem;
-        font-size: 0.95rem;
+        font-size: 1rem;
     }
 
     .profile-streak-date-wrap {
-        margin-top: 0.55rem;
+        margin-top: 0.45rem;
     }
 
     .profile-streak-date {
-        font-size: 0.62rem;
-        top: 0.65rem;
+        font-size: 0.68rem;
+        top: 0.48rem;
     }
 
     #profile-appearance-panel,
