@@ -740,6 +740,57 @@ class PlayerAnalysisViewTests(TestCase):
             f"{reverse('scoresheet_new')}?date=2023-02-06",
         )
 
+    def test_profile_best_night_stats_double_count_creator_bonus_when_joker_matches_creator_round(self):
+        MergedPresentation.objects.create(
+            name="02.13.2023",
+            presentation_id="presentation-feb-13",
+            round_names=["Overlap Round 1", "Overlap Round 2"],
+            creator_list=["Alex", "Megan"],
+            player_list={
+                "score_alex": "score_alex",
+                "score_debi": "score_debi",
+                "score_megan": "score_megan",
+            },
+            joker_round_indices={
+                "alex": "Overlap Round 1",
+            },
+        )
+
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Overlap Round 1",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-02-13",
+            round_number=1,
+            max_score=10,
+            score_alex=None,
+            score_debi=8,
+            score_megan=9,
+        )
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Overlap Round 2",
+            major_category="Science",
+            minor_category1="Chemistry",
+            minor_category2="Elements",
+            date="2023-02-13",
+            round_number=2,
+            max_score=10,
+            score_alex=7,
+            score_debi=6,
+            score_megan=None,
+        )
+
+        response = self.client.get(reverse('player_profile', args=['Alex']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['best_score_ever']['display_value'], '15.5/20 (77.5%)')
+        self.assertEqual(response.context['best_score_ever']['date'], datetime.date(2023, 2, 13))
+        self.assertEqual(response.context['best_performance_ever']['display_value'], '+8.5 points')
+        self.assertEqual(response.context['best_performance_ever']['date'], datetime.date(2023, 2, 13))
+
     def test_creators_list_not_empty(self):
         # create a sample GPTriviaRound instance
         sample_round = GPTriviaRound.objects.create(

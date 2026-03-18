@@ -50,9 +50,30 @@ export function getDisplayedRoundScore(scores, player, round) {
   return roundToDisplay(getEffectiveRoundScore(scores, player, round));
 }
 
-export function getDisplayedJokerBonus(rounds, scores, player, selectedRoundTitle) {
+function getSelectedCreatorRoundMedian(rounds, player, selectedRoundTitle, medianScores) {
   if (!selectedRoundTitle || selectedRoundTitle === 'Select') {
     return null;
+  }
+
+  const selectedRoundIndex = (rounds || []).findIndex(round => {
+    return round.title === selectedRoundTitle && playerMatchesCreator(round.creator, player);
+  });
+  if (selectedRoundIndex === -1) {
+    return null;
+  }
+
+  const medianScore = medianScores?.[selectedRoundIndex];
+  return isNumericScore(medianScore) ? medianScore : null;
+}
+
+export function getDisplayedJokerBonus(rounds, scores, player, selectedRoundTitle, medianScores) {
+  if (!selectedRoundTitle || selectedRoundTitle === 'Select') {
+    return null;
+  }
+
+  const selectedCreatorMedian = getSelectedCreatorRoundMedian(rounds, player, selectedRoundTitle, medianScores);
+  if (isNumericScore(selectedCreatorMedian)) {
+    return roundToDisplay(selectedCreatorMedian);
   }
 
   const selectedRound = (rounds || []).find(round => round.title === selectedRoundTitle);
@@ -71,10 +92,6 @@ function getCreatorBonusState(rounds, player, selectedRoundTitle, medianScores) 
   (rounds || [])
     .filter(round => playerMatchesCreator(round.creator, player))
     .forEach(round => {
-      if (selectedRoundTitle === round.title) {
-        return;
-      }
-
       const medianScore = medianScores?.[rounds.indexOf(round)];
       if (isNumericScore(medianScore)) {
         total += medianScore;
@@ -112,7 +129,7 @@ export function getSortableFinalTotal(rounds, scores, player, selectedRoundTitle
   }, 0);
 
   const creatorBonus = getDisplayedCreatorBonus(rounds, player, selectedRoundTitle, medianScores);
-  const jokerBonus = getDisplayedJokerBonus(rounds, scores, player, selectedRoundTitle);
+  const jokerBonus = getDisplayedJokerBonus(rounds, scores, player, selectedRoundTitle, medianScores);
 
   return roundToDisplay(
     displayedRoundTotal +
@@ -124,7 +141,7 @@ export function getSortableFinalTotal(rounds, scores, player, selectedRoundTitle
 export function getDisplayedFinalTotal(rounds, scores, player, selectedRoundTitle, medianScores) {
   const roundTotalState = getDisplayedRoundTotalState(rounds, scores, player);
   const creatorBonusState = getCreatorBonusState(rounds, player, selectedRoundTitle, medianScores);
-  const jokerBonus = getDisplayedJokerBonus(rounds, scores, player, selectedRoundTitle);
+  const jokerBonus = getDisplayedJokerBonus(rounds, scores, player, selectedRoundTitle, medianScores);
 
   if (!roundTotalState.hasValue && !creatorBonusState.hasValue && !isNumericScore(jokerBonus)) {
     return null;

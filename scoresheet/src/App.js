@@ -3261,7 +3261,7 @@ const PlayerTable = () => {
                   ))}
                   <StyledTableCell>
                   <div className={"textCell"}>
-                    {getDisplayedJokerBonus(rounds, scores, player, selectedRounds[player])}
+                    {getDisplayedJokerBonus(rounds, scores, player, selectedRounds[player], medianScores)}
                   </div>
                 </StyledTableCell>
                   <StyledTableCell><div className={"textCell"}>

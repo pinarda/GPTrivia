@@ -1030,6 +1030,7 @@ def _build_profile_night_player_totals(night_rounds, presentation):
             score_map = get_round_score_map(round_obj, include_null_fixed=False)
             player_score = score_map.get(player_field)
             is_creator = _profile_player_matches_creator(round_obj.creator, player_field)
+            median_value = median_scores_by_title.get(round_obj.title)
 
             if not is_creator and round_obj.max_score not in (None, 0):
                 percentage_possible_total += round_obj.max_score
@@ -1047,10 +1048,11 @@ def _build_profile_night_player_totals(night_rounds, presentation):
                 completed = False
 
             if is_creator:
-                median_value = median_scores_by_title.get(round_obj.title)
-                if round_obj.title != selected_round_title and isinstance(median_value, (int, float)):
+                if isinstance(median_value, (int, float)):
                     creator_bonus_total += median_value
                     has_any_value = True
+                    if round_obj.title == selected_round_title:
+                        joker_bonus = median_value
 
         if not has_any_value:
             continue

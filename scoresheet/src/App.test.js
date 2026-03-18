@@ -574,7 +574,7 @@ describe('scoresheet total helpers', () => {
       (sum, round) => sum + getDisplayedRoundScore(scores, 'score_alex', round),
       0,
     );
-    const displayedJokerBonus = getDisplayedJokerBonus(rounds, scores, 'score_alex', 'Round 3');
+    const displayedJokerBonus = getDisplayedJokerBonus(rounds, scores, 'score_alex', 'Round 3', medianScores);
     const displayedCreatorBonus = getDisplayedCreatorBonus(rounds, 'score_alex', 'Round 3', medianScores);
 
     expect(getDisplayedFinalTotal(rounds, scores, 'score_alex', 'Round 3', medianScores)).toBe(
@@ -610,8 +610,27 @@ describe('scoresheet total helpers', () => {
     };
 
     expect(getDisplayedCreatorBonus(rounds, 'score_alex', 'Select', [0])).toBe(0);
-    expect(getDisplayedJokerBonus(rounds, scores, 'score_alex', 'Round 1')).toBe(0);
+    expect(getDisplayedJokerBonus(rounds, scores, 'score_alex', 'Round 1', [0])).toBe(0);
     expect(getDisplayedFinalTotal(rounds, scores, 'score_alex', 'Round 1', [0])).toBe(0);
+  });
+
+  test('creator and joker on the same round double-count the creator bonus', () => {
+    const rounds = [
+      { title: 'Round 1', creator: 'Alex', score_alex: null },
+      { title: 'Round 2', creator: 'Megan', score_alex: 7 },
+    ];
+    const scores = {
+      score_alex: {
+        'Round 1': null,
+        'Round 2': 7,
+      },
+    };
+    const medianScores = [8.5, 6];
+
+    expect(getDisplayedCreatorBonus(rounds, 'score_alex', 'Round 1', medianScores)).toBe(8.5);
+    expect(getDisplayedJokerBonus(rounds, scores, 'score_alex', 'Round 1', medianScores)).toBe(8.5);
+    expect(getDisplayedFinalTotal(rounds, scores, 'score_alex', 'Round 1', medianScores)).toBe(24);
+    expect(getSortableFinalTotal(rounds, scores, 'score_alex', 'Round 1', medianScores)).toBe(24);
   });
 
   test('duplicate titles still produce a total that matches the visible cells', () => {
