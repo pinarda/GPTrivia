@@ -1193,6 +1193,16 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         for round_data in flattened_rounds
         if round_data['major_category']
     })
+    all_minor_categories1 = sorted({
+        round_data['minor_category1']
+        for round_data in flattened_rounds
+        if round_data['minor_category1']
+    })
+    all_minor_categories2 = sorted({
+        round_data['minor_category2']
+        for round_data in flattened_rounds
+        if round_data['minor_category2']
+    })
     created_category_counts = {
         category: 0
         for category in all_categories
@@ -1371,6 +1381,8 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         'created_rounds_cat': created_rounds_cat_list,
         'created_rounds': created_rounds,
         'available_major_categories': all_categories,
+        'available_minor_categories1': all_minor_categories1,
+        'available_minor_categories2': all_minor_categories2,
         'player_color_mapping': build_player_color_mapping(global_player_names),
         'text_color': text_color,
         'max_avg': max_avg,

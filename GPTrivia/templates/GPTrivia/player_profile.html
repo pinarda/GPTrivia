@@ -10,7 +10,7 @@
       --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318c">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318d">
 {% endblock %}
 
 {% block extra_meta %}
@@ -227,15 +227,18 @@
                                                     >
                                                         {% csrf_token %}
                                                         <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                        <input
-                                                            class="profile-round-edit-control profile-round-edit-input"
-                                                            type="text"
+                                                        <select
+                                                            class="profile-round-edit-control profile-round-category-select"
                                                             name="minor_category1"
-                                                            value="{{ round.minor_category1 }}"
                                                             data-round-id="{{ round.id }}"
                                                             data-field-name="minor_category1"
                                                             aria-label="Set minor category 1 for {{ round.title }}"
                                                         >
+                                                            <option value="">—</option>
+                                                            {% for category in available_minor_categories1 %}
+                                                                <option value="{{ category }}" {% if round.minor_category1 == category %}selected{% endif %}>{{ category }}</option>
+                                                            {% endfor %}
+                                                        </select>
                                                     </form>
                                                 {% else %}
                                                     {{ round.minor_category1|default:"—" }}
@@ -250,15 +253,18 @@
                                                     >
                                                         {% csrf_token %}
                                                         <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                        <input
-                                                            class="profile-round-edit-control profile-round-edit-input"
-                                                            type="text"
+                                                        <select
+                                                            class="profile-round-edit-control profile-round-category-select"
                                                             name="minor_category2"
-                                                            value="{{ round.minor_category2 }}"
                                                             data-round-id="{{ round.id }}"
                                                             data-field-name="minor_category2"
                                                             aria-label="Set minor category 2 for {{ round.title }}"
                                                         >
+                                                            <option value="">—</option>
+                                                            {% for category in available_minor_categories2 %}
+                                                                <option value="{{ category }}" {% if round.minor_category2 == category %}selected{% endif %}>{{ category }}</option>
+                                                            {% endfor %}
+                                                        </select>
                                                     </form>
                                                 {% else %}
                                                     {{ round.minor_category2|default:"—" }}
@@ -321,15 +327,18 @@
                                                             >
                                                                 {% csrf_token %}
                                                                 <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                                <input
-                                                                    class="profile-round-edit-control profile-round-edit-input"
-                                                                    type="text"
+                                                                <select
+                                                                    class="profile-round-edit-control profile-round-category-select"
                                                                     name="minor_category1"
-                                                                    value="{{ round.minor_category1 }}"
                                                                     data-round-id="{{ round.id }}"
                                                                     data-field-name="minor_category1"
                                                                     aria-label="Set minor category 1 for {{ round.title }}"
                                                                 >
+                                                                    <option value="">—</option>
+                                                                    {% for category in available_minor_categories1 %}
+                                                                        <option value="{{ category }}" {% if round.minor_category1 == category %}selected{% endif %}>{{ category }}</option>
+                                                                    {% endfor %}
+                                                                </select>
                                                             </form>
                                                         {% else %}
                                                             <span class="profile-round-detail-value">{{ round.minor_category1|default:"—" }}</span>
@@ -345,15 +354,18 @@
                                                             >
                                                                 {% csrf_token %}
                                                                 <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                                <input
-                                                                    class="profile-round-edit-control profile-round-edit-input"
-                                                                    type="text"
+                                                                <select
+                                                                    class="profile-round-edit-control profile-round-category-select"
                                                                     name="minor_category2"
-                                                                    value="{{ round.minor_category2 }}"
                                                                     data-round-id="{{ round.id }}"
                                                                     data-field-name="minor_category2"
                                                                     aria-label="Set minor category 2 for {{ round.title }}"
                                                                 >
+                                                                    <option value="">—</option>
+                                                                    {% for category in available_minor_categories2 %}
+                                                                        <option value="{{ category }}" {% if round.minor_category2 == category %}selected{% endif %}>{{ category }}</option>
+                                                                    {% endfor %}
+                                                                </select>
                                                             </form>
                                                         {% else %}
                                                             <span class="profile-round-detail-value">{{ round.minor_category2|default:"—" }}</span>
@@ -497,15 +509,18 @@
                                                     >
                                                         {% csrf_token %}
                                                         <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                        <input
-                                                            class="profile-round-edit-control profile-round-edit-input"
-                                                            type="text"
+                                                        <select
+                                                            class="profile-round-edit-control profile-round-category-select"
                                                             name="minor_category1"
-                                                            value="{{ round.minor_category1 }}"
                                                             data-round-id="{{ round.id }}"
                                                             data-field-name="minor_category1"
                                                             aria-label="Set minor category 1 for {{ round.title }}"
                                                         >
+                                                            <option value="">—</option>
+                                                            {% for category in available_minor_categories1 %}
+                                                                <option value="{{ category }}" {% if round.minor_category1 == category %}selected{% endif %}>{{ category }}</option>
+                                                            {% endfor %}
+                                                        </select>
                                                     </form>
                                                 {% else %}
                                                     <span class="profile-round-detail-value">{{ round.minor_category1|default:"—" }}</span>
@@ -521,15 +536,18 @@
                                                     >
                                                         {% csrf_token %}
                                                         <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                        <input
-                                                            class="profile-round-edit-control profile-round-edit-input"
-                                                            type="text"
+                                                        <select
+                                                            class="profile-round-edit-control profile-round-category-select"
                                                             name="minor_category2"
-                                                            value="{{ round.minor_category2 }}"
                                                             data-round-id="{{ round.id }}"
                                                             data-field-name="minor_category2"
                                                             aria-label="Set minor category 2 for {{ round.title }}"
                                                         >
+                                                            <option value="">—</option>
+                                                            {% for category in available_minor_categories2 %}
+                                                                <option value="{{ category }}" {% if round.minor_category2 == category %}selected{% endif %}>{{ category }}</option>
+                                                            {% endfor %}
+                                                        </select>
                                                     </form>
                                                 {% else %}
                                                     <span class="profile-round-detail-value">{{ round.minor_category2|default:"—" }}</span>
