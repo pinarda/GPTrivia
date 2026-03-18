@@ -1190,6 +1190,7 @@ const PlayerTable = () => {
     const [prevUpdateFlag, setPrevUpdateFlag] = useState(0); // Previous update flag
     const [saveRequestCount, setSaveRequestCount] = useState(0);
     const [openDatePicker, setOpenDatePicker] = useState(false);
+    const [datePickerDraftValue, setDatePickerDraftValue] = useState(null);
     // ANIMATION STUFF
     const [showPic, setShowPic] = useState(false);
     const playerControls = useAnimation();
@@ -2851,23 +2852,34 @@ const PlayerTable = () => {
           <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
               open={openDatePicker}
-              value={selectedDate ? dayjs(selectedDate) : null}
-                onChange={(newValue) => {
+              value={datePickerDraftValue || (selectedDate ? dayjs(selectedDate) : null)}
+              views={['year', 'month', 'day']}
+              onChange={(newValue) => {
+                  setDatePickerDraftValue(newValue);
+              }}
+              onAccept={(newValue) => {
                   if (!newValue) {
                     return;
                   }
                   const formattedDate = dayjs(newValue).format('YYYY-MM-DD');
                   handleChangeDate(formattedDate);
+                  setDatePickerDraftValue(null);
                   setOpenDatePicker(false);
-                }}
-              onClose={() => setOpenDatePicker(false)}
+              }}
+              onClose={() => {
+                  setDatePickerDraftValue(null);
+                  setOpenDatePicker(false);
+              }}
               slots={{
                   day: CustomDay,
               }}
               slotProps={{
                 textField: {
                   ref: datePickerFieldRef,
-                  onClick: () => setOpenDatePicker(true),
+                  onClick: () => {
+                    setDatePickerDraftValue(selectedDate ? dayjs(selectedDate) : null);
+                    setOpenDatePicker(true);
+                  },
                   placeholder: 'Select date',
                   inputProps: {
                     readOnly: true,

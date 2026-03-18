@@ -407,9 +407,42 @@ body.site-shell[data-profile-theme="light"] {
     margin-bottom: 12px;
 }
 
-.calendar-month-label {
-    font-size: 1rem;
-    font-weight: bold;
+.calendar-month-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.calendar-select {
+    min-width: 0;
+    border: 1px solid var(--home-calendar-border, rgba(255, 255, 255, 0.12));
+    background: var(--home-control-surface, rgba(255, 255, 255, 0.08));
+    color: var(--home-control-text);
+    font-family: YoungSerif;
+    font-size: 0.96rem;
+    padding: 8px 10px;
+    border-radius: 0;
+}
+
+.calendar-month-select {
+    flex: 1 1 150px;
+}
+
+.calendar-year-select {
+    flex: 0 0 108px;
+}
+
+.calendar-select:focus {
+    outline: 2px solid rgba(0, 115, 204, 0.45);
+    outline-offset: 1px;
+}
+
+body.site-shell[data-profile-theme="light"] .calendar-select {
+    background: rgba(255, 255, 255, 0.82);
+    color: #1b2530;
 }
 
 .calendar-weekdays,
@@ -562,6 +595,16 @@ body.site-shell[data-profile-theme="light"] {
         padding: 11px 16px;
         font-size: 1.02rem;
         margin: 0;
+    }
+    .calendar-month-controls {
+        gap: 8px;
+    }
+    .calendar-select {
+        font-size: 0.9rem;
+        padding: 8px;
+    }
+    .calendar-year-select {
+        flex-basis: 96px;
     }
 }
 
@@ -939,7 +982,10 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
     </div>
     <div class="calendar-month-nav">
         <button id="calendar-prev" class="calendar-nav-button" type="button" aria-label="Previous month">‹</button>
-        <div id="calendar-month-label" class="calendar-month-label"></div>
+        <div class="calendar-month-controls">
+            <select id="calendar-month-select" class="calendar-select calendar-month-select" aria-label="Select month"></select>
+            <select id="calendar-year-select" class="calendar-select calendar-year-select" aria-label="Select year"></select>
+        </div>
         <button id="calendar-next" class="calendar-nav-button" type="button" aria-label="Next month">›</button>
     </div>
     <div class="calendar-weekdays">
@@ -1661,7 +1707,8 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             const calendarPopover = document.getElementById('presentation-calendar-popover');
             const calendarOverlay = document.getElementById('calendar-overlay');
             const calendarGrid = document.getElementById('calendar-grid');
-            const calendarMonthLabel = document.getElementById('calendar-month-label');
+            const calendarMonthSelect = document.getElementById('calendar-month-select');
+            const calendarYearSelect = document.getElementById('calendar-year-select');
             const calendarPrev = document.getElementById('calendar-prev');
             const calendarNext = document.getElementById('calendar-next');
             const calendarClose = document.getElementById('calendar-close');
@@ -1671,7 +1718,8 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 calendarPopover,
                 calendarOverlay,
                 calendarGrid,
-                calendarMonthLabel,
+                calendarMonthSelect,
+                calendarYearSelect,
                 presentationCalendar: calendarDataElement
                     ? JSON.parse(calendarDataElement.textContent || '{}')
                     : {},
@@ -1711,7 +1759,14 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 return `${year}-${month}-${day}`;
             }
 
+            const monthLabels = Array.from({ length: 12 }, (_, monthIndex) =>
+                new Date(2000, monthIndex, 1).toLocaleDateString('en-US', { month: 'long' })
+            );
+
             const availableDates = Object.keys(state.presentationCalendar).sort();
+            const availableYears = Array.from(
+                new Set(availableDates.map((isoDate) => Number(isoDate.split('-')[0])).filter(Boolean))
+            ).sort((left, right) => right - left);
 
             if (availableDates.length > 0) {
                 state.visibleMonth = getCalendarBaseDate(
@@ -1736,8 +1791,40 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 calendarOverlay.hidden = true;
             }
 
+            function renderCalendarControls() {
+                if (!calendarMonthSelect || !calendarYearSelect) {
+                    return;
+                }
+
+                if (!calendarMonthSelect.dataset.initialized) {
+                    monthLabels.forEach((label, monthIndex) => {
+                        const option = document.createElement('option');
+                        option.value = String(monthIndex);
+                        option.textContent = label;
+                        calendarMonthSelect.appendChild(option);
+                    });
+                    calendarMonthSelect.dataset.initialized = 'true';
+                }
+
+                const visibleYear = state.visibleMonth.getFullYear();
+                const yearsToRender = availableYears.includes(visibleYear)
+                    ? availableYears
+                    : [visibleYear, ...availableYears].sort((left, right) => right - left);
+
+                calendarYearSelect.innerHTML = '';
+                yearsToRender.forEach((yearValue) => {
+                    const option = document.createElement('option');
+                    option.value = String(yearValue);
+                    option.textContent = String(yearValue);
+                    calendarYearSelect.appendChild(option);
+                });
+
+                calendarMonthSelect.value = String(state.visibleMonth.getMonth());
+                calendarYearSelect.value = String(visibleYear);
+            }
+
             function renderCalendar() {
-                if (!calendarGrid || !calendarMonthLabel) {
+                if (!calendarGrid) {
                     return;
                 }
 
@@ -1749,10 +1836,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 const gridStart = new Date(monthStart);
                 gridStart.setDate(monthStart.getDate() - monthStart.getDay());
 
-                calendarMonthLabel.textContent = monthStart.toLocaleDateString('en-US', {
-                    month: 'long',
-                    year: 'numeric',
-                });
+                renderCalendarControls();
                 calendarGrid.innerHTML = '';
 
                 for (let index = 0; index < 42; index++) {
@@ -1800,6 +1884,26 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             calendarButton.addEventListener('click', openCalendar);
             calendarClose.addEventListener('click', closeCalendar);
             calendarOverlay.addEventListener('click', closeCalendar);
+            if (calendarMonthSelect) {
+                calendarMonthSelect.addEventListener('change', () => {
+                    state.visibleMonth = new Date(
+                        state.visibleMonth.getFullYear(),
+                        Number(calendarMonthSelect.value),
+                        1,
+                    );
+                    renderCalendar();
+                });
+            }
+            if (calendarYearSelect) {
+                calendarYearSelect.addEventListener('change', () => {
+                    state.visibleMonth = new Date(
+                        Number(calendarYearSelect.value),
+                        state.visibleMonth.getMonth(),
+                        1,
+                    );
+                    renderCalendar();
+                });
+            }
             calendarPrev.addEventListener('click', () => {
                 state.visibleMonth = new Date(state.visibleMonth.getFullYear(), state.visibleMonth.getMonth() - 1, 1);
                 renderCalendar();

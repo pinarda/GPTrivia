@@ -572,18 +572,6 @@
                     N/A
                 {% endif %}
             </p>
-            <p>Best Performance Ever:
-                {% if best_performance_ever %}
-                    {{ best_performance_ever.display_value }} on
-                    {% if best_performance_ever.scoresheet_link %}
-                        <a href="{{ best_performance_ever.scoresheet_link }}">{{ best_performance_ever.date|date:"F j, Y" }}</a>
-                    {% else %}
-                        {{ best_performance_ever.date|date:"F j, Y" }}
-                    {% endif %}
-                {% else %}
-                    N/A
-                {% endif %}
-            </p>
             <p>Strongest Category: {{ max_avg }}</p>
             <p>Weakest Category: {{ min_avg }}</p>
             <p>Easiest Creator:

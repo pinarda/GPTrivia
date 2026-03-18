@@ -337,7 +337,7 @@ class PlayerAnalysisViewTests(TestCase):
         response = self.client.get(reverse('player_profile', args=['Alex']))
         self.assertEqual(response.status_code, 200)
 
-    def test_profile_view_includes_best_score_and_performance_nights(self):
+    def test_profile_view_includes_best_score_night_and_counts_coop_rounds(self):
         MergedPresentation.objects.create(
             name="01.01.2023",
             presentation_id="presentation-jan-01",
@@ -365,6 +365,7 @@ class PlayerAnalysisViewTests(TestCase):
             score_megan=4,
             score_zach=4,
             score_jenny=4,
+            score_debi=0,
         )
         GPTriviaRound.objects.create(
             creator="Jenny",
@@ -405,6 +406,7 @@ class PlayerAnalysisViewTests(TestCase):
             date="2023-01-08",
             round_number=2,
             max_score=10,
+            cooperative=True,
             score_alex=9,
             score_ichigo=7,
             score_megan=7,
@@ -421,16 +423,9 @@ class PlayerAnalysisViewTests(TestCase):
             response.context['best_score_ever']['scoresheet_link'],
             f"{reverse('scoresheet_new')}?date=2023-01-08",
         )
-        self.assertEqual(response.context['best_performance_ever']['display_value'], '+8/20 (+40.0%)')
-        self.assertEqual(response.context['best_performance_ever']['date'], datetime.date(2023, 1, 1))
-        self.assertEqual(
-            response.context['best_performance_ever']['scoresheet_link'],
-            f"{reverse('scoresheet_new')}?date=2023-01-01",
-        )
         self.assertContains(response, 'Best Score Ever')
-        self.assertContains(response, 'Best Performance Ever')
         self.assertContains(response, f"{reverse('scoresheet_new')}?date=2023-01-08")
-        self.assertContains(response, f"{reverse('scoresheet_new')}?date=2023-01-01")
+        self.assertNotContains(response, 'Best Performance Ever')
 
     def test_creators_list_not_empty(self):
         # create a sample GPTriviaRound instance
