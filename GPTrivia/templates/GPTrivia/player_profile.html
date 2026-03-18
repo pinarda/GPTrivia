@@ -242,12 +242,14 @@
                                                             name="minor_category1"
                                                             data-round-id="{{ round.id }}"
                                                             data-field-name="minor_category1"
+                                                            data-allow-custom="true"
                                                             aria-label="Set minor category 1 for {{ round.title }}"
                                                         >
                                                             <option value="">—</option>
                                                             {% for category in available_minor_categories1 %}
                                                                 <option value="{{ category }}" {% if round.minor_category1 == category %}selected{% endif %}>{{ category }}</option>
                                                             {% endfor %}
+                                                            <option value="__add_new__">Add new…</option>
                                                         </select>
                                                     </form>
                                                 {% else %}
@@ -268,12 +270,14 @@
                                                             name="minor_category2"
                                                             data-round-id="{{ round.id }}"
                                                             data-field-name="minor_category2"
+                                                            data-allow-custom="true"
                                                             aria-label="Set minor category 2 for {{ round.title }}"
                                                         >
                                                             <option value="">—</option>
                                                             {% for category in available_minor_categories2 %}
                                                                 <option value="{{ category }}" {% if round.minor_category2 == category %}selected{% endif %}>{{ category }}</option>
                                                             {% endfor %}
+                                                            <option value="__add_new__">Add new…</option>
                                                         </select>
                                                     </form>
                                                 {% else %}
@@ -342,12 +346,14 @@
                                                                     name="minor_category1"
                                                                     data-round-id="{{ round.id }}"
                                                                     data-field-name="minor_category1"
+                                                                    data-allow-custom="true"
                                                                     aria-label="Set minor category 1 for {{ round.title }}"
                                                                 >
                                                                     <option value="">—</option>
                                                                     {% for category in available_minor_categories1 %}
                                                                         <option value="{{ category }}" {% if round.minor_category1 == category %}selected{% endif %}>{{ category }}</option>
                                                                     {% endfor %}
+                                                                    <option value="__add_new__">Add new…</option>
                                                                 </select>
                                                             </form>
                                                         {% else %}
@@ -369,12 +375,14 @@
                                                                     name="minor_category2"
                                                                     data-round-id="{{ round.id }}"
                                                                     data-field-name="minor_category2"
+                                                                    data-allow-custom="true"
                                                                     aria-label="Set minor category 2 for {{ round.title }}"
                                                                 >
                                                                     <option value="">—</option>
                                                                     {% for category in available_minor_categories2 %}
                                                                         <option value="{{ category }}" {% if round.minor_category2 == category %}selected{% endif %}>{{ category }}</option>
                                                                     {% endfor %}
+                                                                    <option value="__add_new__">Add new…</option>
                                                                 </select>
                                                             </form>
                                                         {% else %}
@@ -524,12 +532,14 @@
                                                             name="minor_category1"
                                                             data-round-id="{{ round.id }}"
                                                             data-field-name="minor_category1"
+                                                            data-allow-custom="true"
                                                             aria-label="Set minor category 1 for {{ round.title }}"
                                                         >
                                                             <option value="">—</option>
                                                             {% for category in available_minor_categories1 %}
                                                                 <option value="{{ category }}" {% if round.minor_category1 == category %}selected{% endif %}>{{ category }}</option>
                                                             {% endfor %}
+                                                            <option value="__add_new__">Add new…</option>
                                                         </select>
                                                     </form>
                                                 {% else %}
@@ -551,12 +561,14 @@
                                                             name="minor_category2"
                                                             data-round-id="{{ round.id }}"
                                                             data-field-name="minor_category2"
+                                                            data-allow-custom="true"
                                                             aria-label="Set minor category 2 for {{ round.title }}"
                                                         >
                                                             <option value="">—</option>
                                                             {% for category in available_minor_categories2 %}
                                                                 <option value="{{ category }}" {% if round.minor_category2 == category %}selected{% endif %}>{{ category }}</option>
                                                             {% endfor %}
+                                                            <option value="__add_new__">Add new…</option>
                                                         </select>
                                                     </form>
                                                 {% else %}
@@ -1185,6 +1197,7 @@
 
         function initializeProfileRoundCategoryForms() {
             const saveButton = document.getElementById('created-rounds-save-button');
+            const addNewOptionValue = '__add_new__';
             document.querySelectorAll('.profile-round-edit-form').forEach(form => {
                 form.addEventListener('submit', event => {
                     event.preventDefault();
@@ -1200,11 +1213,48 @@
                 saveButton.textContent = 'Save Category Changes';
             }
 
+            function ensureSelectOption(control, optionValue) {
+                if (!(control instanceof HTMLSelectElement) || !optionValue || optionValue === addNewOptionValue) {
+                    return optionValue;
+                }
+
+                const existingOption = Array.from(control.options).find(option => {
+                    return option.value && option.value.toLowerCase() === optionValue.toLowerCase();
+                });
+                if (existingOption) {
+                    return existingOption.value;
+                }
+
+                const newOption = new Option(optionValue, optionValue);
+                const addNewOption = control.querySelector(`option[value="${addNewOptionValue}"]`);
+                if (addNewOption) {
+                    control.insertBefore(newOption, addNewOption);
+                } else {
+                    control.appendChild(newOption);
+                }
+                return optionValue;
+            }
+
+            function addCustomOptionToField(fieldName, optionValue) {
+                let canonicalValue = optionValue;
+                document.querySelectorAll(`.profile-round-edit-control[data-field-name="${fieldName}"]`).forEach(control => {
+                    const ensuredValue = ensureSelectOption(control, optionValue);
+                    if (ensuredValue) {
+                        canonicalValue = ensuredValue;
+                    }
+                });
+                return canonicalValue;
+            }
+
             function syncProfileRoundControls(roundId, fields) {
                 document.querySelectorAll(`.profile-round-edit-control[data-round-id="${roundId}"]`).forEach(control => {
                     const fieldName = control.dataset.fieldName || control.name;
                     if (Object.prototype.hasOwnProperty.call(fields, fieldName)) {
-                        control.value = fields[fieldName] || '';
+                        const nextValue = control instanceof HTMLSelectElement
+                            ? ensureSelectOption(control, fields[fieldName] || '')
+                            : (fields[fieldName] || '');
+                        control.value = nextValue || '';
+                        control.dataset.currentValue = control.value || '';
                     }
                 });
             }
@@ -1231,9 +1281,21 @@
             }
 
             document.querySelectorAll('.profile-round-edit-control').forEach(control => {
+                control.dataset.currentValue = control.value || '';
                 control.addEventListener('change', () => {
                     const roundId = control.dataset.roundId;
                     const fieldName = control.dataset.fieldName || control.name;
+                    const previousValue = control.dataset.currentValue || '';
+                    if (control.dataset.allowCustom === 'true' && control.value === addNewOptionValue) {
+                        const promptValue = window.prompt('Enter a new minor category.', '');
+                        const customValueInput = String(promptValue || '').trim();
+                        if (!customValueInput) {
+                            syncProfileRoundControls(roundId, { [fieldName]: previousValue });
+                            return;
+                        }
+                        const customValue = addCustomOptionToField(fieldName, customValueInput);
+                        syncProfileRoundControls(roundId, { [fieldName]: customValue });
+                    }
                     const matchingControls = roundId
                         ? Array.from(document.querySelectorAll(`.profile-round-edit-control[data-round-id="${roundId}"][data-field-name="${fieldName}"]`))
                         : [control];
