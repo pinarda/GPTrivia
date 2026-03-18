@@ -10,7 +10,7 @@
       --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318a">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318c">
 {% endblock %}
 
 {% block extra_meta %}
@@ -153,6 +153,8 @@
                                         <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Title</th>
                                         <th class="profile-sortable-header" data-sort-type="date" tabindex="0" scope="col">Date</th>
                                         <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Category</th>
+                                        <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Minor 1</th>
+                                        <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Minor 2</th>
                                         <th class="profile-sortable-header" data-sort-type="number" tabindex="0" scope="col">Round</th>
                                         <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Co-op</th>
                                         <th class="profile-sortable-header" data-sort-type="number" tabindex="0" scope="col">Max</th>
@@ -165,7 +167,9 @@
                                     <tbody
                                         class="profile-round-group"
                                         data-search-group
-                                        data-search="{{ round.title|lower }} {{ round.date }} {{ round.major_category|lower }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }} {% if round.cooperative %}coop cooperative co-op{% endif %} {{ round.high_score_display|lower }} {{ round.average_score_display|lower }}"
+                                        data-round-id="{{ round.id }}"
+                                        data-search-base="{{ round.title|lower }} {{ round.date }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }} {% if round.cooperative %}coop cooperative co-op{% endif %} {{ round.high_score_display|lower }} {{ round.average_score_display|lower }}"
+                                        data-search="{{ round.title|lower }} {{ round.date }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }} {% if round.cooperative %}coop cooperative co-op{% endif %} {{ round.high_score_display|lower }} {{ round.average_score_display|lower }} {{ round.major_category|lower }} {{ round.minor_category1|lower }} {{ round.minor_category2|lower }}"
                                     >
                                         <tr class="profile-round-summary-row">
                                             <td class="profile-round-action-cell">
@@ -191,15 +195,17 @@
                                             <td>
                                                 {% if can_edit_round_categories %}
                                                     <form
-                                                        class="profile-round-category-form"
+                                                        class="profile-round-edit-form profile-round-category-form"
                                                         method="post"
                                                         action="{% url 'update_profile_round_category' round.id %}"
                                                     >
                                                         {% csrf_token %}
                                                         <input type="hidden" name="next_panel" value="created-rounds-panel">
                                                         <select
-                                                            class="profile-round-category-select"
+                                                            class="profile-round-edit-control profile-round-category-select"
                                                             name="major_category"
+                                                            data-round-id="{{ round.id }}"
+                                                            data-field-name="major_category"
                                                             aria-label="Set category for {{ round.title }}"
                                                         >
                                                             <option value="">—</option>
@@ -210,6 +216,52 @@
                                                     </form>
                                                 {% else %}
                                                     {{ round.major_category|default:"—" }}
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if can_edit_round_categories %}
+                                                    <form
+                                                        class="profile-round-edit-form"
+                                                        method="post"
+                                                        action="{% url 'update_profile_round_category' round.id %}"
+                                                    >
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="next_panel" value="created-rounds-panel">
+                                                        <input
+                                                            class="profile-round-edit-control profile-round-edit-input"
+                                                            type="text"
+                                                            name="minor_category1"
+                                                            value="{{ round.minor_category1 }}"
+                                                            data-round-id="{{ round.id }}"
+                                                            data-field-name="minor_category1"
+                                                            aria-label="Set minor category 1 for {{ round.title }}"
+                                                        >
+                                                    </form>
+                                                {% else %}
+                                                    {{ round.minor_category1|default:"—" }}
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if can_edit_round_categories %}
+                                                    <form
+                                                        class="profile-round-edit-form"
+                                                        method="post"
+                                                        action="{% url 'update_profile_round_category' round.id %}"
+                                                    >
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="next_panel" value="created-rounds-panel">
+                                                        <input
+                                                            class="profile-round-edit-control profile-round-edit-input"
+                                                            type="text"
+                                                            name="minor_category2"
+                                                            value="{{ round.minor_category2 }}"
+                                                            data-round-id="{{ round.id }}"
+                                                            data-field-name="minor_category2"
+                                                            aria-label="Set minor category 2 for {{ round.title }}"
+                                                        >
+                                                    </form>
+                                                {% else %}
+                                                    {{ round.minor_category2|default:"—" }}
                                                 {% endif %}
                                             </td>
                                             <td data-sort-value="{{ round.round_number }}">{{ round.round_number }}</td>
@@ -230,21 +282,23 @@
                                             </td>
                                         </tr>
                                         <tr id="profile-round-details-{{ forloop.counter0 }}" class="profile-round-detail-row" hidden>
-                                            <td colspan="10">
+                                            <td colspan="12">
                                                 <div class="profile-round-detail-grid">
                                                     <div class="profile-round-detail-item">
                                                         <span class="profile-round-detail-label">Category</span>
                                                         {% if can_edit_round_categories %}
                                                             <form
-                                                                class="profile-round-category-form"
+                                                                class="profile-round-edit-form profile-round-category-form"
                                                                 method="post"
                                                                 action="{% url 'update_profile_round_category' round.id %}"
                                                             >
                                                                 {% csrf_token %}
                                                                 <input type="hidden" name="next_panel" value="created-rounds-panel">
                                                                 <select
-                                                                    class="profile-round-category-select"
+                                                                    class="profile-round-edit-control profile-round-category-select"
                                                                     name="major_category"
+                                                                    data-round-id="{{ round.id }}"
+                                                                    data-field-name="major_category"
                                                                     aria-label="Set category for {{ round.title }}"
                                                                 >
                                                                     <option value="">—</option>
@@ -255,6 +309,54 @@
                                                             </form>
                                                         {% else %}
                                                             <span class="profile-round-detail-value">{{ round.major_category|default:"—" }}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="profile-round-detail-item">
+                                                        <span class="profile-round-detail-label">Minor 1</span>
+                                                        {% if can_edit_round_categories %}
+                                                            <form
+                                                                class="profile-round-edit-form"
+                                                                method="post"
+                                                                action="{% url 'update_profile_round_category' round.id %}"
+                                                            >
+                                                                {% csrf_token %}
+                                                                <input type="hidden" name="next_panel" value="created-rounds-panel">
+                                                                <input
+                                                                    class="profile-round-edit-control profile-round-edit-input"
+                                                                    type="text"
+                                                                    name="minor_category1"
+                                                                    value="{{ round.minor_category1 }}"
+                                                                    data-round-id="{{ round.id }}"
+                                                                    data-field-name="minor_category1"
+                                                                    aria-label="Set minor category 1 for {{ round.title }}"
+                                                                >
+                                                            </form>
+                                                        {% else %}
+                                                            <span class="profile-round-detail-value">{{ round.minor_category1|default:"—" }}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="profile-round-detail-item">
+                                                        <span class="profile-round-detail-label">Minor 2</span>
+                                                        {% if can_edit_round_categories %}
+                                                            <form
+                                                                class="profile-round-edit-form"
+                                                                method="post"
+                                                                action="{% url 'update_profile_round_category' round.id %}"
+                                                            >
+                                                                {% csrf_token %}
+                                                                <input type="hidden" name="next_panel" value="created-rounds-panel">
+                                                                <input
+                                                                    class="profile-round-edit-control profile-round-edit-input"
+                                                                    type="text"
+                                                                    name="minor_category2"
+                                                                    value="{{ round.minor_category2 }}"
+                                                                    data-round-id="{{ round.id }}"
+                                                                    data-field-name="minor_category2"
+                                                                    aria-label="Set minor category 2 for {{ round.title }}"
+                                                                >
+                                                            </form>
+                                                        {% else %}
+                                                            <span class="profile-round-detail-value">{{ round.minor_category2|default:"—" }}</span>
                                                         {% endif %}
                                                     </div>
                                                     <div class="profile-round-detail-item">
@@ -298,7 +400,7 @@
                                             </td>
                                         </tr>
                                         <tr id="profile-round-slides-{{ forloop.counter0 }}" class="profile-round-slides-row" hidden>
-                                            <td colspan="10">
+                                            <td colspan="12">
                                                 <div class="profile-round-slides-shell">
                                                     <p class="profile-round-slides-link-row">
                                                         <a
@@ -330,7 +432,9 @@
                                 <div
                                     class="profile-round-mobile-card"
                                     data-search-group
-                                    data-search="{{ round.title|lower }} {{ round.date }} {{ round.major_category|lower }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }} {% if round.cooperative %}coop cooperative co-op{% endif %} {{ round.high_score_display|lower }} {{ round.average_score_display|lower }}"
+                                    data-round-id="{{ round.id }}"
+                                    data-search-base="{{ round.title|lower }} {{ round.date }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }} {% if round.cooperative %}coop cooperative co-op{% endif %} {{ round.high_score_display|lower }} {{ round.average_score_display|lower }}"
+                                    data-search="{{ round.title|lower }} {{ round.date }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }} {% if round.cooperative %}coop cooperative co-op{% endif %} {{ round.high_score_display|lower }} {{ round.average_score_display|lower }} {{ round.major_category|lower }} {{ round.minor_category1|lower }} {{ round.minor_category2|lower }}"
                                     data-sort-title="{{ round.title|lower }}"
                                     data-sort-date="{{ round.date|date:'Y-m-d' }}"
                                     data-sort-high="{{ round.high_score|default_if_none:'-1' }}"
@@ -360,15 +464,17 @@
                                                 <span class="profile-round-detail-label">Category</span>
                                                 {% if can_edit_round_categories %}
                                                     <form
-                                                        class="profile-round-category-form"
+                                                        class="profile-round-edit-form profile-round-category-form"
                                                         method="post"
                                                         action="{% url 'update_profile_round_category' round.id %}"
                                                     >
                                                         {% csrf_token %}
                                                         <input type="hidden" name="next_panel" value="created-rounds-panel">
                                                         <select
-                                                            class="profile-round-category-select"
+                                                            class="profile-round-edit-control profile-round-category-select"
                                                             name="major_category"
+                                                            data-round-id="{{ round.id }}"
+                                                            data-field-name="major_category"
                                                             aria-label="Set category for {{ round.title }}"
                                                         >
                                                             <option value="">—</option>
@@ -379,6 +485,54 @@
                                                     </form>
                                                 {% else %}
                                                     <span class="profile-round-detail-value">{{ round.major_category|default:"—" }}</span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="profile-round-detail-item">
+                                                <span class="profile-round-detail-label">Minor 1</span>
+                                                {% if can_edit_round_categories %}
+                                                    <form
+                                                        class="profile-round-edit-form"
+                                                        method="post"
+                                                        action="{% url 'update_profile_round_category' round.id %}"
+                                                    >
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="next_panel" value="created-rounds-panel">
+                                                        <input
+                                                            class="profile-round-edit-control profile-round-edit-input"
+                                                            type="text"
+                                                            name="minor_category1"
+                                                            value="{{ round.minor_category1 }}"
+                                                            data-round-id="{{ round.id }}"
+                                                            data-field-name="minor_category1"
+                                                            aria-label="Set minor category 1 for {{ round.title }}"
+                                                        >
+                                                    </form>
+                                                {% else %}
+                                                    <span class="profile-round-detail-value">{{ round.minor_category1|default:"—" }}</span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="profile-round-detail-item">
+                                                <span class="profile-round-detail-label">Minor 2</span>
+                                                {% if can_edit_round_categories %}
+                                                    <form
+                                                        class="profile-round-edit-form"
+                                                        method="post"
+                                                        action="{% url 'update_profile_round_category' round.id %}"
+                                                    >
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="next_panel" value="created-rounds-panel">
+                                                        <input
+                                                            class="profile-round-edit-control profile-round-edit-input"
+                                                            type="text"
+                                                            name="minor_category2"
+                                                            value="{{ round.minor_category2 }}"
+                                                            data-round-id="{{ round.id }}"
+                                                            data-field-name="minor_category2"
+                                                            aria-label="Set minor category 2 for {{ round.title }}"
+                                                        >
+                                                    </form>
+                                                {% else %}
+                                                    <span class="profile-round-detail-value">{{ round.minor_category2|default:"—" }}</span>
                                                 {% endif %}
                                             </div>
                                             <div class="profile-round-detail-item">
@@ -850,7 +1004,14 @@
         }
 
         function setButtonColors() {
-            const playerColor = playerColorMapping[playerName];
+            const playerColor = playerColorMapping[playerName] || '{{ profile_page_chrome_color }}';
+            const borderColor = darkenColor(playerColor);
+            document.body.style.setProperty('--profile-search-bg', playerColor);
+            document.body.style.setProperty('--profile-search-text', textColor);
+            document.body.style.setProperty('--profile-search-border', borderColor);
+            document.body.style.setProperty('--profile-category-bg', playerColor);
+            document.body.style.setProperty('--profile-category-text', textColor);
+            document.body.style.setProperty('--profile-category-border', borderColor);
             const actionButtons = document.querySelectorAll('.profile-player-button');
             actionButtons.forEach(button => {
                 button.style.backgroundColor = playerColor;
@@ -869,7 +1030,7 @@
                 button.style.color = textColor;
                 button.style.border = 'none';
                 button.addEventListener('mouseover', () => {
-                    button.style.backgroundColor = darkenColor(playerColor);
+                    button.style.backgroundColor = borderColor;
                 });
                 button.addEventListener('mouseout', () => {
                     button.style.backgroundColor = playerColor;
@@ -995,10 +1156,85 @@
         }
 
         function initializeProfileRoundCategoryForms() {
-            document.querySelectorAll('.profile-round-category-select').forEach(select => {
-                select.addEventListener('change', () => {
-                    if (select.form) {
-                        select.form.submit();
+            document.querySelectorAll('.profile-round-edit-form').forEach(form => {
+                form.addEventListener('submit', event => {
+                    event.preventDefault();
+                });
+            });
+
+            function syncProfileRoundControls(roundId, fields) {
+                document.querySelectorAll(`.profile-round-edit-control[data-round-id="${roundId}"]`).forEach(control => {
+                    const fieldName = control.dataset.fieldName || control.name;
+                    if (Object.prototype.hasOwnProperty.call(fields, fieldName)) {
+                        control.value = fields[fieldName] || '';
+                    }
+                });
+            }
+
+            function syncProfileRoundSearch(roundId, fields) {
+                document.querySelectorAll(`[data-search-group][data-round-id="${roundId}"]`).forEach(group => {
+                    const baseSearch = group.dataset.searchBase || '';
+                    const categorySearch = [
+                        fields.major_category || '',
+                        fields.minor_category1 || '',
+                        fields.minor_category2 || '',
+                    ].join(' ');
+                    group.dataset.search = `${baseSearch} ${categorySearch}`.trim().toLowerCase();
+                });
+            }
+
+            document.querySelectorAll('.profile-round-edit-control').forEach(control => {
+                control.addEventListener('change', async () => {
+                    if (!control.form) {
+                        return;
+                    }
+
+                    const roundId = control.dataset.roundId;
+                    const fieldName = control.dataset.fieldName || control.name;
+                    const matchingControls = roundId
+                        ? Array.from(document.querySelectorAll(`.profile-round-edit-control[data-round-id="${roundId}"][data-field-name="${fieldName}"]`))
+                        : [control];
+                    const previousValues = matchingControls.map(item => item.value);
+                    matchingControls.forEach(item => {
+                        item.disabled = true;
+                    });
+
+                    try {
+                        const response = await fetch(control.form.action, {
+                            method: 'POST',
+                            body: new FormData(control.form),
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                        });
+                        if (!response.ok) {
+                            throw new Error(`Save failed with status ${response.status}`);
+                        }
+                        const payload = await response.json();
+                        if (!payload.success) {
+                            throw new Error('Save response did not indicate success.');
+                        }
+
+                        const normalizedRoundId = String(payload.round_id);
+                        syncProfileRoundControls(normalizedRoundId, payload.fields || {});
+                        syncProfileRoundSearch(normalizedRoundId, payload.fields || {});
+
+                        const panelId = payload.panel || 'created-rounds-panel';
+                        const panel = document.getElementById(panelId);
+                        const searchInput = panel ? panel.querySelector('.profile-table-search') : null;
+                        if (panel && searchInput) {
+                            filterProfileTableRows(panel.id, searchInput.value);
+                        }
+                    } catch (error) {
+                        console.error('Error saving profile round field:', error);
+                        matchingControls.forEach((item, index) => {
+                            item.value = previousValues[index] || '';
+                        });
+                        window.alert('Unable to save that category change right now.');
+                    } finally {
+                        matchingControls.forEach(item => {
+                            item.disabled = false;
+                        });
                     }
                 });
             });

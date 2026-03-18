@@ -1404,17 +1404,42 @@ def update_profile_round_category(request, round_id):
     if not _can_edit_profile_round_categories(request.user, profile_user):
         raise Http404("Round not found.")
 
-    new_category = (request.POST.get('major_category') or '').strip()
-    available_categories = {
-        category
-        for category in GPTriviaRound.objects.values_list('major_category', flat=True)
-        if category
+    allowed_fields = {'major_category', 'minor_category1', 'minor_category2'}
+    fields_to_update = {
+        field_name: (request.POST.get(field_name) or '').strip()
+        for field_name in allowed_fields
+        if field_name in request.POST
     }
-    if new_category and new_category not in available_categories:
-        raise Http404("Category not found.")
+    if not fields_to_update:
+        raise Http404("No editable category field provided.")
 
-    round_obj.major_category = new_category
-    round_obj.save(update_fields=['major_category'])
+    if 'major_category' in fields_to_update:
+        available_categories = {
+            category
+            for category in GPTriviaRound.objects.values_list('major_category', flat=True)
+            if category
+        }
+        new_category = fields_to_update['major_category']
+        if new_category and new_category not in available_categories:
+            raise Http404("Category not found.")
+
+    for field_name, field_value in fields_to_update.items():
+        setattr(round_obj, field_name, field_value)
+    round_obj.save(update_fields=list(fields_to_update.keys()))
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse(
+            {
+                'success': True,
+                'round_id': round_obj.id,
+                'fields': {
+                    'major_category': round_obj.major_category or '',
+                    'minor_category1': round_obj.minor_category1 or '',
+                    'minor_category2': round_obj.minor_category2 or '',
+                },
+                'panel': (request.POST.get('next_panel') or '').strip(),
+            }
+        )
 
     redirect_url = reverse('player_profile', kwargs={'player_name': round_creator_name})
     panel = (request.POST.get('next_panel') or '').strip()

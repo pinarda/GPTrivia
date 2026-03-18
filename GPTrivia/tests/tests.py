@@ -585,6 +585,59 @@ class PlayerAnalysisViewTests(TestCase):
         )
         self.assertEqual(trivia_round.major_category, 'History')
 
+    def test_profile_alex_can_update_other_players_minor_categories_via_ajax(self):
+        GPTriviaRound.objects.create(
+            creator="Jenny",
+            title="Existing History Round",
+            major_category="History",
+            minor_category1="Ancient",
+            minor_category2="Rome",
+            date="2023-05-08",
+            round_number=1,
+            max_score=10,
+            score_alex=8,
+            score_jenny=None,
+        )
+        trivia_round = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Locked Category Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-05-01",
+            round_number=1,
+            max_score=10,
+            score_alex=8,
+            score_megan=None,
+        )
+
+        response = self.client.post(
+            reverse('update_profile_round_category', args=[trivia_round.id]),
+            {
+                'major_category': 'History',
+                'minor_category1': 'Empires',
+                'minor_category2': 'Expansion',
+                'next_panel': 'created-rounds-panel',
+            },
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        trivia_round.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {
+            'success': True,
+            'round_id': trivia_round.id,
+            'fields': {
+                'major_category': 'History',
+                'minor_category1': 'Empires',
+                'minor_category2': 'Expansion',
+            },
+            'panel': 'created-rounds-panel',
+        })
+        self.assertEqual(trivia_round.major_category, 'History')
+        self.assertEqual(trivia_round.minor_category1, 'Empires')
+        self.assertEqual(trivia_round.minor_category2, 'Expansion')
+
     def test_non_alex_cannot_update_other_players_round_category(self):
         other_user = User.objects.create_user(username='Jenny', password='Rapt0rpusia')
         self.client.force_login(other_user)
