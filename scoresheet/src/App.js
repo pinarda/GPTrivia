@@ -342,7 +342,9 @@ import {
         }
       `;
 
-    const JokerFormControl = styled(StyledFormControl)`
+    const JokerFormControl = styled(StyledFormControl).attrs(({ className }) => ({
+      className: className ? `star-ricochet ${className}` : 'star-ricochet',
+    }))`
       width: 100%;
       min-width: 0;
       max-width: 8rem;

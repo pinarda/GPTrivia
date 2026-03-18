@@ -86,6 +86,24 @@ function isRicochetColor(color) {
   return (hue >= 90 && hue <= 190) || hue <= 22 || hue >= 338;
 }
 
+function hasRicochetBackground(style) {
+  return isRicochetColor(style.backgroundColor);
+}
+
+function hasRicochetBorder(style) {
+  return ['Top', 'Right', 'Bottom', 'Left'].some((side) => {
+    const borderWidth = Number.parseFloat(style[`border${side}Width`]);
+    if (!borderWidth) {
+      return false;
+    }
+    return isRicochetColor(style[`border${side}Color`]);
+  });
+}
+
+function hasRicochetSurface(style) {
+  return hasRicochetBackground(style) || hasRicochetBorder(style);
+}
+
 function collectRicochetSurfaces() {
   const seen = new Set();
   const surfaces = [];
@@ -105,45 +123,53 @@ function collectRicochetSurfaces() {
       continue;
     }
 
-    const style = window.getComputedStyle(element);
-    if (
-      style.display === 'none' ||
-      style.visibility === 'hidden' ||
-      Number.parseFloat(style.opacity) === 0
-    ) {
-      continue;
+    const outlineCandidates = Array.from(
+      element.querySelectorAll('.MuiOutlinedInput-notchedOutline')
+    );
+    const collisionNodes = outlineCandidates.length ? outlineCandidates : [element];
+
+    for (const collisionNode of collisionNodes) {
+      const style = window.getComputedStyle(collisionNode);
+      if (
+        style.display === 'none' ||
+        style.visibility === 'hidden' ||
+        Number.parseFloat(style.opacity) === 0 ||
+        !hasRicochetSurface(style)
+      ) {
+        continue;
+      }
+
+      const rect = collisionNode.getBoundingClientRect();
+      if (
+        rect.width < 6 ||
+        rect.height < 6 ||
+        rect.bottom < 0 ||
+        rect.top > window.innerHeight ||
+        rect.right < 0 ||
+        rect.left > window.innerWidth
+      ) {
+        continue;
+      }
+
+      const key = [
+        Math.round(rect.left),
+        Math.round(rect.top),
+        Math.round(rect.width),
+        Math.round(rect.height),
+      ].join(':');
+
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+
+      surfaces.push({
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+      });
     }
-
-    const rect = element.getBoundingClientRect();
-    if (
-      rect.width < 6 ||
-      rect.height < 6 ||
-      rect.bottom < 0 ||
-      rect.top > window.innerHeight ||
-      rect.right < 0 ||
-      rect.left > window.innerWidth
-    ) {
-      continue;
-    }
-
-    const key = [
-      Math.round(rect.left),
-      Math.round(rect.top),
-      Math.round(rect.width),
-      Math.round(rect.height),
-    ].join(':');
-
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-
-    surfaces.push({
-      left: rect.left,
-      right: rect.right,
-      top: rect.top,
-      bottom: rect.bottom,
-    });
   }
 
   return surfaces;
