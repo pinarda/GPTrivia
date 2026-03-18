@@ -840,6 +840,116 @@ def _build_scoresheet_date_link(target_date):
     return f"{reverse('scoresheet_new')}?date={target_date_str}"
 
 
+def _parse_profile_presentation_json(value, fallback):
+    if value in (None, '', []):
+        return fallback
+
+    if isinstance(value, (dict, list)):
+        return value
+
+    if not isinstance(value, str):
+        return fallback
+
+    try:
+        return json.loads(
+            value
+            .replace("'", '"')
+            .replace('~~~~', "'")
+        )
+    except Exception:
+        return fallback
+
+
+def _get_profile_player_storage_key(player_field):
+    display_name = display_name_for_player_field(player_field)
+    return display_name.lower() if display_name else ''
+
+
+def _profile_player_matches_creator(round_creator, player_field):
+    player_name = display_name_for_player_field(player_field)
+    if player_name == 'Dan':
+        return round_creator in {'Dad', 'Dan'}
+    if player_name == 'Debi':
+        return round_creator in {'Mom', 'Debi'}
+    return round_creator == player_name
+
+
+def _build_profile_night_final_totals(night_rounds, presentation):
+    player_fields = set(collect_player_fields(
+        rounds=night_rounds,
+        presentations=[presentation] if presentation else None,
+        include_fixed=False,
+    ))
+    for round_obj in night_rounds:
+        player_fields.update(get_round_score_map(round_obj, include_null_fixed=False).keys())
+    player_fields = sorted(player_fields)
+    if not player_fields:
+        return {}
+
+    selected_rounds_raw = _parse_profile_presentation_json(
+        getattr(presentation, 'joker_round_indices', None) if presentation else None,
+        {},
+    )
+    selected_rounds = {
+        player_field_for_name(player_key): round_title
+        for player_key, round_title in (selected_rounds_raw or {}).items()
+        if player_field_for_name(player_key) and round_title
+    }
+
+    median_scores_by_title = {}
+    for round_obj in night_rounds:
+        score_map = get_round_score_map(round_obj, include_null_fixed=False)
+        creator_field = player_field_for_name(round_obj.creator)
+        score_values = [
+            score
+            for candidate_field, score in score_map.items()
+            if candidate_field != creator_field and isinstance(score, (int, float))
+        ]
+        if not score_values:
+            median_scores_by_title[round_obj.title] = None
+            continue
+
+        score_values.sort()
+        middle_index = len(score_values) // 2
+        if len(score_values) % 2 == 0:
+            median_value = (score_values[middle_index - 1] + score_values[middle_index]) / 2
+        else:
+            median_value = score_values[middle_index]
+        median_scores_by_title[round_obj.title] = median_value
+
+    final_totals = {}
+    for player_field in player_fields:
+        selected_round_title = selected_rounds.get(player_field, '')
+        round_total = 0
+        creator_bonus_total = 0
+        joker_bonus = None
+        has_any_value = False
+
+        for round_obj in night_rounds:
+            score_map = get_round_score_map(round_obj, include_null_fixed=False)
+            player_score = score_map.get(player_field)
+            if isinstance(player_score, (int, float)):
+                round_total += player_score
+                has_any_value = True
+
+            if _profile_player_matches_creator(round_obj.creator, player_field):
+                median_value = median_scores_by_title.get(round_obj.title)
+                if round_obj.title != selected_round_title and isinstance(median_value, (int, float)):
+                    creator_bonus_total += median_value
+                    has_any_value = True
+
+            if round_obj.title == selected_round_title and isinstance(player_score, (int, float)):
+                joker_bonus = player_score
+                has_any_value = True
+
+        if not has_any_value:
+            continue
+
+        final_totals[player_field] = round_total + creator_bonus_total + (joker_bonus or 0)
+
+    return final_totals
+
+
 def _build_profile_best_night_stats(all_rounds, player_name):
     score_field = player_field_for_name(player_name)
     other_player_fields = [
@@ -856,6 +966,7 @@ def _build_profile_best_night_stats(all_rounds, player_name):
     best_performance_stat = None
 
     for night_date, night_rounds in rounds_by_date.items():
+        night_presentation = _get_scoresheet_presentation(selected_date=night_date.isoformat())
         player_total = 0
         best_score_max_total = 0
         performance_rounds = []
@@ -892,22 +1003,17 @@ def _build_profile_best_night_stats(all_rounds, player_name):
 
         performance_max_total = sum(max_score for _, _, max_score in performance_rounds)
         if performance_rounds and performance_max_total:
-            eligible_other_totals = []
-            for other_player_field in other_player_fields:
-                other_total = 0
-                has_full_night_scores = True
-                for score_map, _, _max_score in performance_rounds:
-                    other_score = score_map.get(other_player_field)
-                    if other_score is None:
-                        has_full_night_scores = False
-                        break
-                    other_total += other_score
-
-                if has_full_night_scores:
-                    eligible_other_totals.append(other_total)
+            night_final_totals = _build_profile_night_final_totals(night_rounds, night_presentation)
+            eligible_other_totals = [
+                total
+                for other_player_field, total in night_final_totals.items()
+                if other_player_field != score_field and other_player_field in other_player_fields
+            ]
 
             if eligible_other_totals:
-                performance_player_total = sum(player_score for _, player_score, _ in performance_rounds)
+                performance_player_total = night_final_totals.get(score_field)
+                if performance_player_total is None:
+                    continue
                 second_place_total = max(eligible_other_totals)
                 performance_gap = performance_player_total - second_place_total
                 performance_gap_percentage = performance_gap / performance_max_total

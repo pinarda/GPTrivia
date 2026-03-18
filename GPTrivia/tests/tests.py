@@ -413,6 +413,39 @@ class PlayerAnalysisViewTests(TestCase):
             score_zach=7,
             score_jenny=7,
         )
+        MergedPresentation.objects.create(
+            name="01.15.2023",
+            presentation_id="presentation-jan-15",
+            round_names=["Night Three Round 1", "Night Three Round 2"],
+            creator_list=["Megan", "Zach"],
+            player_list={"score_alex": "score_alex", "score_megan": "score_megan", "score_zach": "score_zach"},
+        )
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Night Three Round 1",
+            major_category="Games",
+            minor_category1="Board",
+            minor_category2="Abstract",
+            date="2023-01-15",
+            round_number=1,
+            max_score=10,
+            score_alex=9,
+            score_megan=None,
+            score_zach=9,
+        )
+        GPTriviaRound.objects.create(
+            creator="Zach",
+            title="Night Three Round 2",
+            major_category="Games",
+            minor_category1="Video",
+            minor_category2="Retro",
+            date="2023-01-15",
+            round_number=2,
+            max_score=10,
+            score_alex=9,
+            score_megan=9,
+            score_zach=None,
+        )
 
         response = self.client.get(reverse('player_profile', args=['Alex']))
 
@@ -423,7 +456,7 @@ class PlayerAnalysisViewTests(TestCase):
             response.context['best_score_ever']['scoresheet_link'],
             f"{reverse('scoresheet_new')}?date=2023-01-08",
         )
-        self.assertEqual(response.context['best_performance_ever']['display_value'], '+8/20 (+40.0%)')
+        self.assertEqual(response.context['best_performance_ever']['display_value'], '+4/20 (+20.0%)')
         self.assertEqual(response.context['best_performance_ever']['date'], datetime.date(2023, 1, 1))
         self.assertEqual(
             response.context['best_performance_ever']['scoresheet_link'],
