@@ -232,6 +232,60 @@ class PlayerAnalysisPlotTests(TestCase):
         })
         self.assertEqual(response.status_code, 200)
         self.assertIn('mean_values', response.json())
+
+    def test_time_series_creator_normalizes_peer_scores_by_max_score(self):
+        GPTriviaRound.objects.create(
+            creator="Trend",
+            title="Trend Round 1",
+            major_category="Trend Category",
+            minor_category1="A",
+            minor_category2="B",
+            date="2024-01-01",
+            round_number=1,
+            max_score=10,
+            score_alex=5,
+            score_megan=4,
+            score_zach=6,
+        )
+        GPTriviaRound.objects.create(
+            creator="Trend",
+            title="Trend Round 2",
+            major_category="Trend Category",
+            minor_category1="A",
+            minor_category2="B",
+            date="2024-01-02",
+            round_number=2,
+            max_score=20,
+            score_alex=10,
+            score_megan=8,
+            score_zach=12,
+        )
+        GPTriviaRound.objects.create(
+            creator="Trend",
+            title="Trend Round 3",
+            major_category="Trend Category",
+            minor_category1="A",
+            minor_category2="B",
+            date="2024-01-03",
+            round_number=3,
+            max_score=5,
+            score_alex=5,
+            score_megan=2,
+            score_zach=1,
+        )
+
+        response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'time_series_creator',
+            'creator': 'Trend',
+            'player': 'Alex',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['dates'], ['2024-01-01', '2024-01-02', '2024-01-03'])
+        self.assertAlmostEqual(data['adjusted_scores'][0], -2.3333333333, places=6)
+        self.assertAlmostEqual(data['adjusted_scores'][1], -2.3333333333, places=6)
+        self.assertAlmostEqual(data['adjusted_scores'][2], 4.6666666667, places=6)
 class PlayerAnalysisViewTests(TestCase):
     def setUp(self):
         self.views_threshold_patcher = patch('GPTrivia.views.MIN_ANALYSIS_ROUNDS', 1)

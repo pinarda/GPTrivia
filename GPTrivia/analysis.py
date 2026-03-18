@@ -733,14 +733,10 @@ class PlayerAnalysisPlot(View):
             player_data = player_data[player_data['cooperative'] == False]
             player_data['date'] = pd.to_datetime(player_data['date'])
             player_data = player_data.sort_values(by='date')
-
-            player_data['scaled_score'] = (player_data[player_column] / player_data['max_score']) * 10
-
-            # scale the score columns by the max score as well
-            # for col in score_columns:
-                # player_data[col] = (player_data[col] / player_data['max_score']) * 10
-
-            player_data['mean_score'] = player_data[score_columns].mean(axis=1)
+            max_score_series = player_data['max_score'].replace(0, np.nan)
+            player_data['scaled_score'] = player_data[player_column].div(max_score_series).mul(10)
+            scaled_peer_scores = player_data[score_columns].div(max_score_series, axis=0).mul(10)
+            player_data['mean_score'] = scaled_peer_scores.mean(axis=1)
             player_data['adjusted_score'] = player_data['scaled_score'] - player_data['mean_score']
 
             player_mean2 = player_data['adjusted_score'].mean()
