@@ -71,6 +71,10 @@ def normalize_creator_name(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", (name or "").lower())
 
 
+def normalize_title_name(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", (name or "").lower()).strip()
+
+
 def _map_sender_to_creator(sender_header: str) -> str:
     display_name, email_address = parseaddr(sender_header or "")
     raw_value = display_name or (email_address.split("@")[0] if email_address else "") or sender_header
@@ -103,6 +107,19 @@ def _extract_text_plain_body(payload: dict) -> Optional[str]:
     return None
 
 
+def _extract_shared_name_from_subject(subject_header: str) -> str:
+    if not subject_header:
+        return ""
+
+    prefix = "Presentation shared with you:"
+    if subject_header.startswith(prefix):
+        shared_name = subject_header[len(prefix):].strip()
+    else:
+        shared_name = subject_header.strip()
+
+    return shared_name.strip().strip('"').strip("'").strip()
+
+
 def _build_round_link(presentation_id: str, slide_id: Optional[str], *, link_style: str) -> str:
     if link_style == "edit":
         base = f"https://docs.google.com/presentation/d/{presentation_id}/edit"
@@ -118,6 +135,8 @@ class SharedRoundCandidate:
     creator: str
     shared_date_iso: str
     shared_date_label: str
+    shared_name: str
+    normalized_shared_name: str
     original_url: str
     repair_link: str
 
@@ -146,6 +165,16 @@ def _target_creator_date_pairs(rounds) -> set:
         if not round_obj.date:
             continue
         pairs.add((normalize_creator_name(round_obj.creator), round_obj.date.isoformat()))
+    return pairs
+
+
+def _target_creator_name_pairs(rounds) -> set:
+    pairs = set()
+    for round_obj in rounds:
+        normalized_title = normalize_title_name(round_obj.title)
+        if not normalized_title:
+            continue
+        pairs.add((normalize_creator_name(round_obj.creator), normalized_title))
     return pairs
 
 
@@ -185,7 +214,7 @@ def _fetch_message_metadata(gmail_service, message_id: str) -> Optional[dict]:
             userId="me",
             id=message_id,
             format="metadata",
-            metadataHeaders=["From", "internalDate"],
+            metadataHeaders=["From", "internalDate", "Subject"],
         ).execute()
     except HttpError as exc:
         print(f"Skipping Gmail metadata {message_id}: {exc}", file=sys.stderr)
@@ -210,6 +239,7 @@ def collect_shared_round_candidates(
     link_style: str,
     progress_every: int,
     target_pairs,
+    match_mode: str,
 ) -> List[SharedRoundCandidate]:
     gmail_service = build("gmail", "v1", credentials=credentials)
     candidates_by_presentation_id: Dict[str, SharedRoundCandidate] = {}
@@ -234,8 +264,15 @@ def collect_shared_round_candidates(
         headers = {header["name"]: header["value"] for header in metadata.get("payload", {}).get("headers", [])}
         creator = _map_sender_to_creator(headers.get("From", ""))
         shared_date_iso, shared_date_label = _parse_shared_date(metadata.get("internalDate", "0"))
+        shared_name = _extract_shared_name_from_subject(headers.get("Subject", ""))
+        normalized_shared_name = normalize_title_name(shared_name)
 
-        if (normalize_creator_name(creator), shared_date_iso) not in target_pairs:
+        if match_mode == "name":
+            target_key = (normalize_creator_name(creator), normalized_shared_name)
+        else:
+            target_key = (normalize_creator_name(creator), shared_date_iso)
+
+        if target_key not in target_pairs:
             continue
 
         matched_metadata += 1
@@ -263,6 +300,8 @@ def collect_shared_round_candidates(
             creator=creator,
             shared_date_iso=shared_date_iso,
             shared_date_label=shared_date_label,
+            shared_name=shared_name,
+            normalized_shared_name=normalized_shared_name,
             original_url=original_url,
             repair_link=_build_round_link(presentation_id, slide_id, link_style=link_style),
         )
@@ -278,9 +317,16 @@ def collect_shared_round_candidates(
     return list(candidates_by_presentation_id.values())
 
 
-def choose_candidate_for_round(round_obj, candidates: Sequence[SharedRoundCandidate], *, allow_date_only: bool):
+def choose_candidate_for_round(
+    round_obj,
+    candidates: Sequence[SharedRoundCandidate],
+    *,
+    allow_date_only: bool,
+    match_mode: str,
+):
     round_creator = normalize_creator_name(round_obj.creator)
     round_date_iso = round_obj.date.isoformat() if round_obj.date else ""
+    round_title_name = normalize_title_name(round_obj.title)
 
     creator_candidates = [
         candidate
@@ -289,6 +335,18 @@ def choose_candidate_for_round(round_obj, candidates: Sequence[SharedRoundCandid
     ]
     if not creator_candidates:
         return None, "no_creator_match", []
+
+    if match_mode == "name":
+        creator_and_name = [
+            candidate
+            for candidate in creator_candidates
+            if candidate.normalized_shared_name == round_title_name
+        ]
+        if len(creator_and_name) == 1:
+            return creator_and_name[0], "creator+name", creator_and_name
+        if len(creator_and_name) > 1:
+            return None, "ambiguous_name", creator_and_name
+        return None, "no_safe_match", creator_candidates
 
     creator_and_date = [
         candidate
@@ -343,7 +401,13 @@ def main():
     parser.add_argument(
         "--allow-date-only",
         action="store_true",
-        help="Allow a unique date-only match when creator matching fails.",
+        help="Allow a unique date-only match when creator matching fails in date mode.",
+    )
+    parser.add_argument(
+        "--match-mode",
+        choices=("date", "name"),
+        default="date",
+        help="Match shared rounds by creator plus date or creator plus shared file name. Default: date.",
     )
     parser.add_argument(
         "--link-style",
@@ -379,14 +443,19 @@ def main():
         return 0
 
     log_progress(f"[rounds] found {len(rounds)} placeholder rounds to inspect")
-    target_pairs = _target_creator_date_pairs(rounds)
-    log_progress(f"[rounds] unique creator/date pairs to search: {len(target_pairs)}")
+    if args.match_mode == "name":
+        target_pairs = _target_creator_name_pairs(rounds)
+        log_progress(f"[rounds] unique creator/name pairs to search: {len(target_pairs)}")
+    else:
+        target_pairs = _target_creator_date_pairs(rounds)
+        log_progress(f"[rounds] unique creator/date pairs to search: {len(target_pairs)}")
 
     candidates = collect_shared_round_candidates(
         credentials=credentials,
         link_style=args.link_style,
         progress_every=max(1, args.progress_every),
         target_pairs=target_pairs,
+        match_mode=args.match_mode,
     )
     if not candidates:
         print("No shared presentation candidates were found in Gmail.", file=sys.stderr)
@@ -408,6 +477,7 @@ def main():
             round_obj,
             candidates,
             allow_date_only=args.allow_date_only,
+            match_mode=args.match_mode,
         )
 
         round_label = (
@@ -420,7 +490,7 @@ def main():
             for preview in related_candidates[:3]:
                 print(
                     "      candidate="
-                    f"{preview.creator} | {preview.shared_date_label} | {preview.original_url}"
+                    f"{preview.creator} | {preview.shared_date_label} | {preview.shared_name or '(no subject name)'} | {preview.original_url}"
                 )
             if reason.startswith("ambiguous"):
                 ambiguous += 1
@@ -430,7 +500,8 @@ def main():
 
         print(
             f"{'APPLY' if args.apply else 'WOULD'} {round_label} | "
-            f"match={reason} | shared={candidate.shared_date_label} | link={candidate.repair_link}"
+            f"match={reason} | shared={candidate.shared_date_label} | "
+            f"name={candidate.shared_name or '(no subject name)'} | link={candidate.repair_link}"
         )
         if args.apply:
             round_obj.link = candidate.repair_link
