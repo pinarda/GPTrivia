@@ -10,7 +10,7 @@
       --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318j">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318k">
 {% endblock %}
 
 {% block extra_meta %}
@@ -19,15 +19,63 @@
 
 {% block content %}
     <div class="profile-page">
-        <h1 class="profile-page-title">
-            <a href="{% url 'player_profile' player_name=player_name %}" class="player_name" data-player="{{ player_name }}">{{ player_name }}</a>'s Profile
-        </h1>
-
         <div class="profile-actions-container">
             <div id="roundbuttons" class="profile-control-stack">
                 <div class="profile-hero-card">
                     <img class="profile-hero-image" src="{{ profile_picture_url }}" alt="{{ player_name }}'s Profile Picture">
                 </div>
+
+                <section class="profile-intro-card">
+                    <div class="profile-control-heading">
+                        <h2>About {{ player_name }}</h2>
+                        <p>
+                            {% if is_own_profile %}
+                                Add a short intro, fun fact, or running bit in Profile Appearance.
+                            {% else %}
+                                A quick note and streak snapshot for this player.
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="profile-intro-box">
+                        {% if profile_intro %}
+                            {{ profile_intro|linebreaksbr }}
+                        {% elif is_own_profile %}
+                            Add a short intro or fun fact in Profile Appearance.
+                        {% else %}
+                            No intro added yet.
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="profile-streak-card">
+                    <div class="profile-control-heading">
+                        <h2>
+                            Trivia Night Timeline
+                            <span class="profile-streak-heading-summary">
+                                Played streak: {{ longest_play_streak }} night{{ longest_play_streak|pluralize }}
+                                · Creator streak: {{ longest_creator_streak }} presentation{{ longest_creator_streak|pluralize }}
+                            </span>
+                        </h2>
+                    </div>
+                    {% if streak_timeline %}
+                        <div class="profile-streak-timeline-shell">
+                            <div class="profile-streak-timeline">
+                                {% for night in streak_timeline %}
+                                    <div class="profile-streak-night" title="{{ night.date|date:'F j, Y' }}">
+                                        <span class="profile-streak-marker profile-streak-marker--creator{% if night.created %} is-active{% endif %}"></span>
+                                        <span
+                                            class="profile-streak-marker profile-streak-marker--played{% if night.played %} is-active{% endif %}"
+                                            style="--player-streak-color: {{ player_color }};"
+                                        ></span>
+                                        <span class="profile-streak-date">{{ night.date|date:"n/j/y" }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="profile-table-empty">No trivia nights recorded yet.</p>
+                    {% endif %}
+                </section>
 
                 <div class="profile-control-heading">
                     <h2>Creator Information</h2>
@@ -674,7 +722,7 @@
                         <div class="profile-data-panel-header">
                             <div>
                                 <h2>Profile Appearance</h2>
-                                <p>Change your picture, player color, page chrome, profile page theme, and site theme from one place.</p>
+                                <p>Change your picture, intro, player color, page chrome, profile page theme, and site theme from one place.</p>
                             </div>
                         </div>
 
@@ -693,6 +741,17 @@
                                     </label>
                                     {{ form.profile_picture }}
                                     {% for error in form.profile_picture.errors %}
+                                        <p class="profile-settings-error">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="profile-settings-group">
+                                    <label class="profile-settings-label" for="{{ form.profile_intro.id_for_label }}">
+                                        Profile Intro
+                                    </label>
+                                    {{ form.profile_intro }}
+                                    <p class="profile-settings-help">Keep it short: a fun fact, intro, or personal running joke.</p>
+                                    {% for error in form.profile_intro.errors %}
                                         <p class="profile-settings-error">{{ error }}</p>
                                     {% endfor %}
                                 </div>

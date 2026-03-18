@@ -340,6 +340,111 @@ class PlayerAnalysisViewTests(TestCase):
         response = self.client.get(reverse('player_profile', args=['Alex']))
         self.assertEqual(response.status_code, 200)
 
+    def test_profile_view_shows_intro_and_streak_timeline(self):
+        self.user.profile.profile_intro = "Trivia goblin with a science streak."
+        self.user.profile.save(update_fields=['profile_intro'])
+
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Night One Creator Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-01-01",
+            round_number=1,
+            max_score=10,
+            score_alex=None,
+            score_megan=8,
+        )
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Night One Played Round",
+            major_category="Science",
+            minor_category1="Chemistry",
+            minor_category2="Atoms",
+            date="2023-01-01",
+            round_number=2,
+            max_score=10,
+            score_alex=7,
+            score_megan=None,
+        )
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Night Two Creator Round",
+            major_category="History",
+            minor_category1="Ancient",
+            minor_category2="Rome",
+            date="2023-01-08",
+            round_number=1,
+            max_score=10,
+            score_alex=None,
+            score_megan=7,
+        )
+        GPTriviaRound.objects.create(
+            creator="Jenny",
+            title="Night Two Played Round",
+            major_category="History",
+            minor_category1="Modern",
+            minor_category2="Europe",
+            date="2023-01-08",
+            round_number=2,
+            max_score=10,
+            score_alex=9,
+            score_jenny=None,
+        )
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Night Three Missed Round",
+            major_category="Games",
+            minor_category1="Board",
+            minor_category2="Abstract",
+            date="2023-01-15",
+            round_number=1,
+            max_score=10,
+            score_alex=None,
+            score_megan=8,
+        )
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Night Four Creator Round",
+            major_category="Music",
+            minor_category1="Rock",
+            minor_category2="Classic",
+            date="2023-01-22",
+            round_number=1,
+            max_score=10,
+            score_alex=None,
+            score_megan=6,
+        )
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Night Four Played Round",
+            major_category="Music",
+            minor_category1="Pop",
+            minor_category2="Hits",
+            date="2023-01-22",
+            round_number=2,
+            max_score=10,
+            score_alex=8,
+            score_megan=None,
+        )
+
+        response = self.client.get(reverse('player_profile', args=['Alex']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['profile_intro'], "Trivia goblin with a science streak.")
+        self.assertEqual(response.context['longest_play_streak'], 2)
+        self.assertEqual(response.context['longest_creator_streak'], 2)
+        self.assertEqual(len(response.context['streak_timeline']), 4)
+        self.assertEqual(
+            [(entry['played'], entry['created']) for entry in response.context['streak_timeline']],
+            [(True, True), (True, True), (False, False), (True, True)],
+        )
+        self.assertContains(response, 'About Alex')
+        self.assertContains(response, 'Trivia Night Timeline')
+        self.assertContains(response, 'Trivia goblin with a science streak.')
+        self.assertNotContains(response, 'class="profile-page-title"')
+
     def test_profile_view_includes_best_score_night_and_counts_coop_rounds(self):
         MergedPresentation.objects.create(
             name="01.01.2023",
@@ -466,9 +571,8 @@ class PlayerAnalysisViewTests(TestCase):
             f"{reverse('scoresheet_new')}?date=2023-01-01",
         )
         self.assertContains(response, 'Highest Percentage Score')
-        self.assertContains(response, 'Biggest Win')
+        self.assertNotContains(response, 'Biggest Win')
         self.assertContains(response, f"{reverse('scoresheet_new')}?date=2023-01-08")
-        self.assertContains(response, f"{reverse('scoresheet_new')}?date=2023-01-01")
 
     def test_profile_creator_stats_ignore_players_inactive_for_over_a_year(self):
         GPTriviaRound.objects.create(

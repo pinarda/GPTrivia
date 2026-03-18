@@ -80,6 +80,82 @@ a {
     line-height: 1.1;
 }
 
+.profile-intro-card,
+.profile-streak-card {
+    display: grid;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.95rem;
+    background: var(--profile-surface);
+    border: 1px solid var(--profile-border);
+    box-sizing: border-box;
+}
+
+.profile-intro-box {
+    min-height: 4.4rem;
+    padding: 0.85rem 0.95rem;
+    background: var(--profile-surface-alt);
+    border: 1px solid var(--profile-border);
+    color: var(--profile-page-text);
+    line-height: 1.55;
+    white-space: pre-wrap;
+}
+
+.profile-streak-heading-summary {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.8em;
+    color: var(--profile-muted-text);
+    font-weight: 400;
+    line-height: 1.4;
+}
+
+.profile-streak-timeline-shell {
+    overflow-x: auto;
+    padding-bottom: 0.15rem;
+}
+
+.profile-streak-timeline {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    min-width: max-content;
+}
+
+.profile-streak-night {
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 0.24rem;
+    width: 1.9rem;
+}
+
+.profile-streak-marker {
+    width: 0.72rem;
+    height: 0.72rem;
+    border: 1px solid var(--profile-border);
+    background: transparent;
+}
+
+.profile-streak-marker--creator.is-active {
+    background: #111111;
+    border-color: #111111;
+}
+
+.profile-streak-marker--played.is-active {
+    background: var(--player-streak-color, var(--profile-header-footer-color));
+    border-color: var(--player-streak-color, var(--profile-header-footer-color));
+}
+
+.profile-streak-date {
+    font-family: Monaco, monospace;
+    font-size: 0.62rem;
+    line-height: 1.1;
+    color: var(--profile-muted-text);
+    text-align: center;
+    word-break: break-word;
+}
+
 .profile-actions-container {
     display: block;
     width: min(100%, 1180px);
@@ -341,6 +417,22 @@ a {
     border-radius: 0;
     appearance: none;
     -webkit-appearance: none;
+}
+
+.profile-settings-form textarea {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0.7rem 0.75rem;
+    border: 1px solid var(--profile-settings-control-border);
+    background: var(--profile-settings-control-bg);
+    color: var(--profile-settings-control-text);
+    font-family: Monaco, monospace;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    border-radius: 0;
+    resize: vertical;
 }
 
 .profile-color-input-row {
@@ -1007,6 +1099,19 @@ a {
     .summary-stats,
     .profile-settings-form {
         padding: 0.85rem;
+    }
+
+    .profile-intro-card,
+    .profile-streak-card {
+        padding: 0.85rem;
+    }
+
+    .profile-streak-night {
+        width: 1.7rem;
+    }
+
+    .profile-streak-date {
+        font-size: 0.58rem;
     }
 
     #profile-appearance-panel,

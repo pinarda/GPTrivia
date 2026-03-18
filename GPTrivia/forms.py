@@ -28,6 +28,7 @@ class ProfilePictureForm(forms.ModelForm):
         model = Profile
         fields = [
             'profile_picture',
+            'profile_intro',
             'profile_color',
             'profile_page_chrome_color',
             'profile_page_trivia_color_one',
@@ -38,6 +39,7 @@ class ProfilePictureForm(forms.ModelForm):
         ]
         widgets = {
             'profile_picture': forms.FileInput(),
+            'profile_intro': forms.Textarea(attrs={'rows': 3}),
             'profile_color': forms.TextInput(attrs={'type': 'color'}),
             'profile_page_chrome_color': forms.TextInput(attrs={'type': 'color'}),
             'profile_page_trivia_color_one': forms.TextInput(attrs={'type': 'color'}),
@@ -58,6 +60,12 @@ class ProfilePictureForm(forms.ModelForm):
         self.fields['profile_picture'].widget.attrs.update({
             'accept': 'image/*',
             'id': 'profile-picture-input',
+        })
+        self.fields['profile_intro'].required = False
+        self.fields['profile_intro'].widget.attrs.update({
+            'id': 'profile-intro-input',
+            'placeholder': 'Add a short intro, fun fact, or running bit for your profile.',
+            'maxlength': 280,
         })
         self.fields['profile_color'].required = False
         self.fields['profile_color'].widget.attrs.update({

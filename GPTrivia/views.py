@@ -1158,6 +1158,55 @@ def _build_profile_best_night_stats(all_rounds, player_name, active_player_names
         'best_performance_ever': best_performance_stat,
     }
 
+
+def _build_profile_streak_timeline(all_rounds, player_name):
+    score_field = player_field_for_name(player_name)
+    if not score_field:
+        return {
+            'timeline': [],
+            'longest_play_streak': 0,
+            'longest_creator_streak': 0,
+        }
+
+    rounds_by_date = {}
+    for round_obj in all_rounds:
+        rounds_by_date.setdefault(round_obj.date, []).append(round_obj)
+
+    longest_play_streak = 0
+    longest_creator_streak = 0
+    current_play_streak = 0
+    current_creator_streak = 0
+    timeline = []
+
+    for night_date in sorted(rounds_by_date.keys()):
+        night_rounds = rounds_by_date[night_date]
+        played = any(
+            isinstance(get_round_score_map(round_obj, include_null_fixed=False).get(score_field), (int, float))
+            for round_obj in night_rounds
+        )
+        created = any(
+            _profile_player_matches_creator(round_obj.creator, score_field)
+            for round_obj in night_rounds
+        )
+
+        current_play_streak = current_play_streak + 1 if played else 0
+        current_creator_streak = current_creator_streak + 1 if created else 0
+        longest_play_streak = max(longest_play_streak, current_play_streak)
+        longest_creator_streak = max(longest_creator_streak, current_creator_streak)
+
+        timeline.append({
+            'date': night_date,
+            'played': played,
+            'created': created,
+        })
+
+    return {
+        'timeline': timeline,
+        'longest_play_streak': longest_play_streak,
+        'longest_creator_streak': longest_creator_streak,
+    }
+
+
 @login_required
 def player_profile_dict(request, player_name, form=None, include_form=False):
     player_name = display_name_for_player_field(player_name)
@@ -1222,6 +1271,7 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         if round_data.get(score_field) is not None
     ]
     best_night_stats = _build_profile_best_night_stats(all_rounds, player_name, active_player_names)
+    streak_timeline = _build_profile_streak_timeline(all_rounds, player_name)
     player_avg = (sum(player_values) / len(player_values)) if player_values else None
     total_rounds = len(player_values)
 
@@ -1374,11 +1424,13 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
             'profile_page_trivia_color_three',
             Profile.PROFILE_PAGE_TRIVIA_COLOR_THREE_DEFAULT,
         ),
+        'profile_intro': (getattr(profile, 'profile_intro', '') or '').strip(),
         'page_profile_theme': getattr(profile, 'profile_page_theme', Profile.THEME_DEFAULT) or Profile.THEME_DEFAULT,
         'is_own_profile': is_own_profile,
         'can_edit_round_categories': can_edit_round_categories,
         'profile_picture_url': profile_picture_url,
         'player_name': player_name,
+        'player_color': player_color,
         'created_rounds_cat': created_rounds_cat_list,
         'created_rounds': created_rounds,
         'available_major_categories': all_categories,
@@ -1397,6 +1449,9 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         'created_rounds_count': created_rounds_count,
         'best_score_ever': best_night_stats['best_score_ever'],
         'best_performance_ever': best_night_stats['best_performance_ever'],
+        'streak_timeline': streak_timeline['timeline'],
+        'longest_play_streak': streak_timeline['longest_play_streak'],
+        'longest_creator_streak': streak_timeline['longest_creator_streak'],
     }
 
     if include_form or form is not None:
