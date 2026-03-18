@@ -1009,6 +1009,46 @@ a {
         padding: 0.85rem;
     }
 
+    #profile-appearance-panel,
+    #profile-appearance-panel .profile-settings-panel,
+    #profile-appearance-panel .profile-settings-form,
+    #profile-appearance-panel .profile-settings-group {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    #profile-appearance-panel {
+        overflow-x: clip;
+    }
+
+    #profile-appearance-panel .profile-settings-form {
+        padding: 0.72rem;
+        overflow-x: hidden;
+    }
+
+    #profile-appearance-panel .profile-settings-group {
+        padding: 0.58rem 0.6rem;
+    }
+
+    #profile-appearance-panel .profile-settings-form input[type="file"] {
+        font-size: 0.82rem;
+        padding: 0.35rem;
+    }
+
+    #profile-appearance-panel .profile-settings-form input[type="file"]::file-selector-button,
+    #profile-appearance-panel .profile-settings-form input[type="file"]::-webkit-file-upload-button {
+        display: block;
+        width: 100%;
+        margin-right: 0;
+        margin-bottom: 0.55rem;
+        text-align: center;
+        white-space: normal;
+        overflow: hidden;
+        text-overflow: clip;
+    }
+
     #createdRoundsTable th,
     #playerRoundsTable th,
     #createdRoundsTable td,
