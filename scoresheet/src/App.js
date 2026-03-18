@@ -48,6 +48,7 @@ import {
   getDisplayedRoundScore,
   getSortableFinalTotal,
 } from './scoreTotals';
+import { getScoreCellJokerAction } from './scoreCellMenu';
 import {
   getCrownTheme,
   getDisplayNameForPlayer,
@@ -1222,6 +1223,7 @@ const PlayerTable = () => {
       playerField: '',
       playerDisplayName: '',
       roundTitle: '',
+      secondaryJokerMode: false,
     });
     const [jokerRouletteHighlights, setJokerRouletteHighlights] = useState({});
     const [jokerRouletteSpinningPlayers, setJokerRouletteSpinningPlayers] = useState({});
@@ -2322,10 +2324,11 @@ const PlayerTable = () => {
         playerField: '',
         playerDisplayName: '',
         roundTitle: '',
+        secondaryJokerMode: false,
       });
     }, [clearScoreCellLongPress]);
 
-    const openScoreCellMenu = useCallback((clientX, clientY, playerField, roundTitle) => {
+    const openScoreCellMenu = useCallback((clientX, clientY, playerField, roundTitle, options = {}) => {
       const playerDisplayName = getDisplayNameForPlayerField(playerField);
       if (!playerDisplayName || !roundTitle) {
         return;
@@ -2337,13 +2340,16 @@ const PlayerTable = () => {
         playerField,
         playerDisplayName,
         roundTitle,
+        secondaryJokerMode: Boolean(options.secondaryJokerMode),
       });
     }, []);
 
     const handleScoreCellContextMenu = useCallback((event, playerField, roundTitle) => {
       event.preventDefault();
       clearScoreCellLongPress();
-      openScoreCellMenu(event.clientX, event.clientY, playerField, roundTitle);
+      openScoreCellMenu(event.clientX, event.clientY, playerField, roundTitle, {
+        secondaryJokerMode: event.altKey,
+      });
     }, [clearScoreCellLongPress, openScoreCellMenu]);
 
     const handleScoreCellTouchStart = useCallback((event, playerField, roundTitle) => {
@@ -2717,14 +2723,18 @@ const PlayerTable = () => {
       }
 
       const currentJokerRounds = getSelectedJokerRoundsForPlayer(scoreCellMenu.playerField);
-      const roundAlreadySelected = currentJokerRounds.includes(scoreCellMenu.roundTitle);
+      const jokerAction = getScoreCellJokerAction(
+        currentJokerRounds,
+        scoreCellMenu.roundTitle,
+        scoreCellMenu.secondaryJokerMode,
+      );
 
-      if (roundAlreadySelected) {
+      if (jokerAction.mode === 'clear') {
         handleJokerSelectionChange(scoreCellMenu.playerField, scoreCellMenu.roundTitle, {
           clearRound: scoreCellMenu.roundTitle,
           skipConfirm: true,
         });
-      } else if (currentJokerRounds.length >= 1) {
+      } else if (jokerAction.mode === 'secondary') {
         handleJokerSelectionChange(scoreCellMenu.playerField, scoreCellMenu.roundTitle, {
           addSecondary: true,
           skipConfirm: true,
@@ -2735,7 +2745,14 @@ const PlayerTable = () => {
         });
       }
       closeScoreCellMenu();
-    }, [closeScoreCellMenu, getSelectedJokerRoundsForPlayer, handleJokerSelectionChange, scoreCellMenu.playerField, scoreCellMenu.roundTitle]);
+    }, [
+      closeScoreCellMenu,
+      getSelectedJokerRoundsForPlayer,
+      handleJokerSelectionChange,
+      scoreCellMenu.playerField,
+      scoreCellMenu.roundTitle,
+      scoreCellMenu.secondaryJokerMode,
+    ]);
 
     const handleSetCellAsCreator = useCallback(() => {
       if (!scoreCellMenu.playerDisplayName || !scoreCellMenu.roundTitle) {
@@ -2753,14 +2770,12 @@ const PlayerTable = () => {
     const scoreCellMenuJokerRounds = scoreCellMenu.playerField
       ? getSelectedJokerRoundsForPlayer(scoreCellMenu.playerField)
       : [];
-    const scoreCellMenuRoundIsJoker = Boolean(
-      scoreCellMenu.roundTitle && scoreCellMenuJokerRounds.includes(scoreCellMenu.roundTitle)
+    const scoreCellJokerMenuAction = getScoreCellJokerAction(
+      scoreCellMenuJokerRounds,
+      scoreCellMenu.roundTitle,
+      scoreCellMenu.secondaryJokerMode,
     );
-    const scoreCellJokerMenuLabel = scoreCellMenuRoundIsJoker
-      ? 'Clear Joker'
-      : scoreCellMenuJokerRounds.length >= 1
-        ? 'Add as 2nd Joker'
-        : 'Set as Joker';
+    const scoreCellJokerMenuLabel = scoreCellJokerMenuAction.label;
 
     const saveData = useCallback(() => {
         if (saveInFlightRef.current) {

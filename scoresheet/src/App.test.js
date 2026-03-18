@@ -46,6 +46,7 @@ import {
   incrementStylePoint,
   setStylePointValue,
 } from './stylePoints';
+import { getScoreCellJokerAction } from './scoreCellMenu';
 import {
   clearCreatorScoreForRound,
   getDisplayedCreatorBonus,
@@ -703,6 +704,28 @@ describe('scoresheet total helpers', () => {
     expect(getDisplayedJokerBonus(rounds, scores, 'score_alex', ['Round 1', 'Round 2'], [null, null])).toBe(7);
     expect(getDisplayedFinalTotal(rounds, scores, 'score_alex', ['Round 1', 'Round 2'], [null, null])).toBe(21);
     expect(getSortableFinalTotal(rounds, scores, 'score_alex', ['Round 1', 'Round 2'], [null, null])).toBe(21);
+  });
+
+  test('score cell joker menu requires Alt to expose the second joker action', () => {
+    expect(getScoreCellJokerAction(['Round 1'], 'Round 2', false)).toEqual({
+      label: 'Set as Joker',
+      mode: 'primary',
+    });
+
+    expect(getScoreCellJokerAction(['Round 1'], 'Round 2', true)).toEqual({
+      label: 'Add as 2nd Joker',
+      mode: 'secondary',
+    });
+
+    expect(getScoreCellJokerAction(['Round 1', 'Round 2'], 'Round 3', true)).toEqual({
+      label: 'Replace 2nd Joker',
+      mode: 'secondary',
+    });
+
+    expect(getScoreCellJokerAction(['Round 1', 'Round 2'], 'Round 2', false)).toEqual({
+      label: 'Clear Joker',
+      mode: 'clear',
+    });
   });
 
   test('duplicate titles still produce a total that matches the visible cells', () => {
