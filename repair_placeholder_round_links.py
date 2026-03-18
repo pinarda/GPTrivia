@@ -26,6 +26,10 @@ from GPTrivia.mail import (
 
 
 PLACEHOLDER_PRESENTATION_ID = "1gC9DR9TmQK_9ls8Npw8Sc99qKI6YN9nRqLuVj0W07ns"
+SHARED_CREATOR_WILDCARDS = {
+    "swooper",
+    "hailscience",
+}
 
 
 def log_progress(message: str):
@@ -164,7 +168,10 @@ def _target_creator_date_pairs(rounds) -> set:
     for round_obj in rounds:
         if not round_obj.date:
             continue
-        pairs.add((normalize_creator_name(round_obj.creator), round_obj.date.isoformat()))
+        round_creator = normalize_creator_name(round_obj.creator)
+        pairs.add((round_creator, round_obj.date.isoformat()))
+        for wildcard_creator in SHARED_CREATOR_WILDCARDS:
+            pairs.add((wildcard_creator, round_obj.date.isoformat()))
     return pairs
 
 
@@ -174,7 +181,10 @@ def _target_creator_name_pairs(rounds) -> set:
         normalized_title = normalize_title_name(round_obj.title)
         if not normalized_title:
             continue
-        pairs.add((normalize_creator_name(round_obj.creator), normalized_title))
+        round_creator = normalize_creator_name(round_obj.creator)
+        pairs.add((round_creator, normalized_title))
+        for wildcard_creator in SHARED_CREATOR_WILDCARDS:
+            pairs.add((wildcard_creator, normalized_title))
     return pairs
 
 
@@ -332,6 +342,7 @@ def choose_candidate_for_round(
         candidate
         for candidate in candidates
         if normalize_creator_name(candidate.creator) == round_creator
+        or normalize_creator_name(candidate.creator) in SHARED_CREATOR_WILDCARDS
     ]
     if not creator_candidates:
         return None, "no_creator_match", []
