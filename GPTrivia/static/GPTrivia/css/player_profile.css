@@ -28,6 +28,10 @@ body.site-shell {
     --profile-settings-control-text: #ffffff;
     --profile-settings-control-border: rgba(255, 255, 255, 0.2);
     --profile-empty-bg: rgba(255, 255, 255, 0.05);
+    --profile-streak-column-width: 1.2rem;
+    --profile-streak-column-gap: 0.04rem;
+    --profile-streak-marker-size: 0.52rem;
+    --profile-streak-date-height: 3.8rem;
 }
 
 body.site-shell[data-profile-theme="light"] {
@@ -262,9 +266,11 @@ a {
 }
 
 .profile-streak-timeline {
-    display: flex;
-    gap: 0.08rem;
-    align-items: flex-start;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: var(--profile-streak-column-width);
+    column-gap: var(--profile-streak-column-gap);
+    align-items: start;
     min-width: max-content;
 }
 
@@ -273,14 +279,17 @@ a {
     justify-items: center;
     align-content: start;
     gap: 0.12rem;
-    width: 1.18rem;
+    width: var(--profile-streak-column-width);
+    min-width: var(--profile-streak-column-width);
+    max-width: var(--profile-streak-column-width);
 }
 
 .profile-streak-marker {
-    width: 0.52rem;
-    height: 0.52rem;
+    width: var(--profile-streak-marker-size);
+    height: var(--profile-streak-marker-size);
     border: 1px solid var(--profile-border);
     background: transparent;
+    box-sizing: border-box;
 }
 
 .profile-streak-marker--creator.is-active {
@@ -298,7 +307,7 @@ a {
     align-items: flex-start;
     justify-content: center;
     width: 100%;
-    height: 3.8rem;
+    height: var(--profile-streak-date-height);
     margin-top: 0.7rem;
     overflow: visible;
 }
@@ -1302,16 +1311,13 @@ a {
     }
 
     .profile-streak-timeline {
-        gap: 0.04rem;
+        column-gap: 0.03rem;
     }
 
-    .profile-streak-night {
-        width: 1rem;
-    }
-
-    .profile-streak-marker {
-        width: 0.44rem;
-        height: 0.44rem;
+    body.site-shell {
+        --profile-streak-column-width: 1rem;
+        --profile-streak-marker-size: 0.44rem;
+        --profile-streak-date-height: 3.15rem;
     }
 
     .profile-streak-legend {
@@ -1320,7 +1326,6 @@ a {
     }
 
     .profile-streak-date-wrap {
-        height: 3.15rem;
         margin-top: 0.55rem;
     }
 
