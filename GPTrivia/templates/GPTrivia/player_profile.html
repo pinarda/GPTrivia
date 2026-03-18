@@ -10,7 +10,7 @@
       --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318g">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318h">
 {% endblock %}
 
 {% block extra_meta %}
@@ -216,12 +216,14 @@
                                                             name="major_category"
                                                             data-round-id="{{ round.id }}"
                                                             data-field-name="major_category"
+                                                            data-allow-custom="true"
                                                             aria-label="Set category for {{ round.title }}"
                                                         >
                                                             <option value="">—</option>
                                                             {% for category in available_major_categories %}
                                                                 <option value="{{ category }}" {% if round.major_category == category %}selected{% endif %}>{{ category }}</option>
                                                             {% endfor %}
+                                                            <option value="__add_new__">Add new…</option>
                                                         </select>
                                                     </form>
                                                 {% else %}
@@ -246,7 +248,7 @@
                                                             aria-label="Set minor category 1 for {{ round.title }}"
                                                         >
                                                             <option value="">—</option>
-                                                            {% for category in available_minor_categories1 %}
+                                                            {% for category in available_minor_categories %}
                                                                 <option value="{{ category }}" {% if round.minor_category1 == category %}selected{% endif %}>{{ category }}</option>
                                                             {% endfor %}
                                                             <option value="__add_new__">Add new…</option>
@@ -274,7 +276,7 @@
                                                             aria-label="Set minor category 2 for {{ round.title }}"
                                                         >
                                                             <option value="">—</option>
-                                                            {% for category in available_minor_categories2 %}
+                                                            {% for category in available_minor_categories %}
                                                                 <option value="{{ category }}" {% if round.minor_category2 == category %}selected{% endif %}>{{ category }}</option>
                                                             {% endfor %}
                                                             <option value="__add_new__">Add new…</option>
@@ -319,12 +321,14 @@
                                                                     name="major_category"
                                                                     data-round-id="{{ round.id }}"
                                                                     data-field-name="major_category"
+                                                                    data-allow-custom="true"
                                                                     aria-label="Set category for {{ round.title }}"
                                                                 >
                                                                     <option value="">—</option>
                                                                     {% for category in available_major_categories %}
                                                                         <option value="{{ category }}" {% if round.major_category == category %}selected{% endif %}>{{ category }}</option>
                                                                     {% endfor %}
+                                                                    <option value="__add_new__">Add new…</option>
                                                                 </select>
                                                             </form>
                                                         {% else %}
@@ -350,7 +354,7 @@
                                                                     aria-label="Set minor category 1 for {{ round.title }}"
                                                                 >
                                                                     <option value="">—</option>
-                                                                    {% for category in available_minor_categories1 %}
+                                                                    {% for category in available_minor_categories %}
                                                                         <option value="{{ category }}" {% if round.minor_category1 == category %}selected{% endif %}>{{ category }}</option>
                                                                     {% endfor %}
                                                                     <option value="__add_new__">Add new…</option>
@@ -379,7 +383,7 @@
                                                                     aria-label="Set minor category 2 for {{ round.title }}"
                                                                 >
                                                                     <option value="">—</option>
-                                                                    {% for category in available_minor_categories2 %}
+                                                                    {% for category in available_minor_categories %}
                                                                         <option value="{{ category }}" {% if round.minor_category2 == category %}selected{% endif %}>{{ category }}</option>
                                                                     {% endfor %}
                                                                     <option value="__add_new__">Add new…</option>
@@ -505,12 +509,14 @@
                                                             name="major_category"
                                                             data-round-id="{{ round.id }}"
                                                             data-field-name="major_category"
+                                                            data-allow-custom="true"
                                                             aria-label="Set category for {{ round.title }}"
                                                         >
                                                             <option value="">—</option>
                                                             {% for category in available_major_categories %}
                                                                 <option value="{{ category }}" {% if round.major_category == category %}selected{% endif %}>{{ category }}</option>
                                                             {% endfor %}
+                                                            <option value="__add_new__">Add new…</option>
                                                         </select>
                                                     </form>
                                                 {% else %}
@@ -536,7 +542,7 @@
                                                             aria-label="Set minor category 1 for {{ round.title }}"
                                                         >
                                                             <option value="">—</option>
-                                                            {% for category in available_minor_categories1 %}
+                                                            {% for category in available_minor_categories %}
                                                                 <option value="{{ category }}" {% if round.minor_category1 == category %}selected{% endif %}>{{ category }}</option>
                                                             {% endfor %}
                                                             <option value="__add_new__">Add new…</option>
@@ -565,7 +571,7 @@
                                                             aria-label="Set minor category 2 for {{ round.title }}"
                                                         >
                                                             <option value="">—</option>
-                                                            {% for category in available_minor_categories2 %}
+                                                            {% for category in available_minor_categories %}
                                                                 <option value="{{ category }}" {% if round.minor_category2 == category %}selected{% endif %}>{{ category }}</option>
                                                             {% endfor %}
                                                             <option value="__add_new__">Add new…</option>
@@ -1287,7 +1293,10 @@
                     const fieldName = control.dataset.fieldName || control.name;
                     const previousValue = control.dataset.currentValue || '';
                     if (control.dataset.allowCustom === 'true' && control.value === addNewOptionValue) {
-                        const promptValue = window.prompt('Enter a new minor category.', '');
+                        const label = fieldName === 'major_category'
+                            ? 'major category'
+                            : 'minor category';
+                        const promptValue = window.prompt(`Enter a new ${label}.`, '');
                         const customValueInput = String(promptValue || '').trim();
                         if (!customValueInput) {
                             syncProfileRoundControls(roundId, { [fieldName]: previousValue });

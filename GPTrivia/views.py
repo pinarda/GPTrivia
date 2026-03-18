@@ -1196,15 +1196,11 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         for round_data in flattened_rounds
         if round_data['major_category']
     })
-    all_minor_categories1 = sorted({
-        round_data['minor_category1']
+    all_minor_categories = sorted({
+        category
         for round_data in flattened_rounds
-        if round_data['minor_category1']
-    })
-    all_minor_categories2 = sorted({
-        round_data['minor_category2']
-        for round_data in flattened_rounds
-        if round_data['minor_category2']
+        for category in (round_data['minor_category1'], round_data['minor_category2'])
+        if category
     })
     created_category_counts = {
         category: 0
@@ -1384,8 +1380,7 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         'created_rounds_cat': created_rounds_cat_list,
         'created_rounds': created_rounds,
         'available_major_categories': all_categories,
-        'available_minor_categories1': all_minor_categories1,
-        'available_minor_categories2': all_minor_categories2,
+        'available_minor_categories': all_minor_categories,
         'player_color_mapping': build_player_color_mapping(global_player_names),
         'text_color': text_color,
         'max_avg': max_avg,
@@ -1427,16 +1422,6 @@ def update_profile_round_category(request, round_id):
     }
     if not fields_to_update:
         raise Http404("No editable category field provided.")
-
-    if 'major_category' in fields_to_update:
-        available_categories = {
-            category
-            for category in GPTriviaRound.objects.values_list('major_category', flat=True)
-            if category
-        }
-        new_category = fields_to_update['major_category']
-        if new_category and new_category not in available_categories:
-            raise Http404("Category not found.")
 
     for field_name, field_value in fields_to_update.items():
         setattr(round_obj, field_name, field_value)
