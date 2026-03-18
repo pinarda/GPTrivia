@@ -6,13 +6,13 @@ body.site-shell {
     --profile-trivia-color-three: var(--profile-page-trivia-color-three, #c8553d);
     --profile-page-text: #ffffff;
     --profile-muted-text: rgba(255, 255, 255, 0.72);
-    --profile-surface: #2d3047;
+    --profile-surface: var(--profile-header-footer-color);
     --profile-surface-alt: #20233a;
     --profile-border: rgba(255, 255, 255, 0.14);
     --profile-input-bg: #20233a;
     --profile-input-text: #ffffff;
     --profile-input-border: rgba(255, 255, 255, 0.2);
-    --profile-table-header-bg: #2d3047;
+    --profile-table-header-bg: var(--profile-header-footer-color);
     --profile-table-row-bg: rgba(255, 255, 255, 0.04);
     --profile-table-row-border: rgba(255, 255, 255, 0.08);
     --profile-search-bg: #20233a;
@@ -29,7 +29,7 @@ body.site-shell[data-profile-theme="light"] {
     --profile-input-bg: #f8f2ea;
     --profile-input-text: #1b2530;
     --profile-input-border: #bca99d;
-    --profile-table-header-bg: #2d3047;
+    --profile-table-header-bg: var(--profile-header-footer-color);
     --profile-table-row-bg: rgba(45, 48, 71, 0.06);
     --profile-table-row-border: rgba(45, 48, 71, 0.12);
     --profile-search-bg: #fbf7f0;
