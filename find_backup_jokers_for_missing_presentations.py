@@ -95,32 +95,52 @@ def count_serialized_items(raw_value) -> int:
     return 0
 
 
+def get_table_columns(connection: sqlite3.Connection, table_name: str) -> List[str]:
+    return [
+        row[1]
+        for row in connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+    ]
+
+
 def load_presentations(db_path: Path, *, ready_only: bool, exclude_blank_id: bool) -> List[PresentationRow]:
     if not db_path.exists():
         raise FileNotFoundError(f"Database not found: {db_path}")
 
-    query = """
-        SELECT
-            id,
-            name,
-            COALESCE(status, ''),
-            COALESCE(presentation_id, ''),
-            joker_round_indices,
-            round_names,
-            creator_list,
-            player_list
-        FROM GPTrivia_mergedpresentation
-    """
-    conditions = []
-    if ready_only:
-        conditions.append("status = 'ready'")
-    if exclude_blank_id:
-        conditions.append("presentation_id <> ''")
-    if conditions:
-        query += " WHERE " + " AND ".join(conditions)
-    query += " ORDER BY name, id"
-
     with sqlite3.connect(str(db_path)) as connection:
+        columns = set(get_table_columns(connection, "GPTrivia_mergedpresentation"))
+
+        status_select = "COALESCE(status, '')" if "status" in columns else "''"
+        presentation_id_select = (
+            "COALESCE(presentation_id, '')"
+            if "presentation_id" in columns
+            else "''"
+        )
+        joker_select = "joker_round_indices" if "joker_round_indices" in columns else "NULL"
+        round_names_select = "round_names" if "round_names" in columns else "NULL"
+        creator_list_select = "creator_list" if "creator_list" in columns else "NULL"
+        player_list_select = "player_list" if "player_list" in columns else "NULL"
+
+        query = f"""
+            SELECT
+                id,
+                name,
+                {status_select},
+                {presentation_id_select},
+                {joker_select},
+                {round_names_select},
+                {creator_list_select},
+                {player_list_select}
+            FROM GPTrivia_mergedpresentation
+        """
+        conditions = []
+        if ready_only and "status" in columns:
+            conditions.append("status = 'ready'")
+        if exclude_blank_id and "presentation_id" in columns:
+            conditions.append("presentation_id <> ''")
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        query += " ORDER BY name, id"
+
         rows = connection.execute(query).fetchall()
 
     return [
