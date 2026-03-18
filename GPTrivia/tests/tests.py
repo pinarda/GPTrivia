@@ -502,6 +502,79 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertEqual(response.context['max_cat_avg'], 'Megan')
         self.assertNotEqual(response.context['max_cat_avg'], 'Debi')
 
+    def test_profile_best_night_stats_use_jokers_and_allow_creator_blanks(self):
+        MergedPresentation.objects.create(
+            name="02.06.2023",
+            presentation_id="presentation-feb-06",
+            round_names=["Night Four Round 1", "Night Four Round 2", "Night Four Round 3"],
+            creator_list=["Alex", "Debi", "Megan"],
+            player_list={
+                "score_alex": "score_alex",
+                "score_debi": "score_debi",
+                "score_megan": "score_megan",
+            },
+            joker_round_indices={
+                "alex": "Night Four Round 3",
+                "debi": "Night Four Round 1",
+            },
+        )
+
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Night Four Round 1",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-02-06",
+            round_number=1,
+            max_score=10,
+            score_alex=None,
+            score_debi=10,
+            score_megan=9,
+        )
+        GPTriviaRound.objects.create(
+            creator="Debi",
+            title="Night Four Round 2",
+            major_category="Science",
+            minor_category1="Chemistry",
+            minor_category2="Elements",
+            date="2023-02-06",
+            round_number=2,
+            max_score=10,
+            score_alex=9,
+            score_debi=None,
+            score_megan=8,
+        )
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Night Four Round 3",
+            major_category="Science",
+            minor_category1="Biology",
+            minor_category2="Cells",
+            date="2023-02-06",
+            round_number=3,
+            max_score=10,
+            score_alex=10,
+            score_debi=9.5,
+            score_megan=None,
+        )
+
+        response = self.client.get(reverse('player_profile', args=['Debi']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['best_score_ever']['display_value'], '38/40 (95.0%)')
+        self.assertEqual(response.context['best_score_ever']['date'], datetime.date(2023, 2, 6))
+        self.assertEqual(
+            response.context['best_score_ever']['scoresheet_link'],
+            f"{reverse('scoresheet_new')}?date=2023-02-06",
+        )
+        self.assertEqual(response.context['best_performance_ever']['display_value'], '-0.5/40 (-1.2%)')
+        self.assertEqual(response.context['best_performance_ever']['date'], datetime.date(2023, 2, 6))
+        self.assertEqual(
+            response.context['best_performance_ever']['scoresheet_link'],
+            f"{reverse('scoresheet_new')}?date=2023-02-06",
+        )
+
     def test_creators_list_not_empty(self):
         # create a sample GPTriviaRound instance
         sample_round = GPTriviaRound.objects.create(

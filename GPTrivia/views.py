@@ -862,22 +862,35 @@ def _get_recently_active_profile_player_names(all_rounds):
     return active_player_names
 
 
+def _normalize_profile_presentation_value(value):
+    if isinstance(value, dict):
+        return {
+            _normalize_profile_presentation_value(key): _normalize_profile_presentation_value(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_normalize_profile_presentation_value(item) for item in value]
+    if isinstance(value, str):
+        return value.replace('~~~~', "'")
+    return value
+
+
 def _parse_profile_presentation_json(value, fallback):
     if value in (None, '', []):
         return fallback
 
     if isinstance(value, (dict, list)):
-        return value
+        return _normalize_profile_presentation_value(value)
 
     if not isinstance(value, str):
         return fallback
 
     try:
-        return json.loads(
+        return _normalize_profile_presentation_value(json.loads(
             value
             .replace("'", '"')
             .replace('~~~~', "'")
-        )
+        ))
     except Exception:
         return fallback
 
@@ -897,6 +910,37 @@ def _profile_player_matches_creator(round_creator, player_field):
 
 
 def _build_profile_night_final_totals(night_rounds, presentation):
+    night_totals = _build_profile_night_player_totals(night_rounds, presentation)
+    return {
+        player_field: totals['final_total']
+        for player_field, totals in night_totals.items()
+    }
+
+
+def _player_completed_profile_night(player_field, night_rounds):
+    for round_obj in night_rounds:
+        score_map = get_round_score_map(round_obj, include_null_fixed=False)
+        player_score = score_map.get(player_field)
+        if isinstance(player_score, (int, float)):
+            continue
+        if _profile_player_matches_creator(round_obj.creator, player_field):
+            continue
+        return False
+    return True
+
+
+def _build_profile_night_score_totals(night_rounds, presentation):
+    night_totals = _build_profile_night_player_totals(night_rounds, presentation)
+    return {
+        player_field: {
+            'score_total': totals['final_total'],
+            'possible_total': totals['possible_total'],
+        }
+        for player_field, totals in night_totals.items()
+    }
+
+
+def _build_profile_night_player_totals(night_rounds, presentation):
     player_fields = set(collect_player_fields(
         rounds=night_rounds,
         presentations=[presentation] if presentation else None,
@@ -939,37 +983,56 @@ def _build_profile_night_final_totals(night_rounds, presentation):
             median_value = score_values[middle_index]
         median_scores_by_title[round_obj.title] = median_value
 
-    final_totals = {}
+    totals = {}
+    overall_highest_round_max = max(
+        (round_obj.max_score for round_obj in night_rounds if round_obj.max_score not in (None, 0)),
+        default=0,
+    )
     for player_field in player_fields:
-        selected_round_title = selected_rounds.get(player_field, '')
         round_total = 0
         creator_bonus_total = 0
-        joker_bonus = None
+        joker_bonus = 0
         has_any_value = False
+        completed = True
+        selected_round_title = selected_rounds.get(player_field, '')
+        possible_total = 0
 
         for round_obj in night_rounds:
             score_map = get_round_score_map(round_obj, include_null_fixed=False)
             player_score = score_map.get(player_field)
+            is_creator = _profile_player_matches_creator(round_obj.creator, player_field)
+
             if isinstance(player_score, (int, float)):
                 round_total += player_score
                 has_any_value = True
+                if round_obj.max_score not in (None, 0):
+                    possible_total += round_obj.max_score
+                if round_obj.title == selected_round_title:
+                    joker_bonus = player_score
+            elif is_creator:
+                has_any_value = True
+                if round_obj.max_score not in (None, 0):
+                    possible_total += round_obj.max_score
+            else:
+                completed = False
 
-            if _profile_player_matches_creator(round_obj.creator, player_field):
+            if is_creator:
                 median_value = median_scores_by_title.get(round_obj.title)
                 if round_obj.title != selected_round_title and isinstance(median_value, (int, float)):
                     creator_bonus_total += median_value
                     has_any_value = True
 
-            if round_obj.title == selected_round_title and isinstance(player_score, (int, float)):
-                joker_bonus = player_score
-                has_any_value = True
-
         if not has_any_value:
             continue
 
-        final_totals[player_field] = round_total + creator_bonus_total + (joker_bonus or 0)
+        denominator = possible_total + (overall_highest_round_max if selected_round_title else 0)
+        totals[player_field] = {
+            'final_total': round_total + creator_bonus_total + joker_bonus,
+            'possible_total': denominator,
+            'completed': completed,
+        }
 
-    return final_totals
+    return totals
 
 
 def _build_profile_best_night_stats(all_rounds, player_name, active_player_names):
@@ -990,28 +1053,24 @@ def _build_profile_best_night_stats(all_rounds, player_name, active_player_names
 
     for night_date, night_rounds in rounds_by_date.items():
         night_presentation = _get_scoresheet_presentation(selected_date=night_date.isoformat())
-        player_total = 0
-        best_score_max_total = 0
-        performance_rounds = []
-
-        for round_obj in night_rounds:
-            score_map = get_round_score_map(round_obj)
-            player_score = score_map.get(score_field)
-            max_score = round_obj.max_score
-            if player_score is None or max_score in (None, 0):
-                continue
-
-            player_total += player_score
-            best_score_max_total += max_score
-            performance_rounds.append((score_map, player_score, max_score))
-
-        if best_score_max_total:
-            player_percentage = player_total / best_score_max_total
+        night_totals = _build_profile_night_player_totals(night_rounds, night_presentation)
+        player_night_totals = night_totals.get(score_field)
+        player_score_totals = None
+        if player_night_totals:
+            player_score_totals = {
+                'score_total': player_night_totals['final_total'],
+                'possible_total': player_night_totals['possible_total'],
+            }
+        if player_score_totals and player_score_totals['possible_total']:
+            player_percentage = player_score_totals['score_total'] / player_score_totals['possible_total']
             best_score_candidate = {
                 'date': night_date,
-                'display_value': _format_profile_percentage_stat(player_total, best_score_max_total),
-                'player_total': player_total,
-                'max_total': best_score_max_total,
+                'display_value': _format_profile_percentage_stat(
+                    player_score_totals['score_total'],
+                    player_score_totals['possible_total'],
+                ),
+                'player_total': player_score_totals['score_total'],
+                'max_total': player_score_totals['possible_total'],
                 'percentage': player_percentage,
             }
             if (
@@ -1024,17 +1083,24 @@ def _build_profile_best_night_stats(all_rounds, player_name, active_player_names
             ):
                 best_score_stat = best_score_candidate
 
-        performance_max_total = sum(max_score for _, _, max_score in performance_rounds)
-        if performance_rounds and performance_max_total:
-            night_final_totals = _build_profile_night_final_totals(night_rounds, night_presentation)
+        performance_max_total = (
+            player_night_totals['possible_total']
+            if player_night_totals and player_night_totals.get('completed')
+            else 0
+        )
+        if performance_max_total:
             eligible_other_totals = [
-                total
-                for other_player_field, total in night_final_totals.items()
-                if other_player_field != score_field and other_player_field in other_player_fields
+                totals['final_total']
+                for other_player_field, totals in night_totals.items()
+                if (
+                    other_player_field != score_field
+                    and other_player_field in other_player_fields
+                    and totals.get('completed')
+                )
             ]
 
             if eligible_other_totals:
-                performance_player_total = night_final_totals.get(score_field)
+                performance_player_total = player_night_totals['final_total'] if player_night_totals else None
                 if performance_player_total is None:
                     continue
                 second_place_total = max(eligible_other_totals)
