@@ -842,12 +842,15 @@ def _format_profile_gap_stat(value):
     return "0 points"
 
 
-def _can_edit_profile_round_categories(request_user, profile_user=None):
+def _can_edit_profile_round_categories(request_user, profile_user=None, profile_player_name=''):
     if not request_user or not request_user.is_authenticated:
         return False
 
     request_user_name = display_name_for_player_field(request_user.username)
     if request_user_name == 'Alex':
+        return True
+
+    if profile_player_name and request_user_name == display_name_for_player_field(profile_player_name):
         return True
 
     return bool(profile_user and request_user.pk == profile_user.pk)
@@ -1349,7 +1352,7 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         and request.user.is_authenticated
         and request.user.pk == profile_user.pk
     )
-    can_edit_round_categories = _can_edit_profile_round_categories(request.user, profile_user)
+    can_edit_round_categories = _can_edit_profile_round_categories(request.user, profile_user, player_name)
 
     context = {
         'profile_user': profile_user,
@@ -1413,7 +1416,7 @@ def update_profile_round_category(request, round_id):
     round_obj = get_object_or_404(GPTriviaRound, id=round_id)
     round_creator_name = display_name_for_player_field(round_obj.creator)
     profile_user = User.objects.filter(username__iexact=round_creator_name).first()
-    if not _can_edit_profile_round_categories(request.user, profile_user):
+    if not _can_edit_profile_round_categories(request.user, profile_user, round_creator_name):
         raise Http404("Round not found.")
 
     allowed_fields = {'major_category', 'minor_category1', 'minor_category2'}

@@ -524,6 +524,10 @@ a {
     gap: 0.65rem;
 }
 
+.profile-created-rounds-save-button {
+    width: 100%;
+}
+
 .profile-created-rounds-helper {
     margin: 0;
 }
@@ -908,12 +912,19 @@ a {
         width: 100%;
         display: flex;
         align-items: end;
+        gap: 0.75rem;
     }
 
     .profile-data-panel-header--created-rounds .profile-table-search {
         width: 100%;
         max-width: none;
         flex: 1 1 auto;
+    }
+
+    .profile-data-panel-header--created-rounds .profile-created-rounds-save-button {
+        width: auto;
+        flex: 0 0 auto;
+        white-space: nowrap;
     }
 }
 

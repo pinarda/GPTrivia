@@ -10,7 +10,7 @@
       --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318d">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318e">
 {% endblock %}
 
 {% block extra_meta %}
@@ -139,6 +139,16 @@
                                 <option value="high-desc">High Score</option>
                                 <option value="average-desc">Average Score</option>
                             </select>
+                            {% if can_edit_round_categories %}
+                                <button
+                                    id="created-rounds-save-button"
+                                    class="profile-player-button profile-created-rounds-save-button"
+                                    type="button"
+                                    disabled
+                                >
+                                    Save Category Changes
+                                </button>
+                            {% endif %}
                         </div>
                         {% endif %}
                     </div>
@@ -1174,11 +1184,21 @@
         }
 
         function initializeProfileRoundCategoryForms() {
+            const saveButton = document.getElementById('created-rounds-save-button');
             document.querySelectorAll('.profile-round-edit-form').forEach(form => {
                 form.addEventListener('submit', event => {
                     event.preventDefault();
                 });
             });
+
+            function updateCreatedRoundsSaveButton() {
+                if (!saveButton) {
+                    return;
+                }
+                const dirtyCount = document.querySelectorAll('.profile-round-edit-control[data-dirty="true"]').length;
+                saveButton.disabled = dirtyCount === 0;
+                saveButton.textContent = 'Save Category Changes';
+            }
 
             function syncProfileRoundControls(roundId, fields) {
                 document.querySelectorAll(`.profile-round-edit-control[data-round-id="${roundId}"]`).forEach(control => {
@@ -1187,6 +1207,15 @@
                         control.value = fields[fieldName] || '';
                     }
                 });
+            }
+
+            function collectRoundFieldValues(roundId) {
+                const fields = {};
+                ['major_category', 'minor_category1', 'minor_category2'].forEach(fieldName => {
+                    const control = document.querySelector(`.profile-round-edit-control[data-round-id="${roundId}"][data-field-name="${fieldName}"]`);
+                    fields[fieldName] = control ? control.value || '' : '';
+                });
+                return fields;
             }
 
             function syncProfileRoundSearch(roundId, fields) {
@@ -1202,67 +1231,111 @@
             }
 
             document.querySelectorAll('.profile-round-edit-control').forEach(control => {
-                control.addEventListener('change', async () => {
-                    if (!control.form) {
-                        return;
-                    }
-
+                control.addEventListener('change', () => {
                     const roundId = control.dataset.roundId;
                     const fieldName = control.dataset.fieldName || control.name;
                     const matchingControls = roundId
                         ? Array.from(document.querySelectorAll(`.profile-round-edit-control[data-round-id="${roundId}"][data-field-name="${fieldName}"]`))
                         : [control];
-                    const previousValues = matchingControls.map(item => item.value);
                     matchingControls.forEach(item => {
-                        item.disabled = true;
+                        item.dataset.dirty = 'true';
                     });
-
-                    try {
-                        const response = await fetch(control.form.action, {
-                            method: 'POST',
-                            body: new FormData(control.form),
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'X-CSRFToken': getCsrfToken(),
-                                'Accept': 'application/json',
-                            },
-                        });
-                        if (!response.ok) {
-                            throw new Error(`Save failed with status ${response.status}`);
-                        }
-                        const contentType = response.headers.get('content-type') || '';
-                        if (!contentType.includes('application/json')) {
-                            const responseText = await response.text();
-                            throw new Error(`Expected JSON response, got ${contentType || 'unknown content type'}: ${responseText.slice(0, 200)}`);
-                        }
-                        const payload = await response.json();
-                        if (!payload.success) {
-                            throw new Error('Save response did not indicate success.');
-                        }
-
-                        const normalizedRoundId = String(payload.round_id);
-                        syncProfileRoundControls(normalizedRoundId, payload.fields || {});
-                        syncProfileRoundSearch(normalizedRoundId, payload.fields || {});
-
-                        const panelId = payload.panel || 'created-rounds-panel';
-                        const panel = document.getElementById(panelId);
-                        const searchInput = panel ? panel.querySelector('.profile-table-search') : null;
-                        if (panel && searchInput) {
-                            filterProfileTableRows(panel.id, searchInput.value);
-                        }
-                    } catch (error) {
-                        console.error('Error saving profile round field:', error);
-                        matchingControls.forEach((item, index) => {
-                            item.value = previousValues[index] || '';
-                        });
-                        window.alert('Unable to save that category change right now.');
-                    } finally {
-                        matchingControls.forEach(item => {
-                            item.disabled = false;
-                        });
+                    syncProfileRoundControls(roundId, { [fieldName]: control.value || '' });
+                    syncProfileRoundSearch(roundId, collectRoundFieldValues(roundId));
+                    const panel = document.getElementById('created-rounds-panel');
+                    const searchInput = panel ? panel.querySelector('.profile-table-search') : null;
+                    if (panel && searchInput) {
+                        filterProfileTableRows(panel.id, searchInput.value);
                     }
+                    updateCreatedRoundsSaveButton();
                 });
             });
+
+            if (saveButton) {
+                saveButton.addEventListener('click', async () => {
+                    const dirtyControls = Array.from(document.querySelectorAll('.profile-round-edit-control[data-dirty="true"]'));
+                    if (!dirtyControls.length) {
+                        updateCreatedRoundsSaveButton();
+                        return;
+                    }
+
+                    const roundIds = [...new Set(dirtyControls.map(control => control.dataset.roundId).filter(Boolean))];
+                    saveButton.disabled = true;
+                    saveButton.textContent = 'Saving…';
+
+                    const failedRoundIds = [];
+                    for (const roundId of roundIds) {
+                        const fields = collectRoundFieldValues(roundId);
+                        const sourceControl = document.querySelector(`.profile-round-edit-control[data-round-id="${roundId}"]`);
+                        if (!sourceControl || !sourceControl.form) {
+                            failedRoundIds.push(roundId);
+                            continue;
+                        }
+
+                        const roundControls = Array.from(document.querySelectorAll(`.profile-round-edit-control[data-round-id="${roundId}"]`));
+                        roundControls.forEach(control => {
+                            control.disabled = true;
+                        });
+
+                        try {
+                            const formData = new FormData();
+                            formData.append('next_panel', 'created-rounds-panel');
+                            formData.append('major_category', fields.major_category);
+                            formData.append('minor_category1', fields.minor_category1);
+                            formData.append('minor_category2', fields.minor_category2);
+
+                            const response = await fetch(sourceControl.form.action, {
+                                method: 'POST',
+                                body: formData,
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRFToken': getCsrfToken(),
+                                    'Accept': 'application/json',
+                                },
+                            });
+                            if (!response.ok) {
+                                throw new Error(`Save failed with status ${response.status}`);
+                            }
+                            const contentType = response.headers.get('content-type') || '';
+                            if (!contentType.includes('application/json')) {
+                                const responseText = await response.text();
+                                throw new Error(`Expected JSON response, got ${contentType || 'unknown content type'}: ${responseText.slice(0, 200)}`);
+                            }
+                            const payload = await response.json();
+                            if (!payload.success) {
+                                throw new Error('Save response did not indicate success.');
+                            }
+
+                            const normalizedRoundId = String(payload.round_id);
+                            syncProfileRoundControls(normalizedRoundId, payload.fields || {});
+                            syncProfileRoundSearch(normalizedRoundId, payload.fields || {});
+                            document.querySelectorAll(`.profile-round-edit-control[data-round-id="${normalizedRoundId}"]`).forEach(control => {
+                                delete control.dataset.dirty;
+                            });
+                        } catch (error) {
+                            console.error('Error saving profile round field:', error);
+                            failedRoundIds.push(roundId);
+                        } finally {
+                            roundControls.forEach(control => {
+                                control.disabled = false;
+                            });
+                        }
+                    }
+
+                    const panel = document.getElementById('created-rounds-panel');
+                    const searchInput = panel ? panel.querySelector('.profile-table-search') : null;
+                    if (panel && searchInput) {
+                        filterProfileTableRows(panel.id, searchInput.value);
+                    }
+
+                    updateCreatedRoundsSaveButton();
+                    if (failedRoundIds.length) {
+                        window.alert('Unable to save one or more category changes right now.');
+                    }
+                });
+            }
+
+            updateCreatedRoundsSaveButton();
         }
 
         function initializeProfileMobileSorting() {
