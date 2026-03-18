@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import GPTriviaRoundForm, ProfilePictureForm
+from .forms import GPTriviaRoundForm, ProfileIntroForm, ProfilePictureForm
 from .models import GPTriviaRound, MergedPresentation, PresentationBuildState, Profile
 from django.db import transaction
 from django.db.models import Avg, F, FloatField, Case, When, Sum, Count
@@ -738,6 +738,32 @@ def upload_profile_picture(request):
     return render(request, 'GPTrivia/player_profile.html', context)
 
 
+@login_required
+def update_profile_intro(request, player_name):
+    profile_user = get_object_or_404(User, username__iexact=player_name)
+    if request.user.pk != profile_user.pk:
+        raise Http404("You can only edit your own profile intro.")
+    if request.method != 'POST':
+        raise Http404("Profile intro updates must be submitted with POST.")
+
+    profile = profile_user.profile
+    form = ProfileIntroForm(request.POST)
+    if form.is_valid():
+        profile.profile_intro = (form.cleaned_data.get('profile_intro') or '').strip()
+        profile.save(update_fields=['profile_intro'])
+        return redirect('player_profile', player_name=profile_user.username)
+
+    appearance_form = ProfilePictureForm(instance=profile)
+    context = player_profile_dict(
+        request,
+        profile_user.username,
+        form=appearance_form,
+        intro_form=form,
+        include_form=True,
+    )
+    return render(request, 'GPTrivia/player_profile.html', context)
+
+
 def _build_player_icon_map():
     icon_map = {}
 
@@ -1172,21 +1198,47 @@ def _build_profile_streak_timeline(all_rounds, player_name):
     for round_obj in all_rounds:
         rounds_by_date.setdefault(round_obj.date, []).append(round_obj)
 
+    presentations_by_date = {}
+    for presentation in MergedPresentation.objects.all():
+        presentation_date = _parse_presentation_name_date(presentation.name)
+        if presentation_date is not None:
+            presentations_by_date[presentation_date] = presentation
+
+    player_storage_key = _get_profile_player_storage_key(score_field)
+    night_dates = sorted(set(rounds_by_date.keys()) | set(presentations_by_date.keys()))
+
     longest_play_streak = 0
     longest_creator_streak = 0
     current_play_streak = 0
     current_creator_streak = 0
     timeline = []
 
-    for night_date in sorted(rounds_by_date.keys()):
-        night_rounds = rounds_by_date[night_date]
+    for night_date in night_dates:
+        night_rounds = rounds_by_date.get(night_date, [])
+        presentation = presentations_by_date.get(night_date)
+        joker_rounds_raw = _parse_profile_presentation_json(
+            getattr(presentation, 'joker_round_indices', None) if presentation else None,
+            {},
+        )
+        presentation_creators = _parse_profile_presentation_json(
+            getattr(presentation, 'creator_list', None) if presentation else None,
+            [],
+        )
+        has_saved_joker = any(
+            (joker_rounds_raw or {}).get(storage_key)
+            for storage_key in (player_storage_key, score_field)
+            if storage_key
+        )
         played = any(
             isinstance(get_round_score_map(round_obj, include_null_fixed=False).get(score_field), (int, float))
             for round_obj in night_rounds
-        )
+        ) or has_saved_joker
         created = any(
             _profile_player_matches_creator(round_obj.creator, score_field)
             for round_obj in night_rounds
+        ) or any(
+            _profile_player_matches_creator(creator_name, score_field)
+            for creator_name in presentation_creators
         )
 
         current_play_streak = current_play_streak + 1 if played else 0
@@ -1208,7 +1260,7 @@ def _build_profile_streak_timeline(all_rounds, player_name):
 
 
 @login_required
-def player_profile_dict(request, player_name, form=None, include_form=False):
+def player_profile_dict(request, player_name, form=None, intro_form=None, include_form=False):
     player_name = display_name_for_player_field(player_name)
     score_field = player_field_for_name(player_name)
 
@@ -1400,7 +1452,14 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         and request.user.is_authenticated
         and request.user.pk == profile_user.pk
     )
+    if intro_form is None and is_own_profile:
+        intro_form = ProfileIntroForm(initial={'profile_intro': getattr(profile, 'profile_intro', '')})
     can_edit_round_categories = _can_edit_profile_round_categories(request.user, profile_user, player_name)
+    profile_intro_value = (
+        intro_form['profile_intro'].value()
+        if intro_form is not None and getattr(intro_form, 'is_bound', False)
+        else getattr(profile, 'profile_intro', '')
+    )
 
     context = {
         'profile_user': profile_user,
@@ -1424,7 +1483,7 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
             'profile_page_trivia_color_three',
             Profile.PROFILE_PAGE_TRIVIA_COLOR_THREE_DEFAULT,
         ),
-        'profile_intro': (getattr(profile, 'profile_intro', '') or '').strip(),
+        'profile_intro': (profile_intro_value or '').strip(),
         'page_profile_theme': getattr(profile, 'profile_page_theme', Profile.THEME_DEFAULT) or Profile.THEME_DEFAULT,
         'is_own_profile': is_own_profile,
         'can_edit_round_categories': can_edit_round_categories,
@@ -1456,6 +1515,8 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
 
     if include_form or form is not None:
         context['form'] = form
+    if intro_form is not None:
+        context['profile_intro_form'] = intro_form
 
     return context
 

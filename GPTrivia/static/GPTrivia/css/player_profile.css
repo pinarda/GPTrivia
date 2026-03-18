@@ -101,8 +101,59 @@ a {
     white-space: pre-wrap;
 }
 
+.profile-intro-form {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.profile-intro-form textarea {
+    width: 100%;
+    min-height: 5.25rem;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--profile-settings-control-border);
+    border-radius: 0;
+    background: var(--profile-settings-control-bg);
+    color: var(--profile-settings-control-text);
+    font: inherit;
+    line-height: 1.45;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.profile-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.55rem;
+}
+
+.profile-summary-item {
+    display: grid;
+    gap: 0.18rem;
+    min-width: 0;
+    padding: 0.65rem 0.72rem;
+    background: var(--profile-surface-alt);
+    border: 1px solid var(--profile-border);
+}
+
+.profile-summary-label {
+    color: var(--profile-muted-text);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.profile-summary-value {
+    min-width: 0;
+    color: var(--profile-page-text);
+    font-size: 0.98rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
 .profile-streak-heading-summary {
-    display: block;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
     margin-top: 0.35rem;
     font-size: 0.8em;
     color: var(--profile-muted-text);
@@ -110,14 +161,22 @@ a {
     line-height: 1.4;
 }
 
+.profile-streak-summary-line {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
 .profile-streak-timeline-shell {
     overflow-x: auto;
-    padding-bottom: 0.15rem;
+    overflow-y: hidden;
+    padding: 0.1rem 0 0.25rem;
+    scrollbar-width: thin;
 }
 
 .profile-streak-timeline {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.2rem;
     align-items: flex-start;
     min-width: max-content;
 }
@@ -126,13 +185,13 @@ a {
     display: grid;
     justify-items: center;
     align-content: start;
-    gap: 0.24rem;
-    width: 1.9rem;
+    gap: 0.12rem;
+    width: 1.05rem;
 }
 
 .profile-streak-marker {
-    width: 0.72rem;
-    height: 0.72rem;
+    width: 0.4rem;
+    height: 0.4rem;
     border: 1px solid var(--profile-border);
     background: transparent;
 }
@@ -147,13 +206,26 @@ a {
     border-color: var(--player-streak-color, var(--profile-header-footer-color));
 }
 
+.profile-streak-date-wrap {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    height: 2.75rem;
+    margin-top: 0.05rem;
+    overflow: visible;
+}
+
 .profile-streak-date {
+    display: inline-block;
     font-family: Monaco, monospace;
-    font-size: 0.62rem;
-    line-height: 1.1;
+    font-size: 0.48rem;
+    line-height: 1;
     color: var(--profile-muted-text);
     text-align: center;
-    word-break: break-word;
+    white-space: nowrap;
+    transform: rotate(90deg);
+    transform-origin: center;
 }
 
 .profile-actions-container {
@@ -1106,12 +1178,39 @@ a {
         padding: 0.85rem;
     }
 
+    .profile-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-streak-heading-summary {
+        flex-direction: column;
+        gap: 0.08rem;
+    }
+
+    .profile-streak-summary-line {
+        display: block;
+        white-space: normal;
+    }
+
+    .profile-streak-timeline {
+        gap: 0.12rem;
+    }
+
     .profile-streak-night {
-        width: 1.7rem;
+        width: 0.9rem;
+    }
+
+    .profile-streak-marker {
+        width: 0.34rem;
+        height: 0.34rem;
+    }
+
+    .profile-streak-date-wrap {
+        height: 2.35rem;
     }
 
     .profile-streak-date {
-        font-size: 0.58rem;
+        font-size: 0.42rem;
     }
 
     #profile-appearance-panel,

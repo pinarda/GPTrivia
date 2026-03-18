@@ -428,6 +428,12 @@ class PlayerAnalysisViewTests(TestCase):
             score_alex=8,
             score_megan=None,
         )
+        MergedPresentation.objects.create(
+            name="01.29.2023",
+            presentation_id="presentation-jan-29",
+            joker_round_indices={"score_alex": "Joker Only Round"},
+            creator_list=["Megan"],
+        )
 
         response = self.client.get(reverse('player_profile', args=['Alex']))
 
@@ -435,14 +441,15 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertEqual(response.context['profile_intro'], "Trivia goblin with a science streak.")
         self.assertEqual(response.context['longest_play_streak'], 2)
         self.assertEqual(response.context['longest_creator_streak'], 2)
-        self.assertEqual(len(response.context['streak_timeline']), 4)
+        self.assertEqual(len(response.context['streak_timeline']), 5)
         self.assertEqual(
             [(entry['played'], entry['created']) for entry in response.context['streak_timeline']],
-            [(True, True), (True, True), (False, False), (True, True)],
+            [(True, True), (True, True), (False, False), (True, True), (True, False)],
         )
         self.assertContains(response, 'About Alex')
         self.assertContains(response, 'Trivia Night Timeline')
         self.assertContains(response, 'Trivia goblin with a science streak.')
+        self.assertNotContains(response, 'Summary Stats')
         self.assertNotContains(response, 'class="profile-page-title"')
 
     def test_profile_view_includes_best_score_night_and_counts_coop_rounds(self):

@@ -10,7 +10,7 @@
       --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318k">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318l">
 {% endblock %}
 
 {% block extra_meta %}
@@ -28,22 +28,98 @@
                 <section class="profile-intro-card">
                     <div class="profile-control-heading">
                         <h2>About {{ player_name }}</h2>
-                        <p>
-                            {% if is_own_profile %}
-                                Add a short intro, fun fact, or running bit in Profile Appearance.
-                            {% else %}
-                                A quick note and streak snapshot for this player.
-                            {% endif %}
-                        </p>
                     </div>
-                    <div class="profile-intro-box">
-                        {% if profile_intro %}
-                            {{ profile_intro|linebreaksbr }}
-                        {% elif is_own_profile %}
-                            Add a short intro or fun fact in Profile Appearance.
-                        {% else %}
-                            No intro added yet.
-                        {% endif %}
+                    {% if is_own_profile and profile_intro_form %}
+                        <form class="profile-intro-form" method="post" action="{% url 'update_profile_intro' player_name=player_name %}">
+                            {% csrf_token %}
+                            {{ profile_intro_form.profile_intro }}
+                            {% for error in profile_intro_form.profile_intro.errors %}
+                                <p class="profile-settings-error">{{ error }}</p>
+                            {% endfor %}
+                            <button class="expand-collapse-button profile-player-button" type="submit">Save Intro</button>
+                        </form>
+                    {% else %}
+                        <div class="profile-intro-box">
+                            {% if profile_intro %}
+                                {{ profile_intro|linebreaksbr }}
+                            {% else %}
+                                No intro added yet.
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                    <div class="profile-summary-grid">
+                        <div class="profile-summary-item">
+                            <span class="profile-summary-label">Rounds Played</span>
+                            <span class="profile-summary-value">{{ total_rounds }}</span>
+                        </div>
+                        <div class="profile-summary-item">
+                            <span class="profile-summary-label">Rounds Created</span>
+                            <span class="profile-summary-value">{{ created_rounds_count }}</span>
+                        </div>
+                        <div class="profile-summary-item">
+                            <span class="profile-summary-label">Highest Percentage Score</span>
+                            <span class="profile-summary-value">
+                                {% if best_score_ever %}
+                                    {{ best_score_ever.display_value }} on
+                                    {% if best_score_ever.scoresheet_link %}
+                                        <a href="{{ best_score_ever.scoresheet_link }}">{{ best_score_ever.date|date:"F j, Y" }}</a>
+                                    {% else %}
+                                        {{ best_score_ever.date|date:"F j, Y" }}
+                                    {% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="profile-summary-item">
+                            <span class="profile-summary-label">Strongest Category</span>
+                            <span class="profile-summary-value">{{ max_avg }}</span>
+                        </div>
+                        <div class="profile-summary-item">
+                            <span class="profile-summary-label">Weakest Category</span>
+                            <span class="profile-summary-value">{{ min_avg }}</span>
+                        </div>
+                        <div class="profile-summary-item">
+                            <span class="profile-summary-label">Creator You Score Best Against</span>
+                            <span class="profile-summary-value">
+                                {% if max_cat_avg %}
+                                    <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a>
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="profile-summary-item">
+                            <span class="profile-summary-label">Creator You Score Worst Against</span>
+                            <span class="profile-summary-value">
+                                {% if min_cat_avg %}
+                                    <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a>
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="profile-summary-item">
+                            <span class="profile-summary-label">Most Lenient Creator</span>
+                            <span class="profile-summary-value">
+                                {% if max_bias_avg %}
+                                    <a href="{% url 'player_profile' player_name=max_bias_avg %}" class="player_name" data-player="{{ max_bias_avg }}">{{ max_bias_avg }}</a> ({{ max_bias_avg_value }})
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="profile-summary-item">
+                            <span class="profile-summary-label">Most Demanding Creator</span>
+                            <span class="profile-summary-value">
+                                {% if min_bias_avg %}
+                                    <a href="{% url 'player_profile' player_name=min_bias_avg %}" class="player_name" data-player="{{ min_bias_avg }}">{{ min_bias_avg }}</a> ({{ min_bias_avg_value }})
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </div>
                     </div>
                 </section>
 
@@ -52,13 +128,17 @@
                         <h2>
                             Trivia Night Timeline
                             <span class="profile-streak-heading-summary">
-                                Played streak: {{ longest_play_streak }} night{{ longest_play_streak|pluralize }}
-                                · Creator streak: {{ longest_creator_streak }} presentation{{ longest_creator_streak|pluralize }}
+                                <span class="profile-streak-summary-line">
+                                    Played streak: {{ longest_play_streak }} night{{ longest_play_streak|pluralize }}
+                                </span>
+                                <span class="profile-streak-summary-line">
+                                    Creator streak: {{ longest_creator_streak }} presentation{{ longest_creator_streak|pluralize }}
+                                </span>
                             </span>
                         </h2>
                     </div>
                     {% if streak_timeline %}
-                        <div class="profile-streak-timeline-shell">
+                        <div class="profile-streak-timeline-shell" data-scroll-right="true">
                             <div class="profile-streak-timeline">
                                 {% for night in streak_timeline %}
                                     <div class="profile-streak-night" title="{{ night.date|date:'F j, Y' }}">
@@ -67,7 +147,9 @@
                                             class="profile-streak-marker profile-streak-marker--played{% if night.played %} is-active{% endif %}"
                                             style="--player-streak-color: {{ player_color }};"
                                         ></span>
-                                        <span class="profile-streak-date">{{ night.date|date:"n/j/y" }}</span>
+                                        <span class="profile-streak-date-wrap">
+                                            <span class="profile-streak-date">{{ night.date|date:"n/j/y" }}</span>
+                                        </span>
                                     </div>
                                 {% endfor %}
                             </div>
@@ -745,17 +827,6 @@
                                     {% endfor %}
                                 </div>
 
-                                <div class="profile-settings-group">
-                                    <label class="profile-settings-label" for="{{ form.profile_intro.id_for_label }}">
-                                        Profile Intro
-                                    </label>
-                                    {{ form.profile_intro }}
-                                    <p class="profile-settings-help">Keep it short: a fun fact, intro, or personal running joke.</p>
-                                    {% for error in form.profile_intro.errors %}
-                                        <p class="profile-settings-error">{{ error }}</p>
-                                    {% endfor %}
-                                </div>
-
                                 <div id="profile-crop-editor" class="profile-crop-editor profile-crop-editor--hidden">
                                     <div class="profile-crop-editor-header">
                                         <span>Square Crop</span>
@@ -880,53 +951,6 @@
             </div>
         </div>
 
-        <div class="summary-stats">
-            <h2>Summary Stats</h2>
-            <p>Number of Rounds Played: {{ total_rounds }}</p>
-            <p>Number of Rounds Created: {{ created_rounds_count }}</p>
-            <p>Highest Percentage Score:
-                {% if best_score_ever %}
-                    {{ best_score_ever.display_value }} on
-                    {% if best_score_ever.scoresheet_link %}
-                        <a href="{{ best_score_ever.scoresheet_link }}">{{ best_score_ever.date|date:"F j, Y" }}</a>
-                    {% else %}
-                        {{ best_score_ever.date|date:"F j, Y" }}
-                    {% endif %}
-                {% else %}
-                    N/A
-                {% endif %}
-            </p>
-            <p>Strongest Category: {{ max_avg }}</p>
-            <p>Weakest Category: {{ min_avg }}</p>
-            <p>Creator You Score Best Against:
-                {% if max_cat_avg %}
-                    <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a>
-                {% else %}
-                    N/A
-                {% endif %}
-            </p>
-            <p>Creator You Score Worst Against:
-                {% if min_cat_avg %}
-                    <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a>
-                {% else %}
-                    N/A
-                {% endif %}
-            </p>
-            <p>Most biased toward {{ player_name }}:
-                {% if max_bias_avg %}
-                    <a href="{% url 'player_profile' player_name=max_bias_avg %}" class="player_name" data-player="{{ max_bias_avg }}">{{ max_bias_avg }}</a> ({{ max_bias_avg_value }})
-                {% else %}
-                    N/A
-                {% endif %}
-            </p>
-            <p>Most biased against {{ player_name }}:
-                {% if min_bias_avg %}
-                    <a href="{% url 'player_profile' player_name=min_bias_avg %}" class="player_name" data-player="{{ min_bias_avg }}">{{ min_bias_avg }}</a> ({{ min_bias_avg_value }})
-                {% else %}
-                    N/A
-                {% endif %}
-            </p>
-        </div>
     </div>
 
     <script>
@@ -1273,6 +1297,24 @@
                 const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash || ''}`;
                 window.history.replaceState({}, '', nextUrl);
             }
+        }
+
+        function initializeProfileStreakTimeline() {
+            const timelineShells = Array.from(document.querySelectorAll('.profile-streak-timeline-shell[data-scroll-right="true"]'));
+            if (!timelineShells.length) {
+                return;
+            }
+
+            const scrollToLatest = () => {
+                timelineShells.forEach(shell => {
+                    shell.scrollLeft = Math.max(0, shell.scrollWidth - shell.clientWidth);
+                });
+            };
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(scrollToLatest);
+            });
+            window.addEventListener('pageshow', scrollToLatest);
         }
 
         function initializeProfileRoundCategoryForms() {
@@ -1958,9 +2000,10 @@
 
             setButtonColors();
             setPlayerLinkHoverColors();
-        initializeProfilePanels();
-        initializeProfileRoundCategoryForms();
-        initializeProfileMobileSorting();
+            initializeProfilePanels();
+            initializeProfileRoundCategoryForms();
+            initializeProfileMobileSorting();
+            initializeProfileStreakTimeline();
             initializeProfileRoundRowToggles();
             initializeSlidesButtons();
             initializeProfileTableSorting();
