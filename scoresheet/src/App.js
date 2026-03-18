@@ -1315,6 +1315,43 @@ const PlayerTable = () => {
       return getRoundCreatorDisplayNames(roundTitle, roundOverride).includes(playerDisplayName);
     }, [getRoundCreatorDisplayNames]);
 
+    const normalizeSelectedJokerSelection = useCallback((selection) => {
+      if (Array.isArray(selection)) {
+        return [...new Set(selection.filter(title => title && title !== 'Select'))].slice(0, 2);
+      }
+      if (selection && selection !== 'Select') {
+        return [selection];
+      }
+      return [];
+    }, []);
+
+    const buildStoredJokerSelection = useCallback((roundTitles) => {
+      const normalizedTitles = normalizeSelectedJokerSelection(roundTitles);
+      if (!normalizedTitles.length) {
+        return 'Select';
+      }
+      return normalizedTitles.length === 1 ? normalizedTitles[0] : normalizedTitles;
+    }, [normalizeSelectedJokerSelection]);
+
+    const getSelectedJokerRoundsForPlayer = useCallback((playerField) => {
+      return normalizeSelectedJokerSelection(selectedRounds[playerField]);
+    }, [normalizeSelectedJokerSelection, selectedRounds]);
+
+    const getPrimaryJokerRoundForPlayer = useCallback((playerField) => {
+      return getSelectedJokerRoundsForPlayer(playerField)[0] || 'Select';
+    }, [getSelectedJokerRoundsForPlayer]);
+
+    const getDisplayedJokerSelectionLabel = useCallback((playerField) => {
+      const selectedTitles = getSelectedJokerRoundsForPlayer(playerField);
+      if (!selectedTitles.length) {
+        return '- Select -';
+      }
+      if (selectedTitles.length === 1) {
+        return selectedTitles[0];
+      }
+      return `${selectedTitles[0]} + ${selectedTitles[1]}`;
+    }, [getSelectedJokerRoundsForPlayer]);
+
     const clearJokerRouletteForPlayer = useCallback((player) => {
       const playerTimeouts = jokerRouletteTimeoutsRef.current[player] || [];
       playerTimeouts.forEach(timeoutId => {
@@ -2162,9 +2199,10 @@ const PlayerTable = () => {
           setSelectedRounds((prevSelectedRounds) => {
               const newSelectedRounds = {...prevSelectedRounds};
               for (let player in newSelectedRounds) {
-                  if (newSelectedRounds[player] === oldTitle) {
-                      newSelectedRounds[player] = newTitle;
-                  }
+                  const updatedSelection = normalizeSelectedJokerSelection(newSelectedRounds[player]).map(title => (
+                    title === oldTitle ? newTitle : title
+                  ));
+                  newSelectedRounds[player] = buildStoredJokerSelection(updatedSelection);
               }
 
               return newSelectedRounds;
@@ -2224,17 +2262,17 @@ const PlayerTable = () => {
       timeoutIds.push(window.setTimeout(() => {
         setSelectedRounds(prevState => ({
           ...prevState,
-          [player]: finalTitle,
+          [player]: buildStoredJokerSelection([finalTitle]),
         }));
         clearJokerRouletteForPlayer(player);
         markDirty();
       }, elapsedDelay + 240));
 
       jokerRouletteTimeoutsRef.current[player] = timeoutIds;
-    }, [clearJokerRouletteForPlayer, markDirty, rounds]);
+    }, [buildStoredJokerSelection, clearJokerRouletteForPlayer, markDirty, rounds]);
 
-    const handleJokerSelectionChange = useCallback((player, nextValue) => {
-      if (!confirmPastChange()) return;
+    const handleJokerSelectionChange = useCallback((player, nextValue, options = {}) => {
+      if (!options.skipConfirm && !confirmPastChange()) return;
 
       if (nextValue === JOKER_RANDOMIZE_VALUE) {
         startJokerRoulette(player);
@@ -2242,12 +2280,32 @@ const PlayerTable = () => {
       }
 
       clearJokerRouletteForPlayer(player);
-      setSelectedRounds(prevState => ({
-        ...prevState,
-        [player]: nextValue,
-      }));
+      setSelectedRounds(prevState => {
+        const currentSelection = normalizeSelectedJokerSelection(prevState[player]);
+        let nextSelection;
+
+        if (options.clearRound) {
+          nextSelection = currentSelection.filter(title => title !== options.clearRound);
+        } else if (options.addSecondary) {
+          const withoutSelectedTitle = currentSelection.filter(title => title !== nextValue);
+          if (!nextValue || nextValue === 'Select') {
+            nextSelection = withoutSelectedTitle;
+          } else if (withoutSelectedTitle.length === 0) {
+            nextSelection = [nextValue];
+          } else {
+            nextSelection = [withoutSelectedTitle[0], nextValue];
+          }
+        } else {
+          nextSelection = nextValue && nextValue !== 'Select' ? [nextValue] : [];
+        }
+
+        return {
+          ...prevState,
+          [player]: buildStoredJokerSelection(nextSelection),
+        };
+      });
       markDirty();
-    }, [clearJokerRouletteForPlayer, markDirty, startJokerRoulette]);
+    }, [buildStoredJokerSelection, clearJokerRouletteForPlayer, markDirty, normalizeSelectedJokerSelection, startJokerRoulette]);
 
     const clearScoreCellLongPress = useCallback(() => {
       if (scoreCellLongPressTimeoutRef.current) {
@@ -2658,9 +2716,26 @@ const PlayerTable = () => {
         return;
       }
 
-      handleJokerSelectionChange(scoreCellMenu.playerField, scoreCellMenu.roundTitle);
+      const currentJokerRounds = getSelectedJokerRoundsForPlayer(scoreCellMenu.playerField);
+      const roundAlreadySelected = currentJokerRounds.includes(scoreCellMenu.roundTitle);
+
+      if (roundAlreadySelected) {
+        handleJokerSelectionChange(scoreCellMenu.playerField, scoreCellMenu.roundTitle, {
+          clearRound: scoreCellMenu.roundTitle,
+          skipConfirm: true,
+        });
+      } else if (currentJokerRounds.length >= 1) {
+        handleJokerSelectionChange(scoreCellMenu.playerField, scoreCellMenu.roundTitle, {
+          addSecondary: true,
+          skipConfirm: true,
+        });
+      } else {
+        handleJokerSelectionChange(scoreCellMenu.playerField, scoreCellMenu.roundTitle, {
+          skipConfirm: true,
+        });
+      }
       closeScoreCellMenu();
-    }, [closeScoreCellMenu, handleJokerSelectionChange, scoreCellMenu.playerField, scoreCellMenu.roundTitle]);
+    }, [closeScoreCellMenu, getSelectedJokerRoundsForPlayer, handleJokerSelectionChange, scoreCellMenu.playerField, scoreCellMenu.roundTitle]);
 
     const handleSetCellAsCreator = useCallback(() => {
       if (!scoreCellMenu.playerDisplayName || !scoreCellMenu.roundTitle) {
@@ -2674,6 +2749,18 @@ const PlayerTable = () => {
       handleCreatorChange(scoreCellMenu.roundTitle, scoreCellMenu.playerDisplayName);
       closeScoreCellMenu();
     }, [closeScoreCellMenu, scoreCellMenu.playerDisplayName, scoreCellMenu.roundTitle]);
+
+    const scoreCellMenuJokerRounds = scoreCellMenu.playerField
+      ? getSelectedJokerRoundsForPlayer(scoreCellMenu.playerField)
+      : [];
+    const scoreCellMenuRoundIsJoker = Boolean(
+      scoreCellMenu.roundTitle && scoreCellMenuJokerRounds.includes(scoreCellMenu.roundTitle)
+    );
+    const scoreCellJokerMenuLabel = scoreCellMenuRoundIsJoker
+      ? 'Clear Joker'
+      : scoreCellMenuJokerRounds.length >= 1
+        ? 'Add as 2nd Joker'
+        : 'Set as Joker';
 
     const saveData = useCallback(() => {
         if (saveInFlightRef.current) {
@@ -2896,6 +2983,19 @@ const PlayerTable = () => {
             // remove the title from tempTitles at the same index
             setTempTitles(prevTitles => prevTitles.filter((title, titleIndex) => titleIndex !== index));
             setTempLinks(prevLinks => prevLinks.filter((link, linkIndex) => linkIndex !== index));
+            setSelectedRounds(prevSelectedRounds => {
+              const nextSelectedRounds = { ...prevSelectedRounds };
+              const deletedRound = rounds.find(round => round.id === roundId);
+              if (!deletedRound) {
+                return nextSelectedRounds;
+              }
+              Object.keys(nextSelectedRounds).forEach(playerField => {
+                const filteredSelection = normalizeSelectedJokerSelection(nextSelectedRounds[playerField])
+                  .filter(title => title !== deletedRound.title);
+                nextSelectedRounds[playerField] = buildStoredJokerSelection(filteredSelection);
+              });
+              return nextSelectedRounds;
+            });
             const nextRoundSnapshot = { ...serverRoundSnapshotRef.current };
             delete nextRoundSnapshot[roundId];
             serverRoundSnapshotRef.current = nextRoundSnapshot;
@@ -3470,15 +3570,12 @@ const PlayerTable = () => {
                               labelId="demo-simple-select-label"
                               id="demo-simple-select"
                               displayEmpty
-                              value={isJokerRouletteSpinning ? JOKER_RANDOMIZE_VALUE : (selectedRounds[player] || "Select")} // Access the selected round for this player
+                              value={isJokerRouletteSpinning ? JOKER_RANDOMIZE_VALUE : getPrimaryJokerRoundForPlayer(player)}
                               renderValue={(value) => {
                                 if (value === JOKER_RANDOMIZE_VALUE) {
                                   return <span style={{ color: '#f6c343', fontWeight: 700 }}>Randomizing...</span>;
                                 }
-                                if (value === "Select") {
-                                  return '- Select -';
-                                }
-                                return value;
+                                return getDisplayedJokerSelectionLabel(player);
                               }}
                               onChange={(event) => handleJokerSelectionChange(player, event.target.value)}
                           >
@@ -3497,7 +3594,9 @@ const PlayerTable = () => {
                   </StyledTableCell>
                   {rounds.map((round, index) => (
                       (() => {
-                        const isJokerCell = !isJokerRouletteSpinning && selectedRounds[player] === round.title;
+                        const jokerRoundsForPlayer = getSelectedJokerRoundsForPlayer(player);
+                        const isDoubleJoker = jokerRoundsForPlayer.length > 1;
+                        const isJokerCell = !isJokerRouletteSpinning && jokerRoundsForPlayer.includes(round.title);
                         const isCreatorCell = roundIncludesCreator(round.title, playerDisplayName, round);
                         const scoreCellClassName = [
                           index + 2 === selectedColumnIndex ? 'selected-column' : '',
@@ -3515,7 +3614,7 @@ const PlayerTable = () => {
                                   activeJokerRouletteTitle === round.title
                                       ? '#f3bc34'
                                       : isJokerCell
-                                      ? '#1e7662'
+                                      ? (isDoubleJoker ? 'rgba(30, 118, 98, 0.6)' : '#1e7662')
                                       : isCreatorCell
                                           ? '#810e19'
                                           : 'var(--scoresheet-surface, #333)',
@@ -3660,7 +3759,7 @@ const PlayerTable = () => {
             ? `${scoreCellMenu.playerDisplayName} • ${scoreCellMenu.roundTitle}`
             : 'Cell actions'}
         </MenuItem>
-        <MenuItem onClick={handleSetCellAsJoker}>Set as Joker</MenuItem>
+        <MenuItem onClick={handleSetCellAsJoker}>{scoreCellJokerMenuLabel}</MenuItem>
         <MenuItem onClick={handleSetCellAsCreator}>Set as Creator</MenuItem>
       </Menu>
       <Dialog

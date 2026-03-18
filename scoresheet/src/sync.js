@@ -103,8 +103,12 @@ export function normalizeStylePoints(stylePoints) {
 export function normalizeSelectedRounds(selectedRounds) {
   const normalized = {};
 
-  Object.entries(selectedRounds || {}).forEach(([player, roundTitle]) => {
-    if (!roundTitle || roundTitle === 'Select') {
+  Object.entries(selectedRounds || {}).forEach(([player, roundSelection]) => {
+    const roundTitles = Array.isArray(roundSelection)
+      ? [...new Set(roundSelection.filter(title => title && title !== 'Select'))].slice(0, 2)
+      : (roundSelection && roundSelection !== 'Select' ? [roundSelection] : []);
+
+    if (!roundTitles.length) {
       return;
     }
 
@@ -114,7 +118,7 @@ export function normalizeSelectedRounds(selectedRounds) {
       return;
     }
 
-    normalized[playerKey] = roundTitle;
+    normalized[playerKey] = roundTitles.length === 1 ? roundTitles[0] : roundTitles;
   });
 
   return normalized;

@@ -2,6 +2,7 @@ import {
   applyPatchToPresentationSnapshot,
   applyPatchToRoundSnapshot,
   buildScoresheetPatch,
+  normalizeSelectedRounds,
   shouldIgnoreScoresheetMessage,
 } from './sync';
 import {
@@ -216,6 +217,18 @@ describe('scoresheet sync helpers', () => {
     });
     expect(nextPresentationSnapshot.host).toBe('Jenny');
     expect(nextPresentationSnapshot.style_points).toEqual({ Alex: 1.5 });
+  });
+
+  test('normalizeSelectedRounds preserves a second joker selection when present', () => {
+    expect(
+      normalizeSelectedRounds({
+        score_alex: ['Round 1', 'Round 2'],
+        score_megan: 'Round 3',
+      }),
+    ).toEqual({
+      alex: ['Round 1', 'Round 2'],
+      megan: 'Round 3',
+    });
   });
 });
 
@@ -673,6 +686,23 @@ describe('scoresheet total helpers', () => {
     expect(getDisplayedCreatorBonus(rounds, 'score_alex', 'Round 1', medianScores)).toBe(8.5);
     expect(getDisplayedJokerBonus(rounds, scores, 'score_alex', 'Round 1', medianScores)).toBe(8.5);
     expect(getDisplayedFinalTotal(rounds, scores, 'score_alex', 'Round 1', medianScores)).toBe(24);
+  });
+
+  test('two joker rounds split the bonus evenly', () => {
+    const rounds = [
+      { title: 'Round 1', creator: 'Megan', score_alex: 8 },
+      { title: 'Round 2', creator: 'Jenny', score_alex: 6 },
+    ];
+    const scores = {
+      score_alex: {
+        'Round 1': 8,
+        'Round 2': 6,
+      },
+    };
+
+    expect(getDisplayedJokerBonus(rounds, scores, 'score_alex', ['Round 1', 'Round 2'], [null, null])).toBe(7);
+    expect(getDisplayedFinalTotal(rounds, scores, 'score_alex', ['Round 1', 'Round 2'], [null, null])).toBe(21);
+    expect(getSortableFinalTotal(rounds, scores, 'score_alex', ['Round 1', 'Round 2'], [null, null])).toBe(21);
   });
 
   test('duplicate titles still produce a total that matches the visible cells', () => {

@@ -997,6 +997,23 @@ def _get_profile_round_creator_fields(round_obj):
     }
 
 
+def _normalize_profile_selected_joker_titles(raw_selection):
+    if isinstance(raw_selection, list):
+        return list(dict.fromkeys(
+            title for title in raw_selection
+            if isinstance(title, str) and title.strip() and title.strip().lower() != 'select'
+        ))[:2]
+    if isinstance(raw_selection, str):
+        normalized_title = raw_selection.strip()
+        if normalized_title and normalized_title.lower() != 'select':
+            return [normalized_title]
+    return []
+
+
+def _get_profile_joker_weight(selected_titles):
+    return 0.5 if len(selected_titles) > 1 else 1.0
+
+
 def _build_profile_night_final_totals(night_rounds, presentation):
     night_totals = _build_profile_night_player_totals(night_rounds, presentation)
     return {
@@ -1073,9 +1090,9 @@ def _build_profile_night_player_totals(night_rounds, presentation):
         {},
     )
     selected_rounds = {
-        player_field_for_name(player_key): round_title
+        player_field_for_name(player_key): _normalize_profile_selected_joker_titles(round_title)
         for player_key, round_title in (selected_rounds_raw or {}).items()
-        if player_field_for_name(player_key) and round_title
+        if player_field_for_name(player_key) and _normalize_profile_selected_joker_titles(round_title)
     }
 
     median_scores_by_title = {}
@@ -1100,9 +1117,9 @@ def _build_profile_night_player_totals(night_rounds, presentation):
         median_scores_by_title[round_obj.title] = median_value
 
     totals = {}
-    overall_highest_round_max = max(
+    overall_round_max_scores = sorted(
         (round_obj.max_score for round_obj in night_rounds if round_obj.max_score not in (None, 0)),
-        default=0,
+        reverse=True,
     )
     for player_field in player_fields:
         round_total = 0
@@ -1111,7 +1128,9 @@ def _build_profile_night_player_totals(night_rounds, presentation):
         percentage_score_total = 0
         has_any_value = False
         completed = True
-        selected_round_title = selected_rounds.get(player_field, '')
+        selected_round_titles = selected_rounds.get(player_field, [])
+        selected_round_title_set = set(selected_round_titles)
+        joker_weight = _get_profile_joker_weight(selected_round_titles) if selected_round_titles else 0
         percentage_possible_total = 0
 
         for round_obj in night_rounds:
@@ -1132,8 +1151,8 @@ def _build_profile_night_player_totals(night_rounds, presentation):
                 has_any_value = True
                 if not is_creator:
                     percentage_score_total += player_score
-                if round_obj.title == selected_round_title and not is_creator:
-                    joker_bonus = player_score
+                if round_obj.title in selected_round_title_set and not is_creator:
+                    joker_bonus += player_score * joker_weight
             elif is_creator:
                 has_any_value = True
             else:
@@ -1143,13 +1162,19 @@ def _build_profile_night_player_totals(night_rounds, presentation):
                 if isinstance(median_value, (int, float)):
                     creator_bonus_total += median_value
                     has_any_value = True
-                    if round_obj.title == selected_round_title:
-                        joker_bonus = median_value
+                    if round_obj.title in selected_round_title_set:
+                        joker_bonus += median_value * joker_weight
 
         if not has_any_value:
             continue
 
-        denominator = percentage_possible_total + (overall_highest_round_max if selected_round_title else 0)
+        joker_possible_total = 0
+        if selected_round_titles:
+            joker_possible_total = sum(
+                round_max * joker_weight
+                for round_max in overall_round_max_scores[:len(selected_round_titles)]
+            )
+        denominator = percentage_possible_total + joker_possible_total
         totals[player_field] = {
             'final_total': round_total + creator_bonus_total + joker_bonus,
             'percentage_score_total': percentage_score_total + joker_bonus,
@@ -1295,9 +1320,9 @@ def _build_profile_streak_timeline(all_rounds, player_name):
             {},
         )
         valid_saved_jokers = {
-            storage_key: value
+            storage_key: _normalize_profile_selected_joker_titles(value)
             for storage_key, value in (joker_rounds_raw or {}).items()
-            if value and str(value).strip() and str(value).strip().lower() != 'select'
+            if _normalize_profile_selected_joker_titles(value)
         }
         has_saved_joker = any(
             valid_saved_jokers.get(storage_key)
@@ -2674,6 +2699,19 @@ def _parse_scoresheet_date(date_str):
     return None
 
 
+def _sanitize_scoresheet_joker_round_indices(value):
+    if isinstance(value, dict):
+        return {
+            key: _sanitize_scoresheet_joker_round_indices(nested_value)
+            for key, nested_value in value.items()
+        }
+    if isinstance(value, list):
+        return [_sanitize_scoresheet_joker_round_indices(item) for item in value]
+    if isinstance(value, str):
+        return value.replace("'", "~~~~")
+    return value
+
+
 def _presentation_name_for_date(selected_date):
     parsed_date = _parse_scoresheet_date(selected_date)
     if not parsed_date:
@@ -3009,7 +3047,7 @@ def save_scores(request):
             print(f"Error running update_links.py script: {e}")
 
     # replace any single quotes with a tilde so that it doesn't mess up the json
-    joker_round_indices = {key: value.replace("'", "~~~~") for key, value in joker_round_indices.items()}
+    joker_round_indices = _sanitize_scoresheet_joker_round_indices(joker_round_indices)
 
     # Update the joker_round_indices in the MergedPresentation
     if presentation_id:

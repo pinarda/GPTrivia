@@ -33,6 +33,24 @@ function getRoundCreatorNames(round) {
     .filter(Boolean);
 }
 
+function getSelectedJokerRounds(selectedRoundSelection) {
+  if (Array.isArray(selectedRoundSelection)) {
+    return [...new Set(
+      selectedRoundSelection.filter(title => title && title !== 'Select')
+    )].slice(0, 2);
+  }
+
+  if (selectedRoundSelection && selectedRoundSelection !== 'Select') {
+    return [selectedRoundSelection];
+  }
+
+  return [];
+}
+
+function getJokerRoundWeight(selectedRoundTitles) {
+  return selectedRoundTitles.length > 1 ? 0.5 : 1;
+}
+
 function playerMatchesCreator(roundCreator, player) {
   const playerName = getDisplayNameForPlayerField(player);
   if (playerName === 'Dan') {
@@ -76,23 +94,37 @@ function getSelectedCreatorRoundMedian(rounds, player, selectedRoundTitle, media
   return isNumericScore(medianScore) ? medianScore : null;
 }
 
-export function getDisplayedJokerBonus(rounds, scores, player, selectedRoundTitle, medianScores) {
-  if (!selectedRoundTitle || selectedRoundTitle === 'Select') {
+export function getDisplayedJokerBonus(rounds, scores, player, selectedRoundSelection, medianScores) {
+  const selectedRoundTitles = getSelectedJokerRounds(selectedRoundSelection);
+  if (!selectedRoundTitles.length) {
     return null;
   }
 
-  const selectedCreatorMedian = getSelectedCreatorRoundMedian(rounds, player, selectedRoundTitle, medianScores);
-  if (isNumericScore(selectedCreatorMedian)) {
-    return roundToDisplay(selectedCreatorMedian);
-  }
+  const roundWeight = getJokerRoundWeight(selectedRoundTitles);
+  let total = 0;
+  let hasValue = false;
 
-  const selectedRound = (rounds || []).find(round => round.title === selectedRoundTitle);
-  if (!selectedRound) {
-    return null;
-  }
+  selectedRoundTitles.forEach(selectedRoundTitle => {
+    const selectedCreatorMedian = getSelectedCreatorRoundMedian(rounds, player, selectedRoundTitle, medianScores);
+    if (isNumericScore(selectedCreatorMedian)) {
+      total += selectedCreatorMedian * roundWeight;
+      hasValue = true;
+      return;
+    }
 
-  const score = getEffectiveRoundScore(scores, player, selectedRound);
-  return isNumericScore(score) ? roundToDisplay(score) : null;
+    const selectedRound = (rounds || []).find(round => round.title === selectedRoundTitle);
+    if (!selectedRound) {
+      return;
+    }
+
+    const score = getEffectiveRoundScore(scores, player, selectedRound);
+    if (isNumericScore(score)) {
+      total += score * roundWeight;
+      hasValue = true;
+    }
+  });
+
+  return hasValue ? roundToDisplay(total) : null;
 }
 
 function getCreatorBonusState(rounds, player, selectedRoundTitle, medianScores) {
