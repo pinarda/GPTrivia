@@ -687,6 +687,74 @@ def update_slide_permissions(slide_id, credentials):
         print(f"An error occurred: {error}")
         return None
 
+
+def ensure_presentation_public_by_link(presentation_link, credentials):
+    presentation_id, _ = _extract_presentation_link_parts(presentation_link)
+    if not presentation_id:
+        return False
+
+    try:
+        service = build('drive', 'v3', credentials=credentials)
+        permissions = service.permissions().list(
+            fileId=presentation_id,
+            fields='permissions(id,type,role,allowFileDiscovery)',
+            supportsAllDrives=True,
+        ).execute().get('permissions', [])
+
+        anyone_permission = next(
+            (permission for permission in permissions if permission.get('type') == 'anyone'),
+            None,
+        )
+
+        if anyone_permission:
+            role = anyone_permission.get('role')
+            allow_file_discovery = anyone_permission.get('allowFileDiscovery')
+            if role in {'reader', 'writer', 'commenter'} and allow_file_discovery is False:
+                return True
+
+            service.permissions().update(
+                fileId=presentation_id,
+                permissionId=anyone_permission['id'],
+                body={
+                    'role': 'reader',
+                    'allowFileDiscovery': False,
+                },
+                supportsAllDrives=True,
+            ).execute()
+            return True
+
+        service.permissions().create(
+            fileId=presentation_id,
+            body={
+                'type': 'anyone',
+                'role': 'reader',
+                'allowFileDiscovery': False,
+            },
+            fields='id',
+            supportsAllDrives=True,
+        ).execute()
+        return True
+
+    except HttpError as error:
+        logger.warning(
+            "Failed to make source presentation public for %s: %s",
+            presentation_link,
+            error,
+        )
+        return False
+
+
+def ensure_round_links_public(round_links, credentials):
+    if not round_links:
+        return
+
+    seen_links = set()
+    for round_link in round_links:
+        if not round_link or round_link in seen_links:
+            continue
+        seen_links.add(round_link)
+        ensure_presentation_public_by_link(round_link, credentials)
+
 def mark_as_read(gmail_service, msg_id):
     gmail_service.users().messages().modify(
         userId='me',
@@ -735,6 +803,8 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
             credentials = flow.run_local_server(port=8000)
         with open(token_file_path, 'wb') as token:
             pickle.dump(credentials, token)
+
+    ensure_round_links_public(links, credentials)
 
     creator_keys = [key for creator in creators for key, value in MAIL_NAME_MAP.items() if value == creator]
     existing_round_count = len(list(merged_creators))
@@ -1218,6 +1288,8 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
         credentials = build_credentials()
         with open(token_file_path, 'wb') as token:
             pickle.dump(credentials, token)
+
+    ensure_round_links_public(links, credentials)
 
     # intro_id = '1sXOpGumQ9nIDj3tDgU7J5U_bHiTu48YL50MtILw6ngo'
     intro_id = '1I3ONljiYpyHJloW_11rWayLs3j9gxRPc-WU_UPqfrt4'
