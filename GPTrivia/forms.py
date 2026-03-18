@@ -86,11 +86,22 @@ class ProfilePictureForm(forms.ModelForm):
         self.fields['site_theme'].widget.attrs.update({
             'id': 'profile-theme-input',
         })
-        self.initial.setdefault('profile_color', effective_color or '#333333')
-        self.initial.setdefault('profile_page_chrome_color', profile.profile_page_chrome_color or Profile.PROFILE_PAGE_CHROME_DEFAULT)
-        self.initial.setdefault('profile_page_trivia_color_one', profile.profile_page_trivia_color_one or Profile.PROFILE_PAGE_TRIVIA_COLOR_ONE_DEFAULT)
-        self.initial.setdefault('profile_page_trivia_color_two', profile.profile_page_trivia_color_two or Profile.PROFILE_PAGE_TRIVIA_COLOR_TWO_DEFAULT)
-        self.initial.setdefault('profile_page_trivia_color_three', profile.profile_page_trivia_color_three or Profile.PROFILE_PAGE_TRIVIA_COLOR_THREE_DEFAULT)
+        if not self.initial.get('profile_color'):
+            self.initial['profile_color'] = effective_color or '#333333'
+        if not self.initial.get('profile_page_chrome_color'):
+            self.initial['profile_page_chrome_color'] = profile.profile_page_chrome_color or Profile.PROFILE_PAGE_CHROME_DEFAULT
+        if not self.initial.get('profile_page_trivia_color_one'):
+            self.initial['profile_page_trivia_color_one'] = (
+                profile.profile_page_trivia_color_one or Profile.PROFILE_PAGE_TRIVIA_COLOR_ONE_DEFAULT
+            )
+        if not self.initial.get('profile_page_trivia_color_two'):
+            self.initial['profile_page_trivia_color_two'] = (
+                profile.profile_page_trivia_color_two or Profile.PROFILE_PAGE_TRIVIA_COLOR_TWO_DEFAULT
+            )
+        if not self.initial.get('profile_page_trivia_color_three'):
+            self.initial['profile_page_trivia_color_three'] = (
+                profile.profile_page_trivia_color_three or Profile.PROFILE_PAGE_TRIVIA_COLOR_THREE_DEFAULT
+            )
 
     def _clean_hex_color(self, field_name):
         color = (self.cleaned_data.get(field_name) or '').strip()

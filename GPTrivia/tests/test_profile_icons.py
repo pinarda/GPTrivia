@@ -168,3 +168,20 @@ class ProfileIconTests(TestCase):
         self.assertContains(response, '--profile-page-trivia-color-two: #222222;')
         self.assertContains(response, '--profile-page-trivia-color-three: #333333;')
         self.assertContains(response, 'Player Color')
+
+    def test_profile_view_defaults_page_color_inputs_to_profile_palette(self):
+        user = User.objects.create_user(username='Alex', password='pw')
+        self._make_profile_round_history()
+
+        self.client.force_login(user)
+        response = self.client.get(reverse('player_profile', args=['Alex']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="profile-page-chrome-input"')
+        self.assertContains(response, 'value="#2d3047"')
+        self.assertContains(response, 'id="profile-trivia-color-one-input"')
+        self.assertContains(response, 'value="#588b8b"')
+        self.assertContains(response, 'id="profile-trivia-color-two-input"')
+        self.assertContains(response, 'value="#ffd5c2"')
+        self.assertContains(response, 'id="profile-trivia-color-three-input"')
+        self.assertContains(response, 'value="#c8553d"')

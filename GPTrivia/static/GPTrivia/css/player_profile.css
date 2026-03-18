@@ -826,16 +826,16 @@ a {
 }
 
 .red,
-.orange {
+.green {
     color: var(--profile-trivia-color-one);
 }
 
-.yellow,
-.green {
+.orange,
+.blue {
     color: var(--profile-trivia-color-two);
 }
 
-.blue,
+.yellow,
 .purple {
     color: var(--profile-trivia-color-three);
 }
