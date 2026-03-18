@@ -66,10 +66,32 @@ def build_duplicate_groups(presentations) -> Dict[str, List[object]]:
 def _format_summary_list(values, *, empty_text: str) -> str:
     if not values:
         return empty_text
-    preview = [str(value) for value in values[:6] if value]
+
+    if isinstance(values, dict):
+        items = [
+            f"{key}={value}" if value not in ("", None) else str(key)
+            for key, value in list(values.items())[:6]
+            if key or value
+        ]
+        if not items:
+            return empty_text
+        suffix = " ..." if len(values) > len(items) else ""
+        return ", ".join(items) + suffix
+
+    if isinstance(values, (list, tuple)):
+        preview_values = list(values[:6])
+        total_count = len(values)
+    elif isinstance(values, set):
+        preview_values = list(values)[:6]
+        total_count = len(values)
+    else:
+        preview_values = [values]
+        total_count = 1
+
+    preview = [str(value) for value in preview_values if value not in ("", None)]
     if not preview:
         return empty_text
-    suffix = " ..." if len(values) > len(preview) else ""
+    suffix = " ..." if total_count > len(preview) else ""
     return ", ".join(preview) + suffix
 
 
@@ -105,14 +127,7 @@ def _print_duplicate_group(group_index: int, total_groups: int, iso_date: str, p
             f"crowned={presentation.crowned_winner or '(none)'} | "
             f"tiebreak={presentation.tiebreak_winner or '(none)'}"
         )
-        style_points = presentation.style_points or {}
-        if isinstance(style_points, dict):
-            style_preview = ", ".join(
-                f"{player}={points}" for player, points in list(style_points.items())[:6]
-            ) or "(none)"
-        else:
-            style_preview = _format_text_preview(style_points, empty_text="(none)")
-        print(f"   style points: {style_preview}")
+        print(f"   style points: {_format_summary_list(presentation.style_points or {}, empty_text='(none)')}")
         print(f"   notes: {_format_text_preview(presentation.notes, empty_text='(none)')}")
         if presentation.error_message:
             print(f"   error: {_format_text_preview(presentation.error_message, empty_text='(none)')}")
