@@ -715,6 +715,15 @@ import {
       gap: 0.6rem;
     `;
 
+    const MobileDetailsPanelShell = styled.div`
+      padding: 0.45rem;
+      background-color: var(--scoresheet-surface, #333);
+
+      @media (min-width: 1001px) {
+        display: none;
+      }
+    `;
+
     const DetailsSection = styled.div`
       display: grid;
       gap: 0.55rem;
@@ -2956,6 +2965,202 @@ const PlayerTable = () => {
     </CompactTopControlGroup>
   );
 
+  const detailsPanelContent = (
+    <DetailsPanel>
+      <DetailsSection>
+        <DetailsSectionTitle>Round Details</DetailsSectionTitle>
+        <DetailsRoundGrid>
+          {rounds.map((round, index) => (
+            <DetailsRoundCard key={round.id || round.title || index}>
+              <DetailsRoundTitle>{round.title || `Round ${index + 1}`}</DetailsRoundTitle>
+              <DetailsToggleGrid>
+                <DetailToggleLabel
+                  control={
+                    <Checkbox
+                      className="star-ricochet"
+                      checked={Boolean(isReplay[round.title])}
+                      onChange={(event) => handleReplayChange(round.title, event.target.checked)}
+                    />
+                  }
+                  label="Replay"
+                />
+                <DetailToggleLabel
+                  control={
+                    <Checkbox
+                      className="star-ricochet"
+                      checked={Boolean(cooperativeStatus[round.title])}
+                      onChange={(event) => handleCooperativeChange(round.title, event.target.checked)}
+                    />
+                  }
+                  label="Co-op"
+                />
+              </DetailsToggleGrid>
+              <DetailsFieldGrid>
+                <DetailsField>
+                  <MetadataFieldLabel>Max Score</MetadataFieldLabel>
+                  <DetailTextField
+                    value={maxScores[round.title] || 10}
+                    onChange={(e) => handleMaxScoreChange(round.title, parseFloat(e.target.value))}
+                    type="number"
+                    inputProps={{ step: 0.5, min: 1, max: 100 }}
+                  />
+                </DetailsField>
+                <DetailsField>
+                  <MetadataFieldLabel>Creator</MetadataFieldLabel>
+                  <MetadataFormControl>
+                    <StyledSelect
+                      MenuProps={dropdownMenuProps}
+                      value={roundCreators[round.title] || ''}
+                      onChange={(e) => handleCreatorChange(round.title, e.target.value)}
+                    >
+                      <MenuItem value="">Unknown</MenuItem>
+                      {creatorOptions.map((player, creatorIndex) => (
+                        <MenuItem key={creatorIndex} value={player}>
+                          {player}
+                        </MenuItem>
+                      ))}
+                    </StyledSelect>
+                  </MetadataFormControl>
+                </DetailsField>
+                <DetailsField>
+                  <MetadataFieldLabel>Category</MetadataFieldLabel>
+                  <MetadataFormControl>
+                    <StyledSelect
+                      MenuProps={dropdownMenuProps}
+                      value={selectedMajorCategories[round.title] || ''}
+                      onChange={(e) => handleMajorCategoryChange(round.title, e.target.value)}
+                    >
+                      {majorCategories.sort((a, b) => a.localeCompare(b)).map((category, categoryIndex) => (
+                        <MenuItem key={categoryIndex} value={category}>
+                          {category}
+                        </MenuItem>
+                      ))}
+                    </StyledSelect>
+                  </MetadataFormControl>
+                </DetailsField>
+                <DetailsField>
+                  <MetadataFieldLabel>Sub1</MetadataFieldLabel>
+                  <MetadataFormControl>
+                    <StyledSelect
+                      MenuProps={dropdownMenuProps}
+                      value={selectedMinor1Categories[round.title] || ''}
+                      onChange={(e) => handleMinor1CategoryChange(round.title, e.target.value)}
+                    >
+                      {minor1Categories.sort((a, b) => a.localeCompare(b)).map((category, categoryIndex) => (
+                        <MenuItem key={categoryIndex} value={category}>
+                          {category}
+                        </MenuItem>
+                      ))}
+                    </StyledSelect>
+                  </MetadataFormControl>
+                </DetailsField>
+                <DetailsField>
+                  <MetadataFieldLabel>Sub2</MetadataFieldLabel>
+                  <MetadataFormControl>
+                    <StyledSelect
+                      MenuProps={dropdownMenuProps}
+                      value={selectedMinor2Categories[round.title] || ''}
+                      onChange={(e) => handleMinor2CategoryChange(round.title, e.target.value)}
+                    >
+                      {minor2Categories.sort((a, b) => a.localeCompare(b)).map((category, categoryIndex) => (
+                        <MenuItem key={categoryIndex} value={category}>
+                          {category}
+                        </MenuItem>
+                      ))}
+                    </StyledSelect>
+                  </MetadataFormControl>
+                </DetailsField>
+              </DetailsFieldGrid>
+              <DetailsField>
+                <MetadataFieldLabel>Slide Link</MetadataFieldLabel>
+                <DetailTextField
+                  value={tempLinks[index]}
+                  onChange={(e) => handleTempLinkChange(index, e.target.value)}
+                  onBlur={(e) => handleLinkChange(index, e.target.value)}
+                  multiline
+                  maxRows={2}
+                />
+              </DetailsField>
+              <StyledButton type="button" onClick={() => handleRemoveColumn(round.id)} style={{ width: '100%', margin: 0 }}>
+                Delete Round
+              </StyledButton>
+            </DetailsRoundCard>
+          ))}
+        </DetailsRoundGrid>
+      </DetailsSection>
+
+      <DetailsSection>
+        <DetailsSectionTitle>Night Roles</DetailsSectionTitle>
+        <DetailsFieldGrid>
+          <DetailsField>
+            <MetadataFieldLabel>Host</MetadataFieldLabel>
+            <MetadataFormControl>
+              <StyledSelect
+                MenuProps={dropdownMenuProps}
+                displayEmpty
+                value={host}
+                onChange={(e) => {
+                  setHost(e.target.value);
+                  markDirty();
+                }}
+              >
+                <MenuItem value="">—</MenuItem>
+                {playerNamesDisplay.map((name) => (
+                  <MenuItem key={name} value={name}>{name}</MenuItem>
+                ))}
+              </StyledSelect>
+            </MetadataFormControl>
+          </DetailsField>
+          <DetailsField>
+            <MetadataFieldLabel>Scorekeeper</MetadataFieldLabel>
+            <MetadataFormControl>
+              <StyledSelect
+                MenuProps={dropdownMenuProps}
+                displayEmpty
+                value={scorekeeper}
+                onChange={(e) => {
+                  setScorekeeper(e.target.value);
+                  markDirty();
+                }}
+              >
+                <MenuItem value="">—</MenuItem>
+                {playerNamesDisplay.map((name) => (
+                  <MenuItem key={name} value={name}>{name}</MenuItem>
+                ))}
+              </StyledSelect>
+            </MetadataFormControl>
+          </DetailsField>
+          <DetailsField>
+            <MetadataFieldLabel>Tiebreak Winner</MetadataFieldLabel>
+            <StyledButton type="button" onClick={openTiebreakDialog} style={{ width: '100%', margin: 0 }}>
+              {tiebreakWinner ? tiebreakWinner : 'Set Tiebreak Winner'}
+            </StyledButton>
+          </DetailsField>
+        </DetailsFieldGrid>
+      </DetailsSection>
+
+      <DetailsSection>
+        <DetailsSectionTitle>Style Points</DetailsSectionTitle>
+        <StylePointsGrid>
+          {playerNamesDisplay.map((name) => (
+            <StylePointRow key={name}>
+              <StylePointName>{name}</StylePointName>
+              <DetailTextField
+                value={stylePoints?.[name] ?? ''}
+                onChange={(e) => {
+                  setStylePoints((prev) => setStylePointValue(prev, name, e.target.value));
+                  markDirty();
+                }}
+                type="number"
+                inputProps={{ step: 0.5, min: 0 }}
+              />
+            </StylePointRow>
+          ))}
+        </StylePointsGrid>
+      </DetailsSection>
+    </DetailsPanel>
+  );
+
   return (
     <>
     <GlobalStyle />
@@ -3305,207 +3510,20 @@ const PlayerTable = () => {
             <TableCell></TableCell> {/* Empty cell for the joker column */}
 
           </StyledTableRow>
-        {isBottomRowVisible && (
+        {isBottomRowVisible && !isCompactScreen && (
           <StyledTableRow>
             <DetailsPanelCell colSpan={rounds.length + 6}>
-              <DetailsPanel>
-                <DetailsSection>
-                  <DetailsSectionTitle>Round Details</DetailsSectionTitle>
-                  <DetailsRoundGrid>
-                    {rounds.map((round, index) => (
-                      <DetailsRoundCard key={round.id || round.title || index}>
-                        <DetailsRoundTitle>{round.title || `Round ${index + 1}`}</DetailsRoundTitle>
-                        <DetailsToggleGrid>
-                          <DetailToggleLabel
-                            control={
-                              <Checkbox
-                                className="star-ricochet"
-                                checked={Boolean(isReplay[round.title])}
-                                onChange={(event) => handleReplayChange(round.title, event.target.checked)}
-                              />
-                            }
-                            label="Replay"
-                          />
-                          <DetailToggleLabel
-                            control={
-                              <Checkbox
-                                className="star-ricochet"
-                                checked={Boolean(cooperativeStatus[round.title])}
-                                onChange={(event) => handleCooperativeChange(round.title, event.target.checked)}
-                              />
-                            }
-                            label="Co-op"
-                          />
-                        </DetailsToggleGrid>
-                        <DetailsFieldGrid>
-                          <DetailsField>
-                            <MetadataFieldLabel>Max Score</MetadataFieldLabel>
-                            <DetailTextField
-                              value={maxScores[round.title] || 10}
-                              onChange={(e) => handleMaxScoreChange(round.title, parseFloat(e.target.value))}
-                              type="number"
-                              inputProps={{ step: 0.5, min: 1, max: 100 }}
-                            />
-                          </DetailsField>
-                          <DetailsField>
-                            <MetadataFieldLabel>Creator</MetadataFieldLabel>
-                            <MetadataFormControl>
-                              <StyledSelect
-                                MenuProps={dropdownMenuProps}
-                                value={roundCreators[round.title] || ''}
-                                onChange={(e) => handleCreatorChange(round.title, e.target.value)}
-                              >
-                                <MenuItem value="">Unknown</MenuItem>
-                                {creatorOptions.map((player, creatorIndex) => (
-                                  <MenuItem key={creatorIndex} value={player}>
-                                    {player}
-                                  </MenuItem>
-                                ))}
-                              </StyledSelect>
-                            </MetadataFormControl>
-                          </DetailsField>
-                          <DetailsField>
-                            <MetadataFieldLabel>Category</MetadataFieldLabel>
-                            <MetadataFormControl>
-                              <StyledSelect
-                                MenuProps={dropdownMenuProps}
-                                value={selectedMajorCategories[round.title] || ''}
-                                onChange={(e) => handleMajorCategoryChange(round.title, e.target.value)}
-                              >
-                                {majorCategories.sort((a, b) => a.localeCompare(b)).map((category, categoryIndex) => (
-                                  <MenuItem key={categoryIndex} value={category}>
-                                    {category}
-                                  </MenuItem>
-                                ))}
-                              </StyledSelect>
-                            </MetadataFormControl>
-                          </DetailsField>
-                          <DetailsField>
-                            <MetadataFieldLabel>Sub1</MetadataFieldLabel>
-                            <MetadataFormControl>
-                              <StyledSelect
-                                MenuProps={dropdownMenuProps}
-                                value={selectedMinor1Categories[round.title] || ''}
-                                onChange={(e) => handleMinor1CategoryChange(round.title, e.target.value)}
-                              >
-                                {minor1Categories.sort((a, b) => a.localeCompare(b)).map((category, categoryIndex) => (
-                                  <MenuItem key={categoryIndex} value={category}>
-                                    {category}
-                                  </MenuItem>
-                                ))}
-                              </StyledSelect>
-                            </MetadataFormControl>
-                          </DetailsField>
-                          <DetailsField>
-                            <MetadataFieldLabel>Sub2</MetadataFieldLabel>
-                            <MetadataFormControl>
-                              <StyledSelect
-                                MenuProps={dropdownMenuProps}
-                                value={selectedMinor2Categories[round.title] || ''}
-                                onChange={(e) => handleMinor2CategoryChange(round.title, e.target.value)}
-                              >
-                                {minor2Categories.sort((a, b) => a.localeCompare(b)).map((category, categoryIndex) => (
-                                  <MenuItem key={categoryIndex} value={category}>
-                                    {category}
-                                  </MenuItem>
-                                ))}
-                              </StyledSelect>
-                            </MetadataFormControl>
-                          </DetailsField>
-                        </DetailsFieldGrid>
-                        <DetailsField>
-                          <MetadataFieldLabel>Slide Link</MetadataFieldLabel>
-                          <DetailTextField
-                            value={tempLinks[index]}
-                            onChange={(e) => handleTempLinkChange(index, e.target.value)}
-                            onBlur={(e) => handleLinkChange(index, e.target.value)}
-                            multiline
-                            maxRows={2}
-                          />
-                        </DetailsField>
-                        <StyledButton type="button" onClick={() => handleRemoveColumn(round.id)} style={{ width: '100%', margin: 0 }}>
-                          Delete Round
-                        </StyledButton>
-                      </DetailsRoundCard>
-                    ))}
-                  </DetailsRoundGrid>
-                </DetailsSection>
-
-                <DetailsSection>
-                  <DetailsSectionTitle>Night Roles</DetailsSectionTitle>
-                  <DetailsFieldGrid>
-                    <DetailsField>
-                      <MetadataFieldLabel>Host</MetadataFieldLabel>
-                      <MetadataFormControl>
-                        <StyledSelect
-                          MenuProps={dropdownMenuProps}
-                          displayEmpty
-                          value={host}
-                          onChange={(e) => {
-                            setHost(e.target.value);
-                            markDirty();
-                          }}
-                        >
-                          <MenuItem value="">—</MenuItem>
-                          {playerNamesDisplay.map((name) => (
-                            <MenuItem key={name} value={name}>{name}</MenuItem>
-                          ))}
-                        </StyledSelect>
-                      </MetadataFormControl>
-                    </DetailsField>
-                    <DetailsField>
-                      <MetadataFieldLabel>Scorekeeper</MetadataFieldLabel>
-                      <MetadataFormControl>
-                        <StyledSelect
-                          MenuProps={dropdownMenuProps}
-                          displayEmpty
-                          value={scorekeeper}
-                          onChange={(e) => {
-                            setScorekeeper(e.target.value);
-                            markDirty();
-                          }}
-                        >
-                          <MenuItem value="">—</MenuItem>
-                          {playerNamesDisplay.map((name) => (
-                            <MenuItem key={name} value={name}>{name}</MenuItem>
-                          ))}
-                        </StyledSelect>
-                      </MetadataFormControl>
-                    </DetailsField>
-                    <DetailsField>
-                      <MetadataFieldLabel>Tiebreak Winner</MetadataFieldLabel>
-                      <StyledButton type="button" onClick={openTiebreakDialog} style={{ width: '100%', margin: 0 }}>
-                        {tiebreakWinner ? tiebreakWinner : 'Set Tiebreak Winner'}
-                      </StyledButton>
-                    </DetailsField>
-                  </DetailsFieldGrid>
-                </DetailsSection>
-
-                <DetailsSection>
-                  <DetailsSectionTitle>Style Points</DetailsSectionTitle>
-                  <StylePointsGrid>
-                    {playerNamesDisplay.map((name) => (
-                      <StylePointRow key={name}>
-                        <StylePointName>{name}</StylePointName>
-                        <DetailTextField
-                          value={stylePoints?.[name] ?? ''}
-                          onChange={(e) => {
-                            setStylePoints((prev) => setStylePointValue(prev, name, e.target.value));
-                            markDirty();
-                          }}
-                          type="number"
-                          inputProps={{ step: 0.5, min: 0 }}
-                        />
-                      </StylePointRow>
-                    ))}
-                  </StylePointsGrid>
-                </DetailsSection>
-              </DetailsPanel>
+              {detailsPanelContent}
             </DetailsPanelCell>
           </StyledTableRow>
         )}
         </TableBody>
       </StyledTable>
+      {isBottomRowVisible && isCompactScreen && (
+        <MobileDetailsPanelShell>
+          {detailsPanelContent}
+        </MobileDetailsPanelShell>
+      )}
       <MetadataSection>
         <MetadataGrid>
           <MetadataActionField>
