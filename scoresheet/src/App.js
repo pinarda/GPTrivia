@@ -1157,6 +1157,15 @@ const PlayerTable = () => {
     const sortedDates = useMemo(() => {
                                 return [...dates].sort().reverse(); // or any other sorting logic you have
                             }, [dates]);
+    const requestedDate = useMemo(() => {
+      if (typeof window === 'undefined') {
+        return '';
+      }
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const dateParam = urlParams.get('date') || '';
+      return /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : '';
+    }, []);
     const [selectedDate, setSelectedDate] = useState('');
     const [textColor] = useState('black');
     const [isDatesInitialized, setIsDatesInitialized] = useState(false);
@@ -1717,10 +1726,13 @@ const PlayerTable = () => {
         console.log('sortedDates:', sortedDates);
 
       if (dates.length > 0 && !isDatesInitialized) {
-        setSelectedDate(sortedDates[0]);
+        const initialDate = requestedDate && sortedDates.includes(requestedDate)
+          ? requestedDate
+          : sortedDates[0];
+        setSelectedDate(initialDate);
         setIsDatesInitialized(true);
       }
-    }, [dates, isDatesInitialized, sortedDates]);
+    }, [dates, isDatesInitialized, requestedDate, sortedDates]);
 
     const isSavedRef = useRef(isSaved);
 

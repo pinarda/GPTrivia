@@ -4,7 +4,7 @@ import inspect
 from unittest.mock import patch
 
 from django.test import TestCase, RequestFactory
-from GPTrivia.models import GPTriviaRound
+from GPTrivia.models import GPTriviaRound, MergedPresentation
 from GPTrivia.views import player_analysis, player_profile
 from ..mail import create_presentation
 from googleapiclient.discovery import build
@@ -336,6 +336,101 @@ class PlayerAnalysisViewTests(TestCase):
         )
         response = self.client.get(reverse('player_profile', args=['Alex']))
         self.assertEqual(response.status_code, 200)
+
+    def test_profile_view_includes_best_score_and_performance_nights(self):
+        MergedPresentation.objects.create(
+            name="01.01.2023",
+            presentation_id="presentation-jan-01",
+            round_names=["Night One Round 1", "Night One Round 2"],
+            creator_list=["Megan", "Jenny"],
+        )
+        MergedPresentation.objects.create(
+            name="01.08.2023",
+            presentation_id="presentation-jan-08",
+            round_names=["Night Two Round 1", "Night Two Round 2"],
+            creator_list=["Megan", "Jenny"],
+        )
+
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Night One Round 1",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date="2023-01-01",
+            round_number=1,
+            max_score=10,
+            score_alex=8,
+            score_ichigo=4,
+            score_megan=4,
+            score_zach=4,
+            score_jenny=4,
+        )
+        GPTriviaRound.objects.create(
+            creator="Jenny",
+            title="Night One Round 2",
+            major_category="Science",
+            minor_category1="Biology",
+            minor_category2="Cells",
+            date="2023-01-01",
+            round_number=2,
+            max_score=10,
+            score_alex=8,
+            score_ichigo=4,
+            score_megan=4,
+            score_zach=4,
+            score_jenny=4,
+        )
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Night Two Round 1",
+            major_category="History",
+            minor_category1="Ancient",
+            minor_category2="Rome",
+            date="2023-01-08",
+            round_number=1,
+            max_score=10,
+            score_alex=10,
+            score_ichigo=8,
+            score_megan=8,
+            score_zach=8,
+            score_jenny=8,
+        )
+        GPTriviaRound.objects.create(
+            creator="Jenny",
+            title="Night Two Round 2",
+            major_category="History",
+            minor_category1="Modern",
+            minor_category2="Europe",
+            date="2023-01-08",
+            round_number=2,
+            max_score=10,
+            score_alex=9,
+            score_ichigo=7,
+            score_megan=7,
+            score_zach=7,
+            score_jenny=7,
+        )
+
+        response = self.client.get(reverse('player_profile', args=['Alex']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['best_score_ever']['display_value'], '19/20 (95.0%)')
+        self.assertEqual(response.context['best_score_ever']['date'], datetime.date(2023, 1, 8))
+        self.assertEqual(
+            response.context['best_score_ever']['scoresheet_link'],
+            f"{reverse('scoresheet_new')}?date=2023-01-08",
+        )
+        self.assertEqual(response.context['best_performance_ever']['display_value'], '+8/20 (+40.0%)')
+        self.assertEqual(response.context['best_performance_ever']['date'], datetime.date(2023, 1, 1))
+        self.assertEqual(
+            response.context['best_performance_ever']['scoresheet_link'],
+            f"{reverse('scoresheet_new')}?date=2023-01-01",
+        )
+        self.assertContains(response, 'Best Score Ever')
+        self.assertContains(response, 'Best Performance Ever')
+        self.assertContains(response, f"{reverse('scoresheet_new')}?date=2023-01-08")
+        self.assertContains(response, f"{reverse('scoresheet_new')}?date=2023-01-01")
 
     def test_creators_list_not_empty(self):
         # create a sample GPTriviaRound instance

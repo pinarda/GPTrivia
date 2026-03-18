@@ -4,7 +4,7 @@ from .models import GPTriviaRound, MergedPresentation, PresentationBuildState, P
 from django.db import transaction
 from django.db.models import Avg, F, FloatField, Case, When, Sum, Count
 from django.contrib.auth import views as auth_views
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.shortcuts import render
 from datetime import datetime
 from django.core.exceptions import ObjectDoesNotExist
@@ -803,6 +803,140 @@ def _get_profile_page_color_value(profile, field_name, default_value):
         return default_value
     return getattr(profile, field_name, '') or default_value
 
+
+def _format_profile_percentage_stat(numerator, denominator, signed=False):
+    if numerator is None or denominator in (None, 0):
+        return ''
+
+    absolute_numerator = abs(numerator) if signed else numerator
+    numerator_display = _format_profile_round_score(absolute_numerator)
+    denominator_display = _format_profile_round_score(denominator)
+    percent_value = (numerator / denominator) * 100
+
+    sign_prefix = ''
+    percent_prefix = ''
+    if signed:
+        if numerator > 0:
+            sign_prefix = '+'
+        elif numerator < 0:
+            sign_prefix = '-'
+
+        if percent_value > 0:
+            percent_prefix = '+'
+        elif percent_value < 0:
+            percent_prefix = '-'
+
+    return f"{sign_prefix}{numerator_display}/{denominator_display} ({percent_prefix}{abs(percent_value):.1f}%)"
+
+
+def _build_scoresheet_date_link(target_date):
+    if not target_date:
+        return ''
+
+    target_date_str = target_date.isoformat()
+    if not _get_scoresheet_presentation(selected_date=target_date_str):
+        return ''
+
+    return f"{reverse('scoresheet_new')}?date={target_date_str}"
+
+
+def _build_profile_best_night_stats(all_rounds, player_name):
+    score_field = player_field_for_name(player_name)
+    other_player_fields = [
+        player_field
+        for player_field in collect_player_fields(rounds=all_rounds)
+        if player_field != score_field
+    ]
+
+    rounds_by_date = {}
+    for round_obj in all_rounds:
+        rounds_by_date.setdefault(round_obj.date, []).append(round_obj)
+
+    best_score_stat = None
+    best_performance_stat = None
+
+    for night_date, night_rounds in rounds_by_date.items():
+        player_total = 0
+        best_score_max_total = 0
+        performance_player_total = 0
+        performance_other_total = 0
+        performance_max_total = 0
+
+        for round_obj in night_rounds:
+            score_map = get_round_score_map(round_obj)
+            player_score = score_map.get(score_field)
+            max_score = round_obj.max_score
+            if player_score is None or max_score in (None, 0):
+                continue
+
+            player_total += player_score
+            best_score_max_total += max_score
+
+            other_scores = [
+                score_map.get(other_score_field)
+                for other_score_field in other_player_fields
+            ]
+            other_scores = [score for score in other_scores if score is not None]
+            if not other_scores:
+                continue
+
+            performance_player_total += player_score
+            performance_other_total += sum(other_scores) / len(other_scores)
+            performance_max_total += max_score
+
+        if best_score_max_total:
+            player_percentage = player_total / best_score_max_total
+            best_score_candidate = {
+                'date': night_date,
+                'display_value': _format_profile_percentage_stat(player_total, best_score_max_total),
+                'player_total': player_total,
+                'max_total': best_score_max_total,
+                'percentage': player_percentage,
+            }
+            if (
+                best_score_stat is None
+                or player_percentage > best_score_stat['percentage']
+                or (
+                    player_percentage == best_score_stat['percentage']
+                    and night_date > best_score_stat['date']
+                )
+            ):
+                best_score_stat = best_score_candidate
+
+        if performance_max_total:
+            performance_gap = performance_player_total - performance_other_total
+            performance_gap_percentage = performance_gap / performance_max_total
+            best_performance_candidate = {
+                'date': night_date,
+                'display_value': _format_profile_percentage_stat(
+                    performance_gap,
+                    performance_max_total,
+                    signed=True,
+                ),
+                'gap_total': performance_gap,
+                'max_total': performance_max_total,
+                'percentage': performance_gap_percentage,
+            }
+            if (
+                best_performance_stat is None
+                or performance_gap_percentage > best_performance_stat['percentage']
+                or (
+                    performance_gap_percentage == best_performance_stat['percentage']
+                    and night_date > best_performance_stat['date']
+                )
+            ):
+                best_performance_stat = best_performance_candidate
+
+    if best_score_stat:
+        best_score_stat['scoresheet_link'] = _build_scoresheet_date_link(best_score_stat['date'])
+    if best_performance_stat:
+        best_performance_stat['scoresheet_link'] = _build_scoresheet_date_link(best_performance_stat['date'])
+
+    return {
+        'best_score_ever': best_score_stat,
+        'best_performance_ever': best_performance_stat,
+    }
+
 @login_required
 def player_profile_dict(request, player_name, form=None, include_form=False):
     player_name = display_name_for_player_field(player_name)
@@ -859,6 +993,7 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         for round_data in flattened_rounds
         if round_data.get(score_field) is not None
     ]
+    best_night_stats = _build_profile_best_night_stats(all_rounds, player_name)
     player_avg = (sum(player_values) / len(player_values)) if player_values else None
     total_rounds = len(player_values)
 
@@ -1021,6 +1156,8 @@ def player_profile_dict(request, player_name, form=None, include_form=False):
         'max_cat_avg': max_creator_avg,
         'min_cat_avg': min_creator_avg,
         'created_rounds_count': created_rounds_count,
+        'best_score_ever': best_night_stats['best_score_ever'],
+        'best_performance_ever': best_night_stats['best_performance_ever'],
     }
 
     if include_form or form is not None:
