@@ -973,6 +973,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
         let homeBuildSocket = null;
         let homeBuildReconnectTimer = null;
         let homeBuildLockState = {is_active: false, action: '', presentation_name: '', presentation_id: ''};
+        let homeRoundsLoadInFlight = false;
 
         function syncSelectedOrdersFromRounds() {
             homeRoundState.selectedOrders = {};
@@ -1378,6 +1379,105 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             renderRoundsTable();
         }
 
+        function hydrateRounds(rounds) {
+            homeRoundState.rounds = (rounds || []).map((round, index) => ({
+                rowId: index,
+                title: round.title || '',
+                creator: round.creator || '',
+                link: round.link || '',
+                old_link: round.old_link || '',
+                shared_date: round.shared_date || '',
+                coop: Boolean(round.coop),
+                is_new: Boolean(round.is_new),
+                order: null,
+            }));
+            populateCreatorSpotlightOptions();
+            syncSelectedOrdersFromRounds();
+        }
+
+        function loadAvailableRounds(options = {}) {
+            if (homeRoundsLoadInFlight) {
+                return Promise.resolve();
+            }
+
+            const {
+                preserveSearch = true,
+                showLoadingState = false,
+            } = options;
+
+            const roundSearchInput = document.getElementById('round-search-input');
+            const placeholder = document.getElementById('rounds-placeholder');
+            const placeholderText = placeholder && placeholder.firstElementChild
+                ? placeholder.firstElementChild
+                : null;
+            const roundsSpinner = document.getElementById('rounds-spinner');
+            const previousSearch = preserveSearch && roundSearchInput ? roundSearchInput.value : '';
+            const previousSpotlightCreator = homeRoundState.spotlightCreator || '';
+
+            homeRoundsLoadInFlight = true;
+
+            if (showLoadingState) {
+                if (placeholder) {
+                    placeholder.style.display = 'table-row';
+                }
+                if (roundsSpinner) {
+                    roundsSpinner.style.display = 'inline';
+                }
+                if (placeholderText) {
+                    placeholderText.textContent = 'Loading rounds…';
+                }
+            }
+
+            return fetch("/api/collect_rounds/", {credentials: "same-origin"})
+                .then((response) => (response.ok ? response.json() : Promise.reject(response.statusText)))
+                .then(({rounds}) => {
+                    if (placeholder) {
+                        placeholder.style.display = 'none';
+                    }
+                    if (roundsSpinner) {
+                        roundsSpinner.style.display = 'none';
+                    }
+
+                    hydrateRounds(rounds);
+
+                    const spotlightStillExists = previousSpotlightCreator
+                        && homeRoundState.rounds.some(
+                            (round) => (round.creator || '').trim() === previousSpotlightCreator
+                        );
+
+                    if (spotlightStillExists) {
+                        homeRoundState.spotlightCreator = previousSpotlightCreator;
+                        const spotlightSelect = document.getElementById('round-player-spotlight');
+                        if (spotlightSelect) {
+                            spotlightSelect.value = previousSpotlightCreator;
+                        }
+                        syncCreatorSpotlightPicker();
+                        showRandomRoundForCreator(previousSpotlightCreator);
+                    } else {
+                        homeRoundState.spotlightCreator = '';
+                        const spotlightSelect = document.getElementById('round-player-spotlight');
+                        if (spotlightSelect) {
+                            spotlightSelect.value = '';
+                        }
+                        syncCreatorSpotlightPicker();
+                        filterRounds(previousSearch);
+                    }
+                })
+                .catch((err) => {
+                    console.error("Failed to load rounds:", err);
+                    if (roundsSpinner) {
+                        roundsSpinner.style.display = 'none';
+                    }
+                    if (placeholder && placeholderText) {
+                        placeholder.style.display = 'table-row';
+                        placeholderText.textContent = "Couldn’t load rounds — try refreshing.";
+                    }
+                })
+                .finally(() => {
+                    homeRoundsLoadInFlight = false;
+                });
+        }
+
         function setStatusMessage(text, color = 'white', mode = 'status') {
             const messageElement = document.getElementById('msg');
             if (!messageElement) {
@@ -1471,6 +1571,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                         forceReload: true,
                         refreshToken: data.refreshed_at || `${Date.now()}`,
                     });
+                    loadAvailableRounds({ preserveSearch: true, showLoadingState: false });
                 }
             };
 
@@ -1551,31 +1652,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
               }
           });
 
-          fetch("/api/collect_rounds/", {credentials: "same-origin"})
-            .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
-            .then(({rounds}) => {
-              document.getElementById("rounds-placeholder").style.display = "none";
-              homeRoundState.rounds = (rounds || []).map((round, index) => ({
-                  rowId: index,
-                  title: round.title || '',
-                  creator: round.creator || '',
-                  link: round.link || '',
-                  old_link: round.old_link || '',
-                  shared_date: round.shared_date || '',
-                  coop: Boolean(round.coop),
-                  is_new: Boolean(round.is_new),
-                  order: null,
-              }));
-              populateCreatorSpotlightOptions();
-              syncSelectedOrdersFromRounds();
-              filterRounds('');
-            })
-            .catch(err => {
-              console.error("Failed to load rounds:", err);
-              document.getElementById("rounds-spinner").style.display = "none";
-              document.getElementById("rounds-placeholder").firstElementChild.textContent =
-                "Couldn’t load rounds — try refreshing.";
-            });
+          loadAvailableRounds({ preserveSearch: false, showLoadingState: true });
         });
 
         function initializePresentationCalendar() {
