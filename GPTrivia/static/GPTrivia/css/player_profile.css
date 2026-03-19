@@ -205,6 +205,12 @@ a {
     gap: 0.55rem;
 }
 
+.profile-summary-layout,
+.profile-summary-left-pair {
+    display: grid;
+    gap: 0.55rem;
+}
+
 .profile-summary-item {
     display: grid;
     gap: 0.18rem;
@@ -503,12 +509,10 @@ a {
 
     .profile-intro-layout {
         grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
-        align-items: start;
+        align-items: stretch;
         grid-template-areas:
-            "intro score"
-            "rounds categories"
-            "style creator-matchups"
-            ". biased-creators";
+            "intro right-stats"
+            "left-stats right-stats";
     }
 
     .profile-intro-box,
@@ -536,7 +540,7 @@ a {
     }
 
     .profile-summary-column,
-    .profile-summary-grid {
+    .profile-summary-layout {
         display: contents;
     }
 
@@ -546,31 +550,19 @@ a {
 
     .profile-deferred-placeholder--summary {
         grid-column: 2;
-        grid-row: 1 / span 4;
+        grid-row: 1 / span 2;
     }
 
-    .profile-summary-item--rounds {
-        grid-area: rounds;
+    .profile-summary-left-pair {
+        grid-area: left-stats;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-self: start;
     }
 
-    .profile-summary-item--score {
-        grid-area: score;
-    }
-
-    .profile-summary-item--style-points {
-        grid-area: style;
-    }
-
-    .profile-summary-item--categories {
-        grid-area: categories;
-    }
-
-    .profile-summary-item--creator-matchups {
-        grid-area: creator-matchups;
-    }
-
-    .profile-summary-item--biased-creators {
-        grid-area: biased-creators;
+    .profile-summary-grid {
+        grid-area: right-stats;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-self: start;
     }
 
     .profile-control-stack > :not(.profile-hero-card):not(.profile-intro-card) {
@@ -1512,6 +1504,10 @@ a {
     }
 
     .profile-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-summary-left-pair {
         grid-template-columns: 1fr;
     }
 

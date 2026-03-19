@@ -1,97 +1,102 @@
-<div class="profile-summary-grid">
-    <div class="profile-summary-item profile-summary-item--rounds">
-        <span class="profile-summary-label">Rounds</span>
-        <div class="profile-summary-pairs">
-            <span class="profile-summary-pair">
-                <span class="profile-summary-pair-name">Played</span>
-                <span class="profile-summary-pair-value">{{ total_rounds }}</span>
-            </span>
-            <span class="profile-summary-pair">
-                <span class="profile-summary-pair-name">Created</span>
-                <span class="profile-summary-pair-value">{{ created_rounds_count }}</span>
-            </span>
+<div class="profile-summary-layout">
+    <div class="profile-summary-left-pair">
+        <div class="profile-summary-item profile-summary-item--rounds">
+            <span class="profile-summary-label">Rounds</span>
+            <div class="profile-summary-pairs">
+                <span class="profile-summary-pair">
+                    <span class="profile-summary-pair-name">Played</span>
+                    <span class="profile-summary-pair-value">{{ total_rounds }}</span>
+                </span>
+                <span class="profile-summary-pair">
+                    <span class="profile-summary-pair-name">Created</span>
+                    <span class="profile-summary-pair-value">{{ created_rounds_count }}</span>
+                </span>
+            </div>
+        </div>
+        <div class="profile-summary-item profile-summary-item--style-points">
+            <span class="profile-summary-label">Style Points Received</span>
+            <span class="profile-summary-value">{{ style_points_total }}</span>
         </div>
     </div>
-    <div class="profile-summary-item profile-summary-item--score">
-        <span class="profile-summary-label">Highest Percentage Score</span>
-        <span class="profile-summary-value">
-            {% if best_score_ever %}
-                {{ best_score_ever.display_value }} on
-                {% if best_score_ever.scoresheet_link %}
-                    <a href="{{ best_score_ever.scoresheet_link }}">{{ best_score_ever.date|date:"F j, Y" }}</a>
+
+    <div class="profile-summary-grid">
+        <div class="profile-summary-item profile-summary-item--score">
+            <span class="profile-summary-label">Highest Percentage Score</span>
+            <span class="profile-summary-value">
+                {% if best_score_ever %}
+                    {{ best_score_ever.display_value }} on
+                    {% if best_score_ever.scoresheet_link %}
+                        <a href="{{ best_score_ever.scoresheet_link }}">{{ best_score_ever.date|date:"F j, Y" }}</a>
+                    {% else %}
+                        {{ best_score_ever.date|date:"F j, Y" }}
+                    {% endif %}
                 {% else %}
-                    {{ best_score_ever.date|date:"F j, Y" }}
+                    N/A
                 {% endif %}
-            {% else %}
-                N/A
-            {% endif %}
-        </span>
-    </div>
-    <div class="profile-summary-item profile-summary-item--style-points">
-        <span class="profile-summary-label">Style Points Received</span>
-        <span class="profile-summary-value">{{ style_points_total }}</span>
-    </div>
-    <div class="profile-summary-item profile-summary-item--categories">
-        <span class="profile-summary-label">Categories</span>
-        <div class="profile-summary-pairs">
-            <span class="profile-summary-pair">
-                <span class="profile-summary-pair-name">Strongest</span>
-                <span class="profile-summary-pair-value">{{ max_avg|default:"N/A" }}</span>
-            </span>
-            <span class="profile-summary-pair">
-                <span class="profile-summary-pair-name">Weakest</span>
-                <span class="profile-summary-pair-value">{{ min_avg|default:"N/A" }}</span>
             </span>
         </div>
-    </div>
-    <div class="profile-summary-item profile-summary-item--creator-matchups">
-        <span class="profile-summary-label">Creator Matchups</span>
-        <div class="profile-summary-pairs">
-            <span class="profile-summary-pair">
-                <span class="profile-summary-pair-name">Best</span>
-                <span class="profile-summary-pair-value">
-                    {% if max_cat_avg %}
-                        <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a>
-                    {% else %}
-                        N/A
-                    {% endif %}
+        <div class="profile-summary-item profile-summary-item--categories">
+            <span class="profile-summary-label">Categories</span>
+            <div class="profile-summary-pairs">
+                <span class="profile-summary-pair">
+                    <span class="profile-summary-pair-name">Strongest</span>
+                    <span class="profile-summary-pair-value">{{ max_avg|default:"N/A" }}</span>
                 </span>
-            </span>
-            <span class="profile-summary-pair">
-                <span class="profile-summary-pair-name">Worst</span>
-                <span class="profile-summary-pair-value">
-                    {% if min_cat_avg %}
-                        <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a>
-                    {% else %}
-                        N/A
-                    {% endif %}
+                <span class="profile-summary-pair">
+                    <span class="profile-summary-pair-name">Weakest</span>
+                    <span class="profile-summary-pair-value">{{ min_avg|default:"N/A" }}</span>
                 </span>
-            </span>
+            </div>
         </div>
-    </div>
-    <div class="profile-summary-item profile-summary-item--biased-creators">
-        <span class="profile-summary-label">Biased Creators</span>
-        <div class="profile-summary-pairs">
-            <span class="profile-summary-pair">
-                <span class="profile-summary-pair-name">Highest</span>
-                <span class="profile-summary-pair-value">
-                    {% if max_bias_avg %}
-                        <a href="{% url 'player_profile' player_name=max_bias_avg %}" class="player_name" data-player="{{ max_bias_avg }}">{{ max_bias_avg }}</a> ({{ max_bias_avg_value }})
-                    {% else %}
-                        N/A
-                    {% endif %}
+        <div class="profile-summary-item profile-summary-item--creator-matchups">
+            <span class="profile-summary-label">Creator Matchups</span>
+            <div class="profile-summary-pairs">
+                <span class="profile-summary-pair">
+                    <span class="profile-summary-pair-name">Best</span>
+                    <span class="profile-summary-pair-value">
+                        {% if max_cat_avg %}
+                            <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
                 </span>
-            </span>
-            <span class="profile-summary-pair">
-                <span class="profile-summary-pair-name">Lowest</span>
-                <span class="profile-summary-pair-value">
-                    {% if min_bias_avg %}
-                        <a href="{% url 'player_profile' player_name=min_bias_avg %}" class="player_name" data-player="{{ min_bias_avg }}">{{ min_bias_avg }}</a> ({{ min_bias_avg_value }})
-                    {% else %}
-                        N/A
-                    {% endif %}
+                <span class="profile-summary-pair">
+                    <span class="profile-summary-pair-name">Worst</span>
+                    <span class="profile-summary-pair-value">
+                        {% if min_cat_avg %}
+                            <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
                 </span>
-            </span>
+            </div>
+        </div>
+        <div class="profile-summary-item profile-summary-item--biased-creators">
+            <span class="profile-summary-label">Biased Creators</span>
+            <div class="profile-summary-pairs">
+                <span class="profile-summary-pair">
+                    <span class="profile-summary-pair-name">Highest</span>
+                    <span class="profile-summary-pair-value">
+                        {% if max_bias_avg %}
+                            <a href="{% url 'player_profile' player_name=max_bias_avg %}" class="player_name" data-player="{{ max_bias_avg }}">{{ max_bias_avg }}</a> ({{ max_bias_avg_value }})
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
+                </span>
+                <span class="profile-summary-pair">
+                    <span class="profile-summary-pair-name">Lowest</span>
+                    <span class="profile-summary-pair-value">
+                        {% if min_bias_avg %}
+                            <a href="{% url 'player_profile' player_name=min_bias_avg %}" class="player_name" data-player="{{ min_bias_avg }}">{{ min_bias_avg }}</a> ({{ min_bias_avg_value }})
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
+                </span>
+            </div>
         </div>
     </div>
 </div>
