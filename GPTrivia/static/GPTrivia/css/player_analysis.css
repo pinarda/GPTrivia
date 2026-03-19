@@ -174,21 +174,65 @@ body.site-shell[data-profile-theme="light"] .table-class th {
 .plots-container {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
     align-items: center;
-    gap: 20px;
+    gap: 22px;
+    width: 100%;
+}
+
+.analysis-plot-card {
+    display: none;
+    width: min(100%, 1120px);
+    gap: 0.75rem;
+    padding: 1rem 1.05rem 1.15rem;
+    background: color-mix(in srgb, var(--analysis-panel-bg) 88%, transparent);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+    box-sizing: border-box;
+}
+
+body.site-shell[data-profile-theme="light"] .analysis-plot-card {
+    border-color: rgba(27, 37, 48, 0.12);
+    box-shadow: 0 10px 24px rgba(27, 37, 48, 0.10);
 }
 
 .plot-div {
-    background-color: var(--analysis-panel-bg);
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 20px;
+    width: 100%;
+    min-height: 500px;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+}
+
+.plot-div--standard {
+    min-height: 500px;
+}
+
+.plot-div--matrix {
+    min-height: 420px;
+}
+
+.plot-div--tall {
+    min-height: 1000px;
+}
+
+.plot-div--auto {
+    min-height: 0;
+}
+
+.plot-div--creator-matrix {
+    position: relative;
+}
+
+.analysis-plot-checkbox {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
 }
 
 #CorrMatrix {
-    width: 49%;
-    height: 500px;
+    width: 100%;
 }
 
 .analysis-plot-description {
@@ -197,8 +241,8 @@ body.site-shell[data-profile-theme="light"] .table-class th {
     font-family: YoungSerif;
     font-size: 1rem;
     line-height: 1.45;
-    margin: -4px 0 -10px;
-    padding: 0 4px;
+    margin: 0;
+    padding: 0;
 }
 
 .analysis-plot-description a {
@@ -286,8 +330,8 @@ body.site-shell[data-profile-theme="light"] .table-class th {
         margin-bottom: 20px;
     }
 
-    #CorrMatrix, #PMatrix {
-        width: 100%;
+    .analysis-plot-card {
+        padding: 0.85rem 0.8rem 0.95rem;
     }
 }
 

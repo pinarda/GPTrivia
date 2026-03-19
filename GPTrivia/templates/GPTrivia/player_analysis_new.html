@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319a">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319b">
 {% endblock %}
 
 {% block content %}
@@ -46,27 +46,59 @@
 
     <!-- Plots and Graphs -->
     <div class="plots-container">
-        <div id="bar-space" class="plot-div" style="width:100%; height:500px;"></div>
-        <div id="violin-space" class="plot-div" style="width:100%; height:500px;"></div>
-        <div id="CorrMatrix" class="plot-div" style="width:100%; height:500px;"></div>
-        <div id="CreatorMatrix" class="plot-div" style="width:100%; height:90%; position: relative;">
-            <div id="plot-checkbox" style="position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 1000;">
-                <label for="showValuesCheckbox">Difficulty Adjustment</label>
-                <input type="checkbox" id="showValuesCheckbox">
+        <section class="analysis-plot-card" data-plot-card="bar-space">
+            <div id="bar-space" class="plot-div plot-div--standard"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="violin-space">
+            <div id="violin-space" class="plot-div plot-div--standard"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="CorrMatrix">
+            <div id="CorrMatrix" class="plot-div plot-div--matrix"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="CreatorMatrix">
+            <div id="CreatorMatrix" class="plot-div plot-div--matrix plot-div--creator-matrix">
+                <div id="plot-checkbox" class="analysis-plot-checkbox">
+                    <label for="showValuesCheckbox">Difficulty Adjustment</label>
+                    <input type="checkbox" id="showValuesCheckbox">
+                </div>
             </div>
-        </div>
-        <div id="PCAplot" class="plot-div" style="width:100%; height:1000px;"></div>
-        <div id="catBar" class="plot-div" style="width:100%; height:500px;"></div>
-        <div id="creatorBar" class="plot-div" style="width:100%; height:500px;"></div>
-        <div id="player-bar-space" class="plot-div" style="width:100%; height:500px;"></div>
-        <div id="player-violin-space" class="plot-div" style="width:100%; height:500px;"></div>
-        <div id="player-cat-bar-space" class="plot-div" style="width:100%; height:500px;"></div>
-        <div id="creator-violin-space" class="plot-div" style="width:100%; height:500px;"></div>
-        <div id="time-series-creator" class="plot-div" style="width:100%; height:500px;"></div>
-        <div id="trivia-night-streak" class="plot-div" style="width:100%; height:500px;"></div>
-        <div id="joker_percentage" class="plot-div"></div>
-        <div id="joker-creator-summary" class="plot-div" style="width:100%; height:500px; display:none;"></div>
-        <div id="joker-category-summary" class="plot-div" style="width:100%; height:500px; display:none;"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="PCAplot">
+            <div id="PCAplot" class="plot-div plot-div--tall"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="catBar">
+            <div id="catBar" class="plot-div plot-div--standard"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="creatorBar">
+            <div id="creatorBar" class="plot-div plot-div--standard"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="player-bar-space">
+            <div id="player-bar-space" class="plot-div plot-div--standard"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="player-violin-space">
+            <div id="player-violin-space" class="plot-div plot-div--standard"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="player-cat-bar-space">
+            <div id="player-cat-bar-space" class="plot-div plot-div--standard"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="creator-violin-space">
+            <div id="creator-violin-space" class="plot-div plot-div--standard"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="time-series-creator">
+            <div id="time-series-creator" class="plot-div plot-div--standard"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="trivia-night-streak">
+            <div id="trivia-night-streak" class="plot-div plot-div--standard"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="joker_percentage">
+            <div id="joker_percentage" class="plot-div plot-div--auto"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="joker-creator-summary">
+            <div id="joker-creator-summary" class="plot-div plot-div--standard"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="joker-category-summary">
+            <div id="joker-category-summary" class="plot-div plot-div--standard"></div>
+        </section>
     </div>
 
     <button class="expand-collapse-button" id="roundsButton" onclick="toggleRounds()">Show/Hide Rounds Table</button>
@@ -614,12 +646,26 @@
 
 
     function hideDiv(divId) {
-        document.getElementById(divId).style.display = 'none';
+        const plotElement = document.getElementById(divId);
+        const cardElement = document.querySelector(`[data-plot-card="${divId}"]`);
+        if (cardElement) {
+            cardElement.style.display = 'none';
+        }
+        if (plotElement) {
+            plotElement.style.display = 'none';
+        }
         clearPlotDescription(divId);
     }
 
     function showDiv(divId) {
-        document.getElementById(divId).style.display = 'block';
+        const plotElement = document.getElementById(divId);
+        const cardElement = document.querySelector(`[data-plot-card="${divId}"]`);
+        if (cardElement) {
+            cardElement.style.display = 'grid';
+        }
+        if (plotElement) {
+            plotElement.style.display = 'block';
+        }
     }
 
     function setJokerSummaryVisibility(showCreator, showCategory) {
@@ -701,6 +747,39 @@
                 layer: 'above',
             };
         }).filter(Boolean);
+    }
+
+    function getSquareCellHeatmapLayout(divId, columnCount, rowCount) {
+        const compactLayout = window.matchMedia('(max-width: 768px)').matches;
+        const plotElement = document.getElementById(divId);
+        const cardElement = document.querySelector(`[data-plot-card="${divId}"]`);
+        const containerWidth = Math.max(
+            compactLayout ? 300 : 520,
+            (cardElement ? cardElement.clientWidth : plotElement?.clientWidth) || 0
+        );
+        const margin = {
+            l: compactLayout ? 70 : 88,
+            r: compactLayout ? 34 : 48,
+            t: compactLayout ? 86 : 96,
+            b: compactLayout ? 94 : 118,
+        };
+        const innerWidth = Math.max(150, containerWidth - margin.l - margin.r);
+        const cellSize = innerWidth / Math.max(columnCount, 1);
+        const innerHeight = cellSize * Math.max(rowCount, 1);
+        const height = Math.max(
+            compactLayout ? 320 : 420,
+            Math.round(innerHeight + margin.t + margin.b)
+        );
+
+        if (plotElement) {
+            plotElement.style.height = `${height}px`;
+        }
+
+        return {
+            width: containerWidth,
+            height,
+            margin,
+        };
     }
 
     function checkAndHideDivs() {
@@ -1672,9 +1751,12 @@
 
     function renderCorrMatrix(data) {
         setPlotDescription('CorrMatrix', buildPlotDescription('CorrMatrix', data));
+        const labels = Object.values(data.columns || []);
+        const heatmapLayout = getSquareCellHeatmapLayout('CorrMatrix', labels.length, labels.length);
         const trace = {
-            z: Object.values(data.correlation_matrix).map(row => Object.values(row)),            x: data.columns,
-            y: data.columns,
+            z: Object.values(data.correlation_matrix).map(row => Object.values(row)),
+            x: labels,
+            y: labels,
             type: 'heatmap',
             zmin: -1,
             zmax: 1,
@@ -1691,13 +1773,19 @@
 
         const layout = {
             title: data.title_corr,
+            width: heatmapLayout.width,
+            height: heatmapLayout.height,
+            margin: heatmapLayout.margin,
             xaxis: {
                 title: 'Player',
-                tickangle: -45
+                tickangle: -45,
+                automargin: true,
             },
             yaxis: {
                 title: 'Player',
-                automargin: true
+                automargin: true,
+                scaleanchor: 'x',
+                scaleratio: 1,
             },
             plot_bgcolor: 'rgba(0,0,0,0)',
             paper_bgcolor: 'rgba(0,0,0,0)',
@@ -1707,7 +1795,7 @@
             }
         };
 
-        Plotly.newPlot('CorrMatrix', [trace], layout);
+        Plotly.newPlot('CorrMatrix', [trace], layout, {responsive: true});
     }
 
     document.getElementById('showValuesCheckbox').addEventListener('change', function() {
@@ -1749,6 +1837,7 @@
         setPlotDescription('CreatorMatrix', buildPlotDescription('CreatorMatrix', data));
         const creators = Object.keys(data.correlation_matrix);  // Extract creator names (keys of the correlation_matrix object)
         const players = data.columns;  // Extract player names (columns from the JSON response)
+        const heatmapLayout = getSquareCellHeatmapLayout('CreatorMatrix', players.length, players.length);
             // Create the z matrix for heatmap values
         const z = players.map(player => {
             return creators.map(creator => {
@@ -1777,13 +1866,19 @@
 
         const layout = {
             title: data.title_corr,
+            width: heatmapLayout.width,
+            height: heatmapLayout.height,
+            margin: heatmapLayout.margin,
             xaxis: {
                 title: 'Player',
-                tickangle: -45
+                tickangle: -45,
+                automargin: true,
             },
             yaxis: {
                 title: 'Creator',
-                automargin: true
+                automargin: true,
+                scaleanchor: 'x',
+                scaleratio: 1,
             },
             plot_bgcolor: 'rgba(0,0,0,0)',
             paper_bgcolor: 'rgba(0,0,0,0)',
@@ -1793,7 +1888,7 @@
             }
         };
 
-        Plotly.newPlot('CreatorMatrix', [trace], layout);
+        Plotly.newPlot('CreatorMatrix', [trace], layout, {responsive: true});
     }
 
     function renderPlayerViolin(data) {
