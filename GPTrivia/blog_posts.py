@@ -122,6 +122,19 @@ def get_blog_index_context():
     }
 
 
+def get_blog_navigation_context(active_url_name: str):
+    return {
+        "blog_navigation_posts": [
+            {
+                "url_name": post.url_name,
+                "title": post.title,
+                "is_active": post.url_name == active_url_name,
+            }
+            for post in BLOG_POSTS
+        ]
+    }
+
+
 def get_joker_stats_blog_context():
     return {
         "creator_boxplots": _build_figure_entries(

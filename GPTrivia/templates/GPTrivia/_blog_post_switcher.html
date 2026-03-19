@@ -1,0 +1,12 @@
+<nav class="blog-post-switcher" aria-label="Blog post selector">
+    <a class="blog-post-switcher-link blog-post-switcher-link--index" href="{% url 'blog_index' %}">All Posts</a>
+    {% for post in blog_navigation_posts %}
+        <a
+            class="blog-post-switcher-link{% if post.is_active %} blog-post-switcher-link--active{% endif %}"
+            href="{% url post.url_name %}"
+            {% if post.is_active %}aria-current="page"{% endif %}
+        >
+            {{ post.title }}
+        </a>
+    {% endfor %}
+</nav>
