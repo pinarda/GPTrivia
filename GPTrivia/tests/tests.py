@@ -408,6 +408,17 @@ class PlayerAnalysisViewTests(TestCase):
         self.user = User.objects.create_user(username='Alex', password='Rapt0rpusia')
         self.client.force_login(self.user)
 
+    def get_profile_stats_payload(self, player_name):
+        response = self.client.get(
+            reverse('player_profile_stats', args=[player_name]),
+            HTTP_ACCEPT='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['ok'])
+        return payload
+
     def test_profile_view(self):
         GPTriviaRound.objects.create(
             creator="Alex",
@@ -451,6 +462,8 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '?player=Alex')
         self.assertContains(response, '?creator=Alex')
+        self.assertContains(response, reverse('player_profile_stats', args=['Alex']))
+        self.assertTrue(response.context['defer_profile_stats'])
 
     def test_player_analysis_prefills_from_query_params(self):
         GPTriviaRound.objects.create(
@@ -664,22 +677,23 @@ class PlayerAnalysisViewTests(TestCase):
         )
 
         response = self.client.get(reverse('player_profile', args=['Alex']))
+        payload = self.get_profile_stats_payload('Alex')
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['profile_intro'], "Trivia goblin with a science streak.")
-        self.assertEqual(response.context['longest_play_streak'], 2)
-        self.assertEqual(response.context['longest_creator_streak'], 2)
-        self.assertEqual(response.context['style_points_total'], 2.5)
-        self.assertEqual(len(response.context['streak_timeline']), 5)
+        self.assertEqual(payload['stats']['longest_play_streak'], 2)
+        self.assertEqual(payload['stats']['longest_creator_streak'], 2)
+        self.assertEqual(payload['stats']['style_points_total'], 2.5)
+        self.assertEqual(len(payload['stats']['streak_timeline']), 5)
         self.assertEqual(
-            [(entry['played'], entry['created']) for entry in response.context['streak_timeline']],
+            [(entry['played'], entry['created']) for entry in payload['stats']['streak_timeline']],
             [(True, True), (True, True), (False, False), (True, True), (True, False)],
         )
         self.assertContains(response, 'About Alex')
-        self.assertContains(response, 'Trivia Night Timeline')
         self.assertContains(response, 'Trivia goblin with a science streak.')
         self.assertNotContains(response, 'Summary Stats')
         self.assertNotContains(response, 'class="profile-page-title"')
+        self.assertIn('Trivia Night Timeline', payload['timeline_html'])
 
     def test_profile_view_counts_player_list_for_blank_presentation_night(self):
         GPTriviaRound.objects.create(
@@ -702,14 +716,15 @@ class PlayerAnalysisViewTests(TestCase):
         )
 
         response = self.client.get(reverse('player_profile', args=['Alex']))
+        payload = self.get_profile_stats_payload('Alex')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['longest_play_streak'], 2)
+        self.assertEqual(payload['stats']['longest_play_streak'], 2)
         self.assertEqual(
-            response.context['streak_timeline'],
+            payload['stats']['streak_timeline'],
             [
-                {'date': datetime.date(2023, 1, 29), 'played': True, 'created': False},
-                {'date': datetime.date(2023, 2, 5), 'played': True, 'created': False},
+                {'date': '2023-01-29', 'played': True, 'created': False},
+                {'date': '2023-02-05', 'played': True, 'created': False},
             ],
         )
 
@@ -841,23 +856,24 @@ class PlayerAnalysisViewTests(TestCase):
         )
 
         response = self.client.get(reverse('player_profile', args=['Alex']))
+        payload = self.get_profile_stats_payload('Alex')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['best_score_ever']['display_value'], '19/20 (95.0%)')
-        self.assertEqual(response.context['best_score_ever']['date'], datetime.date(2023, 1, 8))
+        self.assertEqual(payload['stats']['best_score_ever']['display_value'], '19/20 (95.0%)')
+        self.assertEqual(payload['stats']['best_score_ever']['date'], '2023-01-08')
         self.assertEqual(
-            response.context['best_score_ever']['scoresheet_link'],
+            payload['stats']['best_score_ever']['scoresheet_link'],
             f"{reverse('scoresheet_new')}?date=2023-01-08",
         )
-        self.assertEqual(response.context['best_performance_ever']['display_value'], '+4 points')
-        self.assertEqual(response.context['best_performance_ever']['date'], datetime.date(2023, 1, 1))
+        self.assertEqual(payload['stats']['best_performance_ever']['display_value'], '+4 points')
+        self.assertEqual(payload['stats']['best_performance_ever']['date'], '2023-01-01')
         self.assertEqual(
-            response.context['best_performance_ever']['scoresheet_link'],
+            payload['stats']['best_performance_ever']['scoresheet_link'],
             f"{reverse('scoresheet_new')}?date=2023-01-01",
         )
-        self.assertContains(response, 'Highest Percentage Score')
+        self.assertIn('Highest Percentage Score', payload['summary_html'])
         self.assertNotContains(response, 'Biggest Win')
-        self.assertContains(response, f"{reverse('scoresheet_new')}?date=2023-01-08")
+        self.assertIn(f"{reverse('scoresheet_new')}?date=2023-01-08", payload['summary_html'])
 
     def test_profile_creator_stats_ignore_players_inactive_for_over_a_year(self):
         GPTriviaRound.objects.create(
@@ -886,10 +902,11 @@ class PlayerAnalysisViewTests(TestCase):
         )
 
         response = self.client.get(reverse('player_profile', args=['Alex']))
+        payload = self.get_profile_stats_payload('Alex')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['max_cat_avg'], 'Megan')
-        self.assertNotEqual(response.context['max_cat_avg'], 'Debi')
+        self.assertEqual(payload['stats']['max_cat_avg'], 'Megan')
+        self.assertNotEqual(payload['stats']['max_cat_avg'], 'Debi')
 
     def test_profile_owner_can_update_created_round_category(self):
         trivia_round = GPTriviaRound.objects.create(
@@ -1143,18 +1160,19 @@ class PlayerAnalysisViewTests(TestCase):
         )
 
         response = self.client.get(reverse('player_profile', args=['Debi']))
+        payload = self.get_profile_stats_payload('Debi')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['best_score_ever']['display_value'], '29.5/30 (98.3%)')
-        self.assertEqual(response.context['best_score_ever']['date'], datetime.date(2023, 2, 6))
+        self.assertEqual(payload['stats']['best_score_ever']['display_value'], '29.5/30 (98.3%)')
+        self.assertEqual(payload['stats']['best_score_ever']['date'], '2023-02-06')
         self.assertEqual(
-            response.context['best_score_ever']['scoresheet_link'],
+            payload['stats']['best_score_ever']['scoresheet_link'],
             f"{reverse('scoresheet_new')}?date=2023-02-06",
         )
-        self.assertEqual(response.context['best_performance_ever']['display_value'], '-0.5 points')
-        self.assertEqual(response.context['best_performance_ever']['date'], datetime.date(2023, 2, 6))
+        self.assertEqual(payload['stats']['best_performance_ever']['display_value'], '-0.5 points')
+        self.assertEqual(payload['stats']['best_performance_ever']['date'], '2023-02-06')
         self.assertEqual(
-            response.context['best_performance_ever']['scoresheet_link'],
+            payload['stats']['best_performance_ever']['scoresheet_link'],
             f"{reverse('scoresheet_new')}?date=2023-02-06",
         )
 
@@ -1202,12 +1220,13 @@ class PlayerAnalysisViewTests(TestCase):
         )
 
         response = self.client.get(reverse('player_profile', args=['Alex']))
+        payload = self.get_profile_stats_payload('Alex')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['best_score_ever']['display_value'], '15.5/20 (77.5%)')
-        self.assertEqual(response.context['best_score_ever']['date'], datetime.date(2023, 2, 13))
-        self.assertEqual(response.context['best_performance_ever']['display_value'], '+8.5 points')
-        self.assertEqual(response.context['best_performance_ever']['date'], datetime.date(2023, 2, 13))
+        self.assertEqual(payload['stats']['best_score_ever']['display_value'], '15.5/20 (77.5%)')
+        self.assertEqual(payload['stats']['best_score_ever']['date'], '2023-02-13')
+        self.assertEqual(payload['stats']['best_performance_ever']['display_value'], '+8.5 points')
+        self.assertEqual(payload['stats']['best_performance_ever']['date'], '2023-02-13')
 
     def test_profile_best_night_stats_split_double_jokers_evenly(self):
         MergedPresentation.objects.create(
@@ -1270,10 +1289,11 @@ class PlayerAnalysisViewTests(TestCase):
         )
 
         response = self.client.get(reverse('player_profile', args=['Alex']))
+        payload = self.get_profile_stats_payload('Alex')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['best_score_ever']['display_value'], '30/40 (75.0%)')
-        self.assertEqual(response.context['best_score_ever']['date'], datetime.date(2023, 2, 20))
+        self.assertEqual(payload['stats']['best_score_ever']['display_value'], '30/40 (75.0%)')
+        self.assertEqual(payload['stats']['best_score_ever']['date'], '2023-02-20')
 
     def test_creators_list_not_empty(self):
         # create a sample GPTriviaRound instance

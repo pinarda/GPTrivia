@@ -160,6 +160,30 @@ a {
     display: none;
 }
 
+.profile-deferred-content {
+    min-width: 0;
+}
+
+.profile-deferred-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 5.25rem;
+    padding: 0.9rem 1rem;
+    border: 1px dashed var(--profile-border);
+    background: var(--profile-surface-alt);
+    color: var(--profile-muted-text);
+    text-align: center;
+}
+
+.profile-deferred-placeholder--summary {
+    min-height: 8.2rem;
+}
+
+.profile-deferred-placeholder--timeline {
+    min-height: 9.6rem;
+}
+
 .profile-summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

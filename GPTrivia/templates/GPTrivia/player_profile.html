@@ -11,7 +11,7 @@
       --profile-player-color: {{ player_color }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260319a">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260319b">
 {% endblock %}
 
 {% block extra_meta %}
@@ -52,102 +52,21 @@
                         </div>
                     {% endif %}
 
-                    <div class="profile-summary-grid">
-                        <div class="profile-summary-item">
-                            <span class="profile-summary-label">Rounds</span>
-                            <div class="profile-summary-pairs">
-                                <span class="profile-summary-pair">
-                                    <span class="profile-summary-pair-name">Played</span>
-                                    <span class="profile-summary-pair-value">{{ total_rounds }}</span>
-                                </span>
-                                <span class="profile-summary-pair">
-                                    <span class="profile-summary-pair-name">Created</span>
-                                    <span class="profile-summary-pair-value">{{ created_rounds_count }}</span>
-                                </span>
+                    <div
+                        id="profile-summary-content"
+                        class="profile-deferred-content"
+                        data-profile-summary-content
+                        data-profile-stats-url="{{ profile_stats_url }}"
+                        data-defer-profile-stats="{% if defer_profile_stats %}true{% else %}false{% endif %}"
+                        aria-live="polite"
+                    >
+                        {% if defer_profile_stats %}
+                            <div class="profile-deferred-placeholder profile-deferred-placeholder--summary">
+                                Loading profile stats...
                             </div>
-                        </div>
-                        <div class="profile-summary-item">
-                            <span class="profile-summary-label">Highest Percentage Score</span>
-                            <span class="profile-summary-value">
-                                {% if best_score_ever %}
-                                    {{ best_score_ever.display_value }} on
-                                    {% if best_score_ever.scoresheet_link %}
-                                        <a href="{{ best_score_ever.scoresheet_link }}">{{ best_score_ever.date|date:"F j, Y" }}</a>
-                                    {% else %}
-                                        {{ best_score_ever.date|date:"F j, Y" }}
-                                    {% endif %}
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </span>
-                        </div>
-                        <div class="profile-summary-item">
-                            <span class="profile-summary-label">Style Points Received</span>
-                            <span class="profile-summary-value">{{ style_points_total }}</span>
-                        </div>
-                        <div class="profile-summary-item">
-                            <span class="profile-summary-label">Categories</span>
-                            <div class="profile-summary-pairs">
-                                <span class="profile-summary-pair">
-                                    <span class="profile-summary-pair-name">Strongest</span>
-                                    <span class="profile-summary-pair-value">{{ max_avg|default:"N/A" }}</span>
-                                </span>
-                                <span class="profile-summary-pair">
-                                    <span class="profile-summary-pair-name">Weakest</span>
-                                    <span class="profile-summary-pair-value">{{ min_avg|default:"N/A" }}</span>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="profile-summary-item">
-                            <span class="profile-summary-label">Creator Matchups</span>
-                            <div class="profile-summary-pairs">
-                                <span class="profile-summary-pair">
-                                    <span class="profile-summary-pair-name">Best</span>
-                                    <span class="profile-summary-pair-value">
-                                        {% if max_cat_avg %}
-                                            <a href="{% url 'player_profile' player_name=max_cat_avg %}" class="player_name" data-player="{{ max_cat_avg }}">{{ max_cat_avg }}</a>
-                                        {% else %}
-                                            N/A
-                                        {% endif %}
-                                    </span>
-                                </span>
-                                <span class="profile-summary-pair">
-                                    <span class="profile-summary-pair-name">Worst</span>
-                                    <span class="profile-summary-pair-value">
-                                        {% if min_cat_avg %}
-                                            <a href="{% url 'player_profile' player_name=min_cat_avg %}" class="player_name" data-player="{{ min_cat_avg }}">{{ min_cat_avg }}</a>
-                                        {% else %}
-                                            N/A
-                                        {% endif %}
-                                    </span>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="profile-summary-item">
-                            <span class="profile-summary-label">Biased Creators</span>
-                            <div class="profile-summary-pairs">
-                                <span class="profile-summary-pair">
-                                    <span class="profile-summary-pair-name">Highest</span>
-                                    <span class="profile-summary-pair-value">
-                                        {% if max_bias_avg %}
-                                            <a href="{% url 'player_profile' player_name=max_bias_avg %}" class="player_name" data-player="{{ max_bias_avg }}">{{ max_bias_avg }}</a> ({{ max_bias_avg_value }})
-                                        {% else %}
-                                            N/A
-                                        {% endif %}
-                                    </span>
-                                </span>
-                                <span class="profile-summary-pair">
-                                    <span class="profile-summary-pair-name">Lowest</span>
-                                    <span class="profile-summary-pair-value">
-                                        {% if min_bias_avg %}
-                                            <a href="{% url 'player_profile' player_name=min_bias_avg %}" class="player_name" data-player="{{ min_bias_avg }}">{{ min_bias_avg }}</a> ({{ min_bias_avg_value }})
-                                        {% else %}
-                                            N/A
-                                        {% endif %}
-                                    </span>
-                                </span>
-                            </div>
-                        </div>
+                        {% else %}
+                            {% include 'GPTrivia/_player_profile_summary.html' %}
+                        {% endif %}
                     </div>
 
                     <div class="profile-summary-links" aria-label="Profile analysis links">
@@ -161,51 +80,22 @@
                 </section>
 
                 <section class="profile-streak-card">
-                    <div class="profile-control-heading">
-                        <h2>
-                            Trivia Night Timeline
-                            <span class="profile-streak-heading-summary">
-                                <span class="profile-streak-summary-line">
-                                    <span class="profile-streak-summary-word profile-streak-summary-word--player">Player</span>
-                                    longest streak: {{ longest_play_streak }} night{{ longest_play_streak|pluralize }}
-                                </span>
-                                <span class="profile-streak-summary-line">
-                                    <span class="profile-streak-summary-word profile-streak-summary-word--creator">Creator</span>
-                                    longest streak: {{ longest_creator_streak }} presentation{{ longest_creator_streak|pluralize }}
-                                </span>
-                            </span>
-                        </h2>
-                    </div>
-                    {% if streak_timeline %}
-                        <div class="profile-streak-legend" aria-label="Timeline legend">
-                            <span class="profile-streak-legend-item">
-                                <span class="profile-streak-marker profile-streak-marker--played is-active" style="--player-streak-color: {{ player_color }};"></span>
-                                <span><span class="profile-streak-summary-word profile-streak-summary-word--player">Player</span> played</span>
-                            </span>
-                            <span class="profile-streak-legend-item">
-                                <span class="profile-streak-marker profile-streak-marker--creator is-active"></span>
-                                <span><span class="profile-streak-summary-word profile-streak-summary-word--creator">Created</span> round</span>
-                            </span>
-                        </div>
-                        <div class="profile-streak-timeline-shell" data-scroll-right="true">
-                            <div class="profile-streak-timeline">
-                                {% for night in streak_timeline %}
-                                    <div class="profile-streak-night" title="{{ night.date|date:'F j, Y' }}">
-                                        <span class="profile-streak-marker profile-streak-marker--creator{% if night.created %} is-active{% endif %}"></span>
-                                        <span
-                                            class="profile-streak-marker profile-streak-marker--played{% if night.played %} is-active{% endif %}"
-                                            style="--player-streak-color: {{ player_color }};"
-                                        ></span>
-                                        <span class="profile-streak-date-wrap">
-                                            <span class="profile-streak-date">{{ night.date|date:"n/j/y" }}</span>
-                                        </span>
-                                    </div>
-                                {% endfor %}
+                    <div
+                        id="profile-streak-content"
+                        class="profile-deferred-content"
+                        data-profile-timeline-content
+                        data-profile-stats-url="{{ profile_stats_url }}"
+                        data-defer-profile-stats="{% if defer_profile_stats %}true{% else %}false{% endif %}"
+                        aria-live="polite"
+                    >
+                        {% if defer_profile_stats %}
+                            <div class="profile-deferred-placeholder profile-deferred-placeholder--timeline">
+                                Loading timeline...
                             </div>
-                        </div>
-                    {% else %}
-                        <p class="profile-table-empty">No trivia nights recorded yet.</p>
-                    {% endif %}
+                        {% else %}
+                            {% include 'GPTrivia/_player_profile_timeline.html' %}
+                        {% endif %}
+                    </div>
                 </section>
 
                 <div class="profile-control-heading">
@@ -1234,6 +1124,9 @@
 
         function setPlayerLinkHoverColors() {
             document.querySelectorAll('.player_name').forEach(link => {
+                if (link.dataset.hoverColorReady === 'true') {
+                    return;
+                }
                 const linkedPlayerName = link.getAttribute('data-player');
                 const playerColor = playerColorMapping[linkedPlayerName];
                 link.addEventListener('mouseover', () => {
@@ -1242,6 +1135,7 @@
                 link.addEventListener('mouseout', () => {
                     link.style.color = '';
                 });
+                link.dataset.hoverColorReady = 'true';
             });
         }
 
@@ -1365,6 +1259,46 @@
                 requestAnimationFrame(scrollToLatest);
             });
             window.addEventListener('pageshow', scrollToLatest);
+        }
+
+        async function initializeDeferredProfileStats() {
+            const summaryContainer = document.querySelector('[data-profile-summary-content]');
+            const timelineContainer = document.querySelector('[data-profile-timeline-content]');
+            if (!summaryContainer || !timelineContainer) {
+                return;
+            }
+
+            const shouldDefer = summaryContainer.dataset.deferProfileStats === 'true';
+            const statsUrl = summaryContainer.dataset.profileStatsUrl || timelineContainer.dataset.profileStatsUrl;
+            if (!shouldDefer || !statsUrl) {
+                initializeProfileStreakTimeline();
+                return;
+            }
+
+            try {
+                const response = await fetch(statsUrl, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                if (!response.ok) {
+                    throw new Error(`Stats fetch failed with status ${response.status}`);
+                }
+
+                const payload = await response.json();
+                summaryContainer.innerHTML = payload.summary_html || '';
+                timelineContainer.innerHTML = payload.timeline_html || '';
+                summaryContainer.dataset.deferProfileStats = 'false';
+                timelineContainer.dataset.deferProfileStats = 'false';
+                setPlayerLinkHoverColors();
+                initializeProfileStreakTimeline();
+            } catch (error) {
+                console.error('Error loading deferred profile stats:', error);
+                const fallbackHtml = '<p class="profile-table-empty">Unable to load profile stats right now.</p>';
+                summaryContainer.innerHTML = fallbackHtml;
+                timelineContainer.innerHTML = fallbackHtml;
+            }
         }
 
         function initializeProfileIntroEditor() {
@@ -2143,7 +2077,7 @@
             initializeProfileRoundCategoryForms();
             initializeProfileMobileSorting();
             initializeProfileIntroEditor();
-            initializeProfileStreakTimeline();
+            initializeDeferredProfileStats();
             initializeProfileRoundRowToggles();
             initializeSlidesButtons();
             initializeProfileTableSorting();

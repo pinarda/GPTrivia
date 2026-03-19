@@ -45,6 +45,7 @@ urlpatterns = [
     path('player_analysis/', views.player_analysis, name='player_analysis'),
     path('player_analysis_legacy/', views.player_analysis_legacy, name='player_analysis_legacy'),
     path('player_profile/<str:player_name>/', views.player_profile, name='player_profile'),
+    path('player_profile/<str:player_name>/stats/', views.player_profile_stats, name='player_profile_stats'),
     path('player_profile/<str:player_name>/intro/', views.update_profile_intro, name='update_profile_intro'),
     path('player_profile_round/<int:round_id>/category/', views.update_profile_round_category, name='update_profile_round_category'),
     path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),

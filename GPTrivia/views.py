@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.template.loader import render_to_string
 from .forms import GPTriviaRoundForm, ProfileIntroForm, ProfilePictureForm
 from .models import GPTriviaRound, MergedPresentation, PresentationBuildState, Profile
 from django.db import transaction
@@ -791,7 +792,7 @@ def upload_profile_picture(request):
     else:
         form = ProfilePictureForm(instance=profile)
 
-    context = player_profile_dict(request, request.user.username, form=form)
+    context = player_profile_dict(request, request.user.username, form=form, include_deferred_stats=False)
     return render(request, 'GPTrivia/player_profile.html', context)
 
 
@@ -832,6 +833,7 @@ def update_profile_intro(request, player_name):
         form=appearance_form,
         intro_form=form,
         include_form=True,
+        include_deferred_stats=False,
     )
     return render(request, 'GPTrivia/player_profile.html', context)
 
@@ -1442,69 +1444,15 @@ def _build_profile_streak_timeline(all_rounds, player_name):
     }
 
 
-@login_required
-def player_profile_dict(request, player_name, form=None, intro_form=None, include_form=False):
-    player_name = display_name_for_player_field(player_name)
-    score_field = player_field_for_name(player_name)
-
-    all_rounds = list(GPTriviaRound.objects.all().order_by('-date', 'round_number'))
-    flattened_rounds = [
-        {
-            **flatten_round_for_analysis(round_obj),
-            'normalized_creator': display_name_for_player_field(round_obj.creator),
-        }
-        for round_obj in all_rounds
-    ]
-
-    global_player_names = _get_global_player_names()
-    if player_name not in global_player_names:
-        raise Http404("Player profile not available")
-    active_player_names = _get_recently_active_profile_player_names(all_rounds)
-
-    player_color = get_player_color(player_name)
-    brightness = (0.5 * int(player_color[1:3], 16)) + int(player_color[3:5], 16) + (0.25 * int(player_color[5:7], 16))
-    text_color = 'white' if brightness < 300 else 'black'
-
-    created_rounds = [
-        round_obj for round_obj in all_rounds
-        if _profile_player_matches_any_creator(
-            score_field,
-            round_obj.creator,
-            getattr(round_obj, 'secondary_creator', ''),
-        )
-    ]
-    for round_obj in created_rounds:
-        round_summary = _summarize_profile_round_scores(round_obj)
-        round_obj.high_score = round_summary['high_score']
-        round_obj.average_score = round_summary['average_score']
-        round_obj.high_score_display = round_summary['high_score_display']
-        round_obj.average_score_display = round_summary['average_score_display']
-    created_rounds_count = len(created_rounds)
-    style_points_total = _build_profile_style_points_total(player_name)
-
-    all_categories = sorted({
-        round_data['major_category']
-        for round_data in flattened_rounds
-        if round_data['major_category']
-    })
-    all_minor_categories = sorted({
-        category
-        for round_data in flattened_rounds
-        for category in (round_data['minor_category1'], round_data['minor_category2'])
-        if category
-    })
-    created_category_counts = {
-        category: 0
-        for category in all_categories
-    }
-    for round_obj in created_rounds:
-        if round_obj.major_category:
-            created_category_counts[round_obj.major_category] = created_category_counts.get(round_obj.major_category, 0) + 1
-    created_rounds_cat_list = [
-        {'major_category': category, 'num_rounds': created_category_counts.get(category, 0)}
-        for category in all_categories
-    ]
-
+def _build_profile_deferred_stats_context(
+    all_rounds,
+    flattened_rounds,
+    player_name,
+    score_field,
+    created_rounds_count,
+    active_player_names,
+    global_player_names,
+):
     player_values = [
         round_data.get(score_field)
         for round_data in flattened_rounds
@@ -1514,7 +1462,13 @@ def player_profile_dict(request, player_name, form=None, intro_form=None, includ
     streak_timeline = _build_profile_streak_timeline(all_rounds, player_name)
     player_avg = (sum(player_values) / len(player_values)) if player_values else None
     total_rounds = len(player_values)
+    style_points_total = _build_profile_style_points_total(player_name)
 
+    all_categories = sorted({
+        round_data['major_category']
+        for round_data in flattened_rounds
+        if round_data['major_category']
+    })
     category_averages = []
     for category in all_categories:
         values = [
@@ -1630,6 +1584,102 @@ def player_profile_dict(request, player_name, form=None, intro_form=None, includ
         max_bias_avg_value = "0.00"
         min_bias_avg_value = "0.00"
 
+    return {
+        'total_rounds': total_rounds,
+        'created_rounds_count': created_rounds_count,
+        'style_points_total': style_points_total,
+        'best_score_ever': best_night_stats['best_score_ever'],
+        'best_performance_ever': best_night_stats['best_performance_ever'],
+        'max_avg': max_avg,
+        'min_avg': min_avg,
+        'max_cat_avg': max_creator_avg,
+        'min_cat_avg': min_creator_avg,
+        'max_bias_avg': max_bias_avg,
+        'min_bias_avg': min_bias_avg,
+        'max_bias_avg_value': max_bias_avg_value,
+        'min_bias_avg_value': min_bias_avg_value,
+        'streak_timeline': streak_timeline['timeline'],
+        'longest_play_streak': streak_timeline['longest_play_streak'],
+        'longest_creator_streak': streak_timeline['longest_creator_streak'],
+    }
+
+
+@login_required
+def player_profile_dict(request, player_name, form=None, intro_form=None, include_form=False, include_deferred_stats=True):
+    player_name = display_name_for_player_field(player_name)
+    score_field = player_field_for_name(player_name)
+
+    all_rounds = list(GPTriviaRound.objects.all().order_by('-date', 'round_number'))
+    flattened_rounds = [
+        {
+            **flatten_round_for_analysis(round_obj),
+            'normalized_creator': display_name_for_player_field(round_obj.creator),
+        }
+        for round_obj in all_rounds
+    ]
+
+    global_player_names = _get_global_player_names()
+    if player_name not in global_player_names:
+        raise Http404("Player profile not available")
+    active_player_names = _get_recently_active_profile_player_names(all_rounds)
+
+    player_color = get_player_color(player_name)
+    brightness = (0.5 * int(player_color[1:3], 16)) + int(player_color[3:5], 16) + (0.25 * int(player_color[5:7], 16))
+    text_color = 'white' if brightness < 300 else 'black'
+
+    created_rounds = [
+        round_obj for round_obj in all_rounds
+        if _profile_player_matches_any_creator(
+            score_field,
+            round_obj.creator,
+            getattr(round_obj, 'secondary_creator', ''),
+        )
+    ]
+    for round_obj in created_rounds:
+        round_summary = _summarize_profile_round_scores(round_obj)
+        round_obj.high_score = round_summary['high_score']
+        round_obj.average_score = round_summary['average_score']
+        round_obj.high_score_display = round_summary['high_score_display']
+        round_obj.average_score_display = round_summary['average_score_display']
+    created_rounds_count = len(created_rounds)
+
+    all_categories = sorted({
+        round_data['major_category']
+        for round_data in flattened_rounds
+        if round_data['major_category']
+    })
+    all_minor_categories = sorted({
+        category
+        for round_data in flattened_rounds
+        for category in (round_data['minor_category1'], round_data['minor_category2'])
+        if category
+    })
+    created_category_counts = {
+        category: 0
+        for category in all_categories
+    }
+    for round_obj in created_rounds:
+        if round_obj.major_category:
+            created_category_counts[round_obj.major_category] = created_category_counts.get(round_obj.major_category, 0) + 1
+    created_rounds_cat_list = [
+        {'major_category': category, 'num_rounds': created_category_counts.get(category, 0)}
+        for category in all_categories
+    ]
+
+    deferred_stats = (
+        _build_profile_deferred_stats_context(
+            all_rounds,
+            flattened_rounds,
+            player_name,
+            score_field,
+            created_rounds_count,
+            active_player_names,
+            global_player_names,
+        )
+        if include_deferred_stats else
+        {}
+    )
+
     profile_user = User.objects.filter(username__iexact=player_name).first()
     profile = profile_user.profile if profile_user else None
     if form is None and include_form:
@@ -1678,29 +1728,17 @@ def player_profile_dict(request, player_name, form=None, intro_form=None, includ
         'profile_picture_url': profile_picture_url,
         'player_name': player_name,
         'player_color': player_color,
+        'created_rounds_count': created_rounds_count,
+        'profile_stats_url': reverse('player_profile_stats', kwargs={'player_name': player_name}),
         'created_rounds_cat': created_rounds_cat_list,
         'created_rounds': created_rounds,
         'available_major_categories': all_categories,
         'available_minor_categories': all_minor_categories,
         'player_color_mapping': build_player_color_mapping(global_player_names),
         'text_color': text_color,
-        'max_avg': max_avg,
-        'min_avg': min_avg,
-        'max_bias_avg': max_bias_avg,
-        'min_bias_avg': min_bias_avg,
-        'max_bias_avg_value': max_bias_avg_value,
-        'min_bias_avg_value': min_bias_avg_value,
-        'total_rounds': total_rounds,
-        'max_cat_avg': max_creator_avg,
-        'min_cat_avg': min_creator_avg,
-        'created_rounds_count': created_rounds_count,
-        'style_points_total': style_points_total,
-        'best_score_ever': best_night_stats['best_score_ever'],
-        'best_performance_ever': best_night_stats['best_performance_ever'],
-        'streak_timeline': streak_timeline['timeline'],
-        'longest_play_streak': streak_timeline['longest_play_streak'],
-        'longest_creator_streak': streak_timeline['longest_creator_streak'],
+        'defer_profile_stats': not include_deferred_stats,
     }
+    context.update(deferred_stats)
 
     if include_form or form is not None:
         context['form'] = form
@@ -1920,8 +1958,39 @@ class RoundMaker(View):
 
 @login_required
 def player_profile(request, player_name):
-    context = player_profile_dict(request, player_name, include_form=True)
+    context = player_profile_dict(request, player_name, include_form=True, include_deferred_stats=False)
     return render(request, 'GPTrivia/player_profile.html', context)
+
+
+@login_required
+def player_profile_stats(request, player_name):
+    context = player_profile_dict(request, player_name, include_deferred_stats=True)
+    summary_html = render_to_string('GPTrivia/_player_profile_summary.html', context, request=request)
+    timeline_html = render_to_string('GPTrivia/_player_profile_timeline.html', context, request=request)
+    stats_payload = {
+        'total_rounds': context.get('total_rounds'),
+        'created_rounds_count': context.get('created_rounds_count'),
+        'style_points_total': context.get('style_points_total'),
+        'best_score_ever': context.get('best_score_ever'),
+        'best_performance_ever': context.get('best_performance_ever'),
+        'max_avg': context.get('max_avg'),
+        'min_avg': context.get('min_avg'),
+        'max_cat_avg': context.get('max_cat_avg'),
+        'min_cat_avg': context.get('min_cat_avg'),
+        'max_bias_avg': context.get('max_bias_avg'),
+        'min_bias_avg': context.get('min_bias_avg'),
+        'max_bias_avg_value': context.get('max_bias_avg_value'),
+        'min_bias_avg_value': context.get('min_bias_avg_value'),
+        'streak_timeline': context.get('streak_timeline'),
+        'longest_play_streak': context.get('longest_play_streak'),
+        'longest_creator_streak': context.get('longest_creator_streak'),
+    }
+    return JsonResponse({
+        'ok': True,
+        'summary_html': summary_html,
+        'timeline_html': timeline_html,
+        'stats': stats_payload,
+    }, encoder=DjangoJSONEncoder)
 
 
 @sync_to_async          # runs blocking code in a thread-pool

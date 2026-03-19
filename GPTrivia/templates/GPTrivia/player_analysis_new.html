@@ -670,6 +670,39 @@
         };
     }
 
+    function buildFullWidthViolinMeanShapes(categories, plotData) {
+        const compactLayout = window.matchMedia('(max-width: 768px)').matches;
+        const categoryCount = Math.max(categories.length, 1);
+        const slotWidth = 1 / categoryCount;
+        const lineHalfWidth = slotWidth * (compactLayout ? 0.34 : 0.38);
+        const lineWidth = compactLayout ? 3 : 4;
+
+        return plotData.map((scores, index) => {
+            const numericScores = (scores || []).map(value => Number(value)).filter(value => Number.isFinite(value));
+            if (!numericScores.length) {
+                return null;
+            }
+
+            const meanValue = numericScores.reduce((sum, value) => sum + value, 0) / numericScores.length;
+            const center = (index + 0.5) * slotWidth;
+
+            return {
+                type: 'line',
+                xref: 'paper',
+                yref: 'y',
+                x0: Math.max(0, center - lineHalfWidth),
+                x1: Math.min(1, center + lineHalfWidth),
+                y0: meanValue,
+                y1: meanValue,
+                line: {
+                    color: '#000000',
+                    width: lineWidth,
+                },
+                layer: 'above',
+            };
+        }).filter(Boolean);
+    }
+
     function checkAndHideDivs() {
         if (!plotFlags.bar) hideDiv('bar-space');
         if (!plotFlags.violin) hideDiv('violin-space');
@@ -1773,7 +1806,9 @@
             box: {
                 visible: true
             },
-            meanline: violinMeanlineConfig(),
+            meanline: {
+                visible: false
+            },
             points: 'all',
             pointpos: -1.8,
             jitter: 0.5,
@@ -1795,6 +1830,7 @@
                 family: "YoungSerif"
             },
             showlegend: false,
+            shapes: buildFullWidthViolinMeanShapes(data.categories, data.plot_data),
             annotations: [{
                 text: 'Black lines show mean score',
                 x: 1,
@@ -1824,7 +1860,9 @@
             box: {
                 visible: true
             },
-            meanline: violinMeanlineConfig(),
+            meanline: {
+                visible: false
+            },
             points: 'all',
             pointpos: -1.8,
             jitter: 0.5,
@@ -1846,6 +1884,7 @@
                 family: "YoungSerif"
             },
             showlegend: false,
+            shapes: buildFullWidthViolinMeanShapes(data.categories, data.plot_data),
             annotations: [{
                 text: 'Black lines show mean score',
                 x: 1,

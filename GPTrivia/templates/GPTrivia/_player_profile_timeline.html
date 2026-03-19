@@ -1,0 +1,45 @@
+<div class="profile-control-heading">
+    <h2>
+        Trivia Night Timeline
+        <span class="profile-streak-heading-summary">
+            <span class="profile-streak-summary-line">
+                <span class="profile-streak-summary-word profile-streak-summary-word--player">Player</span>
+                longest streak: {{ longest_play_streak }} night{{ longest_play_streak|pluralize }}
+            </span>
+            <span class="profile-streak-summary-line">
+                <span class="profile-streak-summary-word profile-streak-summary-word--creator">Creator</span>
+                longest streak: {{ longest_creator_streak }} presentation{{ longest_creator_streak|pluralize }}
+            </span>
+        </span>
+    </h2>
+</div>
+{% if streak_timeline %}
+    <div class="profile-streak-legend" aria-label="Timeline legend">
+        <span class="profile-streak-legend-item">
+            <span class="profile-streak-marker profile-streak-marker--played is-active" style="--player-streak-color: {{ player_color }};"></span>
+            <span><span class="profile-streak-summary-word profile-streak-summary-word--player">Player</span> played</span>
+        </span>
+        <span class="profile-streak-legend-item">
+            <span class="profile-streak-marker profile-streak-marker--creator is-active"></span>
+            <span><span class="profile-streak-summary-word profile-streak-summary-word--creator">Created</span> round</span>
+        </span>
+    </div>
+    <div class="profile-streak-timeline-shell" data-scroll-right="true">
+        <div class="profile-streak-timeline">
+            {% for night in streak_timeline %}
+                <div class="profile-streak-night" title="{{ night.date|date:'F j, Y' }}">
+                    <span class="profile-streak-marker profile-streak-marker--creator{% if night.created %} is-active{% endif %}"></span>
+                    <span
+                        class="profile-streak-marker profile-streak-marker--played{% if night.played %} is-active{% endif %}"
+                        style="--player-streak-color: {{ player_color }};"
+                    ></span>
+                    <span class="profile-streak-date-wrap">
+                        <span class="profile-streak-date">{{ night.date|date:"n/j/y" }}</span>
+                    </span>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% else %}
+    <p class="profile-table-empty">No trivia nights recorded yet.</p>
+{% endif %}
