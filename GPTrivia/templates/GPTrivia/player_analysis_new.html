@@ -796,19 +796,20 @@
             x: Array((plotData[index] || []).length).fill(index + 1),
             y: plotData[index],
             name: label,
-            width: compactLayout ? 0.72 : 0.8,
+            width: compactLayout ? 0.56 : 0.64,
             box: {
                 visible: true
             },
             meanline: {
                 visible: false
             },
-            points: compactLayout ? false : 'all',
-            pointpos: compactLayout ? -1.4 : -1.8,
-            jitter: compactLayout ? 0.34 : 0.5,
+            points: 'all',
+            pointpos: 0,
+            jitter: compactLayout ? 0.16 : 0.22,
             marker: {
                 color: colors[index],
-                size: compactLayout ? 4 : 6,
+                size: compactLayout ? 3 : 5,
+                opacity: compactLayout ? 0.78 : 0.85,
             },
             text: hoverTexts[index],
             hoverinfo: 'text'
