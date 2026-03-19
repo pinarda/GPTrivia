@@ -1,6 +1,8 @@
+import datetime
+import json
+
 import numpy as np
 import pandas as pd
-import json
 from django.http import JsonResponse
 from scipy.stats import pearsonr
 from sklearn.decomposition import PCA
@@ -13,6 +15,7 @@ from .player_scores import (
     display_name_for_player_field,
     flatten_round_for_analysis,
     get_eligible_player_fields,
+    get_round_score_map,
     get_player_color,
     player_field_for_name,
 )
@@ -30,6 +33,10 @@ def calculate_pvalues(df):
             else:
                 pvalues[r][c] = round(pearsonr(tmp[r], tmp[c])[1], 4)
     return pvalues
+
+
+def _analysis_current_trivia_date():
+    return datetime.date.today()
 
 class PlayerAnalysisPlot(View):
 
@@ -62,6 +69,22 @@ class PlayerAnalysisPlot(View):
             if str(col).startswith('score_') and (not eligible_player_fields or col in eligible_player_fields)
         ]
 
+    @staticmethod
+    def _recently_active_player_fields(rounds):
+        cutoff_date = _analysis_current_trivia_date() - datetime.timedelta(days=365)
+        active_fields = set()
+
+        for round_obj in rounds or []:
+            round_date = getattr(round_obj, 'date', None)
+            if not round_date or round_date < cutoff_date:
+                continue
+
+            for player_field, score_value in get_round_score_map(round_obj, include_null_fixed=False).items():
+                if isinstance(score_value, (int, float)):
+                    active_fields.add(player_field)
+
+        return active_fields
+
     def get(self, request):
         creator = request.GET.get('creator', '')
         category = request.GET.get('category', '')
@@ -70,9 +93,12 @@ class PlayerAnalysisPlot(View):
         chart_type = request.GET.get('chart_type', '')
         dadj = request.GET.get('dadj', '')
         queryset_rounds_1 = GPTriviaRound.objects.all()
+        all_round_objects = list(queryset_rounds_1)
+        recently_active_fields = self._recently_active_player_fields(all_round_objects)
         self.eligible_player_fields = set(
-            get_eligible_player_fields(list(queryset_rounds_1), min_rounds=MIN_ANALYSIS_ROUNDS)
+            get_eligible_player_fields(all_round_objects, min_rounds=MIN_ANALYSIS_ROUNDS)
         )
+        self.eligible_player_fields &= recently_active_fields
         if player and player_field_for_name(player) not in self.eligible_player_fields:
             return JsonResponse(
                 {'error': f'Player {player} has not played enough rounds for analysis'},
@@ -115,9 +141,9 @@ class PlayerAnalysisPlot(View):
         if chart_type == 'joker_percentage':
             return self.joker_percentage(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'joker_creator_summary':
-            return self.joker_selection_summary(player, group_by='creator')
+            return self.joker_selection_summary(player, group_by='creator', creator=creator, category=category)
         if chart_type == 'joker_category_summary':
-            return self.joker_selection_summary(player, group_by='category')
+            return self.joker_selection_summary(player, group_by='category', creator=creator, category=category)
         else:
             return JsonResponse({'error': 'Invalid chart type'}, status=400)
 
@@ -915,7 +941,7 @@ class PlayerAnalysisPlot(View):
             return None
         return float(np.median(other_scores))
 
-    def joker_selection_summary(self, player, group_by='creator'):
+    def joker_selection_summary(self, player, group_by='creator', creator='', category=''):
         player_field = player_field_for_name(player)
         if not player_field:
             return JsonResponse({'error': 'Player not found'}, status=400)
@@ -946,6 +972,15 @@ class PlayerAnalysisPlot(View):
                     None,
                 )
                 if not matching_round:
+                    continue
+                if creator:
+                    round_creator_labels = {
+                        display_name_for_player_field(getattr(matching_round, 'creator', '')),
+                        display_name_for_player_field(getattr(matching_round, 'secondary_creator', '')),
+                    }
+                    if creator not in round_creator_labels:
+                        continue
+                if category and getattr(matching_round, 'major_category', '') != category:
                     continue
                 selected_rounds.append(matching_round)
 

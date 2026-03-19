@@ -712,7 +712,13 @@ def player_analysis(request):
     initial_creator_selection = (request.GET.get('creator') or '').strip()
     initial_category_selection = (request.GET.get('category') or '').strip()
     initial_player_selection = (request.GET.get('player') or '').strip()
-    player_fields = _get_global_player_fields()
+    active_player_names = _get_recently_active_profile_player_names(list(queryset_rounds))
+    active_player_fields = [
+        field
+        for field in _get_global_player_fields()
+        if display_name_for_player_field(field) in active_player_names
+    ]
+    player_fields = active_player_fields
     player_names = [display_name_for_player_field(field) for field in player_fields]
     player_name_mapping = {
         player_name: player_field

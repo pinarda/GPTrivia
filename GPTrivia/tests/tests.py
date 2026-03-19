@@ -32,6 +32,9 @@ class PlayerAnalysisPlotTests(TestCase):
         self.analysis_threshold_patcher = patch('GPTrivia.analysis.MIN_ANALYSIS_ROUNDS', 1)
         self.analysis_threshold_patcher.start()
         self.addCleanup(self.analysis_threshold_patcher.stop)
+        self.analysis_current_date_patcher = patch('GPTrivia.analysis._analysis_current_trivia_date', return_value=datetime.date(2023, 6, 1))
+        self.analysis_current_date_patcher.start()
+        self.addCleanup(self.analysis_current_date_patcher.stop)
 
         sample_round = GPTriviaRound.objects.create(
             creator="Megan",
@@ -372,6 +375,26 @@ class PlayerAnalysisPlotTests(TestCase):
         self.assertEqual(category_data['labels'], ['History', 'Science'])
         self.assertEqual(category_data['counts'], [2, 1])
         self.assertEqual(category_data['best_labels'], ['Science'])
+
+        filtered_creator_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'joker_creator_summary',
+            'player': 'Alex',
+            'category': 'Science',
+        })
+        self.assertEqual(filtered_creator_response.status_code, 200)
+        filtered_creator_data = filtered_creator_response.json()
+        self.assertEqual(filtered_creator_data['labels'], ['Chris'])
+        self.assertEqual(filtered_creator_data['counts'], [1])
+
+        filtered_category_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'joker_category_summary',
+            'player': 'Alex',
+            'creator': 'Jenny',
+        })
+        self.assertEqual(filtered_category_response.status_code, 200)
+        filtered_category_data = filtered_category_response.json()
+        self.assertEqual(filtered_category_data['labels'], ['History'])
+        self.assertEqual(filtered_category_data['counts'], [2])
 class PlayerAnalysisViewTests(TestCase):
     def setUp(self):
         self.views_threshold_patcher = patch('GPTrivia.views.MIN_ANALYSIS_ROUNDS', 1)
@@ -465,6 +488,36 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertContains(response, '<option value="Alex" selected>Alex</option>', html=True)
         self.assertContains(response, reverse('player_profile', args=['__PROFILE_NAME__']))
         self.assertContains(response, 'buildAnalysisTitle')
+
+    def test_player_analysis_hides_inactive_players_from_dropdown(self):
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Recent Active Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-05-01",
+            round_number=1,
+            max_score=10,
+            score_alex=8,
+        )
+        GPTriviaRound.objects.create(
+            creator="Jeff",
+            title="Old Jeff Round",
+            major_category="History",
+            minor_category1="Ancient",
+            minor_category2="Rome",
+            date="2021-01-01",
+            round_number=1,
+            max_score=10,
+            score_jeff=7,
+        )
+
+        response = self.client.get(reverse('player_analysis'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Alex', response.context['players'])
+        self.assertNotIn('Jeff', response.context['players'])
 
     def test_profile_view_includes_secondary_created_rounds(self):
         GPTriviaRound.objects.create(

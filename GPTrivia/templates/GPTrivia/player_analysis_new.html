@@ -152,7 +152,8 @@
         if (!name) {
             return '';
         }
-        return `<a href="${escapeAttribute(profileUrlForName(name))}" style="color:${escapeAttribute(analysisTextColor)}; text-decoration:underline;">${escapeHtml(name)}</a>`;
+        const hoverColor = playerColorMapping[name] || analysisTextColor;
+        return `<a href="${escapeAttribute(profileUrlForName(name))}" style="color:${escapeAttribute(analysisTextColor)}; text-decoration:none;" onmouseover="this.style.color='${escapeAttribute(hoverColor)}'" onmouseout="this.style.color='${escapeAttribute(analysisTextColor)}'">${escapeHtml(name)}</a>`;
     }
 
     function linkedPossessiveName(name) {
@@ -767,27 +768,6 @@
             }
         }
         else {
-            plotFlags.playerBar = true;
-            showDiv('player-bar-space')
-            $.ajax({
-                url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
-                data: {
-                    creator: creator,
-                    category: category,
-                    player: player,
-                    chart_type: 'player_bar'  // Specify chart type or make it dynamic
-                },
-                success: function(data) {
-                    if (data.error) {
-                        alert(data.error);
-                        return;
-                    }
-                    renderPlayerBar(data);
-                },
-                error: function(error) {
-                    console.error('Error loading data:', error);
-                }
-            });
             plotFlags.playerViolin = true;
             showDiv('player-violin-space')
             $.ajax({
@@ -825,27 +805,6 @@
                         return;
                     }
                     renderCreatorViolin(data);
-                },
-                error: function(error) {
-                    console.error('Error loading data:', error);
-                }
-            });
-            plotFlags.playerCatBar = true;
-            showDiv('player-cat-bar-space')
-            $.ajax({
-                url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
-                data: {
-                    creator: creator,
-                    category: category,
-                    player: player,
-                    chart_type: 'player_cat_bar'  // Specify chart type or make it dynamic
-                },
-                success: function(data) {
-                    if (data.error) {
-                        alert(data.error);
-                        return;
-                    }
-                    renderPlayerCatBar(data);
                 },
                 error: function(error) {
                     console.error('Error loading data:', error);
@@ -894,6 +853,7 @@
                         console.error('Error loading data:', error);
                     }
                 });
+            } else if (creator !== '' && category === '') {
                 plotFlags.jokerCategorySummary = true;
                 showDiv('joker-category-summary');
                 $.ajax({
@@ -910,6 +870,28 @@
                             return;
                         }
                         renderJokerSelectionSummary('joker-category-summary', data);
+                    },
+                    error: function(error) {
+                        console.error('Error loading data:', error);
+                    }
+                });
+            } else if (creator === '' && category !== '') {
+                plotFlags.jokerCreatorSummary = true;
+                showDiv('joker-creator-summary');
+                $.ajax({
+                    url: '{% url "player_analysis_plot" %}',
+                    data: {
+                        creator: creator,
+                        category: category,
+                        player: player,
+                        chart_type: 'joker_creator_summary'
+                    },
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        renderJokerSelectionSummary('joker-creator-summary', data);
                     },
                     error: function(error) {
                         console.error('Error loading data:', error);
@@ -1433,6 +1415,10 @@
             box: {
                 visible: true
             },
+            meanline: {
+                visible: true,
+                color: '#000000'
+            },
             points: 'all',
             pointpos: -1.8,
             jitter: 0.5,
@@ -1442,6 +1428,27 @@
             text: playerData.hover_texts,
             hoverinfo: 'text'
         }));
+
+        const meanTrace = {
+            x: data.data.map(playerData => playerData.player),
+            y: data.data.map(playerData => {
+                const total = playerData.scores.reduce((sum, value) => sum + value, 0);
+                return playerData.scores.length ? total / playerData.scores.length : null;
+            }),
+            type: 'scatter',
+            mode: 'markers',
+            marker: {
+                symbol: 'line-ew-open',
+                size: 34,
+                color: '#000000',
+                line: {
+                    color: '#000000',
+                    width: 5,
+                },
+            },
+            hovertemplate: '%{x}<br>Mean: %{y:.2f}<extra></extra>',
+            showlegend: false,
+        };
 
         const layout = {
             title: data.title,
@@ -1467,10 +1474,24 @@
             font: {
                 color: "#ffffff",
                 family: "YoungSerif"
-            }
+            },
+            annotations: [{
+                text: 'Black bars show mean score',
+                x: 1,
+                y: 1.08,
+                xref: 'paper',
+                yref: 'paper',
+                xanchor: 'right',
+                showarrow: false,
+                font: {
+                    color: analysisTextColor,
+                    family: 'YoungSerif',
+                    size: 13,
+                },
+            }],
         };
 
-        Plotly.newPlot('violin-space', traces, layout);
+        Plotly.newPlot('violin-space', [...traces, meanTrace], layout);
     }
 
     function renderPCA(data) {
@@ -1710,6 +1731,10 @@
             box: {
                 visible: true
             },
+            meanline: {
+                visible: true,
+                color: '#000000'
+            },
             points: 'all',
             pointpos: -1.8,
             jitter: 0.5,
@@ -1719,6 +1744,27 @@
             text: data.hover_texts[index],
             hoverinfo: 'text'
         }));
+
+        const meanTrace = {
+            x: data.categories,
+            y: data.plot_data.map(values => {
+                const total = values.reduce((sum, value) => sum + value, 0);
+                return values.length ? total / values.length : null;
+            }),
+            type: 'scatter',
+            mode: 'markers',
+            marker: {
+                symbol: 'line-ew-open',
+                size: 34,
+                color: '#000000',
+                line: {
+                    color: '#000000',
+                    width: 5,
+                },
+            },
+            hovertemplate: '%{x}<br>Mean: %{y:.2f}<extra></extra>',
+            showlegend: false,
+        };
 
         const layout = {
             title: data.title,
@@ -1730,10 +1776,24 @@
                 color: "#ffffff",
                 family: "YoungSerif"
             },
-            showlegend: false
+            showlegend: false,
+            annotations: [{
+                text: 'Black bars show mean score',
+                x: 1,
+                y: 1.08,
+                xref: 'paper',
+                yref: 'paper',
+                xanchor: 'right',
+                showarrow: false,
+                font: {
+                    color: analysisTextColor,
+                    family: 'YoungSerif',
+                    size: 13,
+                },
+            }],
         };
 
-        Plotly.newPlot('player-violin-space', traces, layout);
+        Plotly.newPlot('player-violin-space', [...traces, meanTrace], layout);
     }
 
     function renderCreatorViolin(data) {
@@ -1745,6 +1805,10 @@
             box: {
                 visible: true
             },
+            meanline: {
+                visible: true,
+                color: '#000000'
+            },
             points: 'all',
             pointpos: -1.8,
             jitter: 0.5,
@@ -1754,6 +1818,27 @@
             text: data.hover_texts[index],
             hoverinfo: 'text'
         }));
+
+        const meanTrace = {
+            x: data.categories,
+            y: data.plot_data.map(values => {
+                const total = values.reduce((sum, value) => sum + value, 0);
+                return values.length ? total / values.length : null;
+            }),
+            type: 'scatter',
+            mode: 'markers',
+            marker: {
+                symbol: 'line-ew-open',
+                size: 34,
+                color: '#000000',
+                line: {
+                    color: '#000000',
+                    width: 5,
+                },
+            },
+            hovertemplate: '%{x}<br>Mean: %{y:.2f}<extra></extra>',
+            showlegend: false,
+        };
 
         const layout = {
             title: data.title,
@@ -1765,10 +1850,24 @@
                 color: "#ffffff",
                 family: "YoungSerif"
             },
-            showlegend: false
+            showlegend: false,
+            annotations: [{
+                text: 'Black bars show mean score',
+                x: 1,
+                y: 1.08,
+                xref: 'paper',
+                yref: 'paper',
+                xanchor: 'right',
+                showarrow: false,
+                font: {
+                    color: analysisTextColor,
+                    family: 'YoungSerif',
+                    size: 13,
+                },
+            }],
         };
 
-        Plotly.newPlot('creator-violin-space', traces, layout);
+        Plotly.newPlot('creator-violin-space', [...traces, meanTrace], layout);
     }
 
     function renderCatBar(data) {
