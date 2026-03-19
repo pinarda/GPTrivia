@@ -96,22 +96,27 @@ body.site-shell[data-profile-theme="light"] .table-class th {
 }
 
 .select-container--checkbox {
-    min-width: 190px;
+    min-width: 0;
 }
 
 .analysis-checkbox-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 0.55rem;
-    min-height: 48px;
-    padding: 0.7rem 1rem;
+    justify-content: center;
+    gap: 0.7rem;
+    min-height: 0;
+    padding: 10px 16px;
     background: var(--analysis-select-bg);
     color: var(--analysis-select-text);
     font-family: YoungSerif;
-    font-size: 0.98rem;
-    border-radius: 2px;
+    font-size: 0.96rem;
+    line-height: 1.2;
+    border: 0;
+    border-radius: 0;
     cursor: pointer;
     transition: background-color 0.2s ease, filter 0.2s ease;
+    box-sizing: border-box;
+    white-space: nowrap;
 }
 
 .analysis-checkbox-toggle:hover,
@@ -120,14 +125,48 @@ body.site-shell[data-profile-theme="light"] .table-class th {
 }
 
 .analysis-checkbox-toggle input[type="checkbox"] {
-    width: 1rem;
-    height: 1rem;
+    width: 22px;
+    height: 22px;
     margin: 0;
-    accent-color: #ffffff;
+    border: 2px solid var(--analysis-select-text);
+    background-color: transparent;
+    color: var(--analysis-select-bg);
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    padding: 0;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 0 !important;
+    outline: none;
+    box-shadow: none;
+    flex: 0 0 auto;
 }
 
-body.site-shell[data-profile-theme="light"] .analysis-checkbox-toggle input[type="checkbox"] {
-    accent-color: #1b2530;
+.analysis-checkbox-toggle input[type="checkbox"]::before {
+    content: '';
+    width: 6px;
+    height: 12px;
+    border-right: 3px solid var(--analysis-select-bg);
+    border-bottom: 3px solid var(--analysis-select-bg);
+    transform: rotate(45deg);
+    opacity: 0;
+    box-sizing: border-box;
+}
+
+.analysis-checkbox-toggle input[type="checkbox"]:checked {
+    background-color: var(--analysis-page-bg);
+}
+
+.analysis-checkbox-toggle input[type="checkbox"]:checked::before {
+    opacity: 1;
+}
+
+.analysis-checkbox-toggle span {
+    display: inline-block;
 }
 
 .select-dropdown option {
