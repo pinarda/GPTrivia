@@ -1097,8 +1097,6 @@
                         console.error('Error loading data:', error);
                     }
                 });
-                plotFlags.jokerPercentage = true;
-                showDiv('joker_percentage')
                 $.ajax({
                     url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name                method: 'GET',
                     data: {
@@ -1112,9 +1110,21 @@
                             alert(data.error);
                             return;
                         }
+                        const fractions = Object.values(data || {}).filter(
+                            fraction => fraction !== null && fraction !== undefined
+                        );
+                        if (!Object.keys(data || {}).length || !fractions.length) {
+                            plotFlags.jokerPercentage = false;
+                            hideDiv('joker_percentage');
+                            return;
+                        }
+                        plotFlags.jokerPercentage = true;
+                        showDiv('joker_percentage');
                         renderJokerPercentage(data);
                     },
                     error: function(error) {
+                        plotFlags.jokerPercentage = false;
+                        hideDiv('joker_percentage');
                         console.error('Error loading data:', error);
                     }
                 });
@@ -2229,6 +2239,7 @@ function renderJokerPercentage(data) {
     const playerNames = Object.keys(data || {});
     const fractions = Object.values(data || {}).filter(fraction => fraction !== null && fraction !== undefined);
     if (!playerNames.length || !fractions.length) {
+        plotFlags.jokerPercentage = false;
         hideDiv('joker_percentage');
         return;
     }
