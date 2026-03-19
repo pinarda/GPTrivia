@@ -248,9 +248,9 @@
             case 'PCAplot':
                 return `This chart shows which players tend to score similarly ${scope}; players that are closer together in 3D space have more similar scoring patterns.`;
             case 'catBar':
-                return `This chart shows the average raw score by category ${scope}.`;
+                return `This chart shows the average normalized score by category ${scope}, after scaling every round to a 10-point system.`;
             case 'creatorBar':
-                return `This chart shows the average raw score by creator ${scope}.`;
+                return `This chart shows the average normalized score by creator ${scope}, after scaling every round to a 10-point system.`;
             case 'player-violin-space':
             case 'creator-violin-space':
                 return `This chart shows how ${playerName} scores ${scope}, grouped by ${escapeHtml(groupLabel || 'group')}, relative to ${playerPossessive} typical normalized score.`;
@@ -326,7 +326,7 @@
                 if (!creator) {
                     return rawTitle;
                 }
-                return `Mean Score ${scope}${groupLabel ? ` by ${escapeHtml(groupLabel)}` : ''}`;
+                return `Mean Normalized Score ${scope}${groupLabel ? ` by ${escapeHtml(groupLabel)}` : ''}`;
             default:
                 return rawTitle;
         }

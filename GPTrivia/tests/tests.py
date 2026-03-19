@@ -225,7 +225,10 @@ class PlayerAnalysisPlotTests(TestCase):
             'creator': 'Jenny'
         })
         self.assertEqual(response.status_code, 200)
-        self.assertIn('mean_values', response.json())
+        payload = response.json()
+        self.assertIn('mean_values', payload)
+        self.assertEqual(payload['yaxis'], 'Mean Normalized Score (0-10)')
+        self.assertIn('Mean Normalized Score', payload['title'])
 
     def test_creator_bar_data(self):
         rounds = GPTriviaRound.objects.all()
@@ -235,7 +238,10 @@ class PlayerAnalysisPlotTests(TestCase):
             'category': 'Test Major Category'
         })
         self.assertEqual(response.status_code, 200)
-        self.assertIn('mean_values', response.json())
+        payload = response.json()
+        self.assertIn('mean_values', payload)
+        self.assertEqual(payload['yaxis'], 'Mean Normalized Score (0-10)')
+        self.assertIn('Mean Normalized Score', payload['title'])
 
     def test_player_bar_data(self):
         rounds = GPTriviaRound.objects.all()

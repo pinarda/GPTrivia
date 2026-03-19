@@ -614,6 +614,7 @@ class PlayerAnalysisPlot(View):
         score_columns = self._score_columns(df)
         if not score_columns:
             return JsonResponse({'error': 'No score columns found'}, status=400)
+        max_scores = df['max_score'].replace(0, np.nan)
         # filter the dataframe for each unique major category and compute the mean scores
         if player:
             player_column = player_field_for_name(player)
@@ -630,14 +631,19 @@ class PlayerAnalysisPlot(View):
                 # subtract the mean score of the player from the mean score of the category
                 mean_scores = mean_scores - df[player_column].mean()
                 cat_name = "Creator"
+            title_prefix = 'Mean Score'
+            yaxis_title = 'Mean Score'
         else:
+            normalized_scores = df[score_columns].div(max_scores, axis=0) * 10
             if category == "":
-                mean_scores = df.groupby('major_category')[score_columns].mean().mean(axis=1)
+                mean_scores = normalized_scores.groupby(df['major_category']).mean().mean(axis=1)
                 cat_name = "Category"
                 # and the list of all unique major categories
             elif creator == "":
-                mean_scores = df.groupby('creator')[score_columns].mean().mean(axis=1)
+                mean_scores = normalized_scores.groupby(df['creator']).mean().mean(axis=1)
                 cat_name = "Creator"
+            title_prefix = 'Mean Normalized Score'
+            yaxis_title = 'Mean Normalized Score (0-10)'
         if player and category and creator == "":
             # remove the key corresponding to the player from the mean_scores dictionary
             mean_scores = mean_scores.drop(player)
@@ -684,9 +690,9 @@ class PlayerAnalysisPlot(View):
                 'categories': categories,
                 'mean_values': plot_values,
                 'colors': colors,
-                'title': f'Mean Score on {name}{cat} Rounds by {cat_name}',
+                'title': f'{title_prefix} on {name}{cat} Rounds by {cat_name}',
                 'xaxis': cat_name,
-                'yaxis': 'Mean Score'
+                'yaxis': yaxis_title
             }
             return JsonResponse(response_data)
         except Exception as e:
