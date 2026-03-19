@@ -78,6 +78,25 @@ body {
     color: var(--rounds-link-text);
 }
 
+.round-date-link {
+    display: inline-block;
+    text-decoration: none;
+    transition: transform 0.18s ease, color 0.18s ease, text-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.round-date-link:hover,
+.round-date-link:focus-visible {
+    color: #ffd5c2;
+    transform: translateY(-1px);
+    text-shadow: 0 0 10px rgba(255, 213, 194, 0.28);
+}
+
+body.site-shell[data-profile-theme="light"] .round-date-link:hover,
+body.site-shell[data-profile-theme="light"] .round-date-link:focus-visible {
+    color: #96031A;
+    text-shadow: 0 0 8px rgba(150, 3, 26, 0.16);
+}
+
 #roundList thead th {
     position: sticky;
     top: 0;

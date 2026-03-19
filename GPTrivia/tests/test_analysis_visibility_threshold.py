@@ -35,6 +35,7 @@ class AnalysisVisibilityThresholdTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("score_alex", response.context["player_fields"])
         self.assertNotIn("score_guest player", response.context["player_fields"])
+        self.assertContains(response, f'{reverse("scoresheet_new")}?date=2025-01-01')
 
     def test_player_analysis_hides_players_below_threshold(self):
         response = self.client.get(reverse("player_analysis"))

@@ -3,7 +3,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/rounds_list.css' %}?v=20260317c">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/rounds_list.css' %}?v=20260319d">
 {% endblock %}
 
 {% block extra_meta %}
@@ -83,7 +83,15 @@
             {% endwith %}
             <td>{{ round_row.round.major_category }}</td>
             <td>{{ round_row.round.minor_category1 }}</td>
-            <td>{{ round_row.round.date }}</td>
+            <td>
+                <a
+                    class="round-date-link"
+                    href="{% url 'scoresheet_new' %}?date={{ round_row.round.date|date:'Y-m-d' }}"
+                    aria-label="Open scoresheet for {{ round_row.round.date|date:'F j, Y' }}"
+                >
+                    {{ round_row.round.date|date:"F j, Y" }}
+                </a>
+            </td>
             <td>{{ round_row.round.round_number }}</td>
             <td>{{ round_row.round.max_score }}</td>
             <td>{{ round_row.round.cooperative }}</td>
