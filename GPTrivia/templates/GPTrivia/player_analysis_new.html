@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319c">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319d">
 {% endblock %}
 
 {% block content %}
@@ -41,6 +41,14 @@
                 <option value="{{ player }}" {% if player == initial_player_selection %}selected{% endif %}>{{ player }}</option>
                 {% endfor %}
             </select>
+        </div>
+
+        <div class="select-container select-container--checkbox">
+            <label for="include-coop-checkbox" class="select-label">Co-op Rounds</label>
+            <label class="analysis-checkbox-toggle" for="include-coop-checkbox">
+                <input type="checkbox" id="include-coop-checkbox" {% if initial_include_coop %}checked{% endif %}>
+                <span>Include co-op rounds</span>
+            </label>
         </div>
     </div>
 
@@ -149,15 +157,22 @@
         return profileUrlTemplate.replace('__PROFILE_NAME__', encodeURIComponent(name || ''));
     }
 
+    function getAnalysisMisc() {
+        const includeCoopCheckbox = document.getElementById('include-coop-checkbox');
+        return includeCoopCheckbox && includeCoopCheckbox.checked ? 'include_coop' : '';
+    }
+
     function getSelectedAnalysisFilters() {
         const creatorSelector = document.getElementById('creator-selector');
         const categorySelector = document.getElementById('category-selector');
         const playerSelector = document.getElementById('player-selector');
+        const includeCoopCheckbox = document.getElementById('include-coop-checkbox');
 
         return {
             creator: creatorSelector ? creatorSelector.value : '',
             category: categorySelector ? categorySelector.value : '',
             player: playerSelector ? playerSelector.value : '',
+            includeCoop: Boolean(includeCoopCheckbox && includeCoopCheckbox.checked),
         };
     }
 
@@ -535,6 +550,25 @@
             return result;
         });
     };
+
+    const analysisPlotUrl = '{% url "player_analysis_plot" %}';
+    $.ajaxPrefilter(function(options) {
+        if (options.url !== analysisPlotUrl) {
+            return;
+        }
+
+        const miscValue = getAnalysisMisc();
+        if (typeof options.data === 'string') {
+            const separator = options.data ? '&' : '';
+            options.data = `${options.data}${separator}misc=${encodeURIComponent(miscValue)}`;
+            return;
+        }
+
+        options.data = {
+            ...(options.data || {}),
+            misc: miscValue,
+        };
+    });
 
     // Initialize with default values
     let playerName = "";
@@ -2432,6 +2466,16 @@ function renderJokerPercentage(data) {
         const selectedPlayer = this.value;
         updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer);
     });
+
+    const includeCoopCheckbox = document.getElementById('include-coop-checkbox');
+    if (includeCoopCheckbox) {
+        includeCoopCheckbox.addEventListener('change', function () {
+            const selectedCreator = document.getElementById('creator-selector').value;
+            const selectedCategory = document.getElementById('category-selector').value;
+            const selectedPlayer = document.getElementById('player-selector').value;
+            updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer);
+        });
+    }
 
 
     window.onresize = function() {

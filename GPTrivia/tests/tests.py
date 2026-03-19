@@ -243,6 +243,53 @@ class PlayerAnalysisPlotTests(TestCase):
         self.assertEqual(payload['yaxis'], 'Mean Normalized Score (0-10)')
         self.assertIn('Mean Normalized Score', payload['title'])
 
+    def test_analysis_excludes_coop_rounds_unless_requested(self):
+        GPTriviaRound.objects.create(
+            creator="CoopTest",
+            title="Solo Round",
+            major_category="Coop Category",
+            minor_category1="A",
+            minor_category2="B",
+            date="2024-03-01",
+            round_number=1,
+            max_score=10,
+            cooperative=False,
+            score_alex=10,
+            score_megan=0,
+        )
+        GPTriviaRound.objects.create(
+            creator="CoopTest",
+            title="Co-op Round",
+            major_category="Coop Category",
+            minor_category1="A",
+            minor_category2="B",
+            date="2024-03-08",
+            round_number=2,
+            max_score=10,
+            cooperative=True,
+            score_alex=0,
+            score_megan=0,
+        )
+
+        default_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'category_bar',
+            'creator': 'CoopTest',
+        })
+        self.assertEqual(default_response.status_code, 200)
+        default_payload = default_response.json()
+        self.assertEqual(list(default_payload['categories']), ['Coop Category'])
+        self.assertAlmostEqual(default_payload['mean_values'][0], 5.0, places=6)
+
+        include_coop_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'category_bar',
+            'creator': 'CoopTest',
+            'misc': 'include_coop',
+        })
+        self.assertEqual(include_coop_response.status_code, 200)
+        include_coop_payload = include_coop_response.json()
+        self.assertEqual(list(include_coop_payload['categories']), ['Coop Category'])
+        self.assertAlmostEqual(include_coop_payload['mean_values'][0], 2.5, places=6)
+
     def test_category_violin_summary_data(self):
         response = self.client.get(reverse('player_analysis_plot'), {
             'chart_type': 'category_violin_summary',
@@ -524,6 +571,65 @@ class PlayerAnalysisPlotTests(TestCase):
         payload = response.json()
         self.assertEqual(payload['labels'], ['Jenny'])
         self.assertEqual(payload['counts'], [1])
+
+    def test_joker_creator_summary_excludes_coop_rounds_unless_requested(self):
+        GPTriviaRound.objects.create(
+            creator="Jenny",
+            title="Solo Joker Round",
+            major_category="History",
+            minor_category1="A",
+            minor_category2="B",
+            date="2024-11-01",
+            round_number=1,
+            max_score=10,
+            cooperative=False,
+            score_alex=8,
+            score_jenny=0,
+            score_megan=6,
+        )
+        GPTriviaRound.objects.create(
+            creator="Chris",
+            title="Co-op Joker Round",
+            major_category="Science",
+            minor_category1="A",
+            minor_category2="B",
+            date="2024-11-08",
+            round_number=2,
+            max_score=10,
+            cooperative=True,
+            score_alex=9,
+            score_chris=0,
+            score_megan=7,
+        )
+        MergedPresentation.objects.create(
+            name="11.01.2024",
+            presentation_id="solo-pres",
+            round_names=["Solo Joker Round"],
+            creator_list=["Jenny"],
+            joker_round_indices={"alex": "Solo Joker Round"},
+        )
+        MergedPresentation.objects.create(
+            name="11.08.2024",
+            presentation_id="coop-pres",
+            round_names=["Co-op Joker Round"],
+            creator_list=["Chris"],
+            joker_round_indices={"alex": "Co-op Joker Round"},
+        )
+
+        default_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'joker_creator_summary',
+            'player': 'Alex',
+        })
+        self.assertEqual(default_response.status_code, 200)
+        self.assertEqual(default_response.json()['labels'], ['Jenny'])
+
+        include_coop_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'joker_creator_summary',
+            'player': 'Alex',
+            'misc': 'include_coop',
+        })
+        self.assertEqual(include_coop_response.status_code, 200)
+        self.assertEqual(include_coop_response.json()['labels'], ['Chris', 'Jenny'])
 class PlayerAnalysisViewTests(TestCase):
     def setUp(self):
         self.views_threshold_patcher = patch('GPTrivia.views.MIN_ANALYSIS_ROUNDS', 1)
@@ -623,12 +729,15 @@ class PlayerAnalysisViewTests(TestCase):
         response = self.client.get(reverse('player_analysis'), {
             'creator': 'Alex',
             'player': 'Alex',
+            'include_coop': '1',
         })
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['initial_creator_selection'], 'Alex')
         self.assertEqual(response.context['initial_player_selection'], 'Alex')
+        self.assertTrue(response.context['initial_include_coop'])
         self.assertContains(response, '<option value="Alex" selected>Alex</option>', html=True)
+        self.assertContains(response, 'id="include-coop-checkbox" checked', html=False)
         self.assertContains(response, reverse('player_profile', args=['__PROFILE_NAME__']))
         self.assertContains(response, 'buildAnalysisTitle')
         self.assertContains(response, '"creator": "Alex"')

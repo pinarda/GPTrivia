@@ -713,6 +713,7 @@ def player_analysis(request):
     initial_creator_selection = (request.GET.get('creator') or '').strip()
     initial_category_selection = (request.GET.get('category') or '').strip()
     initial_player_selection = (request.GET.get('player') or '').strip()
+    initial_include_coop = str(request.GET.get('include_coop') or '').strip().lower() in {'1', 'true', 'yes', 'on', 'include_coop'}
     active_player_names = _get_recently_active_profile_player_names(list(queryset_rounds))
     active_player_fields = [
         field
@@ -766,6 +767,7 @@ def player_analysis(request):
         'initial_creator_selection': initial_creator_selection,
         'initial_category_selection': initial_category_selection,
         'initial_player_selection': initial_player_selection,
+        'initial_include_coop': initial_include_coop,
         "mapping": player_name_mapping,
         "mapping_json": json.dumps(player_name_mapping, cls=DjangoJSONEncoder),
         "player_text_mapping": player_text_mapping,

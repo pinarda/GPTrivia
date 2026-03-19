@@ -95,6 +95,41 @@ body.site-shell[data-profile-theme="light"] .table-class th {
     justify-content: center;
 }
 
+.select-container--checkbox {
+    min-width: 190px;
+}
+
+.analysis-checkbox-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 48px;
+    padding: 0.7rem 1rem;
+    background: var(--analysis-select-bg);
+    color: var(--analysis-select-text);
+    font-family: YoungSerif;
+    font-size: 0.98rem;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, filter 0.2s ease;
+}
+
+.analysis-checkbox-toggle:hover,
+.analysis-checkbox-toggle:focus-within {
+    background-color: var(--analysis-button-hover);
+}
+
+.analysis-checkbox-toggle input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    accent-color: #ffffff;
+}
+
+body.site-shell[data-profile-theme="light"] .analysis-checkbox-toggle input[type="checkbox"] {
+    accent-color: #1b2530;
+}
+
 .select-dropdown option {
     color: var(--analysis-select-option-text);
     background-color: var(--analysis-select-option-bg);

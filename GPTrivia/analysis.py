@@ -49,6 +49,15 @@ def _format_score_value(value):
     return f'{numeric_value:g}'
 
 class PlayerAnalysisPlot(View):
+    @staticmethod
+    def _should_include_coop(misc):
+        normalized_misc = str(misc or '').strip().lower()
+        return normalized_misc in {'1', 'true', 'yes', 'on', 'include_coop'}
+
+    def _apply_misc_filters(self, queryset, misc):
+        if not self._should_include_coop(misc):
+            queryset = queryset.exclude(cooperative=True)
+        return queryset
 
     @staticmethod
     def _recenter_correlation_matrix(corr_matrix):
@@ -113,10 +122,10 @@ class PlayerAnalysisPlot(View):
         creator = request.GET.get('creator', '')
         category = request.GET.get('category', '')
         player = request.GET.get('player', '')
-        misc = request.GET.get('misc', '')
+        misc = request.GET.get('misc', '') or request.GET.get('include_coop', '')
         chart_type = request.GET.get('chart_type', '')
         dadj = request.GET.get('dadj', '')
-        queryset_rounds_1 = GPTriviaRound.objects.all()
+        queryset_rounds_1 = self._apply_misc_filters(GPTriviaRound.objects.all(), misc)
         all_round_objects = list(queryset_rounds_1)
         recently_active_fields = self._recently_active_player_fields(all_round_objects)
         self.recently_active_player_fields = set(recently_active_fields)
@@ -174,9 +183,9 @@ class PlayerAnalysisPlot(View):
         if chart_type == 'joker_percentage':
             return self.joker_percentage(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'joker_creator_summary':
-            return self.joker_selection_summary(player, group_by='creator', creator=creator, category=category)
+            return self.joker_selection_summary(player, group_by='creator', creator=creator, category=category, misc=misc)
         if chart_type == 'joker_category_summary':
-            return self.joker_selection_summary(player, group_by='category', creator=creator, category=category)
+            return self.joker_selection_summary(player, group_by='category', creator=creator, category=category, misc=misc)
         else:
             return JsonResponse({'error': 'Invalid chart type'}, status=400)
 
@@ -867,8 +876,8 @@ class PlayerAnalysisPlot(View):
             score_columns = [col for col in self._score_columns(df) if col != player_column]
             player_data = df[['date', 'title', player_column, 'max_score', 'cooperative', 'creator'] + score_columns]
             player_data = player_data.dropna(subset=[player_column])
-            # also drop any rows whose value in the cooperative column is True
-            player_data = player_data[player_data['cooperative'] == False]
+            if not self._should_include_coop(misc):
+                player_data = player_data[player_data['cooperative'] == False]
             player_data['date'] = pd.to_datetime(player_data['date'])
             player_data = player_data.sort_values(by='date')
             max_score_series = player_data['max_score'].replace(0, np.nan)
@@ -1048,7 +1057,7 @@ class PlayerAnalysisPlot(View):
             return None
         return float(np.median(other_scores))
 
-    def joker_selection_summary(self, player, group_by='creator', creator='', category=''):
+    def joker_selection_summary(self, player, group_by='creator', creator='', category='', misc=''):
         player_field = player_field_for_name(player)
         if not player_field:
             return JsonResponse({'error': 'Player not found'}, status=400)
@@ -1070,7 +1079,7 @@ class PlayerAnalysisPlot(View):
                 continue
 
             date_value = presentation_date.date()
-            rounds_on_date = list(GPTriviaRound.objects.filter(date=date_value))
+            rounds_on_date = list(self._apply_misc_filters(GPTriviaRound.objects.filter(date=date_value), misc))
             if not rounds_on_date:
                 continue
 
@@ -1177,7 +1186,7 @@ class PlayerAnalysisPlot(View):
 
     def joker_percentage(self, rounds, unfiltered_rounds, creator, category, player, misc):
         merged_presentations = MergedPresentation.objects.all()
-        trivia_rounds = GPTriviaRound.objects.all()
+        trivia_rounds = unfiltered_rounds
 
         # Parse dates from MergedPresentation
         merged_data = []
@@ -1192,7 +1201,7 @@ class PlayerAnalysisPlot(View):
 
         # Prepare the dataframe for analysis
         merged_df = pd.DataFrame(merged_data)
-        rounds_df = self._records_to_df(self._queryset_to_records(trivia_rounds))
+        rounds_df = self._records_to_df(trivia_rounds)
 
         # Convert the 'date' column to datetime
         rounds_df['date'] = pd.to_datetime(rounds_df['date'])
