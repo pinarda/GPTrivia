@@ -63,7 +63,7 @@ KNOWN_CATEGORY_COLOR_MAPPING = {
     'science': '#7b4bcc',
     'sports': '#2f6fdf',
     'food': '#f08c2e',
-    'misc': '#f4f4f4',
+    'misc': '#d8d8d8',
     'history': '#8b5a2b',
     'humanities': '#e3cf3f',
     'music': '#e85da9',
