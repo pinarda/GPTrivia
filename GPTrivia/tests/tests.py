@@ -514,12 +514,20 @@ class PlayerAnalysisPlotTests(TestCase):
         creator_data = creator_response.json()
         self.assertEqual(creator_data['labels'], ['Jenny', 'Chris', 'Zach'])
         self.assertEqual(creator_data['counts'], [2, 1, 1])
-        self.assertEqual(creator_data['best_labels'], ['Chris'])
+        self.assertEqual(creator_data['best_labels'], ['Jenny'])
+        self.assertEqual(len(creator_data['avg_jokered_scores']), 3)
+        self.assertEqual(len(creator_data['avg_overall_scores']), 3)
+        self.assertAlmostEqual(creator_data['avg_jokered_scores'][0], 0.85, places=6)
+        self.assertAlmostEqual(creator_data['avg_jokered_scores'][1], 1.0, places=6)
+        self.assertAlmostEqual(creator_data['avg_jokered_scores'][2], 0.7, places=6)
+        self.assertAlmostEqual(creator_data['avg_overall_scores'][0], 1.4, places=6)
+        self.assertAlmostEqual(creator_data['avg_overall_scores'][1], 1.0, places=6)
+        self.assertAlmostEqual(creator_data['avg_overall_scores'][2], 0.7, places=6)
         self.assertEqual(
             creator_data['top_labels'],
             [
-                {'label': 'Chris', 'rank': 1},
-                {'label': 'Jenny', 'rank': 2},
+                {'label': 'Jenny', 'rank': 1},
+                {'label': 'Chris', 'rank': 2},
                 {'label': 'Zach', 'rank': 3},
             ],
         )
@@ -533,6 +541,14 @@ class PlayerAnalysisPlotTests(TestCase):
         self.assertEqual(category_data['labels'], ['History', 'Science', 'Sports'])
         self.assertEqual(category_data['counts'], [2, 1, 1])
         self.assertEqual(category_data['best_labels'], ['Science'])
+        self.assertEqual(len(category_data['avg_jokered_scores']), 3)
+        self.assertEqual(len(category_data['avg_overall_scores']), 3)
+        self.assertAlmostEqual(category_data['avg_jokered_scores'][0], 0.85, places=6)
+        self.assertAlmostEqual(category_data['avg_jokered_scores'][1], 1.0, places=6)
+        self.assertAlmostEqual(category_data['avg_jokered_scores'][2], 0.7, places=6)
+        self.assertAlmostEqual(category_data['avg_overall_scores'][0], 0.85, places=6)
+        self.assertAlmostEqual(category_data['avg_overall_scores'][1], 1.0, places=6)
+        self.assertAlmostEqual(category_data['avg_overall_scores'][2], 0.7, places=6)
         self.assertEqual(category_data['colors'], ['#8b5a2b', '#7b4bcc', '#2f6fdf'])
         self.assertEqual(
             category_data['top_labels'],

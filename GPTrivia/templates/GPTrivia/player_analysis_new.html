@@ -322,9 +322,9 @@
             case 'joker_percentage':
                 return `This table shows how often each player's joker landed on that player's highest-scoring round of the night.`;
             case 'joker-creator-summary':
-                return `This chart shows which creators ${playerName} jokers most often; the star marks the creator where ${playerName} has the highest average score on jokered rounds.`;
+                return `This chart shows which creators ${playerName} jokers most often; the stars mark the creators where ${playerName} has the highest average score overall, while the hover text compares jokered rounds to all rounds.`;
             case 'joker-category-summary':
-                return `This chart shows which categories ${playerName} jokers most often; the star marks the category where ${playerName} has the highest average score on jokered rounds.`;
+                return `This chart shows which categories ${playerName} jokers most often; the stars mark the categories where ${playerName} has the highest average score overall, while the hover text compares jokered rounds to all rounds.`;
             default:
                 return '';
         }
@@ -812,7 +812,7 @@
                 visible: false
             },
             points: 'all',
-            pointpos: compactLayout ? -0.82 : -0.9,
+            pointpos: compactLayout ? -1.64 : -1.8,
             jitter: compactLayout ? 0.1 : 0.12,
             marker: {
                 color: colors[index],
@@ -833,7 +833,7 @@
         const plotData = options.plotData || [];
         const xPositions = options.xPositions || buildViolinXPositions(labels.length);
         const step = xPositions.length > 1 ? (xPositions[1] - xPositions[0]) : (compactLayout ? 1.38 : 1.52);
-        const rangePadding = compactLayout ? 0.48 : 0.56;
+        const rangePadding = compactLayout ? 0.95 : 1.02;
 
         return {
             title: data.title,
@@ -2200,7 +2200,8 @@ function renderJokerPercentage(data) {
             return;
         }
 
-        const averages = data.avg_scores || [];
+        const jokeredAverages = data.avg_jokered_scores || [];
+        const overallAverages = data.avg_overall_scores || [];
         const topLabels = Array.isArray(data.top_labels) ? data.top_labels : [];
         const maxCount = Math.max(...data.counts, 0);
         const medalStyles = {
@@ -2216,11 +2217,12 @@ function renderJokerPercentage(data) {
             marker: {
                 color: data.colors,
             },
-            customdata: averages.map(value => [
-                value === null || value === undefined ? 'N/A' : `${(value * 100).toFixed(1)}%`,
+            customdata: data.labels.map((_, index) => [
+                jokeredAverages[index] === null || jokeredAverages[index] === undefined ? 'N/A' : `${(jokeredAverages[index] * 10).toFixed(2)}/10`,
+                overallAverages[index] === null || overallAverages[index] === undefined ? 'N/A' : `${(overallAverages[index] * 10).toFixed(2)}/10`,
             ]),
             hovertemplate:
-                `%{x}<br>Times jokered: %{y}<br>Average jokered score: %{customdata[0]}<extra></extra>`,
+                `%{x}<br>Times jokered: %{y}<br>Average jokered score: %{customdata[0]}<br>Average score on all rounds: %{customdata[1]}<extra></extra>`,
         };
 
         const traces = [barTrace];

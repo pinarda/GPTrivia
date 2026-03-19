@@ -1153,7 +1153,8 @@ class PlayerAnalysisPlot(View):
                 selected_rounds.append(matching_round)
 
         bucket_counts = {}
-        bucket_scores = {}
+        bucket_jokered_scores = {}
+        bucket_overall_scores = {}
 
         for round_obj in selected_rounds:
             if group_by == 'creator':
@@ -1176,7 +1177,37 @@ class PlayerAnalysisPlot(View):
             for label in labels:
                 bucket_counts[label] = bucket_counts.get(label, 0) + 1
                 if normalized_score is not None:
-                    bucket_scores.setdefault(label, []).append(normalized_score)
+                    bucket_jokered_scores.setdefault(label, []).append(normalized_score)
+
+        all_rounds_queryset = self._apply_misc_filters(GPTriviaRound.objects.all(), misc)
+        if creator:
+            all_rounds_queryset = all_rounds_queryset.filter(
+                Q(creator=creator) | Q(secondary_creator=creator)
+            )
+        if category:
+            all_rounds_queryset = all_rounds_queryset.filter(major_category=category)
+
+        for round_obj in all_rounds_queryset:
+            raw_score = get_round_score_map(round_obj, include_null_fixed=False).get(player_field)
+            max_score = getattr(round_obj, 'max_score', None)
+            if raw_score is None or max_score in (None, 0):
+                continue
+
+            normalized_player_score = float(raw_score) / float(max_score)
+            if group_by == 'creator':
+                labels = [
+                    display_name_for_player_field(getattr(round_obj, 'creator', '')),
+                    display_name_for_player_field(getattr(round_obj, 'secondary_creator', '')),
+                ]
+                labels = [
+                    label for label in labels
+                    if label and label in eligible_creator_names
+                ]
+            else:
+                labels = [getattr(round_obj, 'major_category', '') or 'Uncategorized']
+
+            for label in labels:
+                bucket_overall_scores.setdefault(label, []).append(normalized_player_score)
 
         title = 'Most Jokered Creators' if group_by == 'creator' else 'Most Jokered Categories'
         xaxis = 'Creator' if group_by == 'creator' else 'Category'
@@ -1189,7 +1220,8 @@ class PlayerAnalysisPlot(View):
                 'labels': [],
                 'counts': [],
                 'colors': [],
-                'avg_scores': [],
+                'avg_jokered_scores': [],
+                'avg_overall_scores': [],
                 'best_labels': [],
                 'empty_message': 'No joker selections found for this player yet.',
             })
@@ -1197,15 +1229,19 @@ class PlayerAnalysisPlot(View):
         sorted_items = sorted(bucket_counts.items(), key=lambda item: (-item[1], item[0].lower()))
         labels = [label for label, _ in sorted_items]
         counts = [count for _, count in sorted_items]
-        avg_scores = [
-            (sum(bucket_scores[label]) / len(bucket_scores[label])) if bucket_scores.get(label) else None
+        avg_jokered_scores = [
+            (sum(bucket_jokered_scores[label]) / len(bucket_jokered_scores[label])) if bucket_jokered_scores.get(label) else None
+            for label in labels
+        ]
+        avg_overall_scores = [
+            (sum(bucket_overall_scores[label]) / len(bucket_overall_scores[label])) if bucket_overall_scores.get(label) else None
             for label in labels
         ]
 
         valid_best_scores = {
-            label: avg_scores[index]
+            label: avg_overall_scores[index]
             for index, label in enumerate(labels)
-            if avg_scores[index] is not None
+            if avg_overall_scores[index] is not None
         }
         top_labels = []
         if valid_best_scores:
@@ -1229,7 +1265,8 @@ class PlayerAnalysisPlot(View):
                 get_player_color(label) if group_by == 'creator' else get_category_color(label)
                 for label in labels
             ],
-            'avg_scores': avg_scores,
+            'avg_jokered_scores': avg_jokered_scores,
+            'avg_overall_scores': avg_overall_scores,
             'best_labels': best_labels,
             'top_labels': top_labels,
             'empty_message': 'No joker selections found for this player yet.',
