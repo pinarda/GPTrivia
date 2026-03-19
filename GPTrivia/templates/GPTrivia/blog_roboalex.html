@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/blog_post.css' %}">
+  <meta name="theme-color" content="#1e7662">
+{% endblock %}
+
+{% block content %}
+<div class="blog-post-page">
+    <section class="blog-post-hero">
+        <div class="blog-post-kicker">Archive Post</div>
+        <h1 class="blog-post-title">roboAlex 1.0</h1>
+        <div class="blog-post-meta">
+            <span>Alex Pinard</span>
+            <span>May 17, 2021</span>
+            <span>Trivia Stats / Modeling</span>
+        </div>
+        <p class="blog-post-summary">
+            An archived write-up from the original trivia-stats blog, brought onto the trivia site with the original figures and a cleaned-up layout.
+        </p>
+    </section>
+
+    <article class="blog-post-article blog-prose">
+        <p>
+            roboAlex 1.0 is simple. He knows three things: how well human Alex does on a typical trivia round,
+            whether or not human Alex jokered the current round, and how well everyone else did on the current round.
+            I wish I only had to know three things.
+        </p>
+        <p>
+            Below I go into more detail about how each of these factors contribute to the overall score. But first,
+            we check some assumptions we made about the data.
+        </p>
+        <p>
+            This is a list of all the round scores on every round. The output here shows scores on Zach’s first six rounds.
+            This list is all the data we need to make roboAlex work.
+        </p>
+
+        <pre class="blog-code"><code>head(allScores)</code></pre>
+        <div class="blog-score-table-shell">
+            <table class="blog-score-table">
+                <thead>
+                    <tr>
+                        <th>Row</th>
+                        <th>Zach</th>
+                        <th>Megan</th>
+                        <th>Ichigo</th>
+                        <th>Jenny</th>
+                        <th>Mom</th>
+                        <th>Dad</th>
+                        <th>Chris</th>
+                        <th>Alex</th>
+                        <th>Jeff</th>
+                        <th>Drew</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><th>2</th><td>NA</td><td>3</td><td>2.00</td><td>2.0</td><td>3.0</td><td>2.0</td><td>NA</td><td>2.0</td><td>NA</td><td>NA</td></tr>
+                    <tr><th>3</th><td>NA</td><td>9</td><td>9.00</td><td>10.0</td><td>3.0</td><td>10.0</td><td>NA</td><td>8.0</td><td>NA</td><td>NA</td></tr>
+                    <tr><th>4</th><td>NA</td><td>7</td><td>6.00</td><td>6.5</td><td>NA</td><td>7.5</td><td>6.50</td><td>6.0</td><td>NA</td><td>NA</td></tr>
+                    <tr><th>5</th><td>NA</td><td>8</td><td>6.00</td><td>9.0</td><td>5.0</td><td>5.0</td><td>7.00</td><td>5.0</td><td>NA</td><td>NA</td></tr>
+                    <tr><th>6</th><td>NA</td><td>5</td><td>2.25</td><td>4.5</td><td>1.5</td><td>6.0</td><td>3.75</td><td>3.5</td><td>NA</td><td>NA</td></tr>
+                    <tr><th>7</th><td>NA</td><td>5</td><td>5.00</td><td>4.0</td><td>4.0</td><td>8.0</td><td>6.00</td><td>7.0</td><td>NA</td><td>NA</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>Check for normality</h2>
+        <p>
+            roboAlex makes a critical assumption that players’ scores on rounds are independent and normally distributed.
+            I’m going to assume independence for now, and that anyone over- or under-performing on a night is just getting
+            a good or bad set of questions for them. It seems reasonable.
+        </p>
+        <p>
+            The histogram below shows the distribution of human Alex’s scores on each round, with a normal distribution overlaid.
+            A really simple roboAlex might just use this normal distribution and no other information, but his scores on most rounds
+            would not convince you that this was the “real” Alex.
+        </p>
+        <p>
+            Here are some technical details. The Q-Q plot compares the data we have to a normal distribution. If our data is truly
+            normally distributed, it would fall very close to the diagonal line. It looks like the ends of the distribution do not
+            match a normal exactly, but it is close enough to be a reasonable approximation. The k-s test p-value is well below 0.05,
+            so the data is probably not exactly normal. One thing still missing here is normalizing round scores, because some rounds
+            are out of 8 and others are out of 10 or more.
+        </p>
+
+        <pre class="blog-code"><code>suppressWarnings(ggplot(allScores, aes(x = Alex)) +
+  geom_histogram(aes(y = ..density..), binwidth = 1, na.rm = TRUE) +
+  ylab("Probability") + xlab("Alex's Scores") +
+  stat_function(fun = dnorm, args = list(mean = mean(allScores$Alex, na.rm = TRUE),
+                                         sd = sd(allScores$Alex, na.rm = TRUE))))</code></pre>
+        <figure class="blog-figure">
+            <img src="{% static 'GPTrivia/img/blog/roboalex-1-0/unnamed-chunk-3-1.png' %}" alt="Histogram of Alex's historical round scores with a normal curve overlay.">
+            <figcaption>The original histogram comparing Alex’s round-score distribution with a normal curve.</figcaption>
+        </figure>
+
+        <pre class="blog-code"><code>randomUnif &lt;- runif(length(na.omit(allScores$Alex)), -0.5, 0.5)
+qqData &lt;- na.omit(allScores$Alex) + randomUnif
+qqnorm(qqData)
+qqline(qqData)</code></pre>
+        <figure class="blog-figure">
+            <img src="{% static 'GPTrivia/img/blog/roboalex-1-0/unnamed-chunk-3-2.png' %}" alt="Q-Q plot of Alex's round scores against a normal distribution.">
+            <figcaption>Q-Q plot of Alex’s historical round scores.</figcaption>
+        </figure>
+
+        <pre class="blog-code"><code>suppressWarnings(ks.test(na.omit(allScores$Alex), "pnorm",
+        mean(allScores$Alex, na.rm = TRUE),
+        sd(allScores$Alex, na.rm = TRUE)))</code></pre>
+        <pre class="blog-output"><code>One-sample Kolmogorov-Smirnov test
+
+data:  na.omit(allScores$Alex)
+D = 0.11549, p-value = 0.0002069
+alternative hypothesis: two-sided</code></pre>
+
+        <p>So maybe the tails are a bit light for a normal distribution. Whatever. I doubt anyone will notice the difference during trivia night.</p>
+
+        <h2>Thing 1: Human Alex’s average round score</h2>
+        <p>
+            Now we look at how roboAlex uses each piece of information it has available. The first thing measures
+            how good human Alex is at Hail Science trivia in general.
+        </p>
+        <pre class="blog-code"><code>library(ggplot2)
+meanAlex &lt;- mean(allScores$Alex, na.rm = TRUE)
+meanAlex</code></pre>
+        <pre class="blog-output"><code>[1] 5.942326</code></pre>
+        <p>
+            This quantity represents the base score that roboAlex predicts human Alex will score on a given round,
+            without any additional information.
+        </p>
+
+        <h2>Thing 2: Did human Alex joker this round?</h2>
+        <p>
+            Human Alex picks rounds based on the theme and creator of each round. roboAlex does not know about those things.
+            Naive little roboAlex trusts that human Alex knows what he is doing. roboAlex assigns Alex’s mean score on joker
+            rounds as the base score for his joker round. When I compared roboAlex’s predicted score on joker rounds to real
+            Alex’s actual scores, they tended to be lower, so this adjustment helps.
+        </p>
+        <p>
+            There is still a flaw here. By using human Alex’s mean joker score as the base score and also taking into account
+            everyone else’s scores, I’m double-counting some of the information about creator and theme. That gives roboAlex a
+            bit of an extra advantage on joker rounds. Luckily, roboAlex 1.0 also tends to underperform on non-joker rounds, so
+            those flaws come reasonably close to evening out.
+        </p>
+        <pre class="blog-code"><code>get_average_joker_round("Alex")</code></pre>
+        <pre class="blog-output"><code>[1] 7.252909</code></pre>
+        <p>
+            That score represents the base score that roboAlex predicts Alex will score on a joker round,
+            without any additional information.
+        </p>
+
+        <h2>Thing 3: How well did everyone else do on this round?</h2>
+        <p>
+            Knowing how well everyone else did on a round makes roboAlex more realistic in two ways. First, if a round is difficult,
+            players tend to score lower, and roboAlex can adjust his score down accordingly. Second, some players’ scores tend to be
+            more predictive of Alex’s score than others.
+        </p>
+        <p>
+            For example, I would hope to see roboAlex doing better on rounds where Dad and Ichigo also performed well. Likewise, if Mom
+            does really well, it is more likely to be a round that human Alex is not good at. We represent those relationships, plus the
+            shared influence of overall round difficulty, in a covariance matrix.
+        </p>
+
+        <div class="blog-callout">
+            <strong>Archived widget note.</strong> The original post used an interactive Plotly heatmap here. For the trivia-site port,
+            I preserved the underlying covariance table as a static table instead of depending on the old htmlwidget runtime.
+        </div>
+
+        <div class="blog-covariance-shell">
+            <table class="blog-covariance-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        {% for column in covariance_columns %}
+                            <th>{{ column }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in covariance_rows %}
+                        <tr>
+                            <th>{{ row.label }}</th>
+                            {% for cell in row.cells %}
+                                <td style="background-color: {{ cell.background }}; color: {{ cell.text_color }};">{{ cell.value }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="blog-covariance-note">
+            Darker green means stronger covariance. The preserved values match the original post’s covariance display.
+        </p>
+
+        <pre class="blog-code"><code>covTable &lt;- get_player_covariance_scores()</code></pre>
+
+        <h2>Putting it all together - Prediction</h2>
+        <p>
+            The mean values and covariances are the only variables we need to simulate what is called a conditional multivariate normal distribution.
+            All we need now are the proper equations.
+        </p>
+        <p>
+            It is important to note that just because each player’s scores follows an approximate normal distribution does not mean the joint
+            distribution will follow a multivariate normal. I’m assuming that here without proof, because the approximation seems to work
+            well enough in this simple setting.
+        </p>
+        <p>
+            Penn State has a good <a href="https://online.stat.psu.edu/stat505/lesson/6/6.1">explanation</a> of the math behind the conditional
+            multivariate normal, but this is the equation the post uses:
+        </p>
+        <div class="blog-equation"><code>E(Y|X = x) = μ<sub>Y</sub> + Σ<sub>YX</sub> Σ<sub>X</sub><sup>-1</sup> (x - μ<sub>X</sub>)</code></div>
+        <p><code>E(Y|X = x)</code> is the prediction: how well roboAlex is expected to score given that everyone else scored <code>x</code>.</p>
+        <p><code>μ<sub>Y</sub></code> is how well human Alex scores on an average round, or on a joker round if this is a joker.</p>
+        <p><code>Σ<sub>YX</sub></code> is the row of the covariance matrix corresponding to Alex, without the Alex/Alex entry.</p>
+        <p>
+            <code>Σ<sub>X</sub><sup>-1</sup></code> is the precision matrix: the covariance matrix with Alex’s row and column removed, then inverted.
+            This is where most of the “don’t double-count correlated players” magic happens.
+        </p>
+        <p>
+            <code>(x - μ<sub>X</sub>)</code> is everyone else’s performance on this round relative to their average score. Once multiplied through,
+            the terms tell us how much each observed player performance should push Alex’s estimate up or down.
+        </p>
+        <p>
+            This still underestimates Alex a little because the round creator usually does not have a score entered on their own round. So if
+            Ichigo created the round, her normally useful contribution to the estimate is missing. The post notes a few ways to fix that later.
+        </p>
+
+        <h2>Putting it all together - Simulation</h2>
+        <p>
+            The best estimate of how well real Alex will perform is given by the prediction above. But if roboAlex always predicts the expected
+            score, it will never have a truly great or truly terrible night. To make roboAlex feel like a real trivia player, the model also
+            keeps the right amount of variance:
+        </p>
+        <div class="blog-equation"><code>Var(Y|X = x) = Σ<sub>Y</sub> - Σ<sub>YX</sub> Σ<sub>X</sub><sup>-1</sup> Σ<sub>XY</sub></code></div>
+        <p>
+            In English, the model starts with Alex’s natural score variability and removes some of it because the other players’ scores tell us
+            something about what kind of round this was.
+        </p>
+        <p>
+            All that is left is to draw random samples from the resulting normal distribution. The rest of the post tries a few scenarios and
+            compares the simulated distributions to Alex’s historical one.
+        </p>
+
+        <pre class="blog-code"><code>Sigma_XY &lt;- covTable[c(1:7, 9, 10), 8]
+Sigma_YX &lt;- covTable[c(1:7, 9, 10), 8]
+Sigma_X  &lt;- covTable[c(1:7, 9, 10), c(1:7, 9, 10)]
+Sigma_Y  &lt;- covTable[8,8]
+
+meanPlayerScores &lt;- c(mean(allScores$Zach, na.rm = TRUE),
+                      mean(allScores$Megan, na.rm = TRUE),
+                      mean(allScores$Ichigo, na.rm = TRUE),
+                      mean(allScores$Jenny, na.rm = TRUE),
+                      mean(allScores$Mom, na.rm = TRUE),
+                      mean(allScores$Dad, na.rm = TRUE),
+                      mean(allScores$Chris, na.rm = TRUE),
+                      mean(allScores$Jeff, na.rm = TRUE),
+                      mean(allScores$Drew, na.rm = TRUE))</code></pre>
+
+        <pre class="blog-code"><code>set.seed(6)
+roboAlexMean     &lt;- meanAlex + Sigma_YX %*% solve(Sigma_X) %*% c(0, 0, 0, 0, 0, 0, 0, 0, 0)
+roboAlexVariance &lt;- Sigma_Y
+predictions      &lt;- data.frame("preds" = rnorm(388, roboAlexMean, sqrt(roboAlexVariance)))
+
+hist(predictions$preds, col = rgb(1,0,0,0.5), xlim = c(0,12), prob = TRUE,
+     main = "Histogram of simulated (red) vs actual (blue) round scores", xlab = "Score")
+hist(allScores$Alex, col = rgb(0,0,1,0.5), add = TRUE, prob = TRUE)</code></pre>
+        <figure class="blog-figure">
+            <img src="{% static 'GPTrivia/img/blog/roboalex-1-0/unnamed-chunk-8-1.png' %}" alt="Simulated versus actual score histogram without conditioning on other players.">
+            <figcaption>First pass: simulate roboAlex without conditioning on a specific set of other-player scores.</figcaption>
+        </figure>
+
+        <p>Not bad. Now let’s tell roboAlex that everyone did exactly as well as average and see how that changes the estimate.</p>
+
+        <pre class="blog-code"><code>set.seed(6)
+roboAlexMean     &lt;- meanAlex + Sigma_YX %*% solve(Sigma_X) %*% c(0, 0, 0, 0, 0, 0, 0, 0, 0)
+roboAlexVariance &lt;- Sigma_Y - Sigma_YX %*% solve(Sigma_X) %*% Sigma_XY
+predictions      &lt;- data.frame("preds" = rnorm(388, roboAlexMean, sqrt(roboAlexVariance)))</code></pre>
+        <figure class="blog-figure">
+            <img src="{% static 'GPTrivia/img/blog/roboalex-1-0/unnamed-chunk-9-1.png' %}" alt="Simulated versus actual score histogram when everyone else scores average.">
+            <figcaption>If everyone else lands near average, roboAlex gets much more confident about Alex landing near average too.</figcaption>
+        </figure>
+
+        <p>
+            Seems reasonable: if everyone got a middling score, we are a lot more confident that human Alex would have as well.
+            What about one of those rounds about animated TV that Jenny, Zach, and Megan always do well on but no one else does?
+        </p>
+
+        <pre class="blog-code"><code>set.seed(6)
+sampleScores      &lt;- c(8, 8, 5, 9, 4, 3, 4, 3, 3)
+roboAlexMean      &lt;- meanAlex + Sigma_YX %*% solve(Sigma_X) %*% (sampleScores - meanPlayerScores)
+roboAlexVariance  &lt;- Sigma_Y - Sigma_YX %*% solve(Sigma_X) %*% Sigma_XY
+predictions       &lt;- data.frame("preds" = rnorm(388, roboAlexMean, sqrt(roboAlexVariance)))</code></pre>
+        <figure class="blog-figure">
+            <img src="{% static 'GPTrivia/img/blog/roboalex-1-0/unnamed-chunk-10-1.png' %}" alt="Simulated versus actual score histogram for a niche friendly round example.">
+            <figcaption>A niche-friendly round example shifts the simulated distribution upward.</figcaption>
+        </figure>
+
+        <p>
+            Yep. What about an easy round where everyone does well? Again, the original post treats this as a quick plausibility check
+            rather than a full historical validation.
+        </p>
+
+        <pre class="blog-code"><code>set.seed(6)
+sampleScores      &lt;- c(8, 8, 9, 9, 9, 10, 8, 9, 8)
+roboAlexMean      &lt;- meanAlex + Sigma_YX %*% solve(Sigma_X) %*% (sampleScores - meanPlayerScores)
+roboAlexVariance  &lt;- Sigma_Y - Sigma_YX %*% solve(Sigma_X) %*% Sigma_XY
+predictions       &lt;- data.frame("preds" = rnorm(388, roboAlexMean, sqrt(roboAlexVariance)))
+predictions$preds[which(predictions$preds &gt; 10)] = 10</code></pre>
+        <figure class="blog-figure">
+            <img src="{% static 'GPTrivia/img/blog/roboalex-1-0/unnamed-chunk-11-1.png' %}" alt="Simulated versus actual score histogram for an easy round example.">
+            <figcaption>On an easy round, roboAlex’s simulated scores move up and bunch together.</figcaption>
+        </figure>
+
+        <p>
+            Dad scoring a 10 and Ichigo getting a 9 both help a lot, and roboAlex ends up with close to an even chance of either score.
+            The predicted values above 10 were truncated, assuming there were no bonus questions. The behavior felt plausible enough that
+            roboAlex started to look like a real stand-in player.
+        </p>
+
+        <p>That’s all for now.</p>
+
+        <h3>Coming in version 1.1 / 1.2</h3>
+        <ul>
+            <li>Fix the overestimation on joker rounds by comparing estimated joker scores with historical joker-round performance.</li>
+            <li>Fix the general underestimation by accounting for round creator more explicitly, possibly with creator-specific covariance matrices.</li>
+            <li>Collect historical data on scenarios like easy rounds or certain themes to check calibration more directly.</li>
+            <li>Try using htmlwidgets to make an interactive roboAlex predictor using sample sets of scores.</li>
+            <li>Normalize round scores, since the non-normality may partly come from rounds being out of different totals.</li>
+            <li>Later on, possibly adjust for round theme directly and remove the separate joker-round score shortcut.</li>
+        </ul>
+
+        <p class="blog-post-footer-note">
+            This page is an archived port of the original 2021 post from the old trivia-stats site. The prose and figures are preserved,
+            with the covariance widget converted into a static table for the Django site.
+        </p>
+    </article>
+</div>
+{% endblock %}
