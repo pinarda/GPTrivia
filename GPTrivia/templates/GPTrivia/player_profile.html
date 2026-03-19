@@ -40,7 +40,6 @@
                                         <p class="profile-settings-error">{{ error }}</p>
                                     {% endfor %}
                                     <div class="profile-intro-form-footer">
-                                        <p class="profile-intro-status" aria-live="polite"></p>
                                         <button class="expand-collapse-button profile-player-button profile-intro-save-button" type="submit">Save Intro</button>
                                     </div>
                                 </form>
@@ -1327,7 +1326,7 @@
 
             const textarea = form.querySelector('textarea');
             const status = form.querySelector('.profile-intro-status');
-            if (!textarea || !status) {
+            if (!textarea) {
                 return;
             }
 
@@ -1339,6 +1338,9 @@
             let pendingSave = false;
 
             const setStatus = (message, tone = '') => {
+                if (!status) {
+                    return;
+                }
                 status.textContent = message;
                 status.dataset.state = tone;
             };

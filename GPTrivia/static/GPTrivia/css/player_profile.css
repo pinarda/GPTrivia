@@ -148,7 +148,6 @@ a {
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    min-height: 1.25rem;
 }
 
 .profile-intro-status {
@@ -172,6 +171,10 @@ a {
 }
 
 .profile-intro-form.is-enhanced .profile-intro-save-button {
+    display: none;
+}
+
+.profile-intro-form.is-enhanced .profile-intro-form-footer {
     display: none;
 }
 
