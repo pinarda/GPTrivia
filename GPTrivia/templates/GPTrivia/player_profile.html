@@ -11,7 +11,7 @@
       --profile-player-color: {{ player_color }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260319e">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260319f">
 {% endblock %}
 
 {% block extra_meta %}
@@ -30,43 +30,47 @@
                     <div class="profile-control-heading">
                         <h2>About {{ player_name }}</h2>
                     </div>
-                    {% if is_own_profile and profile_intro_form %}
-                        <form class="profile-intro-form" method="post" action="{% url 'update_profile_intro' player_name=player_name %}" data-profile-intro-form>
-                            {% csrf_token %}
-                            {{ profile_intro_form.profile_intro }}
-                            {% for error in profile_intro_form.profile_intro.errors %}
-                                <p class="profile-settings-error">{{ error }}</p>
-                            {% endfor %}
-                            <div class="profile-intro-form-footer">
-                                <p class="profile-intro-status" aria-live="polite"></p>
-                                <button class="expand-collapse-button profile-player-button profile-intro-save-button" type="submit">Save Intro</button>
-                            </div>
-                        </form>
-                    {% else %}
-                        <div class="profile-intro-box{% if not profile_intro %} profile-intro-box--empty{% endif %}">
-                            {% if profile_intro %}
-                                {{ profile_intro|linebreaksbr }}
+                    <div class="profile-intro-layout">
+                        <div class="profile-intro-copy">
+                            {% if is_own_profile and profile_intro_form %}
+                                <form class="profile-intro-form" method="post" action="{% url 'update_profile_intro' player_name=player_name %}" data-profile-intro-form>
+                                    {% csrf_token %}
+                                    {{ profile_intro_form.profile_intro }}
+                                    {% for error in profile_intro_form.profile_intro.errors %}
+                                        <p class="profile-settings-error">{{ error }}</p>
+                                    {% endfor %}
+                                    <div class="profile-intro-form-footer">
+                                        <p class="profile-intro-status" aria-live="polite"></p>
+                                        <button class="expand-collapse-button profile-player-button profile-intro-save-button" type="submit">Save Intro</button>
+                                    </div>
+                                </form>
                             {% else %}
-                                Add a short intro.
+                                <div class="profile-intro-box{% if not profile_intro %} profile-intro-box--empty{% endif %}">
+                                    {% if profile_intro %}
+                                        {{ profile_intro|linebreaksbr }}
+                                    {% else %}
+                                        Add a short intro.
+                                    {% endif %}
+                                </div>
                             {% endif %}
                         </div>
-                    {% endif %}
 
-                    <div
-                        id="profile-summary-content"
-                        class="profile-deferred-content"
-                        data-profile-summary-content
-                        data-profile-stats-url="{{ profile_stats_url }}"
-                        data-defer-profile-stats="{% if defer_profile_stats %}true{% else %}false{% endif %}"
-                        aria-live="polite"
-                    >
-                        {% if defer_profile_stats %}
-                            <div class="profile-deferred-placeholder profile-deferred-placeholder--summary">
-                                Loading profile stats...
-                            </div>
-                        {% else %}
-                            {% include 'GPTrivia/_player_profile_summary.html' %}
-                        {% endif %}
+                        <div
+                            id="profile-summary-content"
+                            class="profile-deferred-content profile-summary-column"
+                            data-profile-summary-content
+                            data-profile-stats-url="{{ profile_stats_url }}"
+                            data-defer-profile-stats="{% if defer_profile_stats %}true{% else %}false{% endif %}"
+                            aria-live="polite"
+                        >
+                            {% if defer_profile_stats %}
+                                <div class="profile-deferred-placeholder profile-deferred-placeholder--summary">
+                                    Loading profile stats...
+                                </div>
+                            {% else %}
+                                {% include 'GPTrivia/_player_profile_summary.html' %}
+                            {% endif %}
+                        </div>
                     </div>
 
                     <div class="profile-summary-links" aria-label="Profile analysis links">
