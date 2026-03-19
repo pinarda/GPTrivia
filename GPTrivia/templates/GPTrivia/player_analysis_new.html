@@ -85,11 +85,11 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
 
-    let playerColorMapping = {{ playerColorMapping|safe }};
-    let players = {{ players|safe }};
-    let rounds = {{ rounds|safe }};
-    let mapping = {{ mapping|safe }};
-    let playerTextMapping = {{ player_text_mapping|safe }};
+    let playerColorMapping = {{ player_color_mapping_json|safe }};
+    let players = {{ players_json|safe }};
+    let rounds = {{ rounds_json|safe }};
+    let mapping = {{ mapping_json|safe }};
+    let playerTextMapping = {{ player_text_mapping_json|safe }};
     const profileUrlTemplate = "{% url 'player_profile' '__PROFILE_NAME__' %}";
     const isLightTheme = document.body.dataset.profileTheme === 'light';
     const analysisTextColor = isLightTheme ? '#1b2530' : '#ffffff';

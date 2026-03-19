@@ -755,15 +755,20 @@ def player_analysis(request):
 
     context = {
         'rounds': rounds,
+        'rounds_json': json.dumps(rounds, cls=DjangoJSONEncoder),
         'playerColorMapping': player_color_mapping,
+        'player_color_mapping_json': json.dumps(player_color_mapping, cls=DjangoJSONEncoder),
         'creators': creators,
         'categories': categories,
         'players': player_names,
+        'players_json': json.dumps(player_names, cls=DjangoJSONEncoder),
         'initial_creator_selection': initial_creator_selection,
         'initial_category_selection': initial_category_selection,
         'initial_player_selection': initial_player_selection,
         "mapping": player_name_mapping,
+        "mapping_json": json.dumps(player_name_mapping, cls=DjangoJSONEncoder),
         "player_text_mapping": player_text_mapping,
+        "player_text_mapping_json": json.dumps(player_text_mapping, cls=DjangoJSONEncoder),
     }
 
     return render(request, 'GPTrivia/player_analysis_new.html', context)

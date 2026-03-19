@@ -489,6 +489,8 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertContains(response, '<option value="Alex" selected>Alex</option>', html=True)
         self.assertContains(response, reverse('player_profile', args=['__PROFILE_NAME__']))
         self.assertContains(response, 'buildAnalysisTitle')
+        self.assertContains(response, '"creator": "Alex"')
+        self.assertNotContains(response, ': None')
 
     def test_player_analysis_hides_inactive_players_from_dropdown(self):
         GPTriviaRound.objects.create(
