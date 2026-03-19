@@ -36,6 +36,7 @@ body.site-shell {
     --profile-streak-column-gap: 0.01rem;
     --profile-streak-marker-size: 0.56rem;
     --profile-streak-date-height: 4.15rem;
+    --profile-desktop-hero-size: 360px;
 }
 
 body.site-shell[data-profile-theme="light"] {
@@ -515,7 +516,7 @@ a {
 
 @media screen and (min-width: 900px) {
     .profile-control-stack {
-        grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+        grid-template-columns: minmax(320px, var(--profile-desktop-hero-size)) minmax(0, 1fr);
         align-items: start;
         column-gap: 1rem;
     }
@@ -525,7 +526,14 @@ a {
         grid-row: 1;
         justify-self: start;
         align-self: center;
+        width: var(--profile-desktop-hero-size);
+        max-width: var(--profile-desktop-hero-size);
         margin: 0;
+    }
+
+    .profile-hero-image {
+        width: var(--profile-desktop-hero-size);
+        height: var(--profile-desktop-hero-size);
     }
 
     .profile-intro-card {
@@ -533,7 +541,7 @@ a {
         grid-row: 1;
         align-self: stretch;
         min-width: 0;
-        min-height: 320px;
+        min-height: var(--profile-desktop-hero-size);
         height: 100%;
     }
 
