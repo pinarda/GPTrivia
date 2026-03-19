@@ -738,7 +738,8 @@
         const compactLayout = window.matchMedia('(max-width: 768px)').matches;
         const categoryCount = Math.max(categories.length, 1);
         const slotWidth = 1 / categoryCount;
-        const lineHalfWidth = slotWidth * (compactLayout ? 0.34 : 0.38);
+        // Keep the mean bar aligned to the inner boxplot width instead of spanning the whole violin.
+        const lineHalfWidth = slotWidth * (compactLayout ? 0.11 : 0.13);
         const lineWidth = compactLayout ? 3 : 4;
 
         return plotData.map((scores, index) => {
