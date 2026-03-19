@@ -74,23 +74,48 @@
             </div>
         </div>
         <div class="profile-summary-item profile-summary-item--biased-creators">
-            <span class="profile-summary-label">Biased Creators</span>
+            <span class="profile-summary-label">Creator Favoritism Toward {{ player_name }}</span>
             <div class="profile-summary-pairs">
                 <span class="profile-summary-pair">
-                    <span class="profile-summary-pair-name">Highest</span>
+                    <span class="profile-summary-pair-name">Most</span>
                     <span class="profile-summary-pair-value">
-                        {% if max_bias_avg %}
-                            <a href="{% url 'player_profile' player_name=max_bias_avg %}" class="player_name" data-player="{{ max_bias_avg }}">{{ max_bias_avg }}</a> ({{ max_bias_avg_value }})
+                        {% if most_favoring_creator %}
+                            <a href="{% url 'player_profile' player_name=most_favoring_creator %}" class="player_name" data-player="{{ most_favoring_creator }}">{{ most_favoring_creator }}</a> ({{ most_favoring_creator_value }})
                         {% else %}
                             N/A
                         {% endif %}
                     </span>
                 </span>
                 <span class="profile-summary-pair">
-                    <span class="profile-summary-pair-name">Lowest</span>
+                    <span class="profile-summary-pair-name">Least</span>
                     <span class="profile-summary-pair-value">
-                        {% if min_bias_avg %}
-                            <a href="{% url 'player_profile' player_name=min_bias_avg %}" class="player_name" data-player="{{ min_bias_avg }}">{{ min_bias_avg }}</a> ({{ min_bias_avg_value }})
+                        {% if least_favoring_creator %}
+                            <a href="{% url 'player_profile' player_name=least_favoring_creator %}" class="player_name" data-player="{{ least_favoring_creator }}">{{ least_favoring_creator }}</a> ({{ least_favoring_creator_value }})
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
+                </span>
+            </div>
+        </div>
+        <div class="profile-summary-item profile-summary-item--creator-favoritism">
+            <span class="profile-summary-label">Players Favored by Creator {{ player_name }}</span>
+            <div class="profile-summary-pairs">
+                <span class="profile-summary-pair">
+                    <span class="profile-summary-pair-name">Most</span>
+                    <span class="profile-summary-pair-value">
+                        {% if most_favored_player %}
+                            <a href="{% url 'player_profile' player_name=most_favored_player %}" class="player_name" data-player="{{ most_favored_player }}">{{ most_favored_player }}</a> ({{ most_favored_player_value }})
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
+                </span>
+                <span class="profile-summary-pair">
+                    <span class="profile-summary-pair-name">Least</span>
+                    <span class="profile-summary-pair-value">
+                        {% if least_favored_player %}
+                            <a href="{% url 'player_profile' player_name=least_favored_player %}" class="player_name" data-player="{{ least_favored_player }}">{{ least_favored_player }}</a> ({{ least_favored_player_value }})
                         {% else %}
                             N/A
                         {% endif %}

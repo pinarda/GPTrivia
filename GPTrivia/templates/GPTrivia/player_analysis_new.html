@@ -305,7 +305,7 @@
             case 'CorrMatrix':
                 return `This matrix shows how predictive one player's score ${scope} is of other players' scores on the same rounds; 1 means perfect prediction, 0 means no correlation, and negative values mean players tend to move in opposite directions.`;
             case 'CreatorMatrix':
-                return `This chart shows how much a creator's round favors one particular player compared to the rest of the field${category ? ` within ${escapeHtml(category)} rounds` : ''}; each table value is the size of that bias in points.`;
+                return `This chart shows creator favoritism${player ? ` toward ${playerName}` : ''}${creator ? ` on ${linkedPossessiveName(creator)} rounds` : ''}${category ? ` within ${escapeHtml(category)} rounds` : ''}; each table value is the size of that favoritism in points.`;
             case 'PCAplot':
                 return `This chart shows which players tend to score similarly ${scope}; players that are closer together in 3D space have more similar scoring patterns.`;
             case 'catBar':

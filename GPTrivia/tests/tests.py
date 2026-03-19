@@ -1156,6 +1156,8 @@ class PlayerAnalysisViewTests(TestCase):
             f"{reverse('scoresheet_new')}?date=2023-01-01",
         )
         self.assertIn('Highest Percentage Score', payload['summary_html'])
+        self.assertIn('Creator Favoritism Toward Alex', payload['summary_html'])
+        self.assertIn('Players Favored by Creator Alex', payload['summary_html'])
         self.assertNotContains(response, 'Biggest Win')
         self.assertIn(f"{reverse('scoresheet_new')}?date=2023-01-08", payload['summary_html'])
 

@@ -650,7 +650,7 @@ class PlayerAnalysisPlot(View):
 
 
         return JsonResponse({
-            'title_corr': f"Bias Chart for {name}{cat} Rounds",
+            'title_corr': f"Creator Favoritism Chart for {name}{cat} Rounds",
             'correlation_matrix': corr_matrix_json,
             'columns': c
         })

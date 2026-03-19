@@ -1525,7 +1525,7 @@ def _build_profile_deferred_stats_context(
     max_creator_avg = eligible_creator_averages[0]['creator'] if eligible_creator_averages else ''
     min_creator_avg = eligible_creator_averages[-1]['creator'] if eligible_creator_averages else ''
 
-    final_results = {}
+    creator_player_scores = {}
     for creator_name in global_player_names:
         creator_records = [
             round_data for round_data in flattened_rounds
@@ -1540,49 +1540,89 @@ def _build_profile_deferred_stats_context(
                 if round_data.get(other_field) is not None
             ]
             player_scores[other_player] = (sum(values) / len(values)) if values else None
-        final_results[creator_name] = player_scores
+        creator_player_scores[creator_name] = player_scores
 
-    final_averages = {}
-    for creator_name, score_map in final_results.items():
+    creator_field_values = {}
+    for creator_name in global_player_names:
+        creator_field = player_field_for_name(creator_name)
+        values = [
+            round_data.get(creator_field)
+            for round_data in flattened_rounds
+            if round_data.get(creator_field) is not None
+        ]
+        creator_field_values[creator_name] = (sum(values) / len(values)) if values else None
+
+    creator_field_biases = {}
+    for creator_name, score_map in creator_player_scores.items():
         values = [avg_score for avg_score in score_map.values() if avg_score is not None]
-        final_averages[creator_name] = (sum(values) / len(values)) if values else None
+        creator_field_mean = (sum(values) / len(values)) if values else None
+        creator_field_value = creator_field_values.get(creator_name)
+        if creator_field_mean is not None and creator_field_value is not None:
+            creator_field_biases[creator_name] = creator_field_value - creator_field_mean
 
-    biases = {}
+    favoritism_toward_player = {}
     for item in creator_averages:
         creator_name = item['creator']
         if creator_name not in active_player_names:
             continue
-        if creator_name not in final_averages:
+        creator_mean_bias = creator_field_biases.get(creator_name)
+        player_creator_delta = item['avg_score']
+        if creator_mean_bias is None or player_creator_delta is None:
             continue
-        if final_averages[creator_name] is not None and item['avg_score'] is not None:
-            biases[creator_name] = item['avg_score'] - final_averages[creator_name]
-        else:
-            biases[creator_name] = 0
+        favoritism_toward_player[creator_name] = player_creator_delta - creator_mean_bias
 
-    sumb = 0
-    for entry in list(biases.keys()):
-        if biases[entry] is not None and player_avg is not None:
-            biases[entry] = biases[entry] + player_avg
-            sumb += biases[entry]
-        else:
-            biases[entry] = 0
-
-    if biases:
-        mean_bias = sumb / len(biases)
-        for entry in list(biases.keys()):
-            if biases[entry] is not None:
-                biases[entry] = biases[entry] - mean_bias
-            else:
-                biases[entry] = 0
-        max_bias_avg = max(biases, key=biases.get)
-        min_bias_avg = min(biases, key=biases.get)
-        max_bias_avg_value = "{:.2f}".format(biases[max_bias_avg])
-        min_bias_avg_value = "{:.2f}".format(biases[min_bias_avg])
+    if favoritism_toward_player:
+        most_favoring_creator = max(favoritism_toward_player, key=favoritism_toward_player.get)
+        least_favoring_creator = min(favoritism_toward_player, key=favoritism_toward_player.get)
+        most_favoring_creator_value = "{:.2f}".format(favoritism_toward_player[most_favoring_creator])
+        least_favoring_creator_value = "{:.2f}".format(favoritism_toward_player[least_favoring_creator])
     else:
-        max_bias_avg = ''
-        min_bias_avg = ''
-        max_bias_avg_value = "0.00"
-        min_bias_avg_value = "0.00"
+        most_favoring_creator = ''
+        least_favoring_creator = ''
+        most_favoring_creator_value = "0.00"
+        least_favoring_creator_value = "0.00"
+
+    player_creator_records = [
+        round_obj for round_obj in all_rounds
+        if _profile_player_matches_any_creator(
+            score_field,
+            round_obj.creator,
+            getattr(round_obj, 'secondary_creator', ''),
+        )
+    ]
+    creator_favoritism_by_player = {}
+    for other_player in global_player_names:
+        if other_player not in active_player_names or other_player == player_name:
+            continue
+        other_field = player_field_for_name(other_player)
+        creator_round_scores = [
+            get_round_score_map(round_obj, include_null_fixed=False).get(other_field)
+            for round_obj in player_creator_records
+            if get_round_score_map(round_obj, include_null_fixed=False).get(other_field) is not None
+        ]
+        if not creator_round_scores:
+            continue
+        creator_round_average = sum(creator_round_scores) / len(creator_round_scores)
+        overall_scores = [
+            round_data.get(other_field)
+            for round_data in flattened_rounds
+            if round_data.get(other_field) is not None
+        ]
+        if not overall_scores:
+            continue
+        overall_average = sum(overall_scores) / len(overall_scores)
+        creator_favoritism_by_player[other_player] = creator_round_average - overall_average
+
+    if creator_favoritism_by_player:
+        most_favored_player = max(creator_favoritism_by_player, key=creator_favoritism_by_player.get)
+        least_favored_player = min(creator_favoritism_by_player, key=creator_favoritism_by_player.get)
+        most_favored_player_value = "{:.2f}".format(creator_favoritism_by_player[most_favored_player])
+        least_favored_player_value = "{:.2f}".format(creator_favoritism_by_player[least_favored_player])
+    else:
+        most_favored_player = ''
+        least_favored_player = ''
+        most_favored_player_value = "0.00"
+        least_favored_player_value = "0.00"
 
     return {
         'total_rounds': total_rounds,
@@ -1594,10 +1634,14 @@ def _build_profile_deferred_stats_context(
         'min_avg': min_avg,
         'max_cat_avg': max_creator_avg,
         'min_cat_avg': min_creator_avg,
-        'max_bias_avg': max_bias_avg,
-        'min_bias_avg': min_bias_avg,
-        'max_bias_avg_value': max_bias_avg_value,
-        'min_bias_avg_value': min_bias_avg_value,
+        'most_favoring_creator': most_favoring_creator,
+        'least_favoring_creator': least_favoring_creator,
+        'most_favoring_creator_value': most_favoring_creator_value,
+        'least_favoring_creator_value': least_favoring_creator_value,
+        'most_favored_player': most_favored_player,
+        'least_favored_player': least_favored_player,
+        'most_favored_player_value': most_favored_player_value,
+        'least_favored_player_value': least_favored_player_value,
         'streak_timeline': streak_timeline['timeline'],
         'longest_play_streak': streak_timeline['longest_play_streak'],
         'longest_creator_streak': streak_timeline['longest_creator_streak'],
@@ -1977,10 +2021,14 @@ def player_profile_stats(request, player_name):
         'min_avg': context.get('min_avg'),
         'max_cat_avg': context.get('max_cat_avg'),
         'min_cat_avg': context.get('min_cat_avg'),
-        'max_bias_avg': context.get('max_bias_avg'),
-        'min_bias_avg': context.get('min_bias_avg'),
-        'max_bias_avg_value': context.get('max_bias_avg_value'),
-        'min_bias_avg_value': context.get('min_bias_avg_value'),
+        'most_favoring_creator': context.get('most_favoring_creator'),
+        'least_favoring_creator': context.get('least_favoring_creator'),
+        'most_favoring_creator_value': context.get('most_favoring_creator_value'),
+        'least_favoring_creator_value': context.get('least_favoring_creator_value'),
+        'most_favored_player': context.get('most_favored_player'),
+        'least_favored_player': context.get('least_favored_player'),
+        'most_favored_player_value': context.get('most_favored_player_value'),
+        'least_favored_player_value': context.get('least_favored_player_value'),
         'streak_timeline': context.get('streak_timeline'),
         'longest_play_streak': context.get('longest_play_streak'),
         'longest_creator_streak': context.get('longest_creator_streak'),
