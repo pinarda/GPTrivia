@@ -50,9 +50,29 @@ def _format_score_value(value):
 
 class PlayerAnalysisPlot(View):
     @staticmethod
+    def _parse_misc_flags(misc):
+        if misc is None:
+            return set()
+        if isinstance(misc, (list, tuple, set)):
+            values = misc
+        else:
+            values = str(misc).split(',')
+        normalized = set()
+        for value in values:
+            cleaned = str(value or '').strip().lower()
+            if cleaned:
+                normalized.add(cleaned)
+        return normalized
+
+    @staticmethod
     def _should_include_coop(misc):
-        normalized_misc = str(misc or '').strip().lower()
-        return normalized_misc in {'1', 'true', 'yes', 'on', 'include_coop'}
+        normalized_misc = PlayerAnalysisPlot._parse_misc_flags(misc)
+        return bool(normalized_misc & {'1', 'true', 'yes', 'on', 'include_coop'})
+
+    @staticmethod
+    def _should_include_inactive(misc):
+        normalized_misc = PlayerAnalysisPlot._parse_misc_flags(misc)
+        return bool(normalized_misc & {'include_inactive', 'show_inactive'})
 
     def _apply_misc_filters(self, queryset, misc):
         if not self._should_include_coop(misc):
@@ -133,11 +153,19 @@ class PlayerAnalysisPlot(View):
             display_name_for_player_field(player_field)
             for player_field in self.recently_active_player_fields
         }
-        self.eligible_player_fields = set(
+        self.global_eligible_player_fields = set(
             get_eligible_player_fields(all_round_objects, min_rounds=MIN_ANALYSIS_ROUNDS)
         )
-        self.eligible_player_fields &= recently_active_fields
-        if player and player_field_for_name(player) not in self.eligible_player_fields:
+        if self._should_include_inactive(misc):
+            self.eligible_player_fields = set(self.global_eligible_player_fields)
+        else:
+            self.eligible_player_fields = set(self.global_eligible_player_fields) & recently_active_fields
+
+        selected_player_field = player_field_for_name(player) if player else ''
+        if selected_player_field and selected_player_field in self.global_eligible_player_fields:
+            self.eligible_player_fields.add(selected_player_field)
+
+        if player and selected_player_field not in self.global_eligible_player_fields:
             return JsonResponse(
                 {'error': f'Player {player} has not played enough rounds for analysis'},
                 status=400,
@@ -701,6 +729,23 @@ class PlayerAnalysisPlot(View):
         if cat_name == "Category":
             colors = [get_category_color(category_name) for category_name in categories]
         else:
+            if not self._should_include_inactive(misc):
+                active_name_set = getattr(self, 'recently_active_player_names', set())
+                filtered_triplets = [
+                    (value, category_name)
+                    for value, category_name in zip(plot_values, categories)
+                    if category_name in active_name_set
+                ]
+                if not filtered_triplets:
+                    return JsonResponse({
+                        'categories': [],
+                        'mean_values': [],
+                        'colors': [],
+                        'title': f'{title_prefix} on {name}{cat} Rounds by {cat_name}',
+                        'xaxis': cat_name,
+                        'yaxis': yaxis_title,
+                    })
+                plot_values, categories = zip(*filtered_triplets)
             colors = [get_player_color(category_name) for category_name in categories]
 
         try:
@@ -1061,7 +1106,13 @@ class PlayerAnalysisPlot(View):
         player_field = player_field_for_name(player)
         if not player_field:
             return JsonResponse({'error': 'Player not found'}, status=400)
-        recently_active_player_names = getattr(self, 'recently_active_player_names', set())
+        if self._should_include_inactive(misc):
+            eligible_creator_names = {
+                display_name_for_player_field(player_field)
+                for player_field in getattr(self, 'global_eligible_player_fields', set())
+            }
+        else:
+            eligible_creator_names = getattr(self, 'recently_active_player_names', set())
 
         presentations = MergedPresentation.objects.all()
         selected_rounds = []
@@ -1112,7 +1163,7 @@ class PlayerAnalysisPlot(View):
                 ]
                 labels = [
                     label for label in labels
-                    if label and label in recently_active_player_names
+                    if label and label in eligible_creator_names
                 ]
             else:
                 labels = [getattr(round_obj, 'major_category', '') or 'Uncategorized']

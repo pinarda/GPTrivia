@@ -290,6 +290,49 @@ class PlayerAnalysisPlotTests(TestCase):
         self.assertEqual(list(include_coop_payload['categories']), ['Coop Category'])
         self.assertAlmostEqual(include_coop_payload['mean_values'][0], 2.5, places=6)
 
+    def test_creator_bar_excludes_inactive_creators_unless_requested(self):
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Recent Alex Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-05-01",
+            round_number=1,
+            max_score=10,
+            score_alex=8,
+            score_megan=6,
+        )
+        GPTriviaRound.objects.create(
+            creator="Jeff",
+            title="Old Jeff Round",
+            major_category="History",
+            minor_category1="Ancient",
+            minor_category2="Rome",
+            date="2021-01-01",
+            round_number=1,
+            max_score=10,
+            score_jeff=7,
+            score_alex=5,
+        )
+
+        default_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'creator_bar',
+        })
+        self.assertEqual(default_response.status_code, 200)
+        default_payload = default_response.json()
+        self.assertIn('Alex', list(default_payload['categories']))
+        self.assertNotIn('Jeff', list(default_payload['categories']))
+
+        include_inactive_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'creator_bar',
+            'misc': 'include_inactive',
+        })
+        self.assertEqual(include_inactive_response.status_code, 200)
+        include_inactive_payload = include_inactive_response.json()
+        self.assertIn('Alex', list(include_inactive_payload['categories']))
+        self.assertIn('Jeff', list(include_inactive_payload['categories']))
+
     def test_category_violin_summary_data(self):
         response = self.client.get(reverse('player_analysis_plot'), {
             'chart_type': 'category_violin_summary',
@@ -730,20 +773,23 @@ class PlayerAnalysisViewTests(TestCase):
             'creator': 'Alex',
             'player': 'Alex',
             'include_coop': '1',
+            'include_inactive': '1',
         })
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['initial_creator_selection'], 'Alex')
         self.assertEqual(response.context['initial_player_selection'], 'Alex')
         self.assertTrue(response.context['initial_include_coop'])
+        self.assertTrue(response.context['initial_include_inactive'])
         self.assertContains(response, '<option value="Alex" selected>Alex</option>', html=True)
         self.assertContains(response, 'id="include-coop-checkbox" checked', html=False)
+        self.assertContains(response, 'id="include-inactive-checkbox" checked', html=False)
         self.assertContains(response, reverse('player_profile', args=['__PROFILE_NAME__']))
         self.assertContains(response, 'buildAnalysisTitle')
         self.assertContains(response, '"creator": "Alex"')
         self.assertNotContains(response, ': None')
 
-    def test_player_analysis_hides_inactive_players_from_dropdown(self):
+    def test_player_analysis_dropdown_includes_inactive_players(self):
         GPTriviaRound.objects.create(
             creator="Alex",
             title="Recent Active Round",
@@ -771,7 +817,7 @@ class PlayerAnalysisViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('Alex', response.context['players'])
-        self.assertNotIn('Jeff', response.context['players'])
+        self.assertIn('Jeff', response.context['players'])
 
     def test_profile_view_includes_secondary_created_rounds(self):
         GPTriviaRound.objects.create(

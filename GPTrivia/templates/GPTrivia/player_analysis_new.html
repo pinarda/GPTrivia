@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319e">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319f">
 {% endblock %}
 
 {% block content %}
@@ -48,6 +48,10 @@
             <label class="analysis-checkbox-toggle" for="include-coop-checkbox">
                 <input type="checkbox" id="include-coop-checkbox" {% if initial_include_coop %}checked{% endif %}>
                 <span>Include co-op rounds</span>
+            </label>
+            <label class="analysis-checkbox-toggle" for="include-inactive-checkbox">
+                <input type="checkbox" id="include-inactive-checkbox" {% if initial_include_inactive %}checked{% endif %}>
+                <span>Include inactive players/creators</span>
             </label>
         </div>
     </div>
@@ -153,7 +157,15 @@
 
     function getAnalysisMisc() {
         const includeCoopCheckbox = document.getElementById('include-coop-checkbox');
-        return includeCoopCheckbox && includeCoopCheckbox.checked ? 'include_coop' : '';
+        const includeInactiveCheckbox = document.getElementById('include-inactive-checkbox');
+        const miscFlags = [];
+        if (includeCoopCheckbox && includeCoopCheckbox.checked) {
+            miscFlags.push('include_coop');
+        }
+        if (includeInactiveCheckbox && includeInactiveCheckbox.checked) {
+            miscFlags.push('include_inactive');
+        }
+        return miscFlags.join(',');
     }
 
     function getSelectedAnalysisFilters() {
@@ -161,12 +173,14 @@
         const categorySelector = document.getElementById('category-selector');
         const playerSelector = document.getElementById('player-selector');
         const includeCoopCheckbox = document.getElementById('include-coop-checkbox');
+        const includeInactiveCheckbox = document.getElementById('include-inactive-checkbox');
 
         return {
             creator: creatorSelector ? creatorSelector.value : '',
             category: categorySelector ? categorySelector.value : '',
             player: playerSelector ? playerSelector.value : '',
             includeCoop: Boolean(includeCoopCheckbox && includeCoopCheckbox.checked),
+            includeInactive: Boolean(includeInactiveCheckbox && includeInactiveCheckbox.checked),
         };
     }
 
@@ -2296,6 +2310,16 @@ function renderJokerPercentage(data) {
     const includeCoopCheckbox = document.getElementById('include-coop-checkbox');
     if (includeCoopCheckbox) {
         includeCoopCheckbox.addEventListener('change', function () {
+            const selectedCreator = document.getElementById('creator-selector').value;
+            const selectedCategory = document.getElementById('category-selector').value;
+            const selectedPlayer = document.getElementById('player-selector').value;
+            updatePlotByFilters(selectedCreator, selectedCategory, selectedPlayer);
+        });
+    }
+
+    const includeInactiveCheckbox = document.getElementById('include-inactive-checkbox');
+    if (includeInactiveCheckbox) {
+        includeInactiveCheckbox.addEventListener('change', function () {
             const selectedCreator = document.getElementById('creator-selector').value;
             const selectedCategory = document.getElementById('category-selector').value;
             const selectedPlayer = document.getElementById('player-selector').value;

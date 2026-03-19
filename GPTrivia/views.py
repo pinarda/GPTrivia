@@ -59,6 +59,7 @@ from .models import JeopardyQuestion, JeopardyRound, PushSubscription, Submitted
 from .player_scores import (
     FIXED_SCORE_FIELDS,
     MIN_ANALYSIS_ROUNDS,
+    get_all_player_fields,
     build_player_color_mapping,
     build_profile_color_override_mapping,
     build_player_text_mapping,
@@ -710,17 +711,13 @@ def blog_other_trivia_plots(request):
 @login_required
 def player_analysis(request):
     queryset_rounds = GPTriviaRound.objects.all()
+    presentation_queryset = MergedPresentation.objects.all()
     initial_creator_selection = (request.GET.get('creator') or '').strip()
     initial_category_selection = (request.GET.get('category') or '').strip()
     initial_player_selection = (request.GET.get('player') or '').strip()
     initial_include_coop = str(request.GET.get('include_coop') or '').strip().lower() in {'1', 'true', 'yes', 'on', 'include_coop'}
-    active_player_names = _get_recently_active_profile_player_names(list(queryset_rounds))
-    active_player_fields = [
-        field
-        for field in _get_global_player_fields()
-        if display_name_for_player_field(field) in active_player_names
-    ]
-    player_fields = active_player_fields
+    initial_include_inactive = str(request.GET.get('include_inactive') or '').strip().lower() in {'1', 'true', 'yes', 'on', 'include_inactive', 'show_inactive'}
+    player_fields = get_all_player_fields(queryset_rounds, presentation_queryset)
     player_names = [display_name_for_player_field(field) for field in player_fields]
     player_name_mapping = {
         player_name: player_field
@@ -768,6 +765,7 @@ def player_analysis(request):
         'initial_category_selection': initial_category_selection,
         'initial_player_selection': initial_player_selection,
         'initial_include_coop': initial_include_coop,
+        'initial_include_inactive': initial_include_inactive,
         "mapping": player_name_mapping,
         "mapping_json": json.dumps(player_name_mapping, cls=DjangoJSONEncoder),
         "player_text_mapping": player_text_mapping,
