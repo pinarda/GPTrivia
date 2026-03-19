@@ -782,20 +782,26 @@
             t: compactLayout ? 86 : 96,
             b: compactLayout ? 94 : 118,
         };
-        const innerWidth = Math.max(150, containerWidth - margin.l - margin.r);
-        const cellSize = innerWidth / Math.max(columnCount, 1);
-        const innerHeight = cellSize * Math.max(rowCount, 1);
-        const height = Math.max(
-            compactLayout ? 320 : 420,
-            Math.round(innerHeight + margin.t + margin.b)
+        const availableInnerWidth = Math.max(150, containerWidth - margin.l - margin.r);
+        const scaledInnerWidth = Math.max(
+            compactLayout ? 120 : 160,
+            availableInnerWidth * 0.5
         );
+        const cellSize = scaledInnerWidth / Math.max(columnCount, 1);
+        const innerHeight = cellSize * Math.max(rowCount, 1);
+        const width = Math.round(scaledInnerWidth + margin.l + margin.r);
+        const height = Math.round(innerHeight + margin.t + margin.b);
 
         if (plotElement) {
+            plotElement.style.width = `${width}px`;
+            plotElement.style.maxWidth = '100%';
+            plotElement.style.margin = '0 auto';
             plotElement.style.height = `${height}px`;
+            plotElement.style.minHeight = `${height}px`;
         }
 
         return {
-            width: containerWidth,
+            width,
             height,
             margin,
         };
