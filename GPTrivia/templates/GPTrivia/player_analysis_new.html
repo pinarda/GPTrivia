@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319g">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319h">
 {% endblock %}
 
 {% block content %}
@@ -137,6 +137,7 @@
     const isLightTheme = document.body.dataset.profileTheme === 'light';
     const analysisTextColor = isLightTheme ? '#1b2530' : '#ffffff';
     const analysisGridColor = isLightTheme ? 'rgba(27, 37, 48, 0.16)' : 'rgba(255, 255, 255, 0.2)';
+    const shellChromeColor = getComputedStyle(document.documentElement).getPropertyValue('--shell-chrome-color').trim() || '#f94144';
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -433,16 +434,25 @@
         const hoverColor = playerColorMapping[playerName] || analysisTextColor;
         const defaultColor = '#000000';
 
+        const applyLinkColor = (color) => {
+            linkElement.style.color = color;
+            linkElement.style.fill = color;
+            linkElement.querySelectorAll('tspan, text').forEach((child) => {
+                child.style.fill = color;
+                child.style.color = color;
+            });
+        };
+
         linkElement.dataset.analysisProfileLinkBound = 'true';
-        linkElement.style.color = defaultColor;
         linkElement.style.textDecoration = 'none';
-        linkElement.style.transition = 'color 0.18s ease';
+        linkElement.style.transition = 'color 0.18s ease, fill 0.18s ease';
+        applyLinkColor(defaultColor);
 
         const setDefaultColor = () => {
-            linkElement.style.color = defaultColor;
+            applyLinkColor(defaultColor);
         };
         const setHoverColor = () => {
-            linkElement.style.color = hoverColor;
+            applyLinkColor(hoverColor);
         };
 
         linkElement.addEventListener('mouseenter', setHoverColor);
@@ -654,19 +664,27 @@
         const roundsButton = document.getElementById("roundsButton");
         const expandCollapseButtons = document.getElementsByClassName("expand-collapse-button");
 
+        roundsButton.style.backgroundColor = shellChromeColor;
+        roundsButton.style.color = "white";
+        addHoverEffect(roundsButton, shellChromeColor);
+
         if (!playerName) {
-            roundsButton.style.backgroundColor = "#f94144";
-            roundsButton.style.color = "white";
             for (let i = 0; i < expandCollapseButtons.length; i++) {
-                expandCollapseButtons[i].style.backgroundColor = "#f94144";
+                if (expandCollapseButtons[i] === roundsButton) {
+                    continue;
+                }
+                expandCollapseButtons[i].style.backgroundColor = shellChromeColor;
                 expandCollapseButtons[i].style.color = "white";
-                addHoverEffect(expandCollapseButtons[i], "#f94144");
+                addHoverEffect(expandCollapseButtons[i], shellChromeColor);
                 // add rounded corners
                 expandCollapseButtons[i].style.borderRadius = "2px";
             }
         } else {
             const playerColor = playerColorMapping[playerName];
             for (let i = 0; i < expandCollapseButtons.length; i++) {
+                if (expandCollapseButtons[i] === roundsButton) {
+                    continue;
+                }
                 expandCollapseButtons[i].style.backgroundColor = playerColor;
                 expandCollapseButtons[i].style.color = textColor;
                 addHoverEffect(expandCollapseButtons[i], playerColor);
