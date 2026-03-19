@@ -994,6 +994,10 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertNotContains(response, 'Summary Stats')
         self.assertNotContains(response, 'class="profile-page-title"')
         self.assertIn('Trivia Night Timeline', payload['timeline_html'])
+        self.assertIn(
+            f'{reverse("scoresheet_new")}?date=2023-01-01',
+            payload['timeline_html'],
+        )
 
     def test_profile_view_counts_player_list_for_blank_presentation_night(self):
         GPTriviaRound.objects.create(

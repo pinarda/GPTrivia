@@ -34,7 +34,13 @@
                         style="--player-streak-color: {{ player_color }};"
                     ></span>
                     <span class="profile-streak-date-wrap">
-                        <span class="profile-streak-date">{{ night.date|date:"n/j/y" }}</span>
+                        <a
+                            class="profile-streak-date-link"
+                            href="{% url 'scoresheet_new' %}?date={{ night.date|date:'Y-m-d' }}"
+                            aria-label="Open scoresheet for {{ night.date|date:'F j, Y' }}"
+                        >
+                            <span class="profile-streak-date">{{ night.date|date:"n/j/y" }}</span>
+                        </a>
                     </span>
                 </div>
             {% endfor %}

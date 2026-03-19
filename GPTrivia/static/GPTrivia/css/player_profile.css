@@ -397,6 +397,21 @@ a {
     overflow: hidden;
 }
 
+.profile-streak-date-link {
+    position: absolute;
+    inset: 0;
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s ease, opacity 0.18s ease;
+}
+
+.profile-streak-date-link:hover,
+.profile-streak-date-link:focus-visible {
+    color: var(--profile-player-color, var(--profile-page-text));
+    opacity: 0.92;
+}
+
 .profile-streak-date {
     position: absolute;
     top: 0;
