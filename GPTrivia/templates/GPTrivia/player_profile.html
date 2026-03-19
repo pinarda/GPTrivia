@@ -5,13 +5,16 @@
   <style>
     body.site-shell {
       --profile-page-chrome-color: {{ profile_page_chrome_color }};
+      --profile-card-color: {{ profile_card_color }};
+      --profile-card-text-color: {{ profile_card_text_color }};
+      --profile-card-muted-text-color: {{ profile_card_muted_text_color }};
       --profile-page-trivia-color-one: {{ profile_page_trivia_color_one }};
       --profile-page-trivia-color-two: {{ profile_page_trivia_color_two }};
       --profile-page-trivia-color-three: {{ profile_page_trivia_color_three }};
       --profile-player-color: {{ player_color }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260319h">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260319i">
 {% endblock %}
 
 {% block extra_meta %}

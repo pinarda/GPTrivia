@@ -905,6 +905,41 @@ def _get_profile_page_color_value(profile, field_name, default_value):
     return getattr(profile, field_name, '') or default_value
 
 
+def _normalize_hex_color(color_value, fallback):
+    cleaned_value = str(color_value or '').strip()
+    if re.fullmatch(r'#[0-9a-fA-F]{6}', cleaned_value):
+        return cleaned_value.lower()
+    return fallback.lower()
+
+
+def _darken_hex_color(color_value, factor=0.88):
+    normalized = _normalize_hex_color(color_value, Profile.PROFILE_PAGE_CHROME_DEFAULT)
+    channels = [int(normalized[index:index + 2], 16) for index in (1, 3, 5)]
+    darkened_channels = [
+        max(0, min(255, int(round(channel * factor))))
+        for channel in channels
+    ]
+    return "#{:02x}{:02x}{:02x}".format(*darkened_channels)
+
+
+def _profile_text_color_for_background(color_value):
+    normalized = _normalize_hex_color(color_value, Profile.PROFILE_PAGE_CHROME_DEFAULT)
+    red = int(normalized[1:3], 16)
+    green = int(normalized[3:5], 16)
+    blue = int(normalized[5:7], 16)
+    brightness = (0.5 * red) + green + (0.25 * blue)
+    return '#ffffff' if brightness < 300 else '#111111'
+
+
+def _with_alpha(hex_color, alpha):
+    normalized = _normalize_hex_color(hex_color, '#ffffff')
+    red = int(normalized[1:3], 16)
+    green = int(normalized[3:5], 16)
+    blue = int(normalized[5:7], 16)
+    clamped_alpha = max(0, min(1, alpha))
+    return f"rgba({red}, {green}, {blue}, {clamped_alpha:.2f})"
+
+
 def _format_profile_percentage_stat(numerator, denominator, signed=False):
     if numerator is None or denominator in (None, 0):
         return ''
@@ -1726,6 +1761,14 @@ def player_profile_dict(request, player_name, form=None, intro_form=None, includ
 
     profile_user = User.objects.filter(username__iexact=player_name).first()
     profile = profile_user.profile if profile_user else None
+    profile_page_chrome_color = _get_profile_page_color_value(
+        profile,
+        'profile_page_chrome_color',
+        Profile.PROFILE_PAGE_CHROME_DEFAULT,
+    )
+    profile_card_color = _darken_hex_color(profile_page_chrome_color)
+    profile_card_text_color = _profile_text_color_for_background(profile_card_color)
+    profile_card_muted_text_color = _with_alpha(profile_card_text_color, 0.72)
     if form is None and include_form:
         form = ProfilePictureForm(instance=profile)
     profile_picture_url = profile.profile_picture.url if profile else '/media/default.jpg'
@@ -1745,11 +1788,10 @@ def player_profile_dict(request, player_name, form=None, intro_form=None, includ
 
     context = {
         'profile_user': profile_user,
-        'profile_page_chrome_color': _get_profile_page_color_value(
-            profile,
-            'profile_page_chrome_color',
-            Profile.PROFILE_PAGE_CHROME_DEFAULT,
-        ),
+        'profile_page_chrome_color': profile_page_chrome_color,
+        'profile_card_color': profile_card_color,
+        'profile_card_text_color': profile_card_text_color,
+        'profile_card_muted_text_color': profile_card_muted_text_color,
         'profile_page_trivia_color_one': _get_profile_page_color_value(
             profile,
             'profile_page_trivia_color_one',

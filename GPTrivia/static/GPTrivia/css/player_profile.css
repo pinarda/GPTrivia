@@ -8,6 +8,9 @@ body.site-shell {
     --profile-muted-text: rgba(255, 255, 255, 0.72);
     --profile-surface: var(--profile-header-footer-color);
     --profile-surface-alt: #20233a;
+    --profile-card-surface: var(--profile-card-color, color-mix(in srgb, var(--profile-header-footer-color) 88%, black));
+    --profile-card-text: var(--profile-card-text-color, #ffffff);
+    --profile-card-muted-text: var(--profile-card-muted-text-color, rgba(255, 255, 255, 0.72));
     --profile-border: rgba(255, 255, 255, 0.14);
     --profile-input-bg: #20233a;
     --profile-input-text: #ffffff;
@@ -113,15 +116,15 @@ a {
 .profile-intro-box {
     min-height: 4.4rem;
     padding: 0.85rem 0.95rem;
-    background: var(--profile-input-bg);
+    background: var(--profile-card-surface);
     border: 1px solid var(--profile-input-border);
-    color: var(--profile-input-text);
+    color: var(--profile-card-text);
     line-height: 1.55;
     white-space: pre-wrap;
 }
 
 .profile-intro-box--empty {
-    color: var(--profile-muted-text);
+    color: var(--profile-card-muted-text);
 }
 
 .profile-intro-form {
@@ -135,12 +138,16 @@ a {
     padding: 0.8rem 0.9rem;
     border: 1px solid var(--profile-input-border);
     border-radius: 0;
-    background: var(--profile-input-bg);
-    color: var(--profile-input-text);
+    background: var(--profile-card-surface);
+    color: var(--profile-card-text);
     font: inherit;
     line-height: 1.45;
     resize: vertical;
     box-sizing: border-box;
+}
+
+.profile-intro-form textarea::placeholder {
+    color: var(--profile-card-muted-text);
 }
 
 .profile-intro-form-footer {
@@ -219,12 +226,12 @@ a {
     gap: 0.18rem;
     min-width: 0;
     padding: 0.58rem 0.66rem;
-    background: var(--profile-surface-alt);
+    background: var(--profile-card-surface);
     border: 1px solid var(--profile-border);
 }
 
 .profile-summary-label {
-    color: var(--profile-muted-text);
+    color: var(--profile-card-muted-text);
     font-size: 0.68rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -232,7 +239,7 @@ a {
 
 .profile-summary-value {
     min-width: 0;
-    color: var(--profile-page-text);
+    color: var(--profile-card-text);
     font-size: 0.93rem;
     line-height: 1.32;
     overflow-wrap: anywhere;
@@ -278,13 +285,13 @@ a {
 }
 
 .profile-summary-pair-name {
-    color: var(--profile-muted-text);
+    color: var(--profile-card-muted-text);
     font-size: 0.83rem;
 }
 
 .profile-summary-pair-value {
     min-width: 0;
-    color: var(--profile-page-text);
+    color: var(--profile-card-text);
     font-size: 0.93rem;
     line-height: 1.28;
     text-align: right;
