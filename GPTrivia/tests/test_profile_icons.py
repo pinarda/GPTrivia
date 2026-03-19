@@ -27,6 +27,12 @@ class ProfileIconTests(TestCase):
         image_buffer.seek(0)
         return SimpleUploadedFile('profile.jpg', image_buffer.getvalue(), content_type='image/jpeg')
 
+    def _make_large_uploaded_image(self, color=(80, 120, 220)):
+        image_buffer = io.BytesIO()
+        Image.new('RGB', (1800, 1800), color).save(image_buffer, format='JPEG')
+        image_buffer.seek(0)
+        return SimpleUploadedFile('profile-large.jpg', image_buffer.getvalue(), content_type='image/jpeg')
+
     def _make_split_uploaded_image(self):
         image_buffer = io.BytesIO()
         image = Image.new('RGB', (200, 100), (220, 20, 60))
@@ -124,6 +130,33 @@ class ProfileIconTests(TestCase):
             self.assertEqual(cropped_image.size, (100, 100))
             center_pixel = cropped_image.convert('RGB').getpixel((50, 50))
             self.assertGreater(center_pixel[2], center_pixel[0])
+
+    def test_upload_profile_picture_downsizes_large_uploads(self):
+        user = User.objects.create_user(username='Alex', password='pw')
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse('upload_profile_picture'),
+            {
+                'profile_picture': self._make_large_uploaded_image(),
+                'profile_color': '#123abc',
+                'profile_page_chrome_color': '#654321',
+                'profile_page_trivia_color_one': '#111111',
+                'profile_page_trivia_color_two': '#222222',
+                'profile_page_trivia_color_three': '#333333',
+                'profile_page_theme': 'light',
+                'site_theme': 'light',
+                'crop_x': '0',
+                'crop_y': '0',
+                'crop_size': '1800',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        user.profile.refresh_from_db()
+
+        with Image.open(user.profile.profile_picture.path) as saved_image:
+            self.assertEqual(saved_image.size, (720, 720))
 
     def test_scoresheet_view_applies_saved_light_theme(self):
         user = User.objects.create_user(username='Alex', password='pw')
