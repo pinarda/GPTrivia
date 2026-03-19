@@ -11,7 +11,7 @@
       --profile-player-color: {{ player_color }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260318u">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260319a">
 {% endblock %}
 
 {% block extra_meta %}
@@ -167,11 +167,11 @@
                             <span class="profile-streak-heading-summary">
                                 <span class="profile-streak-summary-line">
                                     <span class="profile-streak-summary-word profile-streak-summary-word--player">Player</span>
-                                    streak: {{ longest_play_streak }} night{{ longest_play_streak|pluralize }}
+                                    longest streak: {{ longest_play_streak }} night{{ longest_play_streak|pluralize }}
                                 </span>
                                 <span class="profile-streak-summary-line">
                                     <span class="profile-streak-summary-word profile-streak-summary-word--creator">Creator</span>
-                                    streak: {{ longest_creator_streak }} presentation{{ longest_creator_streak|pluralize }}
+                                    longest streak: {{ longest_creator_streak }} presentation{{ longest_creator_streak|pluralize }}
                                 </span>
                             </span>
                         </h2>
@@ -184,7 +184,7 @@
                             </span>
                             <span class="profile-streak-legend-item">
                                 <span class="profile-streak-marker profile-streak-marker--creator is-active"></span>
-                                <span><span class="profile-streak-summary-word profile-streak-summary-word--creator">Creator</span> round</span>
+                                <span><span class="profile-streak-summary-word profile-streak-summary-word--creator">Created</span> round</span>
                             </span>
                         </div>
                         <div class="profile-streak-timeline-shell" data-scroll-right="true">
@@ -1210,6 +1210,13 @@
                 button.style.color = textColor;
             });
 
+            const summaryLinks = document.querySelectorAll('.profile-summary-link');
+            summaryLinks.forEach(link => {
+                link.style.backgroundColor = playerColor;
+                link.style.color = textColor;
+                link.style.borderColor = borderColor;
+            });
+
             const fileInput = document.getElementById('profile-picture-input');
             if (fileInput) {
                 fileInput.style.setProperty('--profile-file-button-bg', triviaColorTwo);
@@ -1222,12 +1229,6 @@
                 button.style.backgroundColor = playerColor;
                 button.style.color = textColor;
                 button.style.border = 'none';
-                button.addEventListener('mouseover', () => {
-                    button.style.backgroundColor = borderColor;
-                });
-                button.addEventListener('mouseout', () => {
-                    button.style.backgroundColor = playerColor;
-                });
             });
         }
 
@@ -2147,16 +2148,6 @@
             initializeSlidesButtons();
             initializeProfileTableSorting();
             initializeProfileAppearanceEditor();
-
-            document.querySelectorAll('.profile-player-button').forEach(button => {
-                const playerColor = playerColorMapping[playerName];
-                button.addEventListener('mouseover', () => {
-                    button.style.backgroundColor = darkenColor(playerColor);
-                });
-                button.addEventListener('mouseout', () => {
-                    button.style.backgroundColor = playerColor;
-                });
-            });
         });
     </script>
 {% endblock %}

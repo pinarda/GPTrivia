@@ -193,6 +193,7 @@ a {
 .profile-summary-links {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 0.55rem;
     margin-top: 0.75rem;
 }
@@ -201,21 +202,18 @@ a {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: auto;
+    min-width: 210px;
     min-height: 42px;
     padding: 0.62rem 0.9rem;
     border: 1px solid var(--profile-border);
-    background: var(--profile-surface-alt);
+    background: var(--profile-player-color, var(--profile-surface-alt));
     color: var(--profile-page-text);
     text-decoration: none;
     font-family: YoungSerif, serif;
     font-size: 0.98rem;
     line-height: 1.2;
-}
-
-.profile-summary-link:hover,
-.profile-summary-link:focus-visible {
-    background: var(--profile-trivia-color-one, var(--profile-surface-alt));
-    color: var(--profile-page-text);
+    text-align: center;
 }
 
 .profile-summary-pairs {
@@ -341,9 +339,10 @@ a {
 
 .profile-streak-date {
     position: absolute;
-    top: 0.82rem;
+    top: 0;
     left: 50%;
     display: block;
+    margin-top: 1.3rem;
     width: calc(var(--profile-streak-date-height) - 0.35rem);
     font-family: Monaco, monospace;
     font-size: 0.78rem;
@@ -473,6 +472,7 @@ a {
 .profile-control-stack button,
 .profile-inline-form button,
 .slides-button,
+.profile-summary-link,
 .profile-settings-form button,
 .profile-settings-form input[type="file"]::file-selector-button,
 .profile-settings-form input[type="file"]::-webkit-file-upload-button {
@@ -493,6 +493,34 @@ a {
 .slides-button {
     width: 100%;
     cursor: pointer;
+    transition: filter 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.profile-summary-link {
+    cursor: pointer;
+    transition: filter 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.profile-player-button:hover,
+.profile-player-button:focus-visible,
+.profile-control-stack .expand-collapse-button:hover,
+.profile-control-stack .expand-collapse-button:focus-visible,
+.profile-inline-form button:hover,
+.profile-inline-form button:focus-visible,
+.profile-settings-form button:hover,
+.profile-settings-form button:focus-visible,
+.slides-button:hover,
+.slides-button:focus-visible,
+.profile-summary-link:hover,
+.profile-summary-link:focus-visible {
+    filter: brightness(0.88);
+}
+
+.profile-settings-form input[type="file"]:hover::file-selector-button,
+.profile-settings-form input[type="file"]:focus-visible::file-selector-button,
+.profile-settings-form input[type="file"]:hover::-webkit-file-upload-button,
+.profile-settings-form input[type="file"]:focus-visible::-webkit-file-upload-button {
+    filter: brightness(0.88);
 }
 
 .profile-panel-toggle[aria-expanded="true"]::after {
@@ -1369,7 +1397,6 @@ a {
 
     .profile-streak-date {
         font-size: 0.68rem;
-        top: 1.7rem;
         width: calc(var(--profile-streak-date-height) - 0.15rem);
     }
 
