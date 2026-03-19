@@ -358,3 +358,59 @@ class ScoresheetSyncTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(MergedPresentation.objects.count(), 0)
+
+    def test_patch_save_prefers_selected_date_when_presentation_id_is_duplicated(self):
+        older_duplicate = MergedPresentation.objects.create(
+            name="05.05.2023",
+            presentation_id="presentation-duplicate",
+            round_names=["Old Round"],
+            creator_list=["Megan"],
+            joker_round_indices={},
+            player_list={"score_megan": "score_megan"},
+            host="Old Host",
+            scorekeeper="Old Scorekeeper",
+            style_points={},
+            notes="older duplicate",
+            tiebreak_winner="",
+            crowned_winner="",
+        )
+        target_duplicate = MergedPresentation.objects.create(
+            name="05.12.2023",
+            presentation_id="presentation-duplicate",
+            round_names=["Target Round"],
+            creator_list=["Alex"],
+            joker_round_indices={},
+            player_list={"score_alex": "score_alex"},
+            host="Alex",
+            scorekeeper="Megan",
+            style_points={},
+            notes="target duplicate",
+            tiebreak_winner="",
+            crowned_winner="",
+        )
+
+        payload = {
+            "presentation_id": "presentation-duplicate",
+            "selected_date": "2023-05-12",
+            "client_id": "client-dup",
+            "mutation_id": "mutation-dup",
+            "round_updates": [],
+            "presentation_updates": {
+                "host": "Jenny",
+                "notes": "updated duplicate target",
+            },
+        }
+
+        response = self.client.post(
+            reverse("save_scores"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        older_duplicate.refresh_from_db()
+        target_duplicate.refresh_from_db()
+        self.assertEqual(older_duplicate.host, "Old Host")
+        self.assertEqual(older_duplicate.notes, "older duplicate")
+        self.assertEqual(target_duplicate.host, "Jenny")
+        self.assertEqual(target_duplicate.notes, "updated duplicate target")

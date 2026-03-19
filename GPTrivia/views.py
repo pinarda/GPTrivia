@@ -2945,6 +2945,34 @@ def _current_trivia_date():
     return datetime.datetime.now(TRIVIA_TIMEZONE).date()
 
 
+def _choose_scoresheet_presentation(presentations, *, presentation_id=None, selected_date=None):
+    matches = list(presentations)
+    if not matches:
+        return None
+
+    if len(matches) > 1:
+        logger.warning(
+            "Multiple ready MergedPresentation rows matched scoresheet lookup for "
+            "presentation_id=%s selected_date=%s ids=%s",
+            presentation_id or "",
+            selected_date or "",
+            [presentation.id for presentation in matches],
+        )
+
+    parsed_selected_date = _parse_scoresheet_date(selected_date)
+    if parsed_selected_date:
+        date_matches = [
+            presentation
+            for presentation in matches
+            if _parse_presentation_name_date(presentation.name) == parsed_selected_date
+        ]
+        if date_matches:
+            matches = date_matches
+
+    matches.sort(key=lambda presentation: presentation.id, reverse=True)
+    return matches[0]
+
+
 def _get_global_player_fields():
     return get_eligible_player_fields(
         list(GPTriviaRound.objects.all()),
@@ -2968,19 +2996,24 @@ def _build_round_rows(round_queryset, player_fields):
 
 def _get_scoresheet_presentation(presentation_id=None, selected_date=None):
     if presentation_id:
-        try:
-            return _ready_presentations_queryset().get(presentation_id=presentation_id)
-        except ObjectDoesNotExist:
-            return None
+        return _choose_scoresheet_presentation(
+            _ready_presentations_queryset().filter(presentation_id=presentation_id),
+            presentation_id=presentation_id,
+            selected_date=selected_date,
+        )
 
-    presentation_name = _presentation_name_for_date(selected_date)
-    if not presentation_name:
+    parsed_selected_date = _parse_scoresheet_date(selected_date)
+    if not parsed_selected_date:
         return None
 
-    try:
-        return _ready_presentations_queryset().get(name=presentation_name)
-    except ObjectDoesNotExist:
-        return None
+    return _choose_scoresheet_presentation(
+        [
+            presentation
+            for presentation in _ready_presentations_queryset().order_by("-id")
+            if _parse_presentation_name_date(presentation.name) == parsed_selected_date
+        ],
+        selected_date=selected_date,
+    )
 
 
 def _save_scores_patch(data):
@@ -3273,25 +3306,27 @@ def save_scores(request):
 
     # Update the joker_round_indices in the MergedPresentation
     if presentation_id:
-        try:
-            presentation = MergedPresentation.objects.get(presentation_id=presentation_id)
-            presentation.joker_round_indices = joker_round_indices
-            print(f"joker_round_indices: {joker_round_indices}")
-            print(f"type of joker_round_indices: {type(joker_round_indices)}")
-            presentation.creator_list = creator_list
-            presentation.player_list = all_player_list
-            presentation.round_names = round_names
-
-            # NEW
-            presentation.host = host
-            presentation.scorekeeper = scorekeeper
-            presentation.style_points = style_points
-            presentation.notes = notes
-            presentation.tiebreak_winner = tiebreak_winner
-
-            presentation.save()
-        except ObjectDoesNotExist:
+        presentation = _get_scoresheet_presentation(
+            presentation_id=presentation_id,
+            selected_date=date_str,
+        )
+        if presentation is None:
             return JsonResponse({"message": "Presentation not found."}, status=400)
+        presentation.joker_round_indices = joker_round_indices
+        print(f"joker_round_indices: {joker_round_indices}")
+        print(f"type of joker_round_indices: {type(joker_round_indices)}")
+        presentation.creator_list = creator_list
+        presentation.player_list = all_player_list
+        presentation.round_names = round_names
+
+        # NEW
+        presentation.host = host
+        presentation.scorekeeper = scorekeeper
+        presentation.style_points = style_points
+        presentation.notes = notes
+        presentation.tiebreak_winner = tiebreak_winner
+
+        presentation.save()
     elif date_str:
         try:
             presentation = _ready_presentations_queryset().get(
