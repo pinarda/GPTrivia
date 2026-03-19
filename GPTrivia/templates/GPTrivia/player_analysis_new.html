@@ -759,9 +759,16 @@
         return window.matchMedia('(max-width: 768px)').matches;
     }
 
-    function buildBoxAlignedViolinMeanShapes(plotData) {
-        const compactLayout = window.matchMedia('(max-width: 768px)').matches;
-        const lineHalfWidth = compactLayout ? 0.12 : 0.15;
+    function buildViolinXPositions(count) {
+        const compactLayout = isCompactAnalysisLayout();
+        const start = compactLayout ? 1.05 : 1.1;
+        const step = compactLayout ? 1.38 : 1.52;
+        return Array.from({ length: count }, (_, index) => start + (index * step));
+    }
+
+    function buildBoxAlignedViolinMeanShapes(plotData, xPositions) {
+        const compactLayout = isCompactAnalysisLayout();
+        const lineHalfWidth = compactLayout ? 0.1 : 0.12;
         const lineWidth = compactLayout ? 3 : 4;
 
         return plotData.map((scores, index) => {
@@ -776,8 +783,8 @@
                 type: 'line',
                 xref: 'x',
                 yref: 'y',
-                x0: (index + 1) - lineHalfWidth,
-                x1: (index + 1) + lineHalfWidth,
+                x0: xPositions[index] - lineHalfWidth,
+                x1: xPositions[index] + lineHalfWidth,
                 y0: meanValue,
                 y1: meanValue,
                 line: {
@@ -791,12 +798,13 @@
 
     function buildNumericViolinTraces(labels, plotData, colors, hoverTexts) {
         const compactLayout = isCompactAnalysisLayout();
-        return labels.map((label, index) => ({
+        const xPositions = buildViolinXPositions(labels.length);
+        const traces = labels.map((label, index) => ({
             type: 'violin',
-            x: Array((plotData[index] || []).length).fill(index + 1),
+            x: Array((plotData[index] || []).length).fill(xPositions[index]),
             y: plotData[index],
             name: label,
-            width: compactLayout ? 0.56 : 0.64,
+            width: compactLayout ? 0.48 : 0.54,
             box: {
                 visible: true
             },
@@ -804,8 +812,8 @@
                 visible: false
             },
             points: 'all',
-            pointpos: 0,
-            jitter: compactLayout ? 0.16 : 0.22,
+            pointpos: compactLayout ? -0.82 : -0.9,
+            jitter: compactLayout ? 0.1 : 0.12,
             marker: {
                 color: colors[index],
                 size: compactLayout ? 3 : 5,
@@ -814,12 +822,18 @@
             text: hoverTexts[index],
             hoverinfo: 'text'
         }));
+
+        traces.xPositions = xPositions;
+        return traces;
     }
 
     function buildResponsiveViolinLayout(data, labels, options = {}) {
         const compactLayout = isCompactAnalysisLayout();
         const includeMeanShapes = !!options.includeMeanShapes;
         const plotData = options.plotData || [];
+        const xPositions = options.xPositions || buildViolinXPositions(labels.length);
+        const step = xPositions.length > 1 ? (xPositions[1] - xPositions[0]) : (compactLayout ? 1.38 : 1.52);
+        const rangePadding = compactLayout ? 0.48 : 0.56;
 
         return {
             title: data.title,
@@ -834,9 +848,12 @@
                 title: data.xaxis,
                 type: 'linear',
                 tickmode: 'array',
-                tickvals: labels.map((_, index) => index + 1),
+                tickvals: xPositions,
                 ticktext: labels,
-                range: [0.5, labels.length + 0.5],
+                range: [
+                    (xPositions[0] || 1) - rangePadding,
+                    (xPositions[xPositions.length - 1] || 1) + (step * 0.5),
+                ],
                 tickangle: compactLayout ? -60 : -45,
                 tickfont: {
                     size: compactLayout ? 10 : 12,
@@ -856,7 +873,7 @@
                 family: "YoungSerif"
             },
             showlegend: false,
-            shapes: includeMeanShapes ? buildBoxAlignedViolinMeanShapes(plotData) : [],
+            shapes: includeMeanShapes ? buildBoxAlignedViolinMeanShapes(plotData, xPositions) : [],
             annotations: includeMeanShapes ? [{
                 text: 'Black lines show mean score',
                 x: 1,
@@ -1780,7 +1797,9 @@
         const colors = data.data.map(playerData => playerData.color);
         const hoverTexts = data.data.map(playerData => playerData.hover_texts);
         const traces = buildNumericViolinTraces(labels, plotData, colors, hoverTexts);
-        const layout = buildResponsiveViolinLayout(data, labels);
+        const layout = buildResponsiveViolinLayout(data, labels, {
+            xPositions: traces.xPositions,
+        });
 
         Plotly.newPlot('violin-space', traces, layout, {displaylogo: false, responsive: true});
     }
@@ -1997,6 +2016,7 @@
         const layout = buildResponsiveViolinLayout(data, data.categories, {
             includeMeanShapes: true,
             plotData: data.plot_data,
+            xPositions: traces.xPositions,
         });
 
         Plotly.newPlot('player-violin-space', traces, layout, {displaylogo: false, responsive: true});
@@ -2008,6 +2028,7 @@
         const layout = buildResponsiveViolinLayout(data, data.categories, {
             includeMeanShapes: true,
             plotData: data.plot_data,
+            xPositions: traces.xPositions,
         });
 
         Plotly.newPlot('creator-violin-space', traces, layout, {displaylogo: false, responsive: true});
