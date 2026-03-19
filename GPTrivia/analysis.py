@@ -39,6 +39,15 @@ def calculate_pvalues(df):
 def _analysis_current_trivia_date():
     return datetime.date.today()
 
+
+def _format_score_value(value):
+    if value is None or pd.isna(value):
+        return ''
+    numeric_value = float(value)
+    if numeric_value.is_integer():
+        return str(int(numeric_value))
+    return f'{numeric_value:g}'
+
 class PlayerAnalysisPlot(View):
 
     @staticmethod
@@ -310,22 +319,38 @@ class PlayerAnalysisPlot(View):
 
         players = [display_name_for_player_field(col) for col in score_columns]
         colors = [get_player_color(player_name) for player_name in players]
+        max_scores = df['max_score'].replace(0, np.nan)
+        unfiltered_max_scores = unfiltered_df['max_score'].replace(0, np.nan)
 
         data = []
 
         for col, player, color in zip(score_columns, players, colors):
             if player.lower() != creator.lower():
-                scores = df[col] - unfiltered_df[col].mean(skipna=True)
-                # before we drop the scores, we need to drop the corresponding titles
-                titles = df['title'].tolist()
-                titles = [title for title, score in zip(titles, scores) if not np.isnan(score)]
-                scores = scores.dropna().tolist()
-                mean_score_diff = np.mean(scores)
-                # titles = df['title'].tolist()
-                hover_texts = [f"{title} - Score: {score:.2f}" for title, score in zip(titles, scores)]
+                normalized_scores = (df[col] / max_scores) * 100
+                normalized_baseline = (unfiltered_df[col] / unfiltered_max_scores) * 100
+                adjusted_scores = normalized_scores - normalized_baseline.mean(skipna=True)
+                plot_scores = []
+                hover_texts = []
+
+                for row_index, adjusted_score in adjusted_scores.items():
+                    if np.isnan(adjusted_score):
+                        continue
+                    raw_score = df.at[row_index, col]
+                    max_score = df.at[row_index, 'max_score']
+                    percent_score = normalized_scores.loc[row_index]
+                    title = df.at[row_index, 'title']
+                    plot_scores.append(adjusted_score)
+                    hover_texts.append(
+                        f"{title}<br>"
+                        f"Raw score: {_format_score_value(raw_score)}/{_format_score_value(max_score)} "
+                        f"({percent_score:.1f}%)<br>"
+                        f"Difference vs typical score: {adjusted_score:+.1f} pct pts"
+                    )
+
+                mean_score_diff = np.mean(plot_scores) if plot_scores else 0
                 data.append({
                     'player': player,
-                    'scores': scores,
+                    'scores': plot_scores,
                     'color': color,
                     'mean_score_diff': mean_score_diff,
                     'hover_texts': hover_texts
@@ -349,9 +374,9 @@ class PlayerAnalysisPlot(View):
         try:
             response_data = {
                 'data': data,
-                'title': f"Score Difference by Player on {name}{cat} Rounds",
+                'title': f"Percentage Score Above or Below Each Player's Typical Score on {name}{cat} Rounds",
                 'xaxis': 'Player',
-                'yaxis': 'Score Difference'
+                'yaxis': 'Percentage Points vs Typical Score'
             }
             return JsonResponse(response_data)
         except Exception as e:
@@ -664,20 +689,48 @@ class PlayerAnalysisPlot(View):
             if player_column not in df.columns:
                 return JsonResponse({'error': f'Score column for player {player} not found'}, status=400)
 
-        # Prepare data for violin plot
         if player:
             player_column = player_field_for_name(player)
-            if category == "":
+            player_percentages = (df[player_column] / df['max_score'].replace(0, np.nan)) * 100
+            player_mean_percentage = player_percentages.mean(skipna=True)
 
-                data = df.groupby('major_category')[player_column].apply(list).reset_index(name='scores')
-                # add the titles column to the data
-                data['titles'] = df.groupby('major_category')['title'].apply(list).reset_index(name='titles')['titles']
+            if category == "":
+                group_column = 'major_category'
                 cat_name = "Category"
             elif creator == "":
-                data = df.groupby('creator')[player_column].apply(list).reset_index(name='scores')
-                # add the titles column to the data
-                data['titles'] = df.groupby('creator')['title'].apply(list).reset_index(name='titles')['titles']
+                group_column = 'creator'
                 cat_name = "Creator"
+            else:
+                return JsonResponse({'error': 'Invalid violin grouping'}, status=400)
+
+            grouped_rows = []
+            for group_value, group_df in df.groupby(group_column):
+                group_scores = []
+                group_hover_texts = []
+                for _, row in group_df.iterrows():
+                    raw_score = row.get(player_column)
+                    max_score = row.get('max_score')
+                    if pd.isna(raw_score) or pd.isna(max_score) or max_score == 0:
+                        continue
+                    percent_score = (raw_score / max_score) * 100
+                    adjusted_score = percent_score - player_mean_percentage
+                    group_scores.append(adjusted_score)
+                    group_hover_texts.append(
+                        f"{row.get('title', '')}<br>"
+                        f"Raw score: {_format_score_value(raw_score)}/{_format_score_value(max_score)} "
+                        f"({percent_score:.1f}%)<br>"
+                        f"Difference vs player mean: {adjusted_score:+.1f} pct pts"
+                    )
+
+                if group_scores:
+                    grouped_rows.append({
+                        'label': group_value,
+                        'scores': group_scores,
+                        'hover_text': group_hover_texts,
+                        'mean': sum(group_scores) / len(group_scores),
+                    })
+
+            data = pd.DataFrame(grouped_rows)
         else:
             if category == "":
                 data = df.groupby('major_category')[score_columns].apply(
@@ -695,35 +748,24 @@ class PlayerAnalysisPlot(View):
         # let's also add the title of the round to the data
         # data['titles'] = df.groupby('major_category')['title'].apply(list).reset_index(name='titles')['titles']
 
-        # Filter out categories without data
-        # first filter out the titles if the corresponding scores are nan
-        data['titles'] = data.apply(lambda row: [title for score, title in zip(row['scores'], row['titles']) if pd.notna(score)], axis=1)
-        data['scores'] = data.apply(lambda row: [score for score, title in zip(row['scores'], row['titles']) if pd.notna(score)], axis=1)
-        data = data[data['scores'].apply(lambda x: len(x) > 0)]
+        if player:
+            if category and creator == "":
+                data = data[data['label'] != player]
+        else:
+            data['titles'] = data.apply(lambda row: [title for score, title in zip(row['scores'], row['titles']) if pd.notna(score)], axis=1)
+            data['scores'] = data.apply(lambda row: [score for score, title in zip(row['scores'], row['titles']) if pd.notna(score)], axis=1)
+            data = data[data['scores'].apply(lambda x: len(x) > 0)]
+            data['mean'] = data['scores'].apply(lambda x: sum(x) / len(x) if len(x) > 0 else 0)
+            data['hover_text'] = data.apply(
+                lambda row: [f'{title} ({score:.2f})' for title, score in zip(row['titles'], row['scores'])],
+                axis=1,
+            )
 
-
-        # Calculate means for sorting
-        data['mean'] = data['scores'].apply(lambda x: sum(x) / len(x) if len(x) > 0 else 0)
         data = data.sort_values(by='mean', ascending=False)
-
-        # subtract the mean of the player from the data
-        if player and category == "" and creator == "":
-            data['scores'] = data['scores'].apply(lambda x: [score - df[player_column].mean() for score in x])
-        elif player and category and creator == "":
-            data['scores'] = data['scores'].apply(lambda x: [score - df[player_column].mean() for score in x])
-        elif player and category == "" and creator:
-            data['scores'] = data['scores'].apply(lambda x: [score - df[player_column].mean() for score in x])
-
-        # if the player is specified, remove the player from the data
-        if player and category and creator == "":
-            data = data[data['creator'] != player]
-
-        #now set the hover text for each data point to be the title of the round
-        data['hover_text'] = data.apply(lambda row: [f'{title} ({score:.2f})' for title, score in zip(row['titles'], row['scores'])], axis=1)
 
         # Prepare data for plotting
         categories = data.iloc[:, 0].tolist()
-        plot_data = data.iloc[:, 1].tolist()
+        plot_data = data['scores'].tolist()
         hover_texts = data['hover_text'].tolist()
 
         if cat_name == "Category":
@@ -737,9 +779,9 @@ class PlayerAnalysisPlot(View):
                 'plot_data': plot_data,
                 'hover_texts': hover_texts,
                 'colors': colors,
-                'title': f'Distribution of Scores by {cat_name}',
+                'title': f'Distribution of Percentage Scores by {cat_name}',
                 'xaxis': cat_name,
-                'yaxis': 'Scores'
+                'yaxis': 'Percentage Points vs Player Mean' if player else 'Scores'
             }
             return JsonResponse(response_data)
         except Exception as e:

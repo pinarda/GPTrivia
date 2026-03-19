@@ -49,7 +49,6 @@
         <div id="bar-space" class="plot-div" style="width:100%; height:500px;"></div>
         <div id="violin-space" class="plot-div" style="width:100%; height:500px;"></div>
         <div id="CorrMatrix" class="plot-div" style="width:100%; height:500px;"></div>
-        <div id="PMatrix" class="plot-div" style="width:100%; height:500px;"></div>
         <div id="CreatorMatrix" class="plot-div" style="width:100%; height:90%; position: relative;">
             <div id="plot-checkbox" style="position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 1000;">
                 <label for="showValuesCheckbox">Difficulty Adjustment</label>
@@ -213,15 +212,9 @@
                 }
                 return `${linkedPossessiveName(player)} Most Jokered Categories`;
             case 'bar-space':
-                if (!creator) {
-                    return rawTitle;
-                }
-                return `Mean Score Increase by Player ${scope}`;
+                return rawTitle;
             case 'violin-space':
-                if (!creator) {
-                    return rawTitle;
-                }
-                return `Score Difference by Player ${scope}`;
+                return rawTitle;
             case 'PCAplot':
                 if (!creator) {
                     return rawTitle;
@@ -232,11 +225,6 @@
                     return rawTitle;
                 }
                 return `Player Correlation Matrix ${scope}`;
-            case 'PMatrix':
-                if (!creator) {
-                    return rawTitle;
-                }
-                return `Player Correlation Significance ${scope}`;
             case 'catBar':
                 if (!creator) {
                     return rawTitle;
@@ -418,7 +406,6 @@
         violin: false,
         corrMatrix: false,
         creatorMatrix: false,
-        pMatrix: false,
         pca: false,
         catBar: false,
         creatorBar: false,
@@ -576,16 +563,12 @@
         });
     }
 
-    function violinMeanMarkerConfig() {
+    function violinMeanlineConfig() {
         const compactLayout = window.matchMedia('(max-width: 768px)').matches;
         return {
-            symbol: 'line-ew-open',
-            size: compactLayout ? 12 : 26,
+            visible: true,
             color: '#000000',
-            line: {
-                color: '#000000',
-                width: compactLayout ? 2 : 4,
-            },
+            width: compactLayout ? 2 : 3,
         };
     }
 
@@ -594,7 +577,6 @@
         if (!plotFlags.violin) hideDiv('violin-space');
         if (!plotFlags.corrMatrix) hideDiv('CorrMatrix');
         if (!plotFlags.creatorMatrix) hideDiv('CreatorMatrix');
-        if (!plotFlags.pMatrix) hideDiv('PMatrix');
         if (!plotFlags.pca) hideDiv('PCAplot');
         if (!plotFlags.catBar) hideDiv('catBar');
         if (!plotFlags.creatorBar) hideDiv('creatorBar');
@@ -616,7 +598,6 @@
         $('#violin-space').empty();
         $('#CorrMatrix').empty();
         $('#CreatorMatrix').empty();
-        $('#PMatrix').empty();
         $('#PCAplot').empty();
         $('#catBar').empty();
         $('#creatorBar').empty();
@@ -636,7 +617,6 @@
         plotFlags.violin = false;
         plotFlags.corrMatrix = false;
         plotFlags.creatorMatrix = false;
-        plotFlags.pMatrix = false;
         plotFlags.pca = false;
         plotFlags.catBar = false;
         plotFlags.creatorBar = false;
@@ -651,27 +631,29 @@
         setJokerSummaryVisibility(false, false);
 
         if (player === '') {
-            plotFlags.bar = true;
-            showDiv('bar-space')
-            $.ajax({
-                url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
-                data: {
-                    creator: creator,
-                    category: category,
-                    player: player,
-                    chart_type: 'bar'  // Specify chart type or make it dynamic
-                },
-                success: function(data) {
-                    if (data.error) {
-                        alert(data.error);
-                        return;
+            if (creator !== '' || category !== '') {
+                plotFlags.bar = true;
+                showDiv('bar-space')
+                $.ajax({
+                    url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
+                    data: {
+                        creator: creator,
+                        category: category,
+                        player: player,
+                        chart_type: 'bar'  // Specify chart type or make it dynamic
+                    },
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        renderBar(data);
+                    },
+                    error: function(error) {
+                        console.error('Error loading data:', error);
                     }
-                    renderBar(data);
-                },
-                error: function(error) {
-                    console.error('Error loading data:', error);
-                }
-            });
+                });
+            }
             plotFlags.violin = true;
             showDiv('violin-space')
             // now do the violin plot
@@ -717,8 +699,6 @@
             });
             plotFlags.corrMatrix = true;
             showDiv('CorrMatrix')
-            plotFlags.pMatrix = true;
-            showDiv('PMatrix')
             $.ajax({
                 url: '{% url "player_analysis_plot" %}',  // Update with the correct URL name            method: 'GET',
                 data: {
@@ -733,7 +713,6 @@
                         return;
                     }
                     renderCorrMatrix(data);
-                    renderPMatrix(data);
                 },
                 error: function(error) {
                     console.error('Error loading data:', error);
@@ -1450,8 +1429,7 @@
                 visible: true
             },
             meanline: {
-                visible: true,
-                color: '#000000'
+                visible: false
             },
             points: 'all',
             pointpos: -1.8,
@@ -1462,19 +1440,6 @@
             text: playerData.hover_texts,
             hoverinfo: 'text'
         }));
-
-        const meanTrace = {
-            x: data.data.map(playerData => playerData.player),
-            y: data.data.map(playerData => {
-                const total = playerData.scores.reduce((sum, value) => sum + value, 0);
-                return playerData.scores.length ? total / playerData.scores.length : null;
-            }),
-            type: 'scatter',
-            mode: 'markers',
-            marker: violinMeanMarkerConfig(),
-            hovertemplate: '%{x}<br>Mean: %{y:.2f}<extra></extra>',
-            showlegend: false,
-        };
 
         const layout = {
             title: data.title,
@@ -1500,24 +1465,10 @@
             font: {
                 color: "#ffffff",
                 family: "YoungSerif"
-            },
-            annotations: [{
-                text: 'Black bars show mean score',
-                x: 1,
-                y: 1.08,
-                xref: 'paper',
-                yref: 'paper',
-                xanchor: 'right',
-                showarrow: false,
-                font: {
-                    color: analysisTextColor,
-                    family: 'YoungSerif',
-                    size: 13,
-                },
-            }],
+            }
         };
 
-        Plotly.newPlot('violin-space', [...traces, meanTrace], layout);
+        Plotly.newPlot('violin-space', traces, layout);
     }
 
     function renderPCA(data) {
@@ -1707,47 +1658,6 @@
         Plotly.newPlot('CreatorMatrix', [trace], layout);
     }
 
-    function renderPMatrix(data) {
-        const trace = {
-            z: Object.values(data.p_values_matrix).map(row => Object.values(row)),            x: data.columns,
-            y: data.columns,
-            type: 'heatmap',
-            zmin: 0,  // Set the minimum value for the color scale
-            zmax: 1,   // Set the maximum value for the color scale
-            colorscale: [
-                [0, 'rgb(255,255,255)'],
-                [0.01, 'rgb(255,255,255)'],
-                [0.0105, 'rgb(255,0,0)'],
-                [1, 'rgb(0,0, 0)']
-            ],
-            colorbar: {
-                title: 'p',
-                titleside: 'left',
-            },
-        };
-
-        const layout = {
-            title: data.title_p_values,
-            xaxis: {
-                title: 'Player',
-                tickangle: -45
-            },
-            yaxis: {
-                title: 'Player',
-                automargin: true
-            },
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
-            }
-        };
-
-        Plotly.newPlot('PMatrix', [trace], layout);
-        Plotly.Plots.resize(plotDivs);
-    }
-
     function renderPlayerViolin(data) {
         const traces = data.categories.map((category, index) => ({
             type: 'violin',
@@ -1757,10 +1667,7 @@
             box: {
                 visible: true
             },
-            meanline: {
-                visible: true,
-                color: '#000000'
-            },
+            meanline: violinMeanlineConfig(),
             points: 'all',
             pointpos: -1.8,
             jitter: 0.5,
@@ -1770,19 +1677,6 @@
             text: data.hover_texts[index],
             hoverinfo: 'text'
         }));
-
-        const meanTrace = {
-            x: data.categories,
-            y: data.plot_data.map(values => {
-                const total = values.reduce((sum, value) => sum + value, 0);
-                return values.length ? total / values.length : null;
-            }),
-            type: 'scatter',
-            mode: 'markers',
-            marker: violinMeanMarkerConfig(),
-            hovertemplate: '%{x}<br>Mean: %{y:.2f}<extra></extra>',
-            showlegend: false,
-        };
 
         const layout = {
             title: data.title,
@@ -1811,7 +1705,7 @@
             }],
         };
 
-        Plotly.newPlot('player-violin-space', [...traces, meanTrace], layout);
+        Plotly.newPlot('player-violin-space', traces, layout);
     }
 
     function renderCreatorViolin(data) {
@@ -1823,10 +1717,7 @@
             box: {
                 visible: true
             },
-            meanline: {
-                visible: true,
-                color: '#000000'
-            },
+            meanline: violinMeanlineConfig(),
             points: 'all',
             pointpos: -1.8,
             jitter: 0.5,
@@ -1836,19 +1727,6 @@
             text: data.hover_texts[index],
             hoverinfo: 'text'
         }));
-
-        const meanTrace = {
-            x: data.categories,
-            y: data.plot_data.map(values => {
-                const total = values.reduce((sum, value) => sum + value, 0);
-                return values.length ? total / values.length : null;
-            }),
-            type: 'scatter',
-            mode: 'markers',
-            marker: violinMeanMarkerConfig(),
-            hovertemplate: '%{x}<br>Mean: %{y:.2f}<extra></extra>',
-            showlegend: false,
-        };
 
         const layout = {
             title: data.title,
@@ -1877,7 +1755,7 @@
             }],
         };
 
-        Plotly.newPlot('creator-violin-space', [...traces, meanTrace], layout);
+        Plotly.newPlot('creator-violin-space', traces, layout);
     }
 
     function renderCatBar(data) {
@@ -2158,38 +2036,30 @@ function renderJokerPercentage(data) {
 
 
     window.onresize = function() {
-        var plotDivs = document.getElementById('bar-space');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('violin-space');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('CorrMatrix');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('CreatorMatrix');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('PCAplot');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('catBar');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('creatorBar');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('PMatrix');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('player-bar-space');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('player-violin-space');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('player-cat-bar-space');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('creator-violin-space');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('time-series-creator');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('rounds-table');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('trivia-night-streak');
-        Plotly.Plots.resize(plotDivs);
-        plotDivs = document.getElementById('joker_percentage');
-        Plotly.Plots.resize(plotDivs);
+        [
+            'bar-space',
+            'violin-space',
+            'CorrMatrix',
+            'CreatorMatrix',
+            'PCAplot',
+            'catBar',
+            'creatorBar',
+            'player-bar-space',
+            'player-violin-space',
+            'player-cat-bar-space',
+            'creator-violin-space',
+            'time-series-creator',
+            'rounds-table',
+            'trivia-night-streak',
+            'joker_percentage',
+            'joker-creator-summary',
+            'joker-category-summary',
+        ].forEach((plotId) => {
+            const plotDiv = document.getElementById(plotId);
+            if (plotDiv) {
+                Plotly.Plots.resize(plotDiv);
+            }
+        });
     };
 </script>
 {% endblock %}
