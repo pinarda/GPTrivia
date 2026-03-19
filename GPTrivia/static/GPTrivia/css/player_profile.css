@@ -11,6 +11,7 @@ body.site-shell {
     --profile-card-surface: var(--profile-card-color, color-mix(in srgb, var(--profile-header-footer-color) 88%, black));
     --profile-card-text: var(--profile-card-text-color, #ffffff);
     --profile-card-muted-text: var(--profile-card-muted-text-color, rgba(255, 255, 255, 0.72));
+    --profile-creator-accent: #ffffff;
     --profile-border: rgba(255, 255, 255, 0.14);
     --profile-input-bg: #20233a;
     --profile-input-text: #ffffff;
@@ -42,6 +43,10 @@ body.site-shell[data-profile-theme="light"] {
     --profile-muted-text: #5f6974;
     --profile-surface: #e9e1d6;
     --profile-surface-alt: #f6efe6;
+    --profile-card-surface: #ffffff;
+    --profile-card-text: #1b2530;
+    --profile-card-muted-text: #5f6974;
+    --profile-creator-accent: #111111;
     --profile-border: #c7b7ab;
     --profile-input-bg: #f8f2ea;
     --profile-input-text: #1b2530;
@@ -321,7 +326,7 @@ a {
 }
 
 .profile-streak-summary-word--creator {
-    color: #111111;
+    color: var(--profile-creator-accent);
 }
 
 .profile-streak-legend {
@@ -374,8 +379,8 @@ a {
 }
 
 .profile-streak-marker--creator.is-active {
-    background: #111111;
-    border-color: #111111;
+    background: var(--profile-creator-accent);
+    border-color: var(--profile-creator-accent);
 }
 
 .profile-streak-marker--played.is-active {

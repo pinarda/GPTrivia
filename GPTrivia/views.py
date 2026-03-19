@@ -1577,34 +1577,37 @@ def _build_profile_deferred_stats_context(
             player_scores[other_player] = (sum(values) / len(values)) if values else None
         creator_player_scores[creator_name] = player_scores
 
-    creator_field_values = {}
-    for creator_name in global_player_names:
-        creator_field = player_field_for_name(creator_name)
-        values = [
-            round_data.get(creator_field)
-            for round_data in flattened_rounds
-            if round_data.get(creator_field) is not None
-        ]
-        creator_field_values[creator_name] = (sum(values) / len(values)) if values else None
-
-    creator_field_biases = {}
+    creator_row_averages = {}
     for creator_name, score_map in creator_player_scores.items():
         values = [avg_score for avg_score in score_map.values() if avg_score is not None]
-        creator_field_mean = (sum(values) / len(values)) if values else None
-        creator_field_value = creator_field_values.get(creator_name)
-        if creator_field_mean is not None and creator_field_value is not None:
-            creator_field_biases[creator_name] = creator_field_value - creator_field_mean
+        creator_row_averages[creator_name] = (sum(values) / len(values)) if values else None
 
     favoritism_toward_player = {}
     for item in creator_averages:
         creator_name = item['creator']
         if creator_name not in active_player_names:
             continue
-        creator_mean_bias = creator_field_biases.get(creator_name)
-        player_creator_delta = item['avg_score']
-        if creator_mean_bias is None or player_creator_delta is None:
-            continue
-        favoritism_toward_player[creator_name] = player_creator_delta - creator_mean_bias
+        creator_row_average = creator_row_averages.get(creator_name)
+        if creator_row_average is not None and item['avg_score'] is not None:
+            favoritism_toward_player[creator_name] = item['avg_score'] - creator_row_average
+        else:
+            favoritism_toward_player[creator_name] = 0
+
+    favoritism_sum = 0
+    for creator_name in list(favoritism_toward_player.keys()):
+        if favoritism_toward_player[creator_name] is not None and player_avg is not None:
+            favoritism_toward_player[creator_name] = favoritism_toward_player[creator_name] + player_avg
+            favoritism_sum += favoritism_toward_player[creator_name]
+        else:
+            favoritism_toward_player[creator_name] = 0
+
+    if favoritism_toward_player:
+        mean_favoritism = favoritism_sum / len(favoritism_toward_player)
+        for creator_name in list(favoritism_toward_player.keys()):
+            if favoritism_toward_player[creator_name] is not None:
+                favoritism_toward_player[creator_name] = favoritism_toward_player[creator_name] - mean_favoritism
+            else:
+                favoritism_toward_player[creator_name] = 0
 
     if favoritism_toward_player:
         most_favoring_creator = max(favoritism_toward_player, key=favoritism_toward_player.get)
