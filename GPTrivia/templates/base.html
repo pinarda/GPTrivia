@@ -401,9 +401,6 @@
                 <div class="roundsbtn">
                     <a style="color: white;" href={% url 'rounds_list' %}>Rounds List</a>
                 </div>
-                <div class="blogbtn">
-                    <a style="color: white;" href={% url 'blog_roboalex' %}>Blog</a>
-                </div>
                 <div class="makerbtn">
                     <a style="color: white;" href={% url 'round_maker' %}>S.W.O.O.P.</a>
                 </div>
@@ -415,6 +412,9 @@
                         <a style="color: white;" href="{% url 'player_profile' player_name=user.username %}">{{ user.username }}'s Profile</a>
                     </div>
                 {% endif %}
+                <div class="blogbtn">
+                    <a style="color: white;" href={% url 'blog_roboalex' %}>Blog</a>
+                </div>
                 {% if user.is_authenticated %}
                     <div class="logoutbtn">
                         <a style="color: white;" href="{% url 'logout' %}">Logout</a>
@@ -433,9 +433,6 @@
             <div class="roundsbtn">
                 <a style="color: white;" href={% url 'rounds_list' %}>Rounds List</a>
             </div>
-            <div class="blogbtn">
-                <a style="color: white;" href={% url 'blog_roboalex' %}>Blog</a>
-            </div>
             <div class="btnbtn">
                 <a style="color: white;" href={% url 'button_page' %}>Button</a>
             </div>
@@ -444,6 +441,9 @@
                     <a style="color: white;" href="{% url 'player_profile' player_name=user.username %}">{{ user.username }}'s Profile</a>
                 </div>
             {% endif %}
+            <div class="blogbtn">
+                <a style="color: white;" href={% url 'blog_roboalex' %}>Blog</a>
+            </div>
             {% if user.is_authenticated %}
                 <div class="logoutbtn">
                     <a style="color: white;" href="{% url 'logout' %}">Logout</a>
