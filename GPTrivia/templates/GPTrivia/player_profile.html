@@ -11,7 +11,7 @@
       --profile-player-color: {{ player_color }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260319c">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260319d">
 {% endblock %}
 
 {% block extra_meta %}
@@ -875,6 +875,9 @@
                                 {% endfor %}
 
                                 <div class="profile-settings-actions">
+                                    <button class="expand-collapse-button profile-player-button" type="submit">Save Appearance</button>
+                                </div>
+                                <div class="profile-settings-secondary-actions">
                                     <button
                                         class="expand-collapse-button profile-player-button profile-settings-reset-button"
                                         type="button"
@@ -882,7 +885,9 @@
                                     >
                                         Reset Page Colors to Default
                                     </button>
-                                    <button class="expand-collapse-button profile-player-button" type="submit">Save Appearance</button>
+                                    <p class="profile-settings-help profile-settings-help--reset">
+                                        Resets only the page colors. You’ll still need to save appearance to apply it.
+                                    </p>
                                 </div>
                             </form>
                         </div>
@@ -1902,6 +1907,9 @@
 
             if (resetThemeColorsButton) {
                 resetThemeColorsButton.addEventListener('click', () => {
+                    if (!window.confirm('Reset the profile page colors to the default palette? You will still need to click Save Appearance to apply the change.')) {
+                        return;
+                    }
                     [
                         'profile-page-chrome-input',
                         'profile-trivia-color-one-input',

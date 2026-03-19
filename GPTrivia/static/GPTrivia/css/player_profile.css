@@ -602,6 +602,22 @@ a {
     flex: 1 1 220px;
 }
 
+.profile-settings-secondary-actions {
+    display: grid;
+    gap: 0.45rem;
+    margin-top: 0.35rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--profile-border);
+}
+
+.profile-settings-secondary-actions .profile-settings-reset-button {
+    width: 100%;
+}
+
+.profile-settings-help--reset {
+    margin: 0;
+}
+
 .profile-settings-group {
     display: grid;
     gap: 0.35rem;
@@ -1401,6 +1417,11 @@ a {
 
     .profile-settings-actions {
         flex-direction: column;
+    }
+
+    .profile-settings-secondary-actions {
+        margin-top: 0.2rem;
+        padding-top: 0.65rem;
     }
 
     .profile-streak-heading-summary {
