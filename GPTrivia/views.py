@@ -2191,6 +2191,7 @@ def _release_home_build_lock():
 def _build_home_context(selected_presentation, presentation_calendar, build_state=None):
     selected_presentation_date = None
     presentation_url = None
+    profileable_player_names = _get_global_player_names()
 
     if selected_presentation is not None:
         selected_presentation_date = _parse_presentation_name_date(selected_presentation.name)
@@ -2209,6 +2210,8 @@ def _build_home_context(selected_presentation, presentation_calendar, build_stat
         ),
         "presentation_calendar": presentation_calendar,
         "home_build_state": _serialize_home_build_state(build_state),
+        "playerColorMapping": build_player_color_mapping(profileable_player_names),
+        "profileable_player_names": profileable_player_names,
     }
 
 

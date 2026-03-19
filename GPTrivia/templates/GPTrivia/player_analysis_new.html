@@ -278,6 +278,38 @@
         };
     }
 
+    function enhancePlotAxisLabels(target) {
+        const plotElement = typeof target === 'string' ? document.getElementById(target) : target;
+        if (!plotElement) {
+            return;
+        }
+
+        plotElement.querySelectorAll('.xtick text, .ytick text').forEach((tickLabel) => {
+            const tickText = (tickLabel.textContent || '').trim();
+            if (!tickText || !Object.prototype.hasOwnProperty.call(playerColorMapping, tickText)) {
+                return;
+            }
+            if (tickLabel.dataset.profileLinked === 'true') {
+                return;
+            }
+
+            const hoverColor = playerColorMapping[tickText] || analysisTextColor;
+            tickLabel.dataset.profileLinked = 'true';
+            tickLabel.style.cursor = 'pointer';
+            tickLabel.style.pointerEvents = 'all';
+
+            tickLabel.addEventListener('mouseenter', () => {
+                tickLabel.style.fill = hoverColor;
+            });
+            tickLabel.addEventListener('mouseleave', () => {
+                tickLabel.style.fill = analysisTextColor;
+            });
+            tickLabel.addEventListener('click', () => {
+                window.location.href = profileUrlForName(tickText);
+            });
+        });
+    }
+
     function applyAxisTheme(axis = {}) {
         const themedAxis = { ...axis };
 
@@ -363,7 +395,12 @@
     const originalPlotlyNewPlot = Plotly.newPlot.bind(Plotly);
     Plotly.newPlot = function(target, data, layout, config) {
         const linkedLayout = withLinkedAnalysisTitle(target, layout || {});
-        return originalPlotlyNewPlot(target, data, applyPlotTheme(linkedLayout), config);
+        return Promise.resolve(
+            originalPlotlyNewPlot(target, data, applyPlotTheme(linkedLayout), config)
+        ).then((result) => {
+            enhancePlotAxisLabels(target);
+            return result;
+        });
     };
 
     // Initialize with default values

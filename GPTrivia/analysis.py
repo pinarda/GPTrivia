@@ -14,6 +14,7 @@ from .player_scores import (
     MIN_ANALYSIS_ROUNDS,
     display_name_for_player_field,
     flatten_round_for_analysis,
+    get_category_color,
     get_eligible_player_fields,
     get_round_score_map,
     get_player_color,
@@ -633,7 +634,10 @@ class PlayerAnalysisPlot(View):
         plot_values, categories = zip(*sorted(zip(plot_values, categories), reverse=True))
         #replace all nan plot values with 0
 
-        colors = [get_player_color(category_name) for category_name in categories]
+        if cat_name == "Category":
+            colors = [get_category_color(category_name) for category_name in categories]
+        else:
+            colors = [get_player_color(category_name) for category_name in categories]
 
         try:
             response_data = {
@@ -722,7 +726,10 @@ class PlayerAnalysisPlot(View):
         plot_data = data.iloc[:, 1].tolist()
         hover_texts = data['hover_text'].tolist()
 
-        colors = [get_player_color(category_name) for category_name in categories]
+        if cat_name == "Category":
+            colors = [get_category_color(category_name) for category_name in categories]
+        else:
+            colors = [get_player_color(category_name) for category_name in categories]
 
         try:
             response_data = {
@@ -1050,7 +1057,10 @@ class PlayerAnalysisPlot(View):
             'yaxis': 'Times Jokered',
             'labels': labels,
             'counts': counts,
-            'colors': [get_player_color(label) for label in labels],
+            'colors': [
+                get_player_color(label) if group_by == 'creator' else get_category_color(label)
+                for label in labels
+            ],
             'avg_scores': avg_scores,
             'best_labels': best_labels,
             'empty_message': 'No joker selections found for this player yet.',

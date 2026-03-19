@@ -375,6 +375,7 @@ class PlayerAnalysisPlotTests(TestCase):
         self.assertEqual(category_data['labels'], ['History', 'Science'])
         self.assertEqual(category_data['counts'], [2, 1])
         self.assertEqual(category_data['best_labels'], ['Science'])
+        self.assertEqual(category_data['colors'], ['#8b5a2b', '#7b4bcc'])
 
         filtered_creator_response = self.client.get(reverse('player_analysis_plot'), {
             'chart_type': 'joker_creator_summary',

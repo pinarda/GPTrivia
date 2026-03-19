@@ -55,6 +55,22 @@ KNOWN_PLAYER_COLOR_MAPPING = {
     'Unknown': '#333333',
 }
 
+KNOWN_CATEGORY_COLOR_MAPPING = {
+    'word games': '#3b3b3b',
+    'entertainment': '#c63d3d',
+    'hodgepodge': '#7a7a7a',
+    'nature': '#2f8f58',
+    'science': '#7b4bcc',
+    'sports': '#2f6fdf',
+    'food': '#f08c2e',
+    'misc': '#f4f4f4',
+    'history': '#8b5a2b',
+    'humanities': '#e3cf3f',
+    'music': '#e85da9',
+    'geography': '#6ccf72',
+    'current events': '#111111',
+}
+
 PLAYER_NAME_ALIASES = {
     'dad': 'Dan',
     'mom': 'Debi',
@@ -359,6 +375,16 @@ def get_player_color(player_name, profile_color_overrides=None):
     digest = hashlib.sha1(display_name.encode('utf-8')).hexdigest()
     hue = int(digest[:8], 16) % 360
     return _hsl_to_hex(hue, 62, 47)
+
+
+def get_category_color(category_name):
+    normalized_name = str(category_name or '').strip().lower()
+    if normalized_name in KNOWN_CATEGORY_COLOR_MAPPING:
+        return KNOWN_CATEGORY_COLOR_MAPPING[normalized_name]
+
+    digest = hashlib.sha1(normalized_name.encode('utf-8')).hexdigest()
+    hue = int(digest[:8], 16) % 360
+    return _hsl_to_hex(hue, 38, 55)
 
 
 def build_player_color_mapping(player_names):
