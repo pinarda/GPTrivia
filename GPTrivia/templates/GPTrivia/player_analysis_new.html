@@ -580,48 +580,6 @@
                         console.error('Error loading data:', error);
                     }
                 });
-                plotFlags.jokerCreatorSummary = true;
-                showDiv('joker-creator-summary');
-                $.ajax({
-                    url: '{% url "player_analysis_plot" %}',
-                    data: {
-                        creator: creator,
-                        category: category,
-                        player: player,
-                        chart_type: 'joker_creator_summary'
-                    },
-                    success: function(data) {
-                        if (data.error) {
-                            alert(data.error);
-                            return;
-                        }
-                        renderJokerSelectionSummary('joker-creator-summary', data);
-                    },
-                    error: function(error) {
-                        console.error('Error loading data:', error);
-                    }
-                });
-                plotFlags.jokerCategorySummary = true;
-                showDiv('joker-category-summary');
-                $.ajax({
-                    url: '{% url "player_analysis_plot" %}',
-                    data: {
-                        creator: creator,
-                        category: category,
-                        player: player,
-                        chart_type: 'joker_category_summary'
-                    },
-                    success: function(data) {
-                        if (data.error) {
-                            alert(data.error);
-                            return;
-                        }
-                        renderJokerSelectionSummary('joker-category-summary', data);
-                    },
-                    error: function(error) {
-                        console.error('Error loading data:', error);
-                    }
-                });
             }
         }
         else {
@@ -730,6 +688,50 @@
                     console.error('Error loading data:', error);
                 }
             });
+            if (creator === '' && category === '') {
+                plotFlags.jokerCreatorSummary = true;
+                showDiv('joker-creator-summary');
+                $.ajax({
+                    url: '{% url "player_analysis_plot" %}',
+                    data: {
+                        creator: creator,
+                        category: category,
+                        player: player,
+                        chart_type: 'joker_creator_summary'
+                    },
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        renderJokerSelectionSummary('joker-creator-summary', data);
+                    },
+                    error: function(error) {
+                        console.error('Error loading data:', error);
+                    }
+                });
+                plotFlags.jokerCategorySummary = true;
+                showDiv('joker-category-summary');
+                $.ajax({
+                    url: '{% url "player_analysis_plot" %}',
+                    data: {
+                        creator: creator,
+                        category: category,
+                        player: player,
+                        chart_type: 'joker_category_summary'
+                    },
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        renderJokerSelectionSummary('joker-category-summary', data);
+                    },
+                    error: function(error) {
+                        console.error('Error loading data:', error);
+                    }
+                });
+            }
         }
         {#plotFlags.roundsTable = true;#}
         showDiv('rounds-table')
