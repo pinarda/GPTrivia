@@ -90,9 +90,192 @@
     let rounds = {{ rounds|safe }};
     let mapping = {{ mapping|safe }};
     let playerTextMapping = {{ player_text_mapping|safe }};
+    const profileUrlTemplate = "{% url 'player_profile' '__PROFILE_NAME__' %}";
     const isLightTheme = document.body.dataset.profileTheme === 'light';
     const analysisTextColor = isLightTheme ? '#1b2530' : '#ffffff';
     const analysisGridColor = isLightTheme ? 'rgba(27, 37, 48, 0.16)' : 'rgba(255, 255, 255, 0.2)';
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function escapeAttribute(value) {
+        return escapeHtml(value);
+    }
+
+    function profileUrlForName(name) {
+        return profileUrlTemplate.replace('__PROFILE_NAME__', encodeURIComponent(name || ''));
+    }
+
+    function getSelectedAnalysisFilters() {
+        const creatorSelector = document.getElementById('creator-selector');
+        const categorySelector = document.getElementById('category-selector');
+        const playerSelector = document.getElementById('player-selector');
+
+        return {
+            creator: creatorSelector ? creatorSelector.value : '',
+            category: categorySelector ? categorySelector.value : '',
+            player: playerSelector ? playerSelector.value : '',
+        };
+    }
+
+    function extractTitleText(title) {
+        if (!title) {
+            return '';
+        }
+        if (typeof title === 'string') {
+            return title;
+        }
+        return title.text || '';
+    }
+
+    function extractAxisTitleText(axis = {}) {
+        if (!axis || !axis.title) {
+            return '';
+        }
+        if (typeof axis.title === 'string') {
+            return axis.title;
+        }
+        return axis.title.text || '';
+    }
+
+    function possessiveSuffix(name) {
+        return /s$/i.test((name || '').trim()) ? "'" : "'s";
+    }
+
+    function linkedProfileName(name) {
+        if (!name) {
+            return '';
+        }
+        return `<a href="${escapeAttribute(profileUrlForName(name))}" style="color:${escapeAttribute(analysisTextColor)}; text-decoration:underline;">${escapeHtml(name)}</a>`;
+    }
+
+    function linkedPossessiveName(name) {
+        return `${linkedProfileName(name)}${possessiveSuffix(name)}`;
+    }
+
+    function analysisRoundScopeHtml({ creator, category }) {
+        if (creator && category) {
+            return `on ${linkedPossessiveName(creator)} ${escapeHtml(category)} Rounds`;
+        }
+        if (creator) {
+            return `on ${linkedPossessiveName(creator)} Rounds`;
+        }
+        if (category) {
+            return `on ${escapeHtml(category)} Rounds`;
+        }
+        return 'on All Rounds';
+    }
+
+    function buildAnalysisTitle(targetId, layout = {}) {
+        const rawTitle = extractTitleText(layout.title);
+        const { creator, category, player } = getSelectedAnalysisFilters();
+        const scope = analysisRoundScopeHtml({ creator, category });
+        const groupLabel = extractAxisTitleText(layout.xaxis);
+
+        switch (targetId) {
+            case 'player-bar-space':
+            case 'player-cat-bar-space':
+                if (!player) {
+                    return rawTitle;
+                }
+                return `${linkedPossessiveName(player)} Mean Score ${scope}${groupLabel ? ` by ${escapeHtml(groupLabel)}` : ''}`;
+            case 'player-violin-space':
+            case 'creator-violin-space':
+                if (!player) {
+                    return rawTitle;
+                }
+                return `${linkedPossessiveName(player)} Score Distribution ${scope}${groupLabel ? ` by ${escapeHtml(groupLabel)}` : ''}`;
+            case 'time-series-creator':
+                if (!player) {
+                    return rawTitle;
+                }
+                return `${linkedPossessiveName(player)} Performance Trend ${scope}`;
+            case 'trivia-night-streak':
+                if (!player) {
+                    return rawTitle;
+                }
+                return `${linkedPossessiveName(player)} Trivia Night Streak`;
+            case 'joker-creator-summary':
+                if (!player) {
+                    return rawTitle;
+                }
+                return `${linkedPossessiveName(player)} Most Jokered Creators`;
+            case 'joker-category-summary':
+                if (!player) {
+                    return rawTitle;
+                }
+                return `${linkedPossessiveName(player)} Most Jokered Categories`;
+            case 'bar-space':
+                if (!creator) {
+                    return rawTitle;
+                }
+                return `Mean Score Increase by Player ${scope}`;
+            case 'violin-space':
+                if (!creator) {
+                    return rawTitle;
+                }
+                return `Score Difference by Player ${scope}`;
+            case 'PCAplot':
+                if (!creator) {
+                    return rawTitle;
+                }
+                return `PCA Similarity ${scope}`;
+            case 'CorrMatrix':
+                if (!creator) {
+                    return rawTitle;
+                }
+                return `Player Correlation Matrix ${scope}`;
+            case 'PMatrix':
+                if (!creator) {
+                    return rawTitle;
+                }
+                return `Player Correlation Significance ${scope}`;
+            case 'catBar':
+                if (!creator) {
+                    return rawTitle;
+                }
+                return `Mean Score ${scope}${groupLabel ? ` by ${escapeHtml(groupLabel)}` : ''}`;
+            default:
+                return rawTitle;
+        }
+    }
+
+    function withLinkedAnalysisTitle(target, layout = {}) {
+        let targetId = '';
+        if (typeof target === 'string') {
+            targetId = target;
+        } else if (target) {
+            targetId = target.id || (typeof target.getAttribute === 'function' ? target.getAttribute('id') : '') || '';
+        }
+        const titleText = buildAnalysisTitle(targetId, layout);
+
+        if (!titleText || titleText === extractTitleText(layout.title)) {
+            return layout;
+        }
+
+        if (layout.title && typeof layout.title === 'object') {
+            return {
+                ...layout,
+                title: {
+                    ...layout.title,
+                    text: titleText,
+                },
+            };
+        }
+
+        return {
+            ...layout,
+            title: {
+                text: titleText,
+            },
+        };
+    }
 
     function applyAxisTheme(axis = {}) {
         const themedAxis = { ...axis };
@@ -178,7 +361,8 @@
 
     const originalPlotlyNewPlot = Plotly.newPlot.bind(Plotly);
     Plotly.newPlot = function(target, data, layout, config) {
-        return originalPlotlyNewPlot(target, data, applyPlotTheme(layout || {}), config);
+        const linkedLayout = withLinkedAnalysisTitle(target, layout || {});
+        return originalPlotlyNewPlot(target, data, applyPlotTheme(linkedLayout), config);
     };
 
     // Initialize with default values

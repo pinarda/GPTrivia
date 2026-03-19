@@ -463,6 +463,8 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertEqual(response.context['initial_creator_selection'], 'Alex')
         self.assertEqual(response.context['initial_player_selection'], 'Alex')
         self.assertContains(response, '<option value="Alex" selected>Alex</option>', html=True)
+        self.assertContains(response, reverse('player_profile', args=['__PROFILE_NAME__']))
+        self.assertContains(response, 'buildAnalysisTitle')
 
     def test_profile_view_includes_secondary_created_rounds(self):
         GPTriviaRound.objects.create(
