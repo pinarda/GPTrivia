@@ -741,21 +741,13 @@
         });
     }
 
-    function violinMeanlineConfig() {
-        const compactLayout = window.matchMedia('(max-width: 768px)').matches;
-        return {
-            visible: true,
-            color: '#000000',
-            width: compactLayout ? 2 : 3,
-        };
+    function isCompactAnalysisLayout() {
+        return window.matchMedia('(max-width: 768px)').matches;
     }
 
-    function buildFullWidthViolinMeanShapes(categories, plotData) {
+    function buildBoxAlignedViolinMeanShapes(plotData) {
         const compactLayout = window.matchMedia('(max-width: 768px)').matches;
-        const categoryCount = Math.max(categories.length, 1);
-        const slotWidth = 1 / categoryCount;
-        // Keep the mean bar aligned to the inner boxplot width instead of spanning the whole violin.
-        const lineHalfWidth = slotWidth * (compactLayout ? 0.11 : 0.13);
+        const lineHalfWidth = compactLayout ? 0.12 : 0.15;
         const lineWidth = compactLayout ? 3 : 4;
 
         return plotData.map((scores, index) => {
@@ -765,14 +757,13 @@
             }
 
             const meanValue = numericScores.reduce((sum, value) => sum + value, 0) / numericScores.length;
-            const center = (index + 0.5) * slotWidth;
 
             return {
                 type: 'line',
-                xref: 'paper',
+                xref: 'x',
                 yref: 'y',
-                x0: Math.max(0, center - lineHalfWidth),
-                x1: Math.min(1, center + lineHalfWidth),
+                x0: (index + 1) - lineHalfWidth,
+                x1: (index + 1) + lineHalfWidth,
                 y0: meanValue,
                 y1: meanValue,
                 line: {
@@ -782,6 +773,90 @@
                 layer: 'above',
             };
         }).filter(Boolean);
+    }
+
+    function buildNumericViolinTraces(labels, plotData, colors, hoverTexts) {
+        const compactLayout = isCompactAnalysisLayout();
+        return labels.map((label, index) => ({
+            type: 'violin',
+            x: Array((plotData[index] || []).length).fill(index + 1),
+            y: plotData[index],
+            name: label,
+            width: compactLayout ? 0.72 : 0.8,
+            box: {
+                visible: true
+            },
+            meanline: {
+                visible: false
+            },
+            points: compactLayout ? false : 'all',
+            pointpos: compactLayout ? -1.4 : -1.8,
+            jitter: compactLayout ? 0.34 : 0.5,
+            marker: {
+                color: colors[index],
+                size: compactLayout ? 4 : 6,
+            },
+            text: hoverTexts[index],
+            hoverinfo: 'text'
+        }));
+    }
+
+    function buildResponsiveViolinLayout(data, labels, options = {}) {
+        const compactLayout = isCompactAnalysisLayout();
+        const includeMeanShapes = !!options.includeMeanShapes;
+        const plotData = options.plotData || [];
+
+        return {
+            title: data.title,
+            autosize: true,
+            margin: {
+                t: compactLayout ? 62 : 76,
+                r: compactLayout ? 12 : 20,
+                b: compactLayout ? 112 : 92,
+                l: compactLayout ? 56 : 70,
+            },
+            xaxis: {
+                title: data.xaxis,
+                type: 'linear',
+                tickmode: 'array',
+                tickvals: labels.map((_, index) => index + 1),
+                ticktext: labels,
+                range: [0.5, labels.length + 0.5],
+                tickangle: compactLayout ? -60 : -45,
+                tickfont: {
+                    size: compactLayout ? 10 : 12,
+                },
+                automargin: true,
+                gridcolor: 'rgba(255, 255, 255, 0.2)',
+            },
+            yaxis: {
+                title: data.yaxis,
+                automargin: true,
+                gridcolor: 'rgba(255, 255, 255, 0.2)',
+            },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            },
+            showlegend: false,
+            shapes: includeMeanShapes ? buildBoxAlignedViolinMeanShapes(plotData) : [],
+            annotations: includeMeanShapes ? [{
+                text: 'Black lines show mean score',
+                x: 1,
+                y: 1.08,
+                xref: 'paper',
+                yref: 'paper',
+                xanchor: 'right',
+                showarrow: false,
+                font: {
+                    color: analysisTextColor,
+                    family: 'YoungSerif',
+                    size: compactLayout ? 11 : 13,
+                },
+            }] : [],
+        };
     }
 
     function getSquareCellHeatmapLayout(divId, columnCount, rowCount) {
@@ -1685,55 +1760,14 @@
 
     function renderViolin(data) {
         setPlotDescription('violin-space', buildPlotDescription('violin-space', data));
-        const traces = data.data.map(playerData => ({
-            type: 'violin',
-            x: Array(playerData.scores.length).fill(playerData.player),
-            y: playerData.scores,
-            name: playerData.player,
-            box: {
-                visible: true
-            },
-            meanline: {
-                visible: false
-            },
-            points: 'all',
-            pointpos: -1.8,
-            jitter: 0.5,
-            marker: {
-                color: playerData.color
-            },
-            text: playerData.hover_texts,
-            hoverinfo: 'text'
-        }));
+        const labels = data.data.map(playerData => playerData.player);
+        const plotData = data.data.map(playerData => playerData.scores);
+        const colors = data.data.map(playerData => playerData.color);
+        const hoverTexts = data.data.map(playerData => playerData.hover_texts);
+        const traces = buildNumericViolinTraces(labels, plotData, colors, hoverTexts);
+        const layout = buildResponsiveViolinLayout(data, labels);
 
-        const layout = {
-            title: data.title,
-            xaxis: {
-                title: {
-                    text: data.xaxis,
-                    font: {
-                        size: 14,
-                        color: '#ffffff'
-                    }
-                },
-                type: 'category',
-                gridcolor: 'rgba(255, 255, 255, 0.2)', // Make gridlines translucent
-                tickangle: -45,
-                automargin: true // Adjust the margin automatically
-            },
-            yaxis: {
-                title: data.yaxis,
-                gridcolor: 'rgba(255, 255, 255, 0.2)' // Make gridlines translucent
-            },
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
-            }
-        };
-
-        Plotly.newPlot('violin-space', traces, layout);
+        Plotly.newPlot('violin-space', traces, layout, {displaylogo: false, responsive: true});
     }
 
     function renderPCA(data) {
@@ -1944,110 +1978,24 @@
 
     function renderPlayerViolin(data) {
         setPlotDescription('player-violin-space', buildPlotDescription('player-violin-space', data));
-        const traces = data.categories.map((category, index) => ({
-            type: 'violin',
-            x: Array(data.plot_data[index].length).fill(category),
-            y: data.plot_data[index],
-            name: category,
-            box: {
-                visible: true
-            },
-            meanline: {
-                visible: false
-            },
-            points: 'all',
-            pointpos: -1.8,
-            jitter: 0.5,
-            marker: {
-                color: data.colors[index]
-            },
-            text: data.hover_texts[index],
-            hoverinfo: 'text'
-        }));
+        const traces = buildNumericViolinTraces(data.categories, data.plot_data, data.colors, data.hover_texts);
+        const layout = buildResponsiveViolinLayout(data, data.categories, {
+            includeMeanShapes: true,
+            plotData: data.plot_data,
+        });
 
-        const layout = {
-            title: data.title,
-            xaxis: { title: data.xaxis },
-            yaxis: { title: data.yaxis },
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
-            },
-            showlegend: false,
-            shapes: buildFullWidthViolinMeanShapes(data.categories, data.plot_data),
-            annotations: [{
-                text: 'Black lines show mean score',
-                x: 1,
-                y: 1.08,
-                xref: 'paper',
-                yref: 'paper',
-                xanchor: 'right',
-                showarrow: false,
-                font: {
-                    color: analysisTextColor,
-                    family: 'YoungSerif',
-                    size: 13,
-                },
-            }],
-        };
-
-        Plotly.newPlot('player-violin-space', traces, layout);
+        Plotly.newPlot('player-violin-space', traces, layout, {displaylogo: false, responsive: true});
     }
 
     function renderCreatorViolin(data) {
         setPlotDescription('creator-violin-space', buildPlotDescription('creator-violin-space', data));
-        const traces = data.categories.map((category, index) => ({
-            type: 'violin',
-            x: Array(data.plot_data[index].length).fill(category),
-            y: data.plot_data[index],
-            name: category,
-            box: {
-                visible: true
-            },
-            meanline: {
-                visible: false
-            },
-            points: 'all',
-            pointpos: -1.8,
-            jitter: 0.5,
-            marker: {
-                color: data.colors[index]
-            },
-            text: data.hover_texts[index],
-            hoverinfo: 'text'
-        }));
+        const traces = buildNumericViolinTraces(data.categories, data.plot_data, data.colors, data.hover_texts);
+        const layout = buildResponsiveViolinLayout(data, data.categories, {
+            includeMeanShapes: true,
+            plotData: data.plot_data,
+        });
 
-        const layout = {
-            title: data.title,
-            xaxis: { title: data.xaxis },
-            yaxis: { title: data.yaxis },
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
-            },
-            showlegend: false,
-            shapes: buildFullWidthViolinMeanShapes(data.categories, data.plot_data),
-            annotations: [{
-                text: 'Black lines show mean score',
-                x: 1,
-                y: 1.08,
-                xref: 'paper',
-                yref: 'paper',
-                xanchor: 'right',
-                showarrow: false,
-                font: {
-                    color: analysisTextColor,
-                    family: 'YoungSerif',
-                    size: 13,
-                },
-            }],
-        };
-
-        Plotly.newPlot('creator-violin-space', traces, layout);
+        Plotly.newPlot('creator-violin-space', traces, layout, {displaylogo: false, responsive: true});
     }
 
     function renderCatBar(data) {

@@ -232,10 +232,19 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
 
 .plot-div {
     width: 100%;
+    max-width: 100%;
     min-height: 500px;
     background: transparent;
     padding: 0;
     margin: 0;
+    overflow: hidden;
+}
+
+.plot-div .js-plotly-plot,
+.plot-div .plot-container,
+.plot-div .svg-container {
+    width: 100% !important;
+    max-width: 100% !important;
 }
 
 .plot-div--standard {
