@@ -3,7 +3,7 @@ import argparse
 import datetime as dt
 import json
 import os
-from typing import Any, Iterable
+from typing import Any, Iterable, Tuple
 
 
 PRESENTATION_NAME_DATE_FORMATS = (
@@ -55,7 +55,7 @@ def print_json_block(label: str, value: Any):
     print(json_dump(value))
 
 
-def print_key_value_rows(rows: Iterable[tuple[str, Any]]):
+def print_key_value_rows(rows: Iterable[Tuple[str, Any]]):
     for label, value in rows:
         print(f"{label}: {value}")
 
