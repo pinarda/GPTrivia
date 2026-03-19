@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319h">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319i">
 {% endblock %}
 
 {% block content %}
@@ -432,14 +432,17 @@
 
         const playerName = linkElement.dataset.playerName || (linkElement.textContent || '').trim();
         const hoverColor = playerColorMapping[playerName] || analysisTextColor;
-        const defaultColor = '#000000';
+        const defaultColor = isLightTheme ? '#000000' : analysisTextColor;
 
         const applyLinkColor = (color) => {
-            linkElement.style.color = color;
-            linkElement.style.fill = color;
-            linkElement.querySelectorAll('tspan, text').forEach((child) => {
-                child.style.fill = color;
-                child.style.color = color;
+            const nodes = [linkElement, ...linkElement.querySelectorAll('*')];
+            nodes.forEach((node) => {
+                if (!(node instanceof Element)) {
+                    return;
+                }
+                node.style.setProperty('color', color, 'important');
+                node.style.setProperty('fill', color, 'important');
+                node.setAttribute('fill', color);
             });
         };
 
@@ -467,6 +470,20 @@
         }
 
         root.querySelectorAll('.analysis-profile-link').forEach(decorateAnalysisProfileLink);
+    }
+
+    function bindPlotEnhancers(plotElement) {
+        if (!plotElement || plotElement.dataset.analysisEnhancersBound === 'true') {
+            return;
+        }
+
+        plotElement.dataset.analysisEnhancersBound = 'true';
+        if (typeof plotElement.on === 'function') {
+            plotElement.on('plotly_afterplot', () => {
+                enhancePlotAxisLabels(plotElement);
+                enhanceAnalysisProfileLinks(plotElement);
+            });
+        }
     }
 
     function enhancePlotAxisLabels(target) {
@@ -590,6 +607,7 @@
             originalPlotlyNewPlot(target, data, applyPlotTheme(linkedLayout), config)
         ).then((result) => {
             const plotElement = typeof target === 'string' ? document.getElementById(target) : target;
+            bindPlotEnhancers(plotElement || target);
             enhancePlotAxisLabels(plotElement || target);
             enhanceAnalysisProfileLinks(plotElement || target);
             return result;
