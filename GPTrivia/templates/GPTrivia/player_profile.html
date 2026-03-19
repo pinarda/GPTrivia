@@ -149,6 +149,15 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="profile-summary-links" aria-label="Profile analysis links">
+                        <a class="profile-summary-link" href="{% url 'player_analysis' %}?player={{ player_name|urlencode }}">
+                            Open Analysis as Player
+                        </a>
+                        <a class="profile-summary-link" href="{% url 'player_analysis' %}?creator={{ player_name|urlencode }}">
+                            Open Analysis as Creator
+                        </a>
+                    </div>
                 </section>
 
                 <section class="profile-streak-card">

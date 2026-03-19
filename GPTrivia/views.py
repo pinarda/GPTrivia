@@ -709,6 +709,9 @@ def blog_other_trivia_plots(request):
 @login_required
 def player_analysis(request):
     queryset_rounds = GPTriviaRound.objects.all()
+    initial_creator_selection = (request.GET.get('creator') or '').strip()
+    initial_category_selection = (request.GET.get('category') or '').strip()
+    initial_player_selection = (request.GET.get('player') or '').strip()
     player_fields = _get_global_player_fields()
     player_names = [display_name_for_player_field(field) for field in player_fields]
     player_name_mapping = {
@@ -722,6 +725,13 @@ def player_analysis(request):
     categories = sorted({
         round_obj.major_category for round_obj in queryset_rounds if round_obj.major_category
     })
+
+    if initial_creator_selection not in creators:
+        initial_creator_selection = ''
+    if initial_category_selection not in categories:
+        initial_category_selection = ''
+    if initial_player_selection not in player_names:
+        initial_player_selection = ''
 
     rounds = []
     for round_obj in queryset_rounds:
@@ -743,6 +753,9 @@ def player_analysis(request):
         'creators': creators,
         'categories': categories,
         'players': player_names,
+        'initial_creator_selection': initial_creator_selection,
+        'initial_category_selection': initial_category_selection,
+        'initial_player_selection': initial_player_selection,
         "mapping": player_name_mapping,
         "player_text_mapping": player_text_mapping,
     }

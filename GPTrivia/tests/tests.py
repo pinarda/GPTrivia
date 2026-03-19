@@ -425,6 +425,44 @@ class PlayerAnalysisViewTests(TestCase):
         )
         response = self.client.get(reverse('player_profile', args=['Alex']))
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '?player=Alex')
+        self.assertContains(response, '?creator=Alex')
+
+    def test_player_analysis_prefills_from_query_params(self):
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Creator Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-01-01",
+            round_number=1,
+            max_score=10,
+            score_alex=8,
+            score_megan=5,
+        )
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Player Round",
+            major_category="History",
+            minor_category1="Ancient",
+            minor_category2="Rome",
+            date="2023-01-08",
+            round_number=2,
+            max_score=10,
+            score_alex=7,
+            score_megan=None,
+        )
+
+        response = self.client.get(reverse('player_analysis'), {
+            'creator': 'Alex',
+            'player': 'Alex',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['initial_creator_selection'], 'Alex')
+        self.assertEqual(response.context['initial_player_selection'], 'Alex')
+        self.assertContains(response, '<option value="Alex" selected>Alex</option>', html=True)
 
     def test_profile_view_includes_secondary_created_rounds(self):
         GPTriviaRound.objects.create(

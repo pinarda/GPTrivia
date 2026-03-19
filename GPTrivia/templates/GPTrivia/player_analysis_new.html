@@ -16,9 +16,9 @@
         <div class="select-container">
             <label for="creator-selector" class="select-label">Creator</label>
             <select name="creators" id="creator-selector" class="select-dropdown">
-                <option value="" selected>-- Select a creator --</option>
+                <option value="" {% if not initial_creator_selection %}selected{% endif %}>-- Select a creator --</option>
                 {% for creator in creators %}
-                <option value="{{ creator }}">{{ creator }}</option>
+                <option value="{{ creator }}" {% if creator == initial_creator_selection %}selected{% endif %}>{{ creator }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -26,9 +26,9 @@
         <div class="select-container">
             <label for="category-selector" class="select-label">Category</label>
             <select name="categories" id="category-selector" class="select-dropdown">
-                <option value="" selected>-- Select a category --</option>
+                <option value="" {% if not initial_category_selection %}selected{% endif %}>-- Select a category --</option>
                 {% for category in categories %}
-                <option value="{{ category }}">{{ category }}</option>
+                <option value="{{ category }}" {% if category == initial_category_selection %}selected{% endif %}>{{ category }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -36,9 +36,9 @@
         <div class="select-container">
             <label for="player-selector" class="select-label">Player</label>
             <select name="players" id="player-selector" class="select-dropdown">
-                <option value="" selected>-- Select a player --</option>
+                <option value="" {% if not initial_player_selection %}selected{% endif %}>-- Select a player --</option>
                 {% for player in players %}
-                <option value="{{ player }}">{{ player }}</option>
+                <option value="{{ player }}" {% if player == initial_player_selection %}selected{% endif %}>{{ player }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -1835,7 +1835,11 @@ function renderJokerPercentage(data) {
 
 
     // Initialize the plot with some default value if needed
-    updatePlotByFilters('', '', '');
+    updatePlotByFilters(
+        document.getElementById('creator-selector').value,
+        document.getElementById('category-selector').value,
+        document.getElementById('player-selector').value
+    );
 
     // Update event listeners
     document.getElementById('creator-selector').addEventListener('change', function () {

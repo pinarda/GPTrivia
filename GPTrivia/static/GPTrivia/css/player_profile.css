@@ -190,6 +190,34 @@ a {
     overflow-wrap: anywhere;
 }
 
+.profile-summary-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 0.75rem;
+}
+
+.profile-summary-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0.62rem 0.9rem;
+    border: 1px solid var(--profile-border);
+    background: var(--profile-surface-alt);
+    color: var(--profile-page-text);
+    text-decoration: none;
+    font-family: YoungSerif, serif;
+    font-size: 0.98rem;
+    line-height: 1.2;
+}
+
+.profile-summary-link:hover,
+.profile-summary-link:focus-visible {
+    background: var(--profile-trivia-color-one, var(--profile-surface-alt));
+    color: var(--profile-page-text);
+}
+
 .profile-summary-pairs {
     display: grid;
     gap: 0.28rem;
@@ -1284,6 +1312,14 @@ a {
 
     .profile-summary-grid {
         grid-template-columns: 1fr;
+    }
+
+    .profile-summary-links {
+        flex-direction: column;
+    }
+
+    .profile-summary-link {
+        width: 100%;
     }
 
     .profile-summary-pair {
