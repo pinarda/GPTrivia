@@ -372,6 +372,20 @@ class PlayerAnalysisPlotTests(TestCase):
             score_megan=7,
             score_zach=8,
         )
+        GPTriviaRound.objects.create(
+            creator="Zach",
+            title="Joker Round D",
+            major_category="Sports",
+            minor_category1="A",
+            minor_category2="B",
+            date="2024-02-22",
+            round_number=4,
+            max_score=10,
+            score_alex=7,
+            score_zach=0,
+            score_megan=6,
+            score_chris=5,
+        )
 
         MergedPresentation.objects.create(
             name="02.01.2024",
@@ -394,6 +408,13 @@ class PlayerAnalysisPlotTests(TestCase):
             creator_list=["Chris"],
             joker_round_indices={"alex": "Joker Round C"},
         )
+        MergedPresentation.objects.create(
+            name="02.22.2024",
+            presentation_id="pres-4",
+            round_names=["Joker Round D"],
+            creator_list=["Zach"],
+            joker_round_indices={"alex": "Joker Round D"},
+        )
 
         creator_response = self.client.get(reverse('player_analysis_plot'), {
             'chart_type': 'joker_creator_summary',
@@ -401,9 +422,17 @@ class PlayerAnalysisPlotTests(TestCase):
         })
         self.assertEqual(creator_response.status_code, 200)
         creator_data = creator_response.json()
-        self.assertEqual(creator_data['labels'], ['Jenny', 'Chris'])
-        self.assertEqual(creator_data['counts'], [2, 1])
+        self.assertEqual(creator_data['labels'], ['Jenny', 'Chris', 'Zach'])
+        self.assertEqual(creator_data['counts'], [2, 1, 1])
         self.assertEqual(creator_data['best_labels'], ['Chris'])
+        self.assertEqual(
+            creator_data['top_labels'],
+            [
+                {'label': 'Chris', 'rank': 1},
+                {'label': 'Jenny', 'rank': 2},
+                {'label': 'Zach', 'rank': 3},
+            ],
+        )
 
         category_response = self.client.get(reverse('player_analysis_plot'), {
             'chart_type': 'joker_category_summary',
@@ -411,10 +440,18 @@ class PlayerAnalysisPlotTests(TestCase):
         })
         self.assertEqual(category_response.status_code, 200)
         category_data = category_response.json()
-        self.assertEqual(category_data['labels'], ['History', 'Science'])
-        self.assertEqual(category_data['counts'], [2, 1])
+        self.assertEqual(category_data['labels'], ['History', 'Science', 'Sports'])
+        self.assertEqual(category_data['counts'], [2, 1, 1])
         self.assertEqual(category_data['best_labels'], ['Science'])
-        self.assertEqual(category_data['colors'], ['#8b5a2b', '#7b4bcc'])
+        self.assertEqual(category_data['colors'], ['#8b5a2b', '#7b4bcc', '#2f6fdf'])
+        self.assertEqual(
+            category_data['top_labels'],
+            [
+                {'label': 'Science', 'rank': 1},
+                {'label': 'History', 'rank': 2},
+                {'label': 'Sports', 'rank': 3},
+            ],
+        )
 
         filtered_creator_response = self.client.get(reverse('player_analysis_plot'), {
             'chart_type': 'joker_creator_summary',
@@ -435,6 +472,58 @@ class PlayerAnalysisPlotTests(TestCase):
         filtered_category_data = filtered_category_response.json()
         self.assertEqual(filtered_category_data['labels'], ['History'])
         self.assertEqual(filtered_category_data['counts'], [2])
+
+    @patch('GPTrivia.analysis._analysis_current_trivia_date', return_value=datetime.date(2025, 3, 1))
+    def test_joker_creator_summary_hides_inactive_creators(self, _mock_current_date):
+        GPTriviaRound.objects.create(
+            creator="Jenny",
+            title="Recent Joker Round",
+            major_category="History",
+            minor_category1="A",
+            minor_category2="B",
+            date="2024-10-01",
+            round_number=1,
+            max_score=10,
+            score_alex=8,
+            score_jenny=0,
+            score_megan=6,
+        )
+        GPTriviaRound.objects.create(
+            creator="Inactive",
+            title="Old Joker Round",
+            major_category="Science",
+            minor_category1="A",
+            minor_category2="B",
+            date="2024-10-08",
+            round_number=2,
+            max_score=10,
+            score_alex=9,
+            score_megan=7,
+        )
+        MergedPresentation.objects.create(
+            name="10.01.2024",
+            presentation_id="recent-pres",
+            round_names=["Recent Joker Round"],
+            creator_list=["Jenny"],
+            joker_round_indices={"alex": "Recent Joker Round"},
+        )
+        MergedPresentation.objects.create(
+            name="10.08.2024",
+            presentation_id="old-pres",
+            round_names=["Old Joker Round"],
+            creator_list=["Inactive"],
+            joker_round_indices={"alex": "Old Joker Round"},
+        )
+
+        response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'joker_creator_summary',
+            'player': 'Alex',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['labels'], ['Jenny'])
+        self.assertEqual(payload['counts'], [1])
 class PlayerAnalysisViewTests(TestCase):
     def setUp(self):
         self.views_threshold_patcher = patch('GPTrivia.views.MIN_ANALYSIS_ROUNDS', 1)

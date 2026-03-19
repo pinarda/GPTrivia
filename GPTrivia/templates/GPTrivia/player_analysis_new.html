@@ -2288,17 +2288,13 @@ function renderJokerPercentage(data) {
         }
 
         const averages = data.avg_scores || [];
-        const bestLabelSet = new Set(data.best_labels || []);
+        const topLabels = Array.isArray(data.top_labels) ? data.top_labels : [];
         const maxCount = Math.max(...data.counts, 0);
-        const bestX = [];
-        const bestY = [];
-
-        data.labels.forEach((label, index) => {
-            if (bestLabelSet.has(label)) {
-                bestX.push(label);
-                bestY.push(data.counts[index] + Math.max(0.18, maxCount * 0.08));
-            }
-        });
+        const medalStyles = {
+            1: { symbol: '★', color: '#ffd700', offset: 0.18 },
+            2: { symbol: '★', color: '#c0c0c0', offset: 0.44 },
+            3: { symbol: '★', color: '#cd7f32', offset: 0.70 },
+        };
 
         const barTrace = {
             x: data.labels,
@@ -2315,23 +2311,31 @@ function renderJokerPercentage(data) {
         };
 
         const traces = [barTrace];
-        if (bestX.length) {
+        topLabels.forEach((entry) => {
+            const medalStyle = medalStyles[entry.rank];
+            if (!medalStyle) {
+                return;
+            }
+            const labelIndex = data.labels.indexOf(entry.label);
+            if (labelIndex === -1) {
+                return;
+            }
             traces.push({
-                x: bestX,
-                y: bestY,
+                x: [entry.label],
+                y: [data.counts[labelIndex] + Math.max(medalStyle.offset, maxCount * 0.08 + (entry.rank - 1) * 0.26)],
                 mode: 'text',
                 type: 'scatter',
-                text: bestX.map(() => '★'),
+                text: [medalStyle.symbol],
                 textposition: 'middle center',
                 textfont: {
-                    color: '#ffd166',
+                    color: medalStyle.color,
                     size: 24,
                     family: 'YoungSerif',
                 },
                 hoverinfo: 'skip',
                 showlegend: false,
             });
-        }
+        });
 
         const layout = applyPlotTheme({
             title: data.title,

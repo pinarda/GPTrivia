@@ -119,6 +119,11 @@ class PlayerAnalysisPlot(View):
         queryset_rounds_1 = GPTriviaRound.objects.all()
         all_round_objects = list(queryset_rounds_1)
         recently_active_fields = self._recently_active_player_fields(all_round_objects)
+        self.recently_active_player_fields = set(recently_active_fields)
+        self.recently_active_player_names = {
+            display_name_for_player_field(player_field)
+            for player_field in self.recently_active_player_fields
+        }
         self.eligible_player_fields = set(
             get_eligible_player_fields(all_round_objects, min_rounds=MIN_ANALYSIS_ROUNDS)
         )
@@ -1047,6 +1052,7 @@ class PlayerAnalysisPlot(View):
         player_field = player_field_for_name(player)
         if not player_field:
             return JsonResponse({'error': 'Player not found'}, status=400)
+        recently_active_player_names = getattr(self, 'recently_active_player_names', set())
 
         presentations = MergedPresentation.objects.all()
         selected_rounds = []
@@ -1095,7 +1101,10 @@ class PlayerAnalysisPlot(View):
                     display_name_for_player_field(getattr(round_obj, 'creator', '')),
                     display_name_for_player_field(getattr(round_obj, 'secondary_creator', '')),
                 ]
-                labels = [label for label in labels if label]
+                labels = [
+                    label for label in labels
+                    if label and label in recently_active_player_names
+                ]
             else:
                 labels = [getattr(round_obj, 'major_category', '') or 'Uncategorized']
 
@@ -1138,13 +1147,17 @@ class PlayerAnalysisPlot(View):
             for index, label in enumerate(labels)
             if avg_scores[index] is not None
         }
-        best_labels = []
+        top_labels = []
         if valid_best_scores:
-            best_value = max(valid_best_scores.values())
-            best_labels = [
-                label for label, value in valid_best_scores.items()
-                if value == best_value
+            ranked_labels = sorted(
+                valid_best_scores.items(),
+                key=lambda item: (-item[1], -bucket_counts.get(item[0], 0), item[0].lower())
+            )
+            top_labels = [
+                {'label': label, 'rank': rank}
+                for rank, (label, _) in enumerate(ranked_labels[:3], start=1)
             ]
+        best_labels = [entry['label'] for entry in top_labels[:1]]
 
         return JsonResponse({
             'title': title,
@@ -1158,6 +1171,7 @@ class PlayerAnalysisPlot(View):
             ],
             'avg_scores': avg_scores,
             'best_labels': best_labels,
+            'top_labels': top_labels,
             'empty_message': 'No joker selections found for this player yet.',
         })
 
