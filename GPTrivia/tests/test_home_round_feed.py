@@ -56,6 +56,8 @@ class HomeRoundFeedTests(TestCase):
         self.assertContains(response, "Page 1 of 1")
         self.assertContains(response, ">New<", html=False)
         self.assertNotContains(response, "Past rounds are display-only for now.")
+        self.assertContains(response, "const scoresheetBaseUrl")
+        self.assertContains(response, "home-date-link")
 
     @patch("GPTrivia.views.get_round_titles_and_links")
     def test_collect_rounds_api_overlays_submitted_round_metadata_on_gmail_rounds(self, mock_get_round_titles_and_links):

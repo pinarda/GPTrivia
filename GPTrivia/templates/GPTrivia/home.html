@@ -300,12 +300,37 @@ body.site-shell[data-profile-theme="light"] {
 .home-profile-link {
     color: inherit;
     text-decoration: none;
-    transition: color 0.18s ease;
+    transition: color 0.18s ease, transform 0.18s ease;
 }
 
 .home-profile-link:hover,
 .home-profile-link:focus-visible {
     color: var(--home-profile-hover-color, inherit);
+    transform: translateY(-1px);
+}
+
+.round-selection-table-row.historical-row .home-profile-link:hover,
+.round-selection-table-row.historical-row .home-profile-link:focus-visible {
+    color: var(--home-profile-hover-color, inherit);
+}
+
+.home-date-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s ease, transform 0.18s ease, opacity 0.18s ease;
+}
+
+.home-date-link:hover,
+.home-date-link:focus-visible {
+    color: #8fd3ff;
+    transform: translateY(-1px);
+    opacity: 1;
+}
+
+.round-selection-table-row.historical-row .home-date-link:hover,
+.round-selection-table-row.historical-row .home-date-link:focus-visible {
+    color: #8fd3ff;
+    opacity: 1;
 }
 
 .round-selection-table-row.historical-row .round-selection-table-cell,
@@ -1020,6 +1045,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
         const homePlayerColorMapping = {{ playerColorMapping|safe }};
         const homeProfileableNames = new Set({{ profileable_player_names|safe }});
         const profileUrlTemplate = "{% url 'player_profile' '__PROFILE_NAME__' %}";
+        const scoresheetBaseUrl = "{% url 'scoresheet_new' %}";
         let homePresentationState = null;
         const homeRoundState = {
             rounds: [],
@@ -1037,6 +1063,14 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
 
         function profileUrlForName(name) {
             return profileUrlTemplate.replace('__PROFILE_NAME__', encodeURIComponent(name || ''));
+        }
+
+        function scoresheetUrlForDate(dateString) {
+            const trimmedDate = (dateString || '').trim();
+            if (!trimmedDate) {
+                return '';
+            }
+            return `${scoresheetBaseUrl}?date=${encodeURIComponent(trimmedDate)}`;
         }
 
         function syncSelectedOrdersFromRounds() {
@@ -1380,10 +1414,19 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
 
                 const dateCell = document.createElement('div');
                 dateCell.className = 'round-selection-table-cell wrap-text date_cell';
-                const dateSpan = document.createElement('span');
-                dateSpan.className = round.is_new ? 'editable-cell' : 'historical-text';
-                dateSpan.textContent = round.shared_date || '';
-                dateCell.appendChild(dateSpan);
+                const dateText = round.shared_date || '';
+                if (!round.is_new && dateText) {
+                    const dateLink = document.createElement('a');
+                    dateLink.className = 'historical-text home-date-link';
+                    dateLink.textContent = dateText;
+                    dateLink.href = scoresheetUrlForDate(dateText);
+                    dateCell.appendChild(dateLink);
+                } else {
+                    const dateSpan = document.createElement('span');
+                    dateSpan.className = round.is_new ? 'editable-cell' : 'historical-text';
+                    dateSpan.textContent = dateText;
+                    dateCell.appendChild(dateSpan);
+                }
 
                 row.append(orderCell, newCell, titleCell, creatorCell, dateCell, coopCell);
                 roundsBody.appendChild(row);
