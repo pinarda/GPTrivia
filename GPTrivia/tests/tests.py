@@ -1155,11 +1155,9 @@ class PlayerAnalysisViewTests(TestCase):
             payload['stats']['best_performance_ever']['scoresheet_link'],
             f"{reverse('scoresheet_new')}?date=2023-01-01",
         )
-        self.assertIn('Highest Percentage Score', payload['summary_html'])
         self.assertIn('Creator Favoritism Toward Alex', payload['summary_html'])
         self.assertIn('Players Favored by Creator Alex', payload['summary_html'])
         self.assertNotContains(response, 'Biggest Win')
-        self.assertIn(f"{reverse('scoresheet_new')}?date=2023-01-08", payload['summary_html'])
 
     def test_profile_creator_stats_ignore_players_inactive_for_over_a_year(self):
         GPTriviaRound.objects.create(

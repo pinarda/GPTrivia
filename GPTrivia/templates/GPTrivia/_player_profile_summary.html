@@ -20,21 +20,6 @@
     </div>
 
     <div class="profile-summary-grid">
-        <div class="profile-summary-item profile-summary-item--score">
-            <span class="profile-summary-label">Highest Percentage Score</span>
-            <span class="profile-summary-value">
-                {% if best_score_ever %}
-                    {{ best_score_ever.display_value }} on
-                    {% if best_score_ever.scoresheet_link %}
-                        <a href="{{ best_score_ever.scoresheet_link }}">{{ best_score_ever.date|date:"F j, Y" }}</a>
-                    {% else %}
-                        {{ best_score_ever.date|date:"F j, Y" }}
-                    {% endif %}
-                {% else %}
-                    N/A
-                {% endif %}
-            </span>
-        </div>
         <div class="profile-summary-item profile-summary-item--categories">
             <span class="profile-summary-label">Categories</span>
             <div class="profile-summary-pairs">
