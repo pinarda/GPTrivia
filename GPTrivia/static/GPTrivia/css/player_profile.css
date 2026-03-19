@@ -709,7 +709,9 @@ a {
     display: grid;
     gap: 0.85rem;
     padding: 0.95rem;
-    color: var(--profile-page-text);
+    background: var(--profile-card-surface);
+    color: var(--profile-card-text);
+    border: 1px solid var(--profile-border);
     min-width: 0;
     width: 100%;
     max-width: 100%;
@@ -750,15 +752,15 @@ a {
     width: 100%;
     box-sizing: border-box;
     padding: 0.7rem 0.75rem;
-    background: var(--profile-settings-panel-bg);
-    color: var(--profile-settings-panel-text);
+    background: var(--profile-card-surface);
+    color: var(--profile-card-text);
     border: 1px solid var(--profile-settings-panel-border);
 }
 
 .profile-settings-label {
     font-family: Monaco, monospace;
     font-size: 0.88rem;
-    color: var(--profile-settings-panel-text);
+    color: var(--profile-card-text);
 }
 
 .profile-settings-error {
@@ -769,7 +771,7 @@ a {
 
 .profile-settings-help {
     margin: 0;
-    color: var(--profile-settings-panel-text);
+    color: var(--profile-card-muted-text);
     opacity: 0.82;
     font-size: 0.82rem;
     line-height: 1.35;

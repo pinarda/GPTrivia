@@ -912,7 +912,7 @@ def _normalize_hex_color(color_value, fallback):
     return fallback.lower()
 
 
-def _darken_hex_color(color_value, factor=0.88):
+def _darken_hex_color(color_value, factor=0.84):
     normalized = _normalize_hex_color(color_value, Profile.PROFILE_PAGE_CHROME_DEFAULT)
     channels = [int(normalized[index:index + 2], 16) for index in (1, 3, 5)]
     darkened_channels = [
