@@ -150,6 +150,10 @@ class PlayerAnalysisPlot(View):
             return self.category_bar_chart(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'player_cat_bar':
             return self.category_bar_chart(filtered_rounds, all_rounds, creator, "None", player, misc)
+        if chart_type == 'category_violin_summary':
+            return self.category_violin_chart(filtered_rounds, all_rounds, creator, category, "", misc)
+        if chart_type == 'creator_violin_summary':
+            return self.category_violin_chart(filtered_rounds, all_rounds, creator, "None", "", misc)
         if chart_type == 'player_violin':
             return self.category_violin_chart(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'creator_violin':
@@ -754,33 +758,61 @@ class PlayerAnalysisPlot(View):
             data = pd.DataFrame(grouped_rows)
         else:
             if category == "":
-                data = df.groupby('major_category')[score_columns].apply(
-                    lambda x: x.values.flatten().tolist()).reset_index(name='scores')
-                # add the titles column to the data
-                data['titles'] = df.groupby('major_category')['title'].apply(list).reset_index(name='titles')['titles']
+                group_column = 'major_category'
                 cat_name = "Category"
             elif creator == "":
-                data = df.groupby('creator')[score_columns].apply(lambda x: x.values.flatten().tolist()).reset_index(
-                    name='scores')
-                # add the titles column to the data
-                data['titles'] = df.groupby('creator')['title'].apply(list).reset_index(name='titles')['titles']
+                group_column = 'creator'
                 cat_name = "Creator"
+            else:
+                return JsonResponse({'error': 'Invalid violin grouping'}, status=400)
 
-        # let's also add the title of the round to the data
-        # data['titles'] = df.groupby('major_category')['title'].apply(list).reset_index(name='titles')['titles']
+            grouped_rows = []
+            for group_value, group_df in df.groupby(group_column):
+                group_scores = []
+                group_hover_texts = []
+                for _, row in group_df.iterrows():
+                    max_score = row.get('max_score')
+                    if pd.isna(max_score) or max_score == 0:
+                        continue
+                    round_title = row.get('title', '')
+                    for score_column in score_columns:
+                        raw_score = row.get(score_column)
+                        if pd.isna(raw_score):
+                            continue
+                        normalized_score = (raw_score / max_score) * 10
+                        player_label = display_name_for_player_field(score_column)
+                        group_scores.append(normalized_score)
+                        group_hover_texts.append(
+                            f"{round_title}<br>"
+                            f"Player: {player_label}<br>"
+                            f"Raw score: {_format_score_value(raw_score)}/{_format_score_value(max_score)} "
+                            f"({normalized_score:.2f}/10)"
+                        )
+
+                if group_scores:
+                    grouped_rows.append({
+                        'label': group_value,
+                        'scores': group_scores,
+                        'hover_text': group_hover_texts,
+                        'mean': sum(group_scores) / len(group_scores),
+                    })
+
+            data = pd.DataFrame(grouped_rows)
+
+        if data.empty:
+            return JsonResponse({
+                'categories': [],
+                'plot_data': [],
+                'hover_texts': [],
+                'colors': [],
+                'title': f'Distribution of Normalized Scores by {cat_name}',
+                'xaxis': cat_name,
+                'yaxis': 'Points vs Player Mean' if player else 'Normalized Score (0-10)',
+            })
 
         if player:
             if category and creator == "":
                 data = data[data['label'] != player]
-        else:
-            data['titles'] = data.apply(lambda row: [title for score, title in zip(row['scores'], row['titles']) if pd.notna(score)], axis=1)
-            data['scores'] = data.apply(lambda row: [score for score, title in zip(row['scores'], row['titles']) if pd.notna(score)], axis=1)
-            data = data[data['scores'].apply(lambda x: len(x) > 0)]
-            data['mean'] = data['scores'].apply(lambda x: sum(x) / len(x) if len(x) > 0 else 0)
-            data['hover_text'] = data.apply(
-                lambda row: [f'{title} ({score:.2f})' for title, score in zip(row['titles'], row['scores'])],
-                axis=1,
-            )
 
         data = data.sort_values(by='mean', ascending=False)
 
@@ -802,7 +834,7 @@ class PlayerAnalysisPlot(View):
                 'colors': colors,
                 'title': f'Distribution of Normalized Scores by {cat_name}',
                 'xaxis': cat_name,
-                'yaxis': 'Points vs Player Mean' if player else 'Scores'
+                'yaxis': 'Points vs Player Mean' if player else 'Normalized Score (0-10)'
             }
             return JsonResponse(response_data)
         except Exception as e:

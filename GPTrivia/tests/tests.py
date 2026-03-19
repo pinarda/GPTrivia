@@ -243,6 +243,28 @@ class PlayerAnalysisPlotTests(TestCase):
         self.assertEqual(payload['yaxis'], 'Mean Normalized Score (0-10)')
         self.assertIn('Mean Normalized Score', payload['title'])
 
+    def test_category_violin_summary_data(self):
+        response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'category_violin_summary',
+        })
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['yaxis'], 'Normalized Score (0-10)')
+        self.assertIn('Distribution of Normalized Scores', payload['title'])
+        self.assertTrue(payload['plot_data'])
+        self.assertIn('Raw score:', payload['hover_texts'][0][0])
+
+    def test_creator_violin_summary_data(self):
+        response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'creator_violin_summary',
+        })
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['yaxis'], 'Normalized Score (0-10)')
+        self.assertIn('Distribution of Normalized Scores', payload['title'])
+        self.assertTrue(payload['plot_data'])
+        self.assertIn('Player:', payload['hover_texts'][0][0])
+
     def test_player_bar_data(self):
         rounds = GPTriviaRound.objects.all()
         response = self.client.get(reverse('player_analysis_plot'), {

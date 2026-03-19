@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319b">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319c">
 {% endblock %}
 
 {% block content %}
@@ -71,6 +71,12 @@
         </section>
         <section class="analysis-plot-card" data-plot-card="creatorBar">
             <div id="creatorBar" class="plot-div plot-div--standard"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="category-violin-summary">
+            <div id="category-violin-summary" class="plot-div plot-div--standard"></div>
+        </section>
+        <section class="analysis-plot-card" data-plot-card="creator-violin-summary">
+            <div id="creator-violin-summary" class="plot-div plot-div--standard"></div>
         </section>
         <section class="analysis-plot-card" data-plot-card="player-bar-space">
             <div id="player-bar-space" class="plot-div plot-div--standard"></div>
@@ -251,6 +257,8 @@
             'PCAplot',
             'catBar',
             'creatorBar',
+            'category-violin-summary',
+            'creator-violin-summary',
             'player-violin-space',
             'creator-violin-space',
             'time-series-creator',
@@ -283,6 +291,10 @@
                 return `This chart shows the average normalized score by category ${scope}, after scaling every round to a 10-point system.`;
             case 'creatorBar':
                 return `This chart shows the average normalized score by creator ${scope}, after scaling every round to a 10-point system.`;
+            case 'category-violin-summary':
+                return `This chart shows the distribution of normalized scores on all available rounds ${scope}, grouped by category, with black lines marking each category's mean normalized score.`;
+            case 'creator-violin-summary':
+                return `This chart shows the distribution of normalized scores on all available rounds ${scope}, grouped by creator, with black lines marking each creator's mean normalized score.`;
             case 'player-violin-space':
             case 'creator-violin-space':
                 return `This chart shows how ${playerName} scores ${scope}, grouped by ${escapeHtml(groupLabel || 'group')}, relative to ${playerPossessive} typical normalized score.`;
@@ -359,6 +371,10 @@
                     return rawTitle;
                 }
                 return `Mean Normalized Score ${scope}${groupLabel ? ` by ${escapeHtml(groupLabel)}` : ''}`;
+            case 'category-violin-summary':
+                return `Distribution of Normalized Scores ${scope} by Category`;
+            case 'creator-violin-summary':
+                return `Distribution of Normalized Scores ${scope} by Creator`;
             default:
                 return rawTitle;
         }
@@ -538,6 +554,8 @@
         pca: false,
         catBar: false,
         creatorBar: false,
+        summaryCategoryViolin: false,
+        summaryCreatorViolin: false,
         playerBar: false,
         playerViolin: false,
         playerCatBar: false,
@@ -790,6 +808,8 @@
         if (!plotFlags.pca) hideDiv('PCAplot');
         if (!plotFlags.catBar) hideDiv('catBar');
         if (!plotFlags.creatorBar) hideDiv('creatorBar');
+        if (!plotFlags.summaryCategoryViolin) hideDiv('category-violin-summary');
+        if (!plotFlags.summaryCreatorViolin) hideDiv('creator-violin-summary');
         if (!plotFlags.playerBar) hideDiv('player-bar-space');
         if (!plotFlags.playerViolin) hideDiv('player-violin-space');
         if (!plotFlags.creatorViolin) hideDiv('creator-violin-space');
@@ -811,6 +831,8 @@
         $('#PCAplot').empty();
         $('#catBar').empty();
         $('#creatorBar').empty();
+        $('#category-violin-summary').empty();
+        $('#creator-violin-summary').empty();
         $('#player-bar-space').empty();
         $('#player-violin-space').empty();
         $('#player-cat-bar-space').empty();
@@ -831,6 +853,8 @@
         plotFlags.pca = false;
         plotFlags.catBar = false;
         plotFlags.creatorBar = false;
+        plotFlags.summaryCategoryViolin = false;
+        plotFlags.summaryCreatorViolin = false;
         plotFlags.playerBar = false;
         plotFlags.playerViolin = false;
         plotFlags.playerCatBar = false;
@@ -976,6 +1000,28 @@
                         console.error('Error loading data:', error);
                     }
                 });
+                plotFlags.summaryCategoryViolin = true;
+                showDiv('category-violin-summary');
+                $.ajax({
+                    url: '{% url "player_analysis_plot" %}',
+                    method: 'GET',
+                    data: {
+                        creator: creator,
+                        category: category,
+                        player: player,
+                        chart_type: 'category_violin_summary'
+                    },
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        renderSummaryViolin('category-violin-summary', data);
+                    },
+                    error: function(error) {
+                        console.error('Error loading data:', error);
+                    }
+                });
             }
             if (creator === '') {
                 plotFlags.creatorBar = true;
@@ -994,6 +1040,28 @@
                             return;
                         }
                         renderCreatorBar(data);
+                    },
+                    error: function(error) {
+                        console.error('Error loading data:', error);
+                    }
+                });
+                plotFlags.summaryCreatorViolin = true;
+                showDiv('creator-violin-summary');
+                $.ajax({
+                    url: '{% url "player_analysis_plot" %}',
+                    method: 'GET',
+                    data: {
+                        creator: creator,
+                        category: category,
+                        player: player,
+                        chart_type: 'creator_violin_summary'
+                    },
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        renderSummaryViolin('creator-violin-summary', data);
                     },
                     error: function(error) {
                         console.error('Error loading data:', error);
@@ -2005,6 +2073,9 @@
             x: data.categories,
             y: data.mean_values,
             type: 'bar',
+            marker: {
+                color: data.colors
+            }
         };
 
         const layout = {
@@ -2048,6 +2119,60 @@
 
         // change the styling of creator bar
         Plotly.newPlot('creatorBar', [trace], layout);
+    }
+
+    function renderSummaryViolin(targetId, data) {
+        setPlotDescription(targetId, buildPlotDescription(targetId, data));
+        const traces = data.categories.map((category, index) => ({
+            type: 'violin',
+            x: Array(data.plot_data[index].length).fill(category),
+            y: data.plot_data[index],
+            name: category,
+            box: {
+                visible: true
+            },
+            meanline: {
+                visible: false
+            },
+            points: 'all',
+            pointpos: -1.8,
+            jitter: 0.5,
+            marker: {
+                color: data.colors[index]
+            },
+            text: data.hover_texts[index],
+            hoverinfo: 'text'
+        }));
+
+        const layout = {
+            title: data.title,
+            xaxis: { title: data.xaxis },
+            yaxis: { title: data.yaxis },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: {
+                color: "#ffffff",
+                family: "YoungSerif"
+            },
+            showlegend: false,
+            shapes: buildFullWidthViolinMeanShapes(data.categories, data.plot_data),
+            annotations: [{
+                text: 'Black lines show mean score',
+                x: 1,
+                y: 1.08,
+                xref: 'paper',
+                yref: 'paper',
+                xanchor: 'right',
+                showarrow: false,
+                font: {
+                    color: analysisTextColor,
+                    family: 'YoungSerif',
+                    size: 13,
+                },
+            }],
+        };
+
+        Plotly.newPlot(targetId, traces, layout);
     }
 
     function renderTriviaNightStreak(data) {
@@ -2296,6 +2421,8 @@ function renderJokerPercentage(data) {
             'PCAplot',
             'catBar',
             'creatorBar',
+            'category-violin-summary',
+            'creator-violin-summary',
             'player-bar-space',
             'player-violin-space',
             'player-cat-bar-space',
