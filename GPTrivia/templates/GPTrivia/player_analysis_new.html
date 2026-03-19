@@ -431,14 +431,15 @@
 
         const playerName = linkElement.dataset.playerName || (linkElement.textContent || '').trim();
         const hoverColor = playerColorMapping[playerName] || analysisTextColor;
+        const defaultColor = '#000000';
 
         linkElement.dataset.analysisProfileLinkBound = 'true';
-        linkElement.style.color = analysisTextColor;
+        linkElement.style.color = defaultColor;
         linkElement.style.textDecoration = 'none';
         linkElement.style.transition = 'color 0.18s ease';
 
         const setDefaultColor = () => {
-            linkElement.style.color = analysisTextColor;
+            linkElement.style.color = defaultColor;
         };
         const setHoverColor = () => {
             linkElement.style.color = hoverColor;
