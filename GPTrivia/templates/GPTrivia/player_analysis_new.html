@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260315c">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319a">
 {% endblock %}
 
 {% block content %}
@@ -170,6 +170,103 @@
             return `on ${escapeHtml(category)} Rounds`;
         }
         return 'on All Rounds';
+    }
+
+    function ensurePlotDescriptionElement(targetId) {
+        const plotElement = document.getElementById(targetId);
+        if (!plotElement) {
+            return null;
+        }
+
+        const descriptionId = `${targetId}-description`;
+        let descriptionElement = document.getElementById(descriptionId);
+        if (!descriptionElement) {
+            descriptionElement = document.createElement('div');
+            descriptionElement.id = descriptionId;
+            descriptionElement.className = 'analysis-plot-description';
+            plotElement.parentNode.insertBefore(descriptionElement, plotElement);
+        }
+
+        return descriptionElement;
+    }
+
+    function setPlotDescription(targetId, html) {
+        const descriptionElement = ensurePlotDescriptionElement(targetId);
+        if (!descriptionElement) {
+            return;
+        }
+
+        if (!html) {
+            descriptionElement.innerHTML = '';
+            descriptionElement.style.display = 'none';
+            return;
+        }
+
+        descriptionElement.innerHTML = html;
+        descriptionElement.style.display = 'block';
+    }
+
+    function clearPlotDescription(targetId) {
+        setPlotDescription(targetId, '');
+    }
+
+    function clearAllPlotDescriptions() {
+        [
+            'bar-space',
+            'violin-space',
+            'CorrMatrix',
+            'CreatorMatrix',
+            'PCAplot',
+            'catBar',
+            'creatorBar',
+            'player-violin-space',
+            'creator-violin-space',
+            'time-series-creator',
+            'trivia-night-streak',
+            'joker_percentage',
+            'joker-creator-summary',
+            'joker-category-summary',
+        ].forEach(clearPlotDescription);
+    }
+
+    function buildPlotDescription(targetId, data = {}) {
+        const { creator, category, player } = getSelectedAnalysisFilters();
+        const scope = analysisRoundScopeHtml({ creator, category });
+        const playerName = player ? linkedProfileName(player) : '';
+        const playerPossessive = player ? linkedPossessiveName(player) : '';
+        const groupLabel = extractAxisTitleText({ title: data.xaxis || '' }).toLowerCase();
+
+        switch (targetId) {
+            case 'bar-space':
+                return `This chart shows how much each player's average score ${scope} rises or falls relative to that player's own average across all available rounds.`;
+            case 'violin-space':
+                return `This chart shows how far above or below each player's typical normalized score they land ${scope}, after scaling every round to a 10-point system.`;
+            case 'CorrMatrix':
+                return `This matrix shows how predictive one player's score ${scope} is of other players' scores on the same rounds.`;
+            case 'CreatorMatrix':
+                return `This chart shows how much a creator's round favors one particular player compared to the rest of the field${category ? ` within ${escapeHtml(category)} rounds` : ''}.`;
+            case 'PCAplot':
+                return `This chart shows which players tend to score similarly ${scope}; players that are closer together in 3D space have more similar scoring patterns.`;
+            case 'catBar':
+                return `This chart shows the average raw score by category ${scope}.`;
+            case 'creatorBar':
+                return `This chart shows the average raw score by creator ${scope}.`;
+            case 'player-violin-space':
+            case 'creator-violin-space':
+                return `This chart shows how ${playerName} scores ${scope}, grouped by ${escapeHtml(groupLabel || 'group')}, relative to ${playerPossessive} typical normalized score.`;
+            case 'time-series-creator':
+                return `This moving average shows whether ${playerName} has recently been scoring higher or lower than ${playerName} typically does ${scope}, relative to the field.`;
+            case 'trivia-night-streak':
+                return `This chart shows how many consecutive trivia nights were played without skipping a week.`;
+            case 'joker_percentage':
+                return `This table shows how often each player's joker landed on that player's highest-scoring round of the night.`;
+            case 'joker-creator-summary':
+                return `This chart shows which creators ${playerName} jokers most often; the star marks the creator where ${playerName} has the highest average score on jokered rounds.`;
+            case 'joker-category-summary':
+                return `This chart shows which categories ${playerName} jokers most often; the star marks the category where ${playerName} has the highest average score on jokered rounds.`;
+            default:
+                return '';
+        }
     }
 
     function buildAnalysisTitle(targetId, layout = {}) {
@@ -518,6 +615,7 @@
 
     function hideDiv(divId) {
         document.getElementById(divId).style.display = 'none';
+        clearPlotDescription(divId);
     }
 
     function showDiv(divId) {
@@ -611,6 +709,7 @@
         $('#joker_percentage').empty();
         $('#joker-creator-summary').empty();
         $('#joker-category-summary').empty();
+        clearAllPlotDescriptions();
 
         // set all flags to false
         plotFlags.bar = false;
@@ -1327,6 +1426,7 @@
     }
 
     function renderTimeSeriesCreator(data) {
+        setPlotDescription('time-series-creator', buildPlotDescription('time-series-creator', data));
         let lineColor = data.colors;
         const brightnessThreshold = 55; // Set your threshold here
         const currentBrightness = calculateBrightness(lineColor);
@@ -1395,6 +1495,7 @@
 
 
     function renderBar(data) {
+        setPlotDescription('bar-space', buildPlotDescription('bar-space', data));
         const trace = {
             x: data.players,
             y: data.mean_values,
@@ -1420,6 +1521,7 @@
     }
 
     function renderViolin(data) {
+        setPlotDescription('violin-space', buildPlotDescription('violin-space', data));
         const traces = data.data.map(playerData => ({
             type: 'violin',
             x: Array(playerData.scores.length).fill(playerData.player),
@@ -1472,6 +1574,7 @@
     }
 
     function renderPCA(data) {
+        setPlotDescription('PCAplot', buildPlotDescription('PCAplot', data));
         // Trace for the principal component scores
         {#const scoresTrace = {#}
         {#    x: data.PC1,#}
@@ -1535,6 +1638,7 @@
     }
 
     function renderCorrMatrix(data) {
+        setPlotDescription('CorrMatrix', buildPlotDescription('CorrMatrix', data));
         const trace = {
             z: Object.values(data.correlation_matrix).map(row => Object.values(row)),            x: data.columns,
             y: data.columns,
@@ -1609,6 +1713,7 @@
 
 
     function renderCreatorMatrix(data) {
+        setPlotDescription('CreatorMatrix', buildPlotDescription('CreatorMatrix', data));
         const creators = Object.keys(data.correlation_matrix);  // Extract creator names (keys of the correlation_matrix object)
         const players = data.columns;  // Extract player names (columns from the JSON response)
             // Create the z matrix for heatmap values
@@ -1659,6 +1764,7 @@
     }
 
     function renderPlayerViolin(data) {
+        setPlotDescription('player-violin-space', buildPlotDescription('player-violin-space', data));
         const traces = data.categories.map((category, index) => ({
             type: 'violin',
             x: Array(data.plot_data[index].length).fill(category),
@@ -1690,7 +1796,7 @@
             },
             showlegend: false,
             annotations: [{
-                text: 'Black bars show mean score',
+                text: 'Black lines show mean score',
                 x: 1,
                 y: 1.08,
                 xref: 'paper',
@@ -1709,6 +1815,7 @@
     }
 
     function renderCreatorViolin(data) {
+        setPlotDescription('creator-violin-space', buildPlotDescription('creator-violin-space', data));
         const traces = data.categories.map((category, index) => ({
             type: 'violin',
             x: Array(data.plot_data[index].length).fill(category),
@@ -1740,7 +1847,7 @@
             },
             showlegend: false,
             annotations: [{
-                text: 'Black bars show mean score',
+                text: 'Black lines show mean score',
                 x: 1,
                 y: 1.08,
                 xref: 'paper',
@@ -1759,6 +1866,7 @@
     }
 
     function renderCatBar(data) {
+        setPlotDescription('catBar', buildPlotDescription('catBar', data));
         const trace = {
             x: data.categories,
             y: data.mean_values,
@@ -1782,6 +1890,7 @@
 
 
     function renderCreatorBar(data) {
+        setPlotDescription('creatorBar', buildPlotDescription('creatorBar', data));
         const trace = {
             x: data.categories,
             y: data.mean_values,
@@ -1808,6 +1917,7 @@
     }
 
     function renderTriviaNightStreak(data) {
+        setPlotDescription('trivia-night-streak', buildPlotDescription('trivia-night-streak', data));
         const trace = {
             x: data.dates,
             y: data.streaks,
@@ -1850,6 +1960,14 @@
     }
 
 function renderJokerPercentage(data) {
+    const playerNames = Object.keys(data || {});
+    const fractions = Object.values(data || {}).filter(fraction => fraction !== null && fraction !== undefined);
+    if (!playerNames.length || !fractions.length) {
+        hideDiv('joker_percentage');
+        return;
+    }
+
+    setPlotDescription('joker_percentage', buildPlotDescription('joker_percentage', data));
     const table = document.createElement('table');
     table.className = 'joker-analysis-fraction-table';
     const caption = table.createCaption();
@@ -1858,13 +1976,12 @@ function renderJokerPercentage(data) {
     // Create header row with player names
     const headerRow = table.insertRow();
     headerRow.insertCell().textContent = 'Player';
-    Object.keys(data).forEach(player => {
+    playerNames.forEach(player => {
         const headerCell = headerRow.insertCell();
         headerCell.textContent = player;
     });
 
     // Compute min and max values
-    const fractions = Object.values(data).filter(f => f !== null);
     const minFraction = Math.min(...fractions);
     const maxFraction = Math.max(...fractions);
 
@@ -1882,6 +1999,7 @@ function renderJokerPercentage(data) {
     }
 
     function renderJokerSelectionSummary(targetId, data) {
+        setPlotDescription(targetId, buildPlotDescription(targetId, data));
         if (!data.labels || !data.labels.length) {
             const layout = applyPlotTheme({
                 title: data.title,

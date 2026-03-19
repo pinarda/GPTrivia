@@ -186,9 +186,23 @@ body.site-shell[data-profile-theme="light"] .table-class th {
     margin-bottom: 20px;
 }
 
-#CorrMatrix, #PMatrix {
+#CorrMatrix {
     width: 49%;
     height: 500px;
+}
+
+.analysis-plot-description {
+    width: 100%;
+    color: var(--analysis-page-text);
+    font-family: YoungSerif;
+    font-size: 1rem;
+    line-height: 1.45;
+    margin: -4px 0 -10px;
+    padding: 0 4px;
+}
+
+.analysis-plot-description a {
+    text-decoration: none;
 }
 
 #joker_percentage {

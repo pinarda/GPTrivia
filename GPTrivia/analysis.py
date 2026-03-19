@@ -326,8 +326,8 @@ class PlayerAnalysisPlot(View):
 
         for col, player, color in zip(score_columns, players, colors):
             if player.lower() != creator.lower():
-                normalized_scores = (df[col] / max_scores) * 100
-                normalized_baseline = (unfiltered_df[col] / unfiltered_max_scores) * 100
+                normalized_scores = (df[col] / max_scores) * 10
+                normalized_baseline = (unfiltered_df[col] / unfiltered_max_scores) * 10
                 adjusted_scores = normalized_scores - normalized_baseline.mean(skipna=True)
                 plot_scores = []
                 hover_texts = []
@@ -343,8 +343,8 @@ class PlayerAnalysisPlot(View):
                     hover_texts.append(
                         f"{title}<br>"
                         f"Raw score: {_format_score_value(raw_score)}/{_format_score_value(max_score)} "
-                        f"({percent_score:.1f}%)<br>"
-                        f"Difference vs typical score: {adjusted_score:+.1f} pct pts"
+                        f"({percent_score:.2f}/10)<br>"
+                        f"Difference vs typical score: {adjusted_score:+.2f} points"
                     )
 
                 mean_score_diff = np.mean(plot_scores) if plot_scores else 0
@@ -374,9 +374,9 @@ class PlayerAnalysisPlot(View):
         try:
             response_data = {
                 'data': data,
-                'title': f"Percentage Score Above or Below Each Player's Typical Score on {name}{cat} Rounds",
+                'title': f"Score Above or Below Each Player's Typical Score on {name}{cat} Rounds",
                 'xaxis': 'Player',
-                'yaxis': 'Percentage Points vs Typical Score'
+                'yaxis': 'Points vs Typical Score'
             }
             return JsonResponse(response_data)
         except Exception as e:
@@ -691,7 +691,7 @@ class PlayerAnalysisPlot(View):
 
         if player:
             player_column = player_field_for_name(player)
-            player_percentages = (df[player_column] / df['max_score'].replace(0, np.nan)) * 100
+            player_percentages = (df[player_column] / df['max_score'].replace(0, np.nan)) * 10
             player_mean_percentage = player_percentages.mean(skipna=True)
 
             if category == "":
@@ -712,14 +712,14 @@ class PlayerAnalysisPlot(View):
                     max_score = row.get('max_score')
                     if pd.isna(raw_score) or pd.isna(max_score) or max_score == 0:
                         continue
-                    percent_score = (raw_score / max_score) * 100
+                    percent_score = (raw_score / max_score) * 10
                     adjusted_score = percent_score - player_mean_percentage
                     group_scores.append(adjusted_score)
                     group_hover_texts.append(
                         f"{row.get('title', '')}<br>"
                         f"Raw score: {_format_score_value(raw_score)}/{_format_score_value(max_score)} "
-                        f"({percent_score:.1f}%)<br>"
-                        f"Difference vs player mean: {adjusted_score:+.1f} pct pts"
+                        f"({percent_score:.2f}/10)<br>"
+                        f"Difference vs player mean: {adjusted_score:+.2f} points"
                     )
 
                 if group_scores:
@@ -779,9 +779,9 @@ class PlayerAnalysisPlot(View):
                 'plot_data': plot_data,
                 'hover_texts': hover_texts,
                 'colors': colors,
-                'title': f'Distribution of Percentage Scores by {cat_name}',
+                'title': f'Distribution of Normalized Scores by {cat_name}',
                 'xaxis': cat_name,
-                'yaxis': 'Percentage Points vs Player Mean' if player else 'Scores'
+                'yaxis': 'Points vs Player Mean' if player else 'Scores'
             }
             return JsonResponse(response_data)
         except Exception as e:
@@ -1155,12 +1155,6 @@ class PlayerAnalysisPlot(View):
 
                 if player_column not in rounds_on_date.columns:
                     continue
-
-                # for debugging, print rounds_on_date, rounds_on_date['title'], joker_round_name, player_column
-                print(rounds_on_date)
-                print(rounds_on_date['title'])
-                print(joker_round_name)
-                print(player_column)
 
                 d = rounds_on_date[rounds_on_date['title'] == joker_round_name]
 
