@@ -51,6 +51,20 @@ def _format_score_value(value):
 class PlayerAnalysisPlot(View):
 
     @staticmethod
+    def _recenter_correlation_matrix(corr_matrix):
+        if corr_matrix.empty:
+            return corr_matrix
+
+        recentered = corr_matrix.copy()
+        mask = ~np.eye(len(recentered), dtype=bool)
+        off_diagonal_values = recentered.where(mask).stack(dropna=True)
+        if not off_diagonal_values.empty:
+            off_diagonal_mean = off_diagonal_values.mean()
+            recentered = recentered.where(~mask, recentered - off_diagonal_mean)
+        np.fill_diagonal(recentered.values, 1.0)
+        return recentered
+
+    @staticmethod
     def _queryset_to_records(queryset):
         return [flatten_round_for_analysis(round_obj) for round_obj in queryset]
 
@@ -494,6 +508,7 @@ class PlayerAnalysisPlot(View):
         # Convert the correlation matrix and p-values matrix to JSON
         # replace any nans in the correlation matrix with 0
         corr_matrix = corr_matrix.where(pd.notnull(corr_matrix), 0)
+        corr_matrix = self._recenter_correlation_matrix(corr_matrix)
         corr_matrix_json = corr_matrix.to_dict()
         p_values_matrix = p_values_matrix.where(pd.notnull(p_values_matrix), 1)
         p_values_matrix_json = p_values_matrix.to_dict()

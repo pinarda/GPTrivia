@@ -204,7 +204,18 @@ class PlayerAnalysisPlotTests(TestCase):
             'creator': 'Jenny'
         })
         self.assertEqual(response.status_code, 200)
-        self.assertIn('correlation_matrix', response.json())
+        payload = response.json()
+        self.assertIn('correlation_matrix', payload)
+        matrix = payload['correlation_matrix']
+        score_fields = list(matrix.keys())
+        off_diagonal_values = []
+        for row_name in score_fields:
+            self.assertAlmostEqual(matrix[row_name][row_name], 1.0, places=6)
+            for col_name in score_fields:
+                if row_name != col_name:
+                    off_diagonal_values.append(matrix[row_name][col_name])
+        self.assertTrue(off_diagonal_values)
+        self.assertAlmostEqual(sum(off_diagonal_values) / len(off_diagonal_values), 0.0, places=6)
 
     def test_cat_bar_data(self):
         rounds = GPTriviaRound.objects.all()
