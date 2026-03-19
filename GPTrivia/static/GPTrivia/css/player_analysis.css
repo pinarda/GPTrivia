@@ -334,6 +334,11 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
     text-decoration: none;
 }
 
+.analysis-profile-link {
+    color: inherit;
+    text-decoration: none;
+}
+
 #joker_percentage {
     padding-bottom: 30px;
     padding-top: 15px;

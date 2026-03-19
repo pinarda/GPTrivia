@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319f">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260319g">
 {% endblock %}
 
 {% block content %}
@@ -212,8 +212,7 @@
         if (!name) {
             return '';
         }
-        const hoverColor = playerColorMapping[name] || analysisTextColor;
-        return `<a href="${escapeAttribute(profileUrlForName(name))}" style="color:${escapeAttribute(analysisTextColor)}; text-decoration:none;" onmouseover="this.style.color='${escapeAttribute(hoverColor)}'" onmouseout="this.style.color='${escapeAttribute(analysisTextColor)}'">${escapeHtml(name)}</a>`;
+        return `<a href="${escapeAttribute(profileUrlForName(name))}" class="analysis-profile-link" data-player-name="${escapeAttribute(name)}">${escapeHtml(name)}</a>`;
     }
 
     function linkedPossessiveName(name) {
@@ -265,6 +264,7 @@
 
         descriptionElement.innerHTML = html;
         descriptionElement.style.display = 'block';
+        enhanceAnalysisProfileLinks(descriptionElement);
     }
 
     function clearPlotDescription(targetId) {
@@ -424,6 +424,40 @@
         };
     }
 
+    function decorateAnalysisProfileLink(linkElement) {
+        if (!linkElement || linkElement.dataset.analysisProfileLinkBound === 'true') {
+            return;
+        }
+
+        const playerName = linkElement.dataset.playerName || (linkElement.textContent || '').trim();
+        const hoverColor = playerColorMapping[playerName] || analysisTextColor;
+
+        linkElement.dataset.analysisProfileLinkBound = 'true';
+        linkElement.style.color = analysisTextColor;
+        linkElement.style.textDecoration = 'none';
+        linkElement.style.transition = 'color 0.18s ease';
+
+        const setDefaultColor = () => {
+            linkElement.style.color = analysisTextColor;
+        };
+        const setHoverColor = () => {
+            linkElement.style.color = hoverColor;
+        };
+
+        linkElement.addEventListener('mouseenter', setHoverColor);
+        linkElement.addEventListener('mouseleave', setDefaultColor);
+        linkElement.addEventListener('focus', setHoverColor);
+        linkElement.addEventListener('blur', setDefaultColor);
+    }
+
+    function enhanceAnalysisProfileLinks(root) {
+        if (!root || typeof root.querySelectorAll !== 'function') {
+            return;
+        }
+
+        root.querySelectorAll('.analysis-profile-link').forEach(decorateAnalysisProfileLink);
+    }
+
     function enhancePlotAxisLabels(target) {
         const plotElement = typeof target === 'string' ? document.getElementById(target) : target;
         if (!plotElement) {
@@ -544,7 +578,9 @@
         return Promise.resolve(
             originalPlotlyNewPlot(target, data, applyPlotTheme(linkedLayout), config)
         ).then((result) => {
-            enhancePlotAxisLabels(target);
+            const plotElement = typeof target === 'string' ? document.getElementById(target) : target;
+            enhancePlotAxisLabels(plotElement || target);
+            enhanceAnalysisProfileLinks(plotElement || target);
             return result;
         });
     };
