@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import json
 from django.http import JsonResponse
 from scipy.stats import pearsonr
 from sklearn.decomposition import PCA
@@ -113,6 +114,10 @@ class PlayerAnalysisPlot(View):
             return self.trivia_night_streak(filtered_rounds, self._queryset_to_records(queryset_rounds_1), creator, category, player, misc)
         if chart_type == 'joker_percentage':
             return self.joker_percentage(filtered_rounds, all_rounds, creator, category, player, misc)
+        if chart_type == 'joker_creator_summary':
+            return self.joker_selection_summary(player, group_by='creator')
+        if chart_type == 'joker_category_summary':
+            return self.joker_selection_summary(player, group_by='category')
         else:
             return JsonResponse({'error': 'Invalid chart type'}, status=400)
 
@@ -829,6 +834,192 @@ class PlayerAnalysisPlot(View):
         }
 
         return JsonResponse(plot_data)
+
+    @staticmethod
+    def _parse_analysis_json(value, fallback):
+        if value in (None, '', []):
+            return fallback
+        if isinstance(value, (dict, list)):
+            return value
+        if isinstance(value, str):
+            try:
+                return json.loads(value.replace("'", '"'))
+            except Exception:
+                return fallback
+        return fallback
+
+    @staticmethod
+    def _selected_joker_titles(selection):
+        if isinstance(selection, list):
+            return list(dict.fromkeys(
+                title for title in selection
+                if title and title != 'Select'
+            ))[:2]
+        if isinstance(selection, str) and selection and selection != 'Select':
+            return [selection]
+        return []
+
+    @staticmethod
+    def _presentation_date(name):
+        if not name:
+            return pd.NaT
+        return pd.to_datetime(name, format='%m.%d.%Y', errors='coerce')
+
+    @staticmethod
+    def _player_key_candidates(player_name):
+        player_field = player_field_for_name(player_name)
+        display_name = display_name_for_player_field(player_field or player_name)
+        candidates = {
+            str(player_name or '').strip(),
+            str(player_name or '').strip().lower(),
+            display_name,
+            display_name.lower(),
+            player_field,
+            player_field.replace('score_', '') if player_field else '',
+        }
+        return {candidate for candidate in candidates if candidate}
+
+    def _selected_titles_for_player(self, joker_round_indices, player_name):
+        joker_map = self._parse_analysis_json(joker_round_indices, {})
+        if not isinstance(joker_map, dict):
+            return []
+
+        key_candidates = self._player_key_candidates(player_name)
+        for key, value in joker_map.items():
+            if str(key).strip() in key_candidates or str(key).strip().lower() in key_candidates:
+                return self._selected_joker_titles(value)
+        return []
+
+    def _effective_joker_round_score(self, round_obj, player_field):
+        score_value = getattr(round_obj, player_field, None)
+        if pd.notna(score_value):
+            return float(score_value)
+
+        player_name = display_name_for_player_field(player_field)
+        creator_names = {
+            display_name_for_player_field(getattr(round_obj, 'creator', '')),
+            display_name_for_player_field(getattr(round_obj, 'secondary_creator', '')),
+        }
+        creator_names.discard('')
+        if player_name not in creator_names:
+            return None
+
+        other_scores = []
+        for key, value in round_obj.__dict__.items():
+            if not str(key).startswith('score_') or key == player_field:
+                continue
+            if pd.notna(value):
+                other_scores.append(float(value))
+
+        if not other_scores:
+            return None
+        return float(np.median(other_scores))
+
+    def joker_selection_summary(self, player, group_by='creator'):
+        player_field = player_field_for_name(player)
+        if not player_field:
+            return JsonResponse({'error': 'Player not found'}, status=400)
+
+        presentations = MergedPresentation.objects.all()
+        selected_rounds = []
+
+        for presentation in presentations:
+            presentation_date = self._presentation_date(getattr(presentation, 'name', ''))
+            if pd.isna(presentation_date):
+                continue
+
+            joker_titles = self._selected_titles_for_player(
+                getattr(presentation, 'joker_round_indices', None),
+                player,
+            )
+            if not joker_titles:
+                continue
+
+            date_value = presentation_date.date()
+            rounds_on_date = list(GPTriviaRound.objects.filter(date=date_value))
+            if not rounds_on_date:
+                continue
+
+            for round_title in joker_titles:
+                matching_round = next(
+                    (round_obj for round_obj in rounds_on_date if round_obj.title == round_title),
+                    None,
+                )
+                if not matching_round:
+                    continue
+                selected_rounds.append(matching_round)
+
+        bucket_counts = {}
+        bucket_scores = {}
+
+        for round_obj in selected_rounds:
+            if group_by == 'creator':
+                labels = [
+                    display_name_for_player_field(getattr(round_obj, 'creator', '')),
+                    display_name_for_player_field(getattr(round_obj, 'secondary_creator', '')),
+                ]
+                labels = [label for label in labels if label]
+            else:
+                labels = [getattr(round_obj, 'major_category', '') or 'Uncategorized']
+
+            effective_score = self._effective_joker_round_score(round_obj, player_field)
+            normalized_score = None
+            if effective_score is not None and getattr(round_obj, 'max_score', None) not in (None, 0):
+                normalized_score = float(effective_score) / float(round_obj.max_score)
+
+            for label in labels:
+                bucket_counts[label] = bucket_counts.get(label, 0) + 1
+                if normalized_score is not None:
+                    bucket_scores.setdefault(label, []).append(normalized_score)
+
+        title = 'Most Jokered Creators' if group_by == 'creator' else 'Most Jokered Categories'
+        xaxis = 'Creator' if group_by == 'creator' else 'Category'
+
+        if not bucket_counts:
+            return JsonResponse({
+                'title': title,
+                'xaxis': xaxis,
+                'yaxis': 'Times Jokered',
+                'labels': [],
+                'counts': [],
+                'colors': [],
+                'avg_scores': [],
+                'best_labels': [],
+                'empty_message': 'No joker selections found for this player yet.',
+            })
+
+        sorted_items = sorted(bucket_counts.items(), key=lambda item: (-item[1], item[0].lower()))
+        labels = [label for label, _ in sorted_items]
+        counts = [count for _, count in sorted_items]
+        avg_scores = [
+            (sum(bucket_scores[label]) / len(bucket_scores[label])) if bucket_scores.get(label) else None
+            for label in labels
+        ]
+
+        valid_best_scores = {
+            label: avg_scores[index]
+            for index, label in enumerate(labels)
+            if avg_scores[index] is not None
+        }
+        best_labels = []
+        if valid_best_scores:
+            best_value = max(valid_best_scores.values())
+            best_labels = [
+                label for label, value in valid_best_scores.items()
+                if value == best_value
+            ]
+
+        return JsonResponse({
+            'title': title,
+            'xaxis': xaxis,
+            'yaxis': 'Times Jokered',
+            'labels': labels,
+            'counts': counts,
+            'colors': [get_player_color(label) for label in labels],
+            'avg_scores': avg_scores,
+            'best_labels': best_labels,
+            'empty_message': 'No joker selections found for this player yet.',
+        })
 
     def joker_percentage(self, rounds, unfiltered_rounds, creator, category, player, misc):
         merged_presentations = MergedPresentation.objects.all()

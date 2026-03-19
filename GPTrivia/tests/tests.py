@@ -286,6 +286,92 @@ class PlayerAnalysisPlotTests(TestCase):
         self.assertAlmostEqual(data['adjusted_scores'][0], -2.3333333333, places=6)
         self.assertAlmostEqual(data['adjusted_scores'][1], -2.3333333333, places=6)
         self.assertAlmostEqual(data['adjusted_scores'][2], 4.6666666667, places=6)
+
+    def test_joker_creator_and_category_summaries(self):
+        GPTriviaRound.objects.create(
+            creator="Jenny",
+            title="Joker Round A",
+            major_category="History",
+            minor_category1="A",
+            minor_category2="B",
+            date="2024-02-01",
+            round_number=1,
+            max_score=10,
+            score_alex=8,
+            score_jenny=0,
+            score_megan=6,
+            score_zach=5,
+        )
+        GPTriviaRound.objects.create(
+            creator="Jenny",
+            title="Joker Round B",
+            major_category="History",
+            minor_category1="A",
+            minor_category2="B",
+            date="2024-02-08",
+            round_number=2,
+            max_score=10,
+            score_alex=9,
+            score_jenny=0,
+            score_megan=5,
+            score_zach=7,
+        )
+        GPTriviaRound.objects.create(
+            creator="Chris",
+            title="Joker Round C",
+            major_category="Science",
+            minor_category1="A",
+            minor_category2="B",
+            date="2024-02-15",
+            round_number=3,
+            max_score=10,
+            score_alex=10,
+            score_chris=0,
+            score_megan=7,
+            score_zach=8,
+        )
+
+        MergedPresentation.objects.create(
+            name="02.01.2024",
+            presentation_id="pres-1",
+            round_names=["Joker Round A"],
+            creator_list=["Jenny"],
+            joker_round_indices={"alex": "Joker Round A"},
+        )
+        MergedPresentation.objects.create(
+            name="02.08.2024",
+            presentation_id="pres-2",
+            round_names=["Joker Round B"],
+            creator_list=["Jenny"],
+            joker_round_indices={"alex": "Joker Round B"},
+        )
+        MergedPresentation.objects.create(
+            name="02.15.2024",
+            presentation_id="pres-3",
+            round_names=["Joker Round C"],
+            creator_list=["Chris"],
+            joker_round_indices={"alex": "Joker Round C"},
+        )
+
+        creator_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'joker_creator_summary',
+            'player': 'Alex',
+        })
+        self.assertEqual(creator_response.status_code, 200)
+        creator_data = creator_response.json()
+        self.assertEqual(creator_data['labels'], ['Jenny', 'Chris'])
+        self.assertEqual(creator_data['counts'], [2, 1])
+        self.assertEqual(creator_data['best_labels'], ['Chris'])
+
+        category_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'joker_category_summary',
+            'player': 'Alex',
+        })
+        self.assertEqual(category_response.status_code, 200)
+        category_data = category_response.json()
+        self.assertEqual(category_data['labels'], ['History', 'Science'])
+        self.assertEqual(category_data['counts'], [2, 1])
+        self.assertEqual(category_data['best_labels'], ['Science'])
 class PlayerAnalysisViewTests(TestCase):
     def setUp(self):
         self.views_threshold_patcher = patch('GPTrivia.views.MIN_ANALYSIS_ROUNDS', 1)
