@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/blog_post.css' %}">
+  <meta name="theme-color" content="#1e7662">
+{% endblock %}
+
+{% block content %}
+<div class="blog-post-page">
+    <section class="blog-post-hero">
+        <div class="blog-post-kicker">Archive Post</div>
+        <h1 class="blog-post-title">Joker Stats</h1>
+        <div class="blog-post-meta">
+            <span>Alex Pinard</span>
+            <span>September 9, 2020</span>
+            <span>Trivia Stats / Jokers</span>
+        </div>
+        <p class="blog-post-summary">
+            A preserved TriviaStats post about joker strategy, creator bias, and the original score-distribution plots for every player.
+        </p>
+    </section>
+
+    <article class="blog-post-article blog-prose">
+        <p>
+            First, load the <code>trivia_stats.R</code> source file, which contains all functions for generating statistics:
+        </p>
+        <pre class="blog-code"><code>source("trivia_stats.R")</code></pre>
+
+        <h2>Joker Table</h2>
+        <p>
+            This chart takes into account both the creator’s average round difficulty and your own bias toward or against that creator to give
+            you an overall sense of how much better than average you tend to do on rounds made by that creator, and therefore who you should
+            pick to joker today.
+        </p>
+        <p><strong>Estimated Score Per Round = Average Score + Round Difficulty + Bias</strong></p>
+        <pre class="blog-code"><code>joker_table_heatmap()</code></pre>
+        <div class="blog-callout">
+            <strong>Archived widget note.</strong> The original post used interactive Plotly heatmaps for the joker tables and coefficient charts.
+            This trivia-site version preserves the structure and the original static figure set, while leaving those widget-heavy sections as
+            archived notes instead of embedding the legacy htmlwidget runtime.
+        </div>
+
+        <h2>Joker Scores Using Personal Judgement</h2>
+        <p>
+            This chart shows how many points a player does, on average, on their joker round than on the average round. It was meant to be read
+            alongside the joker table above.
+        </p>
+        <pre class="blog-code"><code>get_judgement_table()</code></pre>
+
+        <h2>Percentage of Correct Jokers</h2>
+        <p>
+            This chart shows the percentage of time a player selects the correct round to joker, meaning the round they ultimately scored highest on.
+        </p>
+        <pre class="blog-code"><code>correct_joker_plot()</code></pre>
+        <p>
+            The post also tracks the percentage of nights where the winner would have changed if jokers had not been in play.
+        </p>
+        <pre class="blog-code"><code>joker_win_percent()</code></pre>
+
+        <h2>Ichigo and Chris Coefficients</h2>
+        <p>
+            These charts show how many points a player’s judgement score would increase or decrease if they had simply copied Ichigo’s or Chris’s
+            joker round every week.
+        </p>
+        <pre class="blog-code"><code>ichigo_coefficient_table()
+chris_coefficient_table()</code></pre>
+
+        <h2>Full Distribution of Scores by Creator</h2>
+        <p>
+            These are the figures that were embedded directly in the original post: score distributions for each player grouped by round creator.
+        </p>
+
+        <div class="blog-figure-grid">
+            {% for figure in creator_boxplots %}
+                <figure class="blog-figure blog-figure-card">
+                    <img src="{% static figure.static_prefix|add:'/'|add:figure.filename %}" alt="{{ figure.alt }}">
+                    <figcaption>{{ figure.caption }}</figcaption>
+                </figure>
+            {% endfor %}
+        </div>
+
+        <p class="blog-post-footer-note">
+            Archived from the original TriviaStats site and reformatted for the trivia site blog.
+        </p>
+    </article>
+</div>
+{% endblock %}

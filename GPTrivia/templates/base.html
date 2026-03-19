@@ -413,7 +413,7 @@
                     </div>
                 {% endif %}
                 <div class="blogbtn">
-                    <a style="color: white;" href={% url 'blog_roboalex' %}>Blog</a>
+                    <a style="color: white;" href={% url 'blog_index' %}>Blog</a>
                 </div>
                 {% if user.is_authenticated %}
                     <div class="logoutbtn">
@@ -442,7 +442,7 @@
                 </div>
             {% endif %}
             <div class="blogbtn">
-                <a style="color: white;" href={% url 'blog_roboalex' %}>Blog</a>
+                <a style="color: white;" href={% url 'blog_index' %}>Blog</a>
             </div>
             {% if user.is_authenticated %}
                 <div class="logoutbtn">

@@ -27,6 +27,13 @@ body.site-shell[data-profile-theme="light"] {
     gap: 1.5rem;
 }
 
+.blog-index-page {
+    width: min(100%, 980px);
+    margin: 0 auto;
+    display: grid;
+    gap: 1.5rem;
+}
+
 .blog-post-hero,
 .blog-post-article {
     border: 1px solid var(--blog-line);
@@ -46,6 +53,10 @@ body.site-shell[data-profile-theme="light"] {
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--blog-accent);
+}
+
+.blog-index-hero {
+    padding-bottom: 1.5rem;
 }
 
 .blog-post-title {
@@ -210,8 +221,82 @@ body.site-shell[data-profile-theme="light"] {
     font-size: 0.96rem;
 }
 
+.blog-card-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.blog-card {
+    border: 1px solid var(--blog-line);
+    background: linear-gradient(180deg, var(--blog-paper-alt), var(--blog-paper));
+    color: var(--blog-ink);
+    padding: 1.2rem 1.1rem;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.blog-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.8rem;
+    font-family: Monaco, monospace;
+    font-size: 0.82rem;
+    color: color-mix(in srgb, var(--blog-ink) 74%, transparent);
+}
+
+.blog-card-title {
+    margin: 0;
+    font-size: 1.45rem;
+    line-height: 1.08;
+}
+
+.blog-card-title a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.blog-card-title a:hover {
+    color: var(--blog-accent);
+}
+
+.blog-card-summary {
+    margin: 0;
+    font-size: 0.98rem;
+    line-height: 1.65;
+}
+
+.blog-card-link {
+    color: var(--blog-accent);
+    font-family: Monaco, monospace;
+    font-size: 0.88rem;
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.blog-card-link:hover {
+    text-decoration: underline;
+}
+
+.blog-figure-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.blog-figure-card {
+    padding: 0.7rem;
+    border: 1px solid var(--blog-line);
+    background: rgba(255, 255, 255, 0.28);
+}
+
 @media screen and (max-width: 700px) {
     .blog-post-page {
+        width: min(100%, calc(100% - 14px));
+    }
+
+    .blog-index-page {
         width: min(100%, calc(100% - 14px));
     }
 
@@ -230,5 +315,13 @@ body.site-shell[data-profile-theme="light"] {
     .blog-code,
     .blog-output {
         font-size: 0.84rem;
+    }
+
+    .blog-card {
+        padding: 1rem;
+    }
+
+    .blog-figure-grid {
+        grid-template-columns: 1fr;
     }
 }

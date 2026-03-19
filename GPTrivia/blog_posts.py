@@ -3,6 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
+@dataclass(frozen=True)
+class BlogPostEntry:
+    url_name: str
+    title: str
+    display_date: str
+    category: str
+    summary: str
+
+
 ROBOALEX_COVARIANCE_COLUMNS = [
     "Zach",
     "Megan",
@@ -37,6 +46,45 @@ ROBOALEX_COVARIANCE_ROWS = (
 )
 
 
+BLOG_POSTS = (
+    BlogPostEntry(
+        url_name="blog_roboalex",
+        title="roboAlex 1.0",
+        display_date="May 17, 2021",
+        category="Trivia Stats / Modeling",
+        summary="A preserved write-up from the original trivia-stats blog about modeling one player's scores with simple statistical assumptions.",
+    ),
+    BlogPostEntry(
+        url_name="blog_joker_stats",
+        title="Joker Stats",
+        display_date="September 9, 2020",
+        category="Trivia Stats / Jokers",
+        summary="An archived joker strategy post covering creator bias, judgement tables, and the original distribution plots by creator.",
+    ),
+    BlogPostEntry(
+        url_name="blog_other_trivia_plots",
+        title="Other Trivia Plots",
+        display_date="August 18, 2020",
+        category="Trivia Stats / Visualizations",
+        summary="A preserved collection of older similarity, bias, creator, and player trend plots from the first trivia-stats site.",
+    ),
+)
+
+
+PLAYER_NAMES = (
+    "Alex",
+    "Chris",
+    "Dad",
+    "Drew",
+    "Ichigo",
+    "Jeff",
+    "Jenny",
+    "Megan",
+    "Mom",
+    "Zach",
+)
+
+
 def _blend_channel(start: int, end: int, weight: float) -> int:
     return round(start + (end - start) * weight)
 
@@ -47,6 +95,53 @@ def _blend_hex(start: str, end: str, weight: float) -> str:
     end_rgb = tuple(int(end[index:index + 2], 16) for index in (1, 3, 5))
     mixed = tuple(_blend_channel(left, right, weight) for left, right in zip(start_rgb, end_rgb))
     return "#" + "".join(f"{channel:02x}" for channel in mixed)
+
+
+def _build_figure_entries(
+    *,
+    static_prefix: str,
+    names: tuple[str, ...],
+    alt_template: str,
+    caption_template: str,
+):
+    return [
+        {
+            "player": player_name,
+            "filename": f"unnamed-chunk-8-{index}.png",
+            "static_prefix": static_prefix,
+            "alt": alt_template.format(player=player_name),
+            "caption": caption_template.format(player=player_name),
+        }
+        for index, player_name in enumerate(names, start=1)
+    ]
+
+
+def get_blog_index_context():
+    return {
+        "blog_posts": BLOG_POSTS,
+    }
+
+
+def get_joker_stats_blog_context():
+    return {
+        "creator_boxplots": _build_figure_entries(
+            static_prefix="GPTrivia/img/blog/joker-stats",
+            names=PLAYER_NAMES,
+            alt_template="Distribution of scores by creator for {player}.",
+            caption_template="{player}: score distributions grouped by round creator.",
+        ),
+    }
+
+
+def get_other_trivia_plots_blog_context():
+    return {
+        "player_trend_figures": _build_figure_entries(
+            static_prefix="GPTrivia/img/blog/other-trivia-plots",
+            names=PLAYER_NAMES,
+            alt_template="Final score trend chart for {player}.",
+            caption_template="{player}: weekly final scores from the original post.",
+        ),
+    }
 
 
 def get_roboalex_blog_context():

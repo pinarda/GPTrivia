@@ -70,7 +70,12 @@ from .player_scores import (
     player_field_for_name,
     set_round_score_map,
 )
-from .blog_posts import get_roboalex_blog_context
+from .blog_posts import (
+    get_blog_index_context,
+    get_joker_stats_blog_context,
+    get_other_trivia_plots_blog_context,
+    get_roboalex_blog_context,
+)
 import re
 
 
@@ -677,6 +682,18 @@ def rounds_list(request):
 
 def blog_roboalex(request):
     return render(request, 'GPTrivia/blog_roboalex.html', get_roboalex_blog_context())
+
+
+def blog_index(request):
+    return render(request, 'GPTrivia/blog_index.html', get_blog_index_context())
+
+
+def blog_joker_stats(request):
+    return render(request, 'GPTrivia/blog_joker_stats.html', get_joker_stats_blog_context())
+
+
+def blog_other_trivia_plots(request):
+    return render(request, 'GPTrivia/blog_other_trivia_plots.html', get_other_trivia_plots_blog_context())
 
 
 @login_required

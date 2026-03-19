@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/blog_post.css' %}">
+  <meta name="theme-color" content="#1e7662">
+{% endblock %}
+
+{% block content %}
+<div class="blog-post-page">
+    <section class="blog-post-hero">
+        <div class="blog-post-kicker">Archive Post</div>
+        <h1 class="blog-post-title">Other Trivia Plots</h1>
+        <div class="blog-post-meta">
+            <span>Alex Pinard</span>
+            <span>August 18, 2020</span>
+            <span>Trivia Stats / Visualizations</span>
+        </div>
+        <p class="blog-post-summary">
+            A preserved collection of early TriviaStats charts exploring player similarity, creator bias, and week-by-week scoring trends.
+        </p>
+    </section>
+
+    <article class="blog-post-article blog-prose">
+        <p>
+            First, load the <code>trivia_stats.R</code> source file, which contains all functions for generating statistics:
+        </p>
+        <pre class="blog-code"><code>source("trivia_stats.R")</code></pre>
+
+        <h2>Player Similarity Table</h2>
+        <p>
+            This chart measures how similar players’ scores are on a given round after adjusting for round difficulty. In the original post,
+            bias measured how well a player does on another player’s rounds, while the similarity table focused on how similarly two players
+            perform across all the rest of the rounds.
+        </p>
+        <pre class="blog-code"><code>player_similarity_table()</code></pre>
+        <p>
+            The post also included a 3D representation of that similarity table obtained using Bayesian Principal Components Analysis (BPCA).
+            The locations in 3-space were not meant to be interpreted directly; only proximity mattered.
+        </p>
+        <pre class="blog-code"><code>plot_3d_similarity_plotly()</code></pre>
+        <div class="blog-callout">
+            <strong>Archived widget note.</strong> The original similarity, bias, and creator-overlay sections were interactive Plotly widgets.
+            This preserved version keeps the original text and the static figure set that was actually embedded in the post.
+        </div>
+
+        <h2>Bias Heatmap</h2>
+        <p>
+            Each column represents the scores on one person’s round that week. Higher scores in a cell mean that the player tends to gain more
+            points than other players on that creator’s rounds.
+        </p>
+        <p><strong>Estimated Score Per Round = Average Score + Round Difficulty + Bias</strong></p>
+        <pre class="blog-code"><code>bias_table_heatmap()</code></pre>
+
+        <h2>Scores on a Creator’s Round</h2>
+        <p>
+            The original post also included an overlay plot of average score on each round by week, followed by creator-by-creator plots where
+            the red line represented the average for that week and the blue points showed individual scores.
+        </p>
+        <pre class="blog-code"><code>creator_overlay_plot()
+
+generate_creator_plot("Alex")
+generate_creator_plot("Chris")
+generate_creator_plot("Dad")
+generate_creator_plot("Drew")
+generate_creator_plot("Ichigo")
+generate_creator_plot("Jeff")
+generate_creator_plot("Jenny")
+generate_creator_plot("Megan")
+generate_creator_plot("Mom")
+generate_creator_plot("Zach")</code></pre>
+
+        <h2>Scores by Player</h2>
+        <p>
+            These are the original embedded figures from the post. Each plot shows one player’s final score by week, along with the regression
+            summary the post used to look for possible long-term trends.
+        </p>
+
+        <div class="blog-figure-grid">
+            {% for figure in player_trend_figures %}
+                <figure class="blog-figure blog-figure-card">
+                    <img src="{% static figure.static_prefix|add:'/'|add:figure.filename %}" alt="{{ figure.alt }}">
+                    <figcaption>{{ figure.caption }}</figcaption>
+                </figure>
+            {% endfor %}
+        </div>
+
+        <p class="blog-post-footer-note">
+            Archived from the original TriviaStats site and reformatted for the trivia site blog.
+        </p>
+    </article>
+</div>
+{% endblock %}

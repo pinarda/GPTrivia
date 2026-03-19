@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/blog_post.css' %}">
+  <meta name="theme-color" content="#1e7662">
+{% endblock %}
+
+{% block content %}
+<div class="blog-index-page">
+    <section class="blog-post-hero blog-index-hero">
+        <div class="blog-post-kicker">TriviaStats Archive</div>
+        <h1 class="blog-post-title">Blog</h1>
+        <p class="blog-post-summary">
+            Archived posts from the original TriviaStats site, now preserved inside Hail Science Trivia with their original figure sets.
+        </p>
+    </section>
+
+    <section class="blog-card-grid" aria-label="Archived blog posts">
+        {% for post in blog_posts %}
+            <article class="blog-card">
+                <div class="blog-card-meta">
+                    <span>{{ post.display_date }}</span>
+                    <span>{{ post.category }}</span>
+                </div>
+                <h2 class="blog-card-title">
+                    <a href="{% url post.url_name %}">{{ post.title }}</a>
+                </h2>
+                <p class="blog-card-summary">{{ post.summary }}</p>
+                <a class="blog-card-link" href="{% url post.url_name %}">Read post</a>
+            </article>
+        {% endfor %}
+    </section>
+</div>
+{% endblock %}
