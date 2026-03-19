@@ -67,18 +67,22 @@ class ProfilePictureForm(forms.ModelForm):
         self.fields['profile_page_chrome_color'].required = False
         self.fields['profile_page_chrome_color'].widget.attrs.update({
             'id': 'profile-page-chrome-input',
+            'data-default': Profile.PROFILE_PAGE_CHROME_DEFAULT,
         })
         self.fields['profile_page_trivia_color_one'].required = False
         self.fields['profile_page_trivia_color_one'].widget.attrs.update({
             'id': 'profile-trivia-color-one-input',
+            'data-default': Profile.PROFILE_PAGE_TRIVIA_COLOR_ONE_DEFAULT,
         })
         self.fields['profile_page_trivia_color_two'].required = False
         self.fields['profile_page_trivia_color_two'].widget.attrs.update({
             'id': 'profile-trivia-color-two-input',
+            'data-default': Profile.PROFILE_PAGE_TRIVIA_COLOR_TWO_DEFAULT,
         })
         self.fields['profile_page_trivia_color_three'].required = False
         self.fields['profile_page_trivia_color_three'].widget.attrs.update({
             'id': 'profile-trivia-color-three-input',
+            'data-default': Profile.PROFILE_PAGE_TRIVIA_COLOR_THREE_DEFAULT,
         })
         self.fields['profile_page_theme'].required = False
         self.fields['profile_page_theme'].choices = [

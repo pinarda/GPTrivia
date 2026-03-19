@@ -480,6 +480,7 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertContains(response, '?player=Alex')
         self.assertContains(response, '?creator=Alex')
         self.assertContains(response, reverse('player_profile_stats', args=['Alex']))
+        self.assertContains(response, 'Reset Page Colors to Default')
         self.assertTrue(response.context['defer_profile_stats'])
 
     def test_player_analysis_prefills_from_query_params(self):

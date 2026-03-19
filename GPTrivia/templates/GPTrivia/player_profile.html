@@ -11,7 +11,7 @@
       --profile-player-color: {{ player_color }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260319b">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260319c">
 {% endblock %}
 
 {% block extra_meta %}
@@ -874,7 +874,16 @@
                                     <p class="profile-settings-error">{{ error }}</p>
                                 {% endfor %}
 
-                                <button class="expand-collapse-button profile-player-button" type="submit">Save Appearance</button>
+                                <div class="profile-settings-actions">
+                                    <button
+                                        class="expand-collapse-button profile-player-button profile-settings-reset-button"
+                                        type="button"
+                                        id="reset-profile-theme-colors"
+                                    >
+                                        Reset Page Colors to Default
+                                    </button>
+                                    <button class="expand-collapse-button profile-player-button" type="submit">Save Appearance</button>
+                                </div>
                             </form>
                         </div>
                     </section>
@@ -1857,6 +1866,7 @@
         }
 
         function initializeProfileAppearanceEditor() {
+            const resetThemeColorsButton = document.getElementById('reset-profile-theme-colors');
             const fileInput = document.getElementById('profile-picture-input');
             const cropEditor = document.getElementById('profile-crop-editor');
             const cropFrame = document.getElementById('profile-crop-frame');
@@ -1889,6 +1899,28 @@
             colorBindings.forEach(([inputId, valueId]) => {
                 syncColorValue(inputId, valueId);
             });
+
+            if (resetThemeColorsButton) {
+                resetThemeColorsButton.addEventListener('click', () => {
+                    [
+                        'profile-page-chrome-input',
+                        'profile-trivia-color-one-input',
+                        'profile-trivia-color-two-input',
+                        'profile-trivia-color-three-input',
+                    ].forEach(inputId => {
+                        const input = document.getElementById(inputId);
+                        if (!input) {
+                            return;
+                        }
+                        const defaultValue = input.dataset.default || '';
+                        if (!defaultValue) {
+                            return;
+                        }
+                        input.value = defaultValue;
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                });
+            }
 
             if (!fileInput || !cropEditor || !cropFrame || !cropImage || !zoomInput || !cropXInput || !cropYInput || !cropSizeInput) {
                 return;

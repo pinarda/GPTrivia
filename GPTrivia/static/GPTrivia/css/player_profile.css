@@ -592,6 +592,16 @@ a {
     box-sizing: border-box;
 }
 
+.profile-settings-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.profile-settings-actions .profile-player-button {
+    flex: 1 1 220px;
+}
+
 .profile-settings-group {
     display: grid;
     gap: 0.35rem;
@@ -1387,6 +1397,10 @@ a {
         align-items: flex-start;
         flex-direction: column;
         gap: 0.3rem;
+    }
+
+    .profile-settings-actions {
+        flex-direction: column;
     }
 
     .profile-streak-heading-summary {
