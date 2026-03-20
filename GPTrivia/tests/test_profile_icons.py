@@ -94,7 +94,6 @@ class ProfileIconTests(TestCase):
         self.assertContains(response, 'scoresheet-player-icons')
         self.assertContains(response, 'profile_icons')
         self.assertContains(response, 'Alex')
-        self.assertContains(response, '?v=')
 
     def test_player_icon_map_falls_back_to_profile_picture_when_icon_is_unavailable(self):
         user = User.objects.create_user(username='Alex', password='pw')
@@ -110,7 +109,6 @@ class ProfileIconTests(TestCase):
 
         self.assertIn('Alex', icon_map)
         self.assertIn(profile.profile_picture.name, icon_map['Alex'])
-        self.assertIn('?v=', icon_map['Alex'])
 
     def test_upload_profile_picture_crops_selected_square_region_and_updates_color_and_theme(self):
         user = User.objects.create_user(username='Alex', password='pw')
@@ -144,6 +142,10 @@ class ProfileIconTests(TestCase):
         self.assertEqual(user.profile.profile_page_trivia_color_three, '#333333')
         self.assertEqual(user.profile.profile_page_theme, 'light')
         self.assertEqual(user.profile.site_theme, 'light')
+        self.assertRegex(
+            user.profile.profile_picture.name,
+            r'^profile_pics/profile-wide_[0-9a-f]{12}_cropped\.jpg$',
+        )
 
         with Image.open(user.profile.profile_picture.path) as cropped_image:
             self.assertEqual(cropped_image.size, (100, 100))
@@ -223,7 +225,7 @@ class ProfileIconTests(TestCase):
         self.assertContains(response, '--profile-page-trivia-color-three: #333333;')
         self.assertContains(response, 'Player Color')
 
-    def test_profile_view_uses_cache_busted_profile_picture_url(self):
+    def test_profile_view_uses_uploaded_profile_picture_url(self):
         user = User.objects.create_user(username='Alex', password='pw')
         self._make_profile_round_history()
         profile = user.profile
@@ -236,7 +238,6 @@ class ProfileIconTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, profile.profile_picture.name)
-        self.assertContains(response, '?v=')
 
     def test_profile_view_defaults_page_color_inputs_to_profile_palette(self):
         user = User.objects.create_user(username='Alex', password='pw')

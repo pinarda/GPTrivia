@@ -1,6 +1,7 @@
 import re
 from io import BytesIO
 from pathlib import Path
+from uuid import uuid4
 
 from django import forms
 from django.core.files.base import ContentFile
@@ -195,7 +196,7 @@ class ProfilePictureForm(forms.ModelForm):
             output_buffer.seek(0)
 
         suffix = '.png' if image_format == 'PNG' else '.jpg'
-        filename = f"{Path(uploaded_picture.name).stem}_cropped{suffix}"
+        filename = f"{Path(uploaded_picture.name).stem}_{uuid4().hex[:12]}_cropped{suffix}"
         return ContentFile(output_buffer.getvalue(), name=filename)
 
     def save(self, commit=True):
