@@ -1191,11 +1191,8 @@
 
     function buildCompactCategoryTickLabel(label) {
         const parts = String(label || '').split(/\s+/).filter(Boolean);
-        if (parts.length <= 1) {
+        if (parts.length <= 2) {
             return label;
-        }
-        if (parts.length === 2) {
-            return `${parts[0]}<br>${parts[1]}`;
         }
 
         const midpoint = Math.ceil(parts.length / 2);
