@@ -281,7 +281,7 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
     background: transparent;
     padding: 0;
     margin: 0;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .plot-div .js-plotly-plot,

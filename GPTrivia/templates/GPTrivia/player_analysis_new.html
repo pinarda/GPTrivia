@@ -653,8 +653,14 @@
     const originalPlotlyNewPlot = Plotly.newPlot.bind(Plotly);
     Plotly.newPlot = function(target, data, layout, config) {
         const linkedLayout = withLinkedAnalysisTitle(target, layout || {});
+        const normalizedConfig = {
+            responsive: true,
+            displaylogo: false,
+            displayModeBar: false,
+            ...(config || {}),
+        };
         return Promise.resolve(
-            originalPlotlyNewPlot(target, data, applyPlotTheme(linkedLayout), config)
+            originalPlotlyNewPlot(target, data, applyPlotTheme(linkedLayout), normalizedConfig)
         ).then((result) => {
             const plotElement = typeof target === 'string' ? document.getElementById(target) : target;
             bindPlotEnhancers(plotElement || target);
@@ -936,13 +942,17 @@
             text: normalizedTitleText,
             x: 0.5,
             xanchor: 'center',
-            y: 0.98,
+            y: compactLayout ? 0.95 : 0.965,
             yanchor: 'top',
             automargin: true,
+            pad: {
+                t: compactLayout ? 12 : 10,
+                b: 0,
+            },
             font: {
                 color: analysisTextColor,
                 family: 'YoungSerif',
-                size: compactLayout ? 15 : 18,
+                size: compactLayout ? 14 : 18,
             },
         };
     }
@@ -1076,7 +1086,7 @@
             title: data.title,
             autosize: true,
             margin: {
-                t: compactLayout ? 62 : 76,
+                t: compactLayout ? 78 : 88,
                 r: compactLayout ? 12 : 20,
                 b: compactLayout ? 112 : 92,
                 l: compactLayout ? 56 : 70,
@@ -1138,7 +1148,7 @@
             autosize: true,
             height,
             margin: {
-                t: compactLayout ? 84 : 92,
+                t: compactLayout ? 100 : 104,
                 r: compactLayout ? 18 : 26,
                 b: compactLayout ? 112 : 92,
                 l: compactLayout ? 46 : 66,
@@ -1199,7 +1209,7 @@
         const margin = {
             l: compactLayout ? 52 : 88,
             r: compactLayout ? 16 : 48,
-            t: compactLayout ? 72 : 96,
+            t: compactLayout ? 88 : 108,
             b: compactLayout ? 76 : 118,
         };
         const availableInnerWidth = Math.max(180, containerWidth - margin.l - margin.r);
@@ -1892,7 +1902,7 @@
             autosize: true,
             height,
             margin: {
-                t: compactLayout ? 78 : 92,
+                t: compactLayout ? 94 : 102,
                 r: compactLayout ? 4 : 14,
                 b: compactLayout ? 6 : 16,
                 l: compactLayout ? 4 : 14,
@@ -1963,7 +1973,7 @@
             },
         };
 
-        Plotly.newPlot('CorrMatrix', [trace], layout, {responsive: true});
+        Plotly.newPlot('CorrMatrix', [trace], layout);
     }
 
     document.getElementById('showValuesCheckbox').addEventListener('change', function() {
@@ -2040,7 +2050,7 @@
             },
         };
 
-        Plotly.newPlot('CreatorMatrix', [trace], layout, {responsive: true});
+        Plotly.newPlot('CreatorMatrix', [trace], layout);
     }
 
     function renderPlayerViolin(data) {
@@ -2082,22 +2092,19 @@
         const layout = buildResponsiveBarLayout('catBar', data, {
             xaxis: {
                 title: data.xaxis,
-                tickangle: compactLayout ? 0 : -30,
-                tickmode: compactLayout ? 'array' : undefined,
-                tickvals: compactLayout ? data.categories : undefined,
-                ticktext: compactLayout ? data.categories.map(buildCompactCategoryTickLabel) : undefined,
+                tickangle: compactLayout ? -38 : -30,
                 tickfont: {
-                    size: compactLayout ? 9 : 12,
+                    size: compactLayout ? 8 : 12,
                 },
             },
             margin: {
-                b: compactLayout ? 122 : 92,
-                l: compactLayout ? 42 : 66,
-                r: compactLayout ? 18 : 26,
+                b: compactLayout ? 118 : 92,
+                l: compactLayout ? 46 : 66,
+                r: compactLayout ? 26 : 26,
             },
         });
 
-        Plotly.newPlot('catBar', [trace], layout, {displaylogo: false, responsive: true});
+        Plotly.newPlot('catBar', [trace], layout);
     }
 
 
@@ -2115,7 +2122,7 @@
         const layout = buildResponsiveBarLayout('creatorBar', data);
 
         // change the styling of creator bar
-        Plotly.newPlot('creatorBar', [trace], layout, {displaylogo: false, responsive: true});
+        Plotly.newPlot('creatorBar', [trace], layout);
     }
 
     function renderTriviaNightStreak(data) {
@@ -2156,11 +2163,7 @@
         });
 
         const config = {
-            scrollZoom: false, // Disable scroll to zoom
-            displayModeBar: true,
-            modeBarButtonsToRemove: ['zoom2d', 'pan2d', 'select2d', 'lasso2d'], // Remove some interactivity buttons
-            displaylogo: false, // Remove Plotly logo
-            responsive: true,
+            scrollZoom: false,
         };
 
         Plotly.newPlot('trivia-night-streak', [trace], layout, config);
