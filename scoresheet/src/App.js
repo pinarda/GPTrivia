@@ -1265,8 +1265,11 @@ const PlayerTable = () => {
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
     const isCompactScreen = useMediaQuery('(max-width:1000px)');
 
-    // let url = "http://localhost:8000"
-    let url = "https://hailsciencetrivia.com"
+    const fallbackBaseUrl = "https://hailsciencetrivia.com";
+    const url =
+      typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin.replace(/\/$/, '')
+        : fallbackBaseUrl;
 
     const wsRef = useRef(null);
     const pingIntervalRef = useRef(null);
@@ -1290,7 +1293,10 @@ const PlayerTable = () => {
     const tempTitlesLengthRef = useRef(tempTitles.length);
     const tempLinksLengthRef = useRef(tempLinks.length);
     const isVisible = usePageVisibility();
-    const websocketUrl = `${url.replace(/^http/, 'ws')}/ws/scoresheet/`;
+    const websocketUrl =
+      typeof window !== 'undefined' && window.location?.host
+        ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/scoresheet/`
+        : `${fallbackBaseUrl.replace(/^http/, 'ws')}/ws/scoresheet/`;
 
     useEffect(() => {
       roundsRef.current = rounds;
@@ -1483,40 +1489,27 @@ const PlayerTable = () => {
 
     let csrfToken = getCookie('csrftoken');
 
-    useEffect(() => {
-        fetch(url + '/api-token-auth/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken   // Add the CSRF token here
-            },
-            body: JSON.stringify({
-                username: "Alex",
-                password: "Rapt0rpusia",
-            }),
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.token) {
-                    // Save the token somewhere (e.g., local storage)
-                    localStorage.setItem('token', data.token);
-                } else {
-                    // Handle login failure
-                }
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
-    }, [csrfToken, url]);
+    const getApiHeaders = useCallback((extraHeaders = {}) => {
+      const nextHeaders = { ...extraHeaders };
+      if (typeof window === 'undefined') {
+        return nextHeaders;
+      }
+
+      const token = window.localStorage.getItem('token');
+      if (token) {
+        nextHeaders.Authorization = `Token ${token}`;
+      }
+
+      return nextHeaders;
+    }, []);
 
     useEffect(() => {
       let isCancelled = false;
       const controller = new AbortController();
 
       fetch(url + '/api/v1/trivia-rounds/', {
-            headers: {
-                'Authorization': `Token ${localStorage.getItem('token')}`,
-            },
+            headers: getApiHeaders(),
+            credentials: 'same-origin',
             signal: controller.signal,
         })
         .then(response => {
@@ -1688,7 +1681,7 @@ const PlayerTable = () => {
             isCancelled = true;
             controller.abort();
         };
-    }, [defaultPlayers, getNormalizedCreatorName, requestedDate, selectedDate, updateFlag, url]);
+    }, [defaultPlayers, getApiHeaders, getNormalizedCreatorName, requestedDate, selectedDate, updateFlag, url]);
 
     useEffect(() => {
         if (!selectedDate || loadedRoundsDate !== selectedDate) {
@@ -1706,9 +1699,8 @@ const PlayerTable = () => {
         let isCancelled = false;
 
         fetch(url + '/api/v1/presentations/', {
-            headers: {
-                'Authorization': `Token ${localStorage.getItem('token')}`,
-            },
+            headers: getApiHeaders(),
+            credentials: 'same-origin',
         })
         .then(response => {
           console.log('Initial response: ', response);
@@ -1826,7 +1818,7 @@ const PlayerTable = () => {
         return () => {
             isCancelled = true;
         };
-    }, [defaultHost, loadedRoundsDate, selectedDate, updateFlag, url]);
+    }, [defaultHost, getApiHeaders, loadedRoundsDate, selectedDate, updateFlag, url]);
 
     useEffect(() => {
       if (players.length > 0 && rounds.length > 0) {
@@ -2866,11 +2858,11 @@ const PlayerTable = () => {
 
         return fetch(url + '/save_scores/', {
             method: 'POST',
-            headers: {
+            headers: getApiHeaders({
               'Content-Type': 'application/json',
               'X-CSRFToken': csrfToken,
-              'Authorization': `Token ${localStorage.getItem('token')}`,
-            },
+            }),
+            credentials: 'same-origin',
             keepalive: true,
             body: JSON.stringify(payload),
         })
@@ -2914,7 +2906,7 @@ const PlayerTable = () => {
             saveData();
           }
         });
-    }, [buildCurrentSavePayload, csrfToken, url]);
+    }, [buildCurrentSavePayload, csrfToken, getApiHeaders, url]);
 
     useEffect(() => {
       const flushPendingSave = () => {
@@ -2934,9 +2926,11 @@ const PlayerTable = () => {
 
         fetch(`${url}/save_scores/`, {
           method: 'POST',
-          headers: {
+          headers: getApiHeaders({
             'Content-Type': 'application/json',
-          },
+            'X-CSRFToken': csrfToken,
+          }),
+          credentials: 'same-origin',
           body,
           keepalive: true,
         }).catch(() => {});
@@ -2947,7 +2941,7 @@ const PlayerTable = () => {
       return () => {
         window.removeEventListener('pagehide', flushPendingSave);
       };
-    }, [buildCurrentSavePayload, url]);
+    }, [buildCurrentSavePayload, csrfToken, getApiHeaders, url]);
 
     const formatRoundData = (round, index) => {
       let formattedData = {
@@ -2986,11 +2980,11 @@ const PlayerTable = () => {
 
         fetch(url + `/create_round/${date}/${number}/`, {
             method: 'POST',
-            headers: {
+            headers: getApiHeaders({
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrfToken,
-                'Authorization': `Token ${localStorage.getItem('token')}`,
-            },
+            }),
+            credentials: 'same-origin',
             body: JSON.stringify({
                 client_id: clientIdRef.current,
                 mutation_id: mutationId,
@@ -3040,12 +3034,12 @@ const PlayerTable = () => {
 
         fetch(url + `/delete_round/${roundId}/`, {
             method: 'DELETE',
-            headers: {
+            headers: getApiHeaders({
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'X-CSRFToken': csrfToken,
-                'Authorization': `Token ${localStorage.getItem('token')}`,
-            },
+            }),
+            credentials: 'same-origin',
             body: JSON.stringify({
                 client_id: clientIdRef.current,
                 mutation_id: mutationId,
