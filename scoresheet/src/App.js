@@ -61,6 +61,7 @@ import { DEFAULT_VISIBLE_PLAYERS } from './defaultPlayers';
 import {
   resolveJokerRoundIndices,
   resolvePresentationPlayers,
+  resolveScoresheetDate,
 } from './presentationData';
 import {
   buildJokerRouletteSequence,
@@ -1179,6 +1180,7 @@ const PlayerTable = () => {
       return /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : '';
     }, []);
     const [selectedDate, setSelectedDate] = useState('');
+    const [loadedRoundsDate, setLoadedRoundsDate] = useState('');
     const [textColor] = useState('black');
     const [isDatesInitialized, setIsDatesInitialized] = useState(false);
     const [newPlayerName, setNewPlayerName] = useState('');
@@ -1199,7 +1201,6 @@ const PlayerTable = () => {
     const [tempLinks, setTempLinks] = useState([]);
     const [selectedColumnIndex, setSelectedColumnIndex] = useState(1);
     const [updateFlag, setUpdateFlag] = useState(0); // Update flag
-    const [prevUpdateFlag, setPrevUpdateFlag] = useState(0); // Previous update flag
     const [saveRequestCount, setSaveRequestCount] = useState(0);
     const [openDatePicker, setOpenDatePicker] = useState(false);
     const [datePickerDraftValue, setDatePickerDraftValue] = useState(null);
@@ -1282,8 +1283,30 @@ const PlayerTable = () => {
     const saveQueuedRef = useRef(false);
     const latestStateRef = useRef(null);
     const presentationHydrationKeyRef = useRef('');
+    const prevUpdateFlagRef = useRef(0);
+    const lastHydratedRoundsDateRef = useRef('');
+    const roundsRef = useRef(rounds);
+    const defaultPlayersRef = useRef(defaultPlayers);
+    const tempTitlesLengthRef = useRef(tempTitles.length);
+    const tempLinksLengthRef = useRef(tempLinks.length);
     const isVisible = usePageVisibility();
     const websocketUrl = `${url.replace(/^http/, 'ws')}/ws/scoresheet/`;
+
+    useEffect(() => {
+      roundsRef.current = rounds;
+    }, [rounds]);
+
+    useEffect(() => {
+      defaultPlayersRef.current = defaultPlayers;
+    }, [defaultPlayers]);
+
+    useEffect(() => {
+      tempTitlesLengthRef.current = tempTitles.length;
+    }, [tempTitles.length]);
+
+    useEffect(() => {
+      tempLinksLengthRef.current = tempLinks.length;
+    }, [tempLinks.length]);
 
     const markDirty = useCallback(() => {
       setIsSaved(false);
@@ -1487,10 +1510,14 @@ const PlayerTable = () => {
     }, [csrfToken, url]);
 
     useEffect(() => {
+      let isCancelled = false;
+      const controller = new AbortController();
+
       fetch(url + '/api/v1/trivia-rounds/', {
             headers: {
                 'Authorization': `Token ${localStorage.getItem('token')}`,
             },
+            signal: controller.signal,
         })
         .then(response => {
           console.log('Initial response: ', response);
@@ -1500,6 +1527,9 @@ const PlayerTable = () => {
           return response.json();
         })
         .then(json => {
+            if (isCancelled) {
+                return;
+            }
             const majorCategoryValues = json.map(item => item.major_category);
             const minor1CategoryValues = json.map(item => item.minor_category1);
             const minor2CategoryValues = json.map(item => item.minor_category2);
@@ -1524,84 +1554,99 @@ const PlayerTable = () => {
             setMinor1Categories(finalUniqueMinor1Categories);
             setMinor2Categories(finalUniqueMinor2Categories);
           console.log(json);
-          // before setting the rounds, filter out all rounds that are not from the date march 18th, 2020.
-            // only set the dates if they haven't been set yet
-            if (dates.length === 0) {
-                const uniqueDates = [...new Set(json.map(item => item.date))];
-                setDates(uniqueDates);
+            const uniqueDates = [...new Set(json.map(item => item.date))];
+            setDates(prevDates => {
+                if (
+                    prevDates.length === uniqueDates.length &&
+                    prevDates.every((value, index) => value === uniqueDates[index])
+                ) {
+                    return prevDates;
+                }
+                return uniqueDates;
+            });
+
+            const effectiveSelectedDate = resolveScoresheetDate(selectedDate, requestedDate, uniqueDates);
+            if (!effectiveSelectedDate) {
+                setLoadedRoundsDate('');
+                return;
             }
-            json = json.filter(round => round.date === selectedDate);
+
+            if (selectedDate !== effectiveSelectedDate) {
+                setSelectedDate(effectiveSelectedDate);
+            }
+
+            const filteredRounds = json.filter(round => round.date === effectiveSelectedDate);
             const nextRoundSnapshot = {};
-            json.forEach(round => {
+            filteredRounds.forEach(round => {
               nextRoundSnapshot[round.id] = makeRoundSnapshot(round);
             });
             serverRoundSnapshotRef.current = nextRoundSnapshot;
-          setRounds(json);
+            setRounds(filteredRounds);
+            setLoadedRoundsDate(effectiveSelectedDate);
 
-          // set tempTitles if it hasn't been set yet
-            if (tempTitles.length === 0 || prevUpdateFlag !== updateFlag) {
-                let initialTempTitles = [];
-                json.forEach(round => {
-                    initialTempTitles.push(round.title);
-                });
-                setTempTitles(initialTempTitles);
+            if (
+                prevUpdateFlagRef.current !== updateFlag ||
+                lastHydratedRoundsDateRef.current !== effectiveSelectedDate ||
+                tempTitlesLengthRef.current === 0
+            ) {
+                setTempTitles(filteredRounds.map(round => round.title));
             }
 
-            // set tempLinks if it hasn't been set yet
-            if (tempLinks.length === 0 || prevUpdateFlag !== updateFlag) {
-                let initialTempLinks = [];
-                json.forEach(round => {
-                    initialTempLinks.push(round.link);
-                });
-                setTempLinks(initialTempLinks);
+            if (
+                prevUpdateFlagRef.current !== updateFlag ||
+                lastHydratedRoundsDateRef.current !== effectiveSelectedDate ||
+                tempLinksLengthRef.current === 0
+            ) {
+                setTempLinks(filteredRounds.map(round => round.link));
             }
 
-            setPrevUpdateFlag(updateFlag);
+            prevUpdateFlagRef.current = updateFlag;
+            lastHydratedRoundsDateRef.current = effectiveSelectedDate;
 
 
           let initialCooperativeStatus = {};
-            json.forEach(round => {
+            filteredRounds.forEach(round => {
               initialCooperativeStatus[round.title] = round.cooperative || false;
             });
             setCooperativeStatus(initialCooperativeStatus);
 
             let initialReplayStatus = {};
-            json.forEach(round => {
+            filteredRounds.forEach(round => {
                 initialReplayStatus[round.title] = round.replay || false;
             });
             setIsReplay(initialReplayStatus);
 
             // also set the initial Major Categories
             let initialMajorCategories = {};
-            json.forEach(round => {
+            filteredRounds.forEach(round => {
                 initialMajorCategories[round.title] = round.major_category || '';
             });
             setSelectedMajorCategories(initialMajorCategories);
 
             // also set the initial Minor Categories
             let initialMinor1Categories = {};
-            json.forEach(round => {
+            filteredRounds.forEach(round => {
                 initialMinor1Categories[round.title] = round.minor_category1 || '';
             });
             setSelectedMinor1Categories(initialMinor1Categories);
 
             // also set the initial Minor Categories
             let initialMinor2Categories = {};
-            json.forEach(round => {
+            filteredRounds.forEach(round => {
                 initialMinor2Categories[round.title] = round.minor_category2 || '';
             });
             setSelectedMinor2Categories(initialMinor2Categories);
 
             // also set the initial Max Scores
             let initialMaxScores = {};
-            json.forEach(round => {
+            filteredRounds.forEach(round => {
                 initialMaxScores[round.title] = round.max_score || 10;
             });
             setMaxScores(initialMaxScores);
 
           let roundCreators = {};
           let secondaryCreators = {};
-          for (let round of json) {
+          for (let round of filteredRounds) {
             roundCreators[round.title] = round.creator;
             secondaryCreators[round.title] = round.secondary_creator || '';
           }
@@ -1617,7 +1662,7 @@ const PlayerTable = () => {
           setSecondaryRoundCreators(secondaryCreators);
 
           // start by setting the playerNames to the default players
-            let playerNames = [...defaultPlayers, ...extractPlayersFromRounds(json)];
+            let playerNames = [...defaultPlayers, ...extractPlayersFromRounds(filteredRounds)];
 
           // Get unique player names
           playerNames = [...new Set(playerNames)];
@@ -1626,18 +1671,30 @@ const PlayerTable = () => {
           const initialScores = {};
           playerNames.forEach(player => {
             initialScores[player] = {};
-            json.forEach(round => {
+            filteredRounds.forEach(round => {
               initialScores[player][round.title] = getMergedRoundScoreMap(round)[player] ?? null;
             });
           });
           setScores(initialScores);
         })
-        .catch(function() {
+        .catch(function(error) {
+            if (isCancelled || error?.name === 'AbortError') {
+                return;
+            }
             //setErrorMessage("Failed to fetch rounds");
         });
-    }, [defaultPlayers, getNormalizedCreatorName, selectedDate, dates.length, tempTitles.length, tempLinks.length, url, updateFlag]);
+
+        return () => {
+            isCancelled = true;
+            controller.abort();
+        };
+    }, [defaultPlayers, getNormalizedCreatorName, requestedDate, selectedDate, updateFlag, url]);
 
     useEffect(() => {
+        if (!selectedDate || loadedRoundsDate !== selectedDate) {
+            return undefined;
+        }
+
         const hydrationKey = `${selectedDate}:${updateFlag}`;
         const shouldHydrateFromServer =
           isSavedRef.current || presentationHydrationKeyRef.current !== hydrationKey;
@@ -1706,8 +1763,8 @@ const PlayerTable = () => {
                 plist = selectedPresentation.player_list;
             }
             const resolvedPlayers = [...new Set([
-                ...resolvePresentationPlayers(plist, defaultPlayers),
-                ...extractPlayersFromRounds(rounds),
+                ...resolvePresentationPlayers(plist, defaultPlayersRef.current),
+                ...extractPlayersFromRounds(roundsRef.current),
             ])];
             setPlayers(resolvedPlayers);
 
@@ -1769,7 +1826,7 @@ const PlayerTable = () => {
         return () => {
             isCancelled = true;
         };
-    }, [defaultHost, selectedDate, updateFlag, url]);
+    }, [defaultHost, loadedRoundsDate, selectedDate, updateFlag, url]);
 
     useEffect(() => {
       if (players.length > 0 && rounds.length > 0) {
@@ -2073,6 +2130,7 @@ const PlayerTable = () => {
 
         if (nextDate !== selectedDate) {
             clearAllJokerRoulette();
+            setLoadedRoundsDate('');
             // check if the eventOrDate.target.value exists in the sorted dates array
             // and if it doesn't run:
             //  setSelectedDate(todayStr);

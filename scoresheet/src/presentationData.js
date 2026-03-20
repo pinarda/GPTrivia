@@ -40,3 +40,20 @@ export function resolvePresentationPlayers(playerList, defaultPlayers) {
 export function resolveJokerRoundIndices(jokerRoundIndices) {
   return parsePresentationJson(jokerRoundIndices, {});
 }
+
+export function resolveScoresheetDate(selectedDate, requestedDate, availableDates) {
+  const normalizedDates = Array.isArray(availableDates) ? availableDates.filter(Boolean) : [];
+  if (!normalizedDates.length) {
+    return '';
+  }
+
+  if (selectedDate && normalizedDates.includes(selectedDate)) {
+    return selectedDate;
+  }
+
+  if (requestedDate && normalizedDates.includes(requestedDate)) {
+    return requestedDate;
+  }
+
+  return [...normalizedDates].sort().reverse()[0] || '';
+}

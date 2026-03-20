@@ -17,6 +17,7 @@ import { DEFAULT_VISIBLE_PLAYERS } from './defaultPlayers';
 import {
   resolveJokerRoundIndices,
   resolvePresentationPlayers,
+  resolveScoresheetDate,
 } from './presentationData';
 import {
   buildJokerRouletteSequence,
@@ -380,6 +381,20 @@ describe('scoresheet player defaults', () => {
         { title: 'Round 2', score_alex: 5, extra_scores: { score_guest: 8 } },
       ]),
     ).toEqual(['score_alex', 'score_guest']);
+  });
+
+  test('resolves the current scoresheet date from saved, requested, or latest available dates', () => {
+    expect(
+      resolveScoresheetDate('2026-03-12', '2026-03-05', ['2026-03-12', '2026-03-05']),
+    ).toBe('2026-03-12');
+
+    expect(
+      resolveScoresheetDate('', '2026-03-05', ['2026-03-12', '2026-03-05']),
+    ).toBe('2026-03-05');
+
+    expect(
+      resolveScoresheetDate('', '', ['2026-03-05', '2026-03-12']),
+    ).toBe('2026-03-12');
   });
 
   test('parses stringified extra_scores and ignores invalid ghost keys', () => {
