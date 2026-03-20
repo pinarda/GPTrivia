@@ -87,6 +87,7 @@ urlpatterns = [
     path('final-jeopardy/', views.final_jeopardy_screen, name='final_jeopardy_screen'),
     path('api/save-rounds/', views.save_rounds, name='save_rounds'),
     path("api/collect_rounds/", views.collect_rounds_api, name="collect_rounds_api"),
+    path("api/save-available-round-metadata/", views.save_available_round_metadata, name="save_available_round_metadata"),
     path('api/save-subscription/', views.save_subscription, name='save_subscription'),
     path('sw.js', TemplateView.as_view(template_name="sw.js", content_type='application/javascript')),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + debug_toolbar_urls()

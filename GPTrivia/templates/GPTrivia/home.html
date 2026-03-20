@@ -1060,6 +1060,9 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
         let homeBuildReconnectTimer = null;
         let homeBuildLockState = {is_active: false, action: '', presentation_name: '', presentation_id: ''};
         let homeRoundsLoadInFlight = false;
+        const homeRoundSaveTimers = new Map();
+        const homeRoundSaveControllers = new Map();
+        const homeRoundSaveDebounceMs = 450;
 
         function profileUrlForName(name) {
             return profileUrlTemplate.replace('__PROFILE_NAME__', encodeURIComponent(name || ''));
@@ -1358,6 +1361,10 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                     titleInput.value = round.title;
                     titleInput.addEventListener('input', (event) => {
                         round.title = event.target.value;
+                        queueAvailableRoundMetadataSave(round);
+                    });
+                    titleInput.addEventListener('blur', () => {
+                        queueAvailableRoundMetadataSave(round, { immediate: true });
                     });
                     titleCell.appendChild(titleInput);
                 } else {
@@ -1376,6 +1383,10 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                     creatorInput.value = round.creator;
                     creatorInput.addEventListener('input', (event) => {
                         round.creator = event.target.value;
+                        queueAvailableRoundMetadataSave(round);
+                    });
+                    creatorInput.addEventListener('blur', () => {
+                        queueAvailableRoundMetadataSave(round, { immediate: true });
                     });
                     creatorCell.appendChild(creatorInput);
                 } else {
@@ -1408,6 +1419,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 if (round.is_new) {
                     coopInput.addEventListener('change', (event) => {
                         round.coop = event.target.checked;
+                        queueAvailableRoundMetadataSave(round, { immediate: true });
                     });
                 }
                 coopCell.appendChild(coopInput);
@@ -1499,13 +1511,137 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             renderRoundsTable();
         }
 
+        function getAvailableRoundSaveKey(round) {
+            if (!round) {
+                return '';
+            }
+            return round.presentation_id
+                || round.link
+                || round.old_link
+                || round.client_save_key
+                || `${round.source_title || round.title || ''}`;
+        }
+
+        function clearPendingAvailableRoundSave(round) {
+            const saveKey = getAvailableRoundSaveKey(round);
+            if (!saveKey) {
+                return;
+            }
+            const pendingTimer = homeRoundSaveTimers.get(saveKey);
+            if (pendingTimer) {
+                window.clearTimeout(pendingTimer);
+                homeRoundSaveTimers.delete(saveKey);
+            }
+        }
+
+        function saveAvailableRoundMetadata(round) {
+            if (!round || !round.is_new) {
+                return Promise.resolve();
+            }
+
+            const payload = {
+                title: (round.title || '').trim(),
+                source_title: (round.source_title || round.title || '').trim(),
+                creator: (round.creator || '').trim(),
+                link: round.link || '',
+                old_link: round.old_link || '',
+                coop: Boolean(round.coop),
+            };
+
+            if (!payload.title || !payload.creator) {
+                return Promise.resolve();
+            }
+
+            const saveKey = getAvailableRoundSaveKey(round);
+            const existingController = homeRoundSaveControllers.get(saveKey);
+            if (existingController) {
+                existingController.abort();
+            }
+
+            const controller = new AbortController();
+            homeRoundSaveControllers.set(saveKey, controller);
+
+            return fetch("/api/save-available-round-metadata/", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}",
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Accept": "application/json",
+                },
+                body: JSON.stringify(payload),
+                signal: controller.signal,
+            })
+                .then((response) => (
+                    response.ok
+                        ? response.json()
+                        : response.json().catch(() => ({})).then((body) => Promise.reject(body))
+                ))
+                .then((body) => {
+                    if (body.presentation_id) {
+                        round.presentation_id = body.presentation_id;
+                    }
+                    round.source_title = payload.title;
+                })
+                .catch((error) => {
+                    if (error && error.name === 'AbortError') {
+                        return;
+                    }
+                    console.error('Failed to save available round metadata:', error);
+                })
+                .finally(() => {
+                    const activeController = homeRoundSaveControllers.get(saveKey);
+                    if (activeController === controller) {
+                        homeRoundSaveControllers.delete(saveKey);
+                    }
+                });
+        }
+
+        function queueAvailableRoundMetadataSave(round, options = {}) {
+            if (!round || !round.is_new) {
+                return Promise.resolve();
+            }
+
+            const saveKey = getAvailableRoundSaveKey(round);
+            if (!saveKey) {
+                return Promise.resolve();
+            }
+
+            clearPendingAvailableRoundSave(round);
+
+            if (options.immediate) {
+                return saveAvailableRoundMetadata(round);
+            }
+
+            return new Promise((resolve) => {
+                const timeoutId = window.setTimeout(() => {
+                    homeRoundSaveTimers.delete(saveKey);
+                    resolve(saveAvailableRoundMetadata(round));
+                }, homeRoundSaveDebounceMs);
+                homeRoundSaveTimers.set(saveKey, timeoutId);
+            });
+        }
+
+        function flushPendingAvailableRoundSaves() {
+            const pendingRounds = homeRoundState.rounds.filter((round) => homeRoundSaveTimers.has(getAvailableRoundSaveKey(round)));
+            pendingRounds.forEach((round) => clearPendingAvailableRoundSave(round));
+            if (!pendingRounds.length) {
+                return Promise.resolve();
+            }
+            return Promise.all(pendingRounds.map((round) => saveAvailableRoundMetadata(round)));
+        }
+
         function hydrateRounds(rounds) {
             homeRoundState.rounds = (rounds || []).map((round, index) => ({
                 rowId: index,
+                client_save_key: `round-${index}`,
                 title: round.title || '',
+                source_title: round.title || '',
                 creator: round.creator || '',
                 link: round.link || '',
                 old_link: round.old_link || '',
+                presentation_id: round.presentation_id || '',
                 shared_date: round.shared_date || '',
                 coop: Boolean(round.coop),
                 is_new: Boolean(round.is_new),
@@ -1548,7 +1684,8 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 }
             }
 
-            return fetch("/api/collect_rounds/", {credentials: "same-origin"})
+            return flushPendingAvailableRoundSaves()
+                .then(() => fetch("/api/collect_rounds/", {credentials: "same-origin"}))
                 .then((response) => (response.ok ? response.json() : Promise.reject(response.statusText)))
                 .then(({rounds}) => {
                     if (placeholder) {

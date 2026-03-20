@@ -412,6 +412,64 @@ def _build_submitted_round_link(presentation_id):
     return f"https://docs.google.com/presentation/d/{presentation_id}/edit"
 
 
+def _build_available_round_persistence_id(link='', old_link='', title=''):
+    presentation_id = _extract_google_presentation_id(link) or _extract_google_presentation_id(old_link)
+    if presentation_id:
+        return presentation_id
+
+    normalized_link = _normalize_round_link(link) or _normalize_round_link(old_link)
+    if normalized_link:
+        return f"link-{hashlib.sha1(normalized_link.encode('utf-8')).hexdigest()[:24]}"
+
+    normalized_title = _normalize_round_title(title)
+    if normalized_title:
+        return f"title-{hashlib.sha1(normalized_title.encode('utf-8')).hexdigest()[:24]}"
+
+    return ''
+
+
+def _save_available_round_metadata(data, *, user=None):
+    title = str(data.get('title') or '').strip()
+    creator = str(data.get('creator') or '').strip()
+    link = _normalize_round_link(data.get('link'))
+    old_link = _normalize_round_link(data.get('old_link'))
+    source_title = str(data.get('source_title') or title).strip()
+    cooperative = bool(data.get('coop'))
+
+    if not title:
+        return None, 'Round title is required.'
+    if not creator:
+        return None, 'Round creator is required.'
+
+    submitted_rounds = list(SubmittedRound.objects.order_by('-updated_at', '-submitted_at'))
+    submitted_round_lookup = _build_submitted_round_lookup(submitted_rounds)
+    submitted_round = _find_matching_submitted_round(source_title or title, link, old_link, submitted_round_lookup)
+
+    persistence_id = (
+        submitted_round.presentation_id
+        if submitted_round
+        else _build_available_round_persistence_id(link, old_link, source_title or title)
+    )
+    if not persistence_id:
+        return None, 'Could not identify this round.'
+
+    link_to_store = link or old_link or (submitted_round.link if submitted_round else '') or _build_submitted_round_link(persistence_id)
+    defaults = {
+        'title': title,
+        'creator': creator,
+        'cooperative': cooperative,
+        'link': link_to_store,
+        'is_consumed': False,
+        'submitted_by': user if getattr(user, 'is_authenticated', False) else None,
+    }
+    saved_round, _ = SubmittedRound.objects.update_or_create(
+        presentation_id=persistence_id,
+        defaults=defaults,
+    )
+    _bump_site_data_cache_version()
+    return saved_round, ''
+
+
 def _build_round_maker_creator_options():
     player_names = {
         display_name_for_player_field(player_field)
@@ -2250,6 +2308,11 @@ def _collect_rounds():
                 "creator": submitted_round.creator if submitted_round and submitted_round.creator else creator,
                 "link": link,
                 "old_link": old_link,
+                "presentation_id": (
+                    (submitted_round.presentation_id if submitted_round else '')
+                    or _extract_google_presentation_id(link)
+                    or _extract_google_presentation_id(old_link)
+                ),
                 "shared_date": shared_date
                 or (
                     submitted_round.submitted_at.date().isoformat()
@@ -2267,6 +2330,7 @@ def _collect_rounds():
             "creator": submitted_round.creator,
             "link": submitted_round.link or _build_submitted_round_link(submitted_round.presentation_id),
             "old_link": submitted_round.link or _build_submitted_round_link(submitted_round.presentation_id),
+            "presentation_id": submitted_round.presentation_id,
             "shared_date": submitted_round.submitted_at.date().isoformat() if submitted_round.submitted_at else "",
             "coop": bool(submitted_round.cooperative),
             "is_new": True,
@@ -2280,6 +2344,7 @@ def _collect_rounds():
             "creator": trivia_round.creator,
             "link": trivia_round.link,
             "old_link": trivia_round.link,
+            "presentation_id": _extract_google_presentation_id(trivia_round.link),
             "shared_date": trivia_round.date.isoformat() if trivia_round.date else "",
             "coop": bool(trivia_round.cooperative),
             "is_new": False,
@@ -2297,6 +2362,30 @@ async def collect_rounds_api(request):
         data = await _collect_rounds()
         cache.set(cache_key, data, HOME_ROUNDS_CACHE_TTL_SECONDS)
     return JsonResponse({"rounds": data})
+
+
+def save_available_round_metadata(request):
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    if not request.user.is_authenticated:
+        return JsonResponse({"detail": "Authentication required."}, status=403)
+
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({"detail": "Invalid JSON payload."}, status=400)
+
+    saved_round, error_message = _save_available_round_metadata(data, user=request.user)
+    if error_message:
+        return JsonResponse({"detail": error_message}, status=400)
+
+    return JsonResponse({
+        "ok": True,
+        "presentation_id": saved_round.presentation_id,
+        "title": saved_round.title,
+        "creator": saved_round.creator,
+        "coop": bool(saved_round.cooperative),
+    })
 
 
 def _build_scoresheet_bootstrap_payload(requested_date=''):

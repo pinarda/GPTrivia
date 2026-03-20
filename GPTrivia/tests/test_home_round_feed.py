@@ -85,6 +85,44 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual(round_payload["title"], "Winged Science")
         self.assertEqual(round_payload["creator"], "Alex")
         self.assertTrue(round_payload["coop"])
+        self.assertEqual(round_payload["presentation_id"], "swoop-123")
+
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_save_available_round_metadata_persists_across_gmail_refresh(self, mock_get_round_titles_and_links):
+        mock_get_round_titles_and_links.return_value = (
+            ["https://docs.google.com/presentation/d/swoop-123/edit"],
+            ["Shared Deck Title"],
+            ["hailsciencetrivia@gmail.com"],
+            ["https://docs.google.com/presentation/d/swoop-123/edit"],
+            ["2026-03-15"],
+        )
+
+        save_response = self.client.post(
+            reverse("save_available_round_metadata"),
+            data={
+                "title": "Winged Science",
+                "source_title": "Shared Deck Title",
+                "creator": "Alex",
+                "link": "https://docs.google.com/presentation/d/swoop-123/edit",
+                "old_link": "https://docs.google.com/presentation/d/swoop-123/edit",
+                "coop": True,
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(save_response.status_code, 200)
+        saved_round = SubmittedRound.objects.get(presentation_id="swoop-123")
+        self.assertEqual(saved_round.title, "Winged Science")
+        self.assertEqual(saved_round.creator, "Alex")
+        self.assertTrue(saved_round.cooperative)
+
+        response = self.client.get(reverse("collect_rounds_api"))
+
+        self.assertEqual(response.status_code, 200)
+        round_payload = response.json()["rounds"][0]
+        self.assertEqual(round_payload["title"], "Winged Science")
+        self.assertEqual(round_payload["creator"], "Alex")
+        self.assertTrue(round_payload["coop"])
 
     @patch("GPTrivia.views.get_round_titles_and_links")
     def test_collect_rounds_api_includes_submitted_rounds_not_yet_seen_in_gmail(self, mock_get_round_titles_and_links):
