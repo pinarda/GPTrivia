@@ -417,7 +417,14 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
     }
 
     .select-container {
+        width: min(100%, 340px);
         margin-bottom: 20px;
+    }
+
+    .select-dropdown,
+    .select-container--checkbox,
+    .select-container--checkbox .analysis-checkbox-toggle {
+        width: 100%;
     }
 
     .analysis-plot-card {
