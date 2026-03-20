@@ -154,7 +154,7 @@
     });
 
     function blurInitialTextFocus() {
-        const usernameInput = document.getElementById('username');
+        const usernameInput = document.getElementById('buzzer-name');
         const activeElement = document.activeElement;
         if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
             activeElement.blur();
@@ -169,7 +169,7 @@
     // Send press to WebSocket
     function sendPress() {
         const mainButton = document.getElementById('action-button');
-        const username = document.getElementById('username').value;
+        const username = document.getElementById('buzzer-name').value;
         const lockedSound = document.getElementById('locked-sound'); // Get the audio element
 
         if (hardLock) {
@@ -371,12 +371,18 @@
 <body>
     <h1>Press the Button!</h1>
     <div id="buttondiv">
-        <label for="username">Your Name:</label>
+        <label for="buzzer-name">Your Name:</label>
         <input
             type="text"
-            id="username"
+            id="buzzer-name"
+            name="display_name"
             placeholder="Enter your name"
             value="{{ username|default:'unknown' }}"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            inputmode="text"
         />
         <button id="action-button">WAIT</button>
         <button id="show-host-options-button">Show Host Options</button>
