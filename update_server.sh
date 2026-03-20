@@ -7,6 +7,7 @@ REPO_DIR="${SCRIPT_DIR}"
 CONDA_SH="${HOME}/miniconda3/etc/profile.d/conda.sh"
 ENV_NAME="GPTrivia"
 SKIP_GIT_PULL="${SKIP_GIT_PULL:-0}"
+DAPHNE_INSTANCE_PORTS="${DAPHNE_INSTANCE_PORTS:-8000 8001}"
 
 if [[ ! -f "${REPO_DIR}/manage.py" ]]; then
   REPO_DIR="${HOME}/git/GPTrivia"
@@ -36,6 +37,27 @@ fi
 
 python manage.py migrate
 python manage.py collectstatic --noinput
-sudo systemctl restart daphne
+
+restart_daphne_services() {
+  local ports=()
+  local services=()
+  local port
+
+  read -r -a ports <<< "${DAPHNE_INSTANCE_PORTS}"
+
+  if systemctl list-unit-files 'daphne@*.service' --no-legend 2>/dev/null | grep -q '^daphne@'; then
+    for port in "${ports[@]}"; do
+      services+=("daphne@${port}")
+    done
+    echo "Restarting Daphne instances: ${services[*]}"
+    sudo systemctl restart "${services[@]}"
+    return
+  fi
+
+  echo "Restarting legacy daphne.service"
+  sudo systemctl restart daphne
+}
+
+restart_daphne_services
 
 echo "Server update complete."
