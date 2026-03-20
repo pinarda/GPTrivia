@@ -18,10 +18,10 @@ class Command(BaseCommand):
             if len(creators) > 3:
                 creator_list += f", +{len(creators) - 3} more"
             message = (
-                f"We have new rounds from {num_creators} different creators ({creator_list})."
+                f"We have rounds from {num_creators} different creators ({creator_list})."
             )
         else:
-            message = "No new rounds are currently available."
+            message = "No rounds are currently available."
 
         full_message = f"{message}"
         send_push_to_all("Trivia at 7:30pm PST!", full_message)
