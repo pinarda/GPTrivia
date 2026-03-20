@@ -295,6 +295,10 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
     height: 100% !important;
 }
 
+.plot-div .modebar {
+    display: none !important;
+}
+
 .plot-div--standard {
     min-height: 500px;
 }

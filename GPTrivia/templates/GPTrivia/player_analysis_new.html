@@ -656,8 +656,8 @@
         const normalizedConfig = {
             responsive: true,
             displaylogo: false,
-            displayModeBar: false,
             ...(config || {}),
+            displayModeBar: false,
         };
         return Promise.resolve(
             originalPlotlyNewPlot(target, data, applyPlotTheme(linkedLayout), normalizedConfig)
@@ -2092,14 +2092,18 @@
         const layout = buildResponsiveBarLayout('catBar', data, {
             xaxis: {
                 title: data.xaxis,
-                tickangle: compactLayout ? -38 : -30,
+                tickangle: compactLayout ? 0 : -30,
+                tickmode: compactLayout ? 'array' : undefined,
+                tickvals: compactLayout ? data.categories : undefined,
+                ticktext: compactLayout ? data.categories.map(buildCompactCategoryTickLabel) : undefined,
                 tickfont: {
                     size: compactLayout ? 8 : 12,
                 },
+                automargin: false,
             },
             margin: {
-                b: compactLayout ? 118 : 92,
-                l: compactLayout ? 46 : 66,
+                b: compactLayout ? 134 : 92,
+                l: compactLayout ? 34 : 66,
                 r: compactLayout ? 26 : 26,
             },
         });
