@@ -4,6 +4,7 @@ import inspect
 from unittest.mock import patch
 
 from django.test import TestCase, RequestFactory
+from django.http import JsonResponse
 from GPTrivia.models import GPTriviaRound, MergedPresentation
 from GPTrivia.views import player_analysis, player_profile
 from ..mail import create_presentation
@@ -218,6 +219,30 @@ class PlayerAnalysisPlotTests(TestCase):
                     off_diagonal_values.append(matrix[row_name][col_name])
         self.assertTrue(off_diagonal_values)
         self.assertAlmostEqual(sum(off_diagonal_values) / len(off_diagonal_values), 0.0, places=6)
+
+    @patch('GPTrivia.analysis.PlayerAnalysisPlot.as_view')
+    def test_player_analysis_plot_refresh_bypasses_cache(self, mock_as_view):
+        mock_view = lambda request, *args, **kwargs: JsonResponse({'ok': True, 'chart': 'cached-test'})
+        mock_as_view.return_value = mock_view
+
+        first_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'bar',
+            'creator': 'Jenny',
+        })
+        second_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'bar',
+            'creator': 'Jenny',
+        })
+        refresh_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'bar',
+            'creator': 'Jenny',
+            'refresh': '1',
+        })
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(refresh_response.status_code, 200)
+        self.assertEqual(mock_as_view.call_count, 2)
 
     def test_cat_bar_data(self):
         rounds = GPTriviaRound.objects.all()
@@ -693,6 +718,7 @@ class PlayerAnalysisPlotTests(TestCase):
         self.assertEqual(include_coop_response.json()['labels'], ['Chris', 'Jenny'])
 class PlayerAnalysisViewTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.views_threshold_patcher = patch('GPTrivia.views.MIN_ANALYSIS_ROUNDS', 1)
         self.views_threshold_patcher.start()
         self.addCleanup(self.views_threshold_patcher.stop)
@@ -713,6 +739,56 @@ class PlayerAnalysisViewTests(TestCase):
         payload = response.json()
         self.assertTrue(payload['ok'])
         return payload
+
+    @patch('GPTrivia.views.render_to_string')
+    @patch('GPTrivia.views.player_profile_dict')
+    def test_profile_stats_refresh_bypasses_cache(self, mock_player_profile_dict, mock_render_to_string):
+        mock_player_profile_dict.return_value = {
+            'total_rounds': 4,
+            'created_rounds_count': 1,
+            'style_points_total': 2,
+            'best_score_ever': 9,
+            'best_performance_ever': 0.9,
+            'max_avg': 1.5,
+            'min_avg': -0.5,
+            'max_cat_avg': 'Science',
+            'min_cat_avg': 'History',
+            'most_favoring_creator': 'Alex',
+            'least_favoring_creator': 'Jenny',
+            'most_favoring_creator_value': 1.2,
+            'least_favoring_creator_value': -0.8,
+            'most_favored_player': 'Alex',
+            'least_favored_player': 'Jenny',
+            'most_favored_player_value': 1.0,
+            'least_favored_player_value': -1.0,
+            'streak_timeline': [],
+            'longest_play_streak': 3,
+            'longest_creator_streak': 2,
+        }
+        mock_render_to_string.side_effect = lambda template_name, context, request=None: f'{template_name}:{context["total_rounds"]}'
+
+        url = reverse('player_profile_stats', args=['Alex'])
+        first_response = self.client.get(
+            url,
+            HTTP_ACCEPT='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        second_response = self.client.get(
+            url,
+            HTTP_ACCEPT='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        refresh_response = self.client.get(
+            url,
+            {'refresh': '1'},
+            HTTP_ACCEPT='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(refresh_response.status_code, 200)
+        self.assertEqual(mock_player_profile_dict.call_count, 2)
 
     def test_profile_view(self):
         GPTriviaRound.objects.create(

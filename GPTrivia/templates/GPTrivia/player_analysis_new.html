@@ -671,6 +671,8 @@
     };
 
     const analysisPlotUrl = '{% url "player_analysis_plot" %}';
+    const analysisNavigationEntry = performance.getEntriesByType('navigation')[0];
+    const analysisForceRefresh = Boolean(analysisNavigationEntry && analysisNavigationEntry.type === 'reload');
     $.ajaxPrefilter(function(options) {
         if (options.url !== analysisPlotUrl) {
             return;
@@ -679,13 +681,15 @@
         const miscValue = getAnalysisMisc();
         if (typeof options.data === 'string') {
             const separator = options.data ? '&' : '';
-            options.data = `${options.data}${separator}misc=${encodeURIComponent(miscValue)}`;
+            const refreshQuery = analysisForceRefresh ? `&refresh=1` : '';
+            options.data = `${options.data}${separator}misc=${encodeURIComponent(miscValue)}${refreshQuery}`;
             return;
         }
 
         options.data = {
             ...(options.data || {}),
             misc: miscValue,
+            ...(analysisForceRefresh ? { refresh: '1' } : {}),
         };
     });
 

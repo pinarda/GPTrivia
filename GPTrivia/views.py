@@ -132,7 +132,8 @@ SWOOP_ICON_KEYWORD_PROMPT = (
 )
 GOOGLE_PRESENTATION_ID_PATTERN = re.compile(r"/presentation/d/([A-Za-z0-9_-]+)")
 HOME_ROUNDS_CACHE_TTL_SECONDS = 20
-ANALYSIS_PLOT_CACHE_TTL_SECONDS = 60
+ANALYSIS_PLOT_CACHE_TTL_SECONDS = 60 * 60 * 24
+PROFILE_STATS_CACHE_TTL_SECONDS = 60 * 60 * 24
 SITE_DATA_CACHE_VERSION_KEY = 'site_data_cache_version'
 
 
@@ -145,6 +146,16 @@ def _bump_site_data_cache_version():
         cache.incr(SITE_DATA_CACHE_VERSION_KEY)
     except ValueError:
         cache.set(SITE_DATA_CACHE_VERSION_KEY, 2, None)
+
+
+def _request_wants_fresh_cache(request):
+    refresh_value = str(request.GET.get('refresh') or '').strip().lower()
+    if refresh_value in {'1', 'true', 'yes', 'reload'}:
+        return True
+
+    cache_control = (request.headers.get('Cache-Control') or '').lower()
+    pragma = (request.headers.get('Pragma') or '').lower()
+    return any(token in cache_control for token in ('no-cache', 'no-store', 'max-age=0')) or 'no-cache' in pragma
 
 
 def create_presentation(*args, **kwargs):
@@ -2228,6 +2239,12 @@ def player_profile(request, player_name):
 
 @login_required
 def player_profile_stats(request, player_name):
+    cache_key = f'player_profile_stats:v{_get_site_data_cache_version()}:{player_name.lower()}'
+    if not _request_wants_fresh_cache(request):
+        cached_payload = cache.get(cache_key)
+        if cached_payload is not None:
+            return JsonResponse(cached_payload, encoder=DjangoJSONEncoder)
+
     context = player_profile_dict(
         request,
         player_name,
@@ -2258,12 +2275,14 @@ def player_profile_stats(request, player_name):
         'longest_play_streak': context.get('longest_play_streak'),
         'longest_creator_streak': context.get('longest_creator_streak'),
     }
-    return JsonResponse({
+    payload = {
         'ok': True,
         'summary_html': summary_html,
         'timeline_html': timeline_html,
         'stats': stats_payload,
-    }, encoder=DjangoJSONEncoder)
+    }
+    cache.set(cache_key, payload, PROFILE_STATS_CACHE_TTL_SECONDS)
+    return JsonResponse(payload, encoder=DjangoJSONEncoder)
 
 
 @login_required
@@ -2357,7 +2376,7 @@ async def collect_rounds_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
     cache_key = f'collect_rounds_api:v{_get_site_data_cache_version()}'
-    data = cache.get(cache_key)
+    data = None if _request_wants_fresh_cache(request) else cache.get(cache_key)
     if data is None:
         data = await _collect_rounds()
         cache.set(cache_key, data, HOME_ROUNDS_CACHE_TTL_SECONDS)
@@ -3194,7 +3213,7 @@ def player_analysis_plot(request, *args, **kwargs):
     )
     query_digest = hashlib.md5(normalized_query.encode('utf-8')).hexdigest()
     cache_key = f'player_analysis_plot:v{_get_site_data_cache_version()}:{query_digest}'
-    cached_payload = cache.get(cache_key)
+    cached_payload = None if _request_wants_fresh_cache(request) else cache.get(cache_key)
     if cached_payload is not None:
         return JsonResponse(cached_payload)
 

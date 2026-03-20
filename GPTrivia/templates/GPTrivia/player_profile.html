@@ -859,9 +859,15 @@
                 initializeProfileStreakTimeline();
                 return;
             }
+            const navigationEntry = performance.getEntriesByType('navigation')[0];
+            const forceRefresh = Boolean(navigationEntry && navigationEntry.type === 'reload');
+            const requestUrl = new URL(statsUrl, window.location.origin);
+            if (forceRefresh) {
+                requestUrl.searchParams.set('refresh', '1');
+            }
 
             try {
-                const response = await fetch(statsUrl, {
+                const response = await fetch(requestUrl.toString(), {
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',

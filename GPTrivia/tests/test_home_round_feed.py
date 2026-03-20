@@ -208,6 +208,23 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual(second_response.status_code, 200)
         self.assertEqual(mock_get_round_titles_and_links.call_count, 1)
 
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_refresh_bypasses_cache(self, mock_get_round_titles_and_links):
+        mock_get_round_titles_and_links.return_value = (
+            ["https://example.com/new-round"],
+            ["Fresh Round"],
+            ["Ichigo"],
+            ["https://example.com/source-round"],
+            ["2026-03-14"],
+        )
+
+        first_response = self.client.get(reverse("collect_rounds_api"))
+        refresh_response = self.client.get(reverse("collect_rounds_api"), {"refresh": "1"})
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(refresh_response.status_code, 200)
+        self.assertEqual(mock_get_round_titles_and_links.call_count, 2)
+
     @patch(
         "GPTrivia.views.create_presentation",
         return_value=(

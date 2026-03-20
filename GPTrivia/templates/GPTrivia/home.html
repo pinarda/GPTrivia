@@ -1063,6 +1063,8 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
         const homeRoundSaveTimers = new Map();
         const homeRoundSaveControllers = new Map();
         const homeRoundSaveDebounceMs = 450;
+        const homeNavigationEntry = performance.getEntriesByType('navigation')[0];
+        const homeForceRefresh = Boolean(homeNavigationEntry && homeNavigationEntry.type === 'reload');
 
         function profileUrlForName(name) {
             return profileUrlTemplate.replace('__PROFILE_NAME__', encodeURIComponent(name || ''));
@@ -1684,8 +1686,13 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 }
             }
 
+            const roundsUrl = new URL("/api/collect_rounds/", window.location.origin);
+            if (homeForceRefresh) {
+                roundsUrl.searchParams.set('refresh', '1');
+            }
+
             return flushPendingAvailableRoundSaves()
-                .then(() => fetch("/api/collect_rounds/", {credentials: "same-origin"}))
+                .then(() => fetch(roundsUrl.toString(), {credentials: "same-origin"}))
                 .then((response) => (response.ok ? response.json() : Promise.reject(response.statusText)))
                 .then(({rounds}) => {
                     if (placeholder) {
