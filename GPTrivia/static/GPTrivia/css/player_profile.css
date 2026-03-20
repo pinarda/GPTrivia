@@ -224,6 +224,7 @@ a {
     flex: 0 0 auto;
     font-size: 1.3rem;
     line-height: 1;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
     animation: profile-loading-spin 1.8s linear infinite;
 }
 
