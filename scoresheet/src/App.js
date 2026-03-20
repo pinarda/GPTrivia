@@ -359,8 +359,13 @@ import {
       display: flex;
       flex-direction: column;
       align-items: center;
-      width: 100%;
+      width: auto;
+      flex: 0 0 auto;
       gap: 0.45rem;
+
+      @media (max-width: 750px) {
+        width: 100%;
+      }
     `;
 
     const JokerFormControl = styled(StyledFormControl).attrs(({ className }) => ({
@@ -1338,6 +1343,7 @@ const PlayerTable = () => {
     const dateFieldText = isLightProfileTheme ? '#1b2530' : '#fff';
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
     const isCompactScreen = useMediaQuery('(max-width:1000px)');
+    const isMobileView = useMediaQuery('(max-width:750px)');
 
     const fallbackBaseUrl = "https://hailsciencetrivia.com";
     const url =
@@ -3455,14 +3461,14 @@ const PlayerTable = () => {
           <Box
           display="flex"
           alignItems="center"
-          justifyContent={isCompactScreen ? 'center' : 'flex-start'}
-          flexDirection={isCompactScreen ? 'row' : 'row'}
-          flexWrap="wrap"
-          gap={isCompactScreen ? 0.65 : 0}
-          padding={isCompactScreen ? '0.28rem 0.35rem 0.15rem' : '0.2rem'}
-          maxWidth={isCompactScreen ? '72rem' : 'none'}
-          margin={isCompactScreen ? '0 auto' : '0'}
-          marginLeft={isCompactScreen ? '0' : '0.2rem'}>
+          justifyContent={isMobileView ? 'center' : 'flex-start'}
+          flexDirection="row"
+          flexWrap={isMobileView ? 'wrap' : 'nowrap'}
+          gap={isMobileView ? 0.65 : 0}
+          padding={isMobileView ? '0.28rem 0.35rem 0.15rem' : '0.2rem'}
+          maxWidth={isMobileView ? '72rem' : 'none'}
+          margin={isMobileView ? '0 auto' : '0'}
+          marginLeft={isMobileView ? '0' : '0.2rem'}>
             {/*<StyledFormControl>*/}
             {/*  <Select*/}
             {/*    value={selectedDate}*/}
@@ -3476,7 +3482,7 @@ const PlayerTable = () => {
             {/*        Today*/}
             {/*    </StyledButton>*/}
             {/*</StyledFormControl>*/}
-            {!isCompactScreen && roundNavigationControls}
+            {!isMobileView && roundNavigationControls}
 
             <CompactTopControlGroup>
               <StyledTextField
@@ -3525,7 +3531,7 @@ const PlayerTable = () => {
             <StyledButton variant="contained" color="secondary" onClick={() => handleAddColumn(selectedDate, rounds.length + 1)}>
               Add Round
             </StyledButton>
-            {isCompactScreen && roundNavigationControls}
+            {isMobileView && roundNavigationControls}
 
             {!isCompactScreen && (
               <StyledButton variant="contained" color="primary" onClick={saveData} style={{ backgroundColor: isSaved ? '#1e7662' : '#810e19' }}>
