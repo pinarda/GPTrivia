@@ -345,13 +345,25 @@ import {
         }
       `;
 
-    const RoundSwitchFormControl = styled(StyledFormControl)`
-      @media (max-width: 1000px) {
-        max-width: 11.5rem;
-        width: min(100%, 11.5rem);
+    const RoundDateFormControl = styled(StyledFormControl)`
+      @media (max-width: 750px) {
+        width: min(100%, 21.35rem);
+        max-width: min(100%, 21.35rem);
         padding: 0.34rem 0.42rem 0.42rem;
         border: 2px solid var(--scoresheet-border-soft, rgba(255, 255, 255, 0.22));
         box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+        box-sizing: border-box;
+      }
+    `;
+
+    const RoundSwitchFormControl = styled(StyledFormControl)`
+      @media (max-width: 750px) {
+        width: min(100%, 21.35rem);
+        max-width: min(100%, 21.35rem);
+        padding: 0.34rem 0.42rem 0.42rem;
+        border: 2px solid var(--scoresheet-border-soft, rgba(255, 255, 255, 0.22));
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+        box-sizing: border-box;
       }
     `;
 
@@ -365,6 +377,20 @@ import {
 
       @media (max-width: 750px) {
         width: 100%;
+      }
+    `;
+
+    const RoundNavigationControlGroup = styled.div`
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      flex-wrap: nowrap;
+
+      @media (max-width: 750px) {
+        width: 100%;
+        flex-direction: column;
+        gap: 0.7rem;
       }
     `;
 
@@ -389,16 +415,18 @@ import {
       max-width: 100%;
       min-width: 0;
 
+      && .MuiOutlinedInput-root {
+        box-shadow: inset 0 0 0 1px #1e7662;
+      }
+
       && .MuiOutlinedInput-notchedOutline {
-        border-color: #1e7662;
-        border-width: 2px;
+        border: 2px solid #1e7662 !important;
       }
 
       &&:hover .MuiOutlinedInput-notchedOutline,
       &&.Mui-focused .MuiOutlinedInput-notchedOutline,
       && .Mui-focused .MuiOutlinedInput-notchedOutline {
-        border-color: #2c9d84;
-        border-width: 2px;
+        border: 2px solid #2c9d84 !important;
       }
 
       && .MuiSelect-select {
@@ -435,7 +463,7 @@ import {
     const RoundSwitchHelper = styled.div`
       display: none;
 
-      @media (max-width: 1000px) {
+      @media (max-width: 750px) {
         display: block;
         width: min(100%, 21.35rem);
         padding: 0.38rem 0.62rem;
@@ -451,7 +479,7 @@ import {
     `;
 
     const RoundSwitchSelect = styled(StyledSelect)`
-      @media (max-width: 1000px) {
+      @media (max-width: 750px) {
         && .MuiOutlinedInput-notchedOutline {
           border-width: 2px;
           border-color: var(--scoresheet-border-soft, rgba(255, 255, 255, 0.22));
@@ -3125,8 +3153,8 @@ const PlayerTable = () => {
 
   const roundNavigationControls = (
     <RoundNavigationStack>
-      <CompactTopControlGroup>
-        <StyledFormControl>
+      <RoundNavigationControlGroup>
+        <RoundDateFormControl>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
               open={openDatePicker}
@@ -3166,8 +3194,9 @@ const PlayerTable = () => {
                     },
                   },
                   sx: {
-                    minWidth: isCompactScreen ? (isSmallScreen ? '9.1rem' : '9.7rem') : '9.5rem',
-                    maxWidth: isCompactScreen ? (isSmallScreen ? '9.1rem' : '9.7rem') : '10.25rem',
+                    minWidth: isMobileView ? '100%' : (isCompactScreen ? (isSmallScreen ? '9.1rem' : '9.7rem') : '9.5rem'),
+                    maxWidth: isMobileView ? '100%' : (isCompactScreen ? (isSmallScreen ? '9.1rem' : '9.7rem') : '10.25rem'),
+                    width: '100%',
                     margin: isCompactScreen ? 0 : '0.4rem',
                     backgroundColor: dateFieldBg,
                     '& .MuiInputBase-root': {
@@ -3212,7 +3241,7 @@ const PlayerTable = () => {
               }}
               />
           </LocalizationProvider>
-        </StyledFormControl>
+        </RoundDateFormControl>
 
         <RoundSwitchFormControl>
           <StyledInputLabel className={"showonsmall"}>Switch Round</StyledInputLabel>
@@ -3232,8 +3261,8 @@ const PlayerTable = () => {
               ))}
           </RoundSwitchSelect>
         </RoundSwitchFormControl>
-      </CompactTopControlGroup>
-      <RoundSwitchHelper>Click above to change the visible round or date.</RoundSwitchHelper>
+      </RoundNavigationControlGroup>
+      <RoundSwitchHelper>Select below for round or date.</RoundSwitchHelper>
     </RoundNavigationStack>
   );
 
