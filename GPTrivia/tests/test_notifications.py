@@ -76,5 +76,5 @@ class ScheduledNotificationTests(TestCase):
 
         mock_send_push.assert_called_once_with(
             "Trivia at 7:30pm PST!",
-            "We have unused rounds from 2 different creators (Alex, Megan).",
+            "We have new rounds from 2 different creators (Alex, Megan).",
         )
