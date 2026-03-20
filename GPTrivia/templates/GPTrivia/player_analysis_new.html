@@ -129,9 +129,6 @@
     <script>
 
     let playerColorMapping = {{ player_color_mapping_json|safe }};
-    let players = {{ players_json|safe }};
-    let rounds = {{ rounds_json|safe }};
-    let mapping = {{ mapping_json|safe }};
     let playerTextMapping = {{ player_text_mapping_json|safe }};
     const profileUrlTemplate = "{% url 'player_profile' '__PROFILE_NAME__' %}";
     const isLightTheme = document.body.dataset.profileTheme === 'light';

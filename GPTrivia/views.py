@@ -39,6 +39,7 @@ import datetime
 import logging
 import requests
 from urllib.parse import urlencode
+import hashlib
 
 ## API Libs
 from rest_framework import generics
@@ -56,6 +57,7 @@ from rest_framework.renderers import JSONRenderer
 from datetime import date
 from django.utils import timezone
 from django.http import FileResponse
+from django.core.cache import cache
 from .models import JeopardyQuestion, JeopardyRound, PushSubscription, SubmittedRound
 from .player_scores import (
     FIXED_SCORE_FIELDS,
@@ -83,6 +85,7 @@ from .blog_posts import (
 from .profile_media import get_profile_avatar_url, get_profile_picture_url
 import re
 import mimetypes
+from itertools import chain
 
 
 gmail_key = '8f35edc691b918094035b22807266a1e468bf5f0'
@@ -128,6 +131,20 @@ SWOOP_ICON_KEYWORD_PROMPT = (
     "Return only the keywords and nothing else."
 )
 GOOGLE_PRESENTATION_ID_PATTERN = re.compile(r"/presentation/d/([A-Za-z0-9_-]+)")
+HOME_ROUNDS_CACHE_TTL_SECONDS = 20
+ANALYSIS_PLOT_CACHE_TTL_SECONDS = 60
+SITE_DATA_CACHE_VERSION_KEY = 'site_data_cache_version'
+
+
+def _get_site_data_cache_version():
+    return cache.get_or_set(SITE_DATA_CACHE_VERSION_KEY, 1, None)
+
+
+def _bump_site_data_cache_version():
+    try:
+        cache.incr(SITE_DATA_CACHE_VERSION_KEY)
+    except ValueError:
+        cache.set(SITE_DATA_CACHE_VERSION_KEY, 2, None)
 
 
 def create_presentation(*args, **kwargs):
@@ -650,6 +667,7 @@ class ShareView(View):
                 'submitted_by': request.user if request.user.is_authenticated else None,
             },
         )
+        _bump_site_data_cache_version()
         return JsonResponse({'success': True})
 
 @login_required
@@ -713,14 +731,15 @@ def blog_other_trivia_plots(request):
 
 @login_required
 def player_analysis(request):
-    queryset_rounds = GPTriviaRound.objects.all()
-    presentation_queryset = MergedPresentation.objects.all()
+    round_queryset = GPTriviaRound.objects.all()
+    round_player_queryset = round_queryset.only('creator', 'extra_scores')
+    presentation_queryset = MergedPresentation.objects.only('player_list', 'creator_list')
     initial_creator_selection = (request.GET.get('creator') or '').strip()
     initial_category_selection = (request.GET.get('category') or '').strip()
     initial_player_selection = (request.GET.get('player') or '').strip()
     initial_include_coop = str(request.GET.get('include_coop') or '').strip().lower() in {'1', 'true', 'yes', 'on', 'include_coop'}
     initial_include_inactive = str(request.GET.get('include_inactive') or '').strip().lower() in {'1', 'true', 'yes', 'on', 'include_inactive', 'show_inactive'}
-    player_fields = get_all_player_fields(queryset_rounds, presentation_queryset)
+    player_fields = get_all_player_fields(round_player_queryset, presentation_queryset)
     player_names = [display_name_for_player_field(field) for field in player_fields]
     player_name_mapping = {
         player_name: player_field
@@ -728,10 +747,17 @@ def player_analysis(request):
     }
 
     creators = sorted({
-        round_obj.creator for round_obj in queryset_rounds if round_obj.creator
+        creator_name
+        for creator_name in chain(
+            round_queryset.order_by().values_list('creator', flat=True).distinct(),
+            round_queryset.order_by().values_list('secondary_creator', flat=True).distinct(),
+        )
+        if creator_name
     })
     categories = sorted({
-        round_obj.major_category for round_obj in queryset_rounds if round_obj.major_category
+        category_name
+        for category_name in round_queryset.order_by().values_list('major_category', flat=True).distinct()
+        if category_name
     })
 
     if initial_creator_selection not in creators:
@@ -741,36 +767,21 @@ def player_analysis(request):
     if initial_player_selection not in player_names:
         initial_player_selection = ''
 
-    rounds = []
-    for round_obj in queryset_rounds:
-        round_data = flatten_round_for_analysis(round_obj)
-        round_data['date'] = round_obj.date.strftime("%m/%d/%Y")
-        round_data['replay'] = str(round_obj.replay).lower()
-        round_data['cooperative'] = str(round_obj.cooperative).lower()
-        for player_field in player_fields:
-            if round_data.get(player_field) is None:
-                round_data[player_field] = ''
-        rounds.append(round_data)
-
     player_color_mapping = build_player_color_mapping(player_names)
     player_text_mapping = build_player_text_mapping(player_names)
 
     context = {
-        'rounds': rounds,
-        'rounds_json': json.dumps(rounds, cls=DjangoJSONEncoder),
         'playerColorMapping': player_color_mapping,
         'player_color_mapping_json': json.dumps(player_color_mapping, cls=DjangoJSONEncoder),
         'creators': creators,
         'categories': categories,
         'players': player_names,
-        'players_json': json.dumps(player_names, cls=DjangoJSONEncoder),
         'initial_creator_selection': initial_creator_selection,
         'initial_category_selection': initial_category_selection,
         'initial_player_selection': initial_player_selection,
         'initial_include_coop': initial_include_coop,
         'initial_include_inactive': initial_include_inactive,
         "mapping": player_name_mapping,
-        "mapping_json": json.dumps(player_name_mapping, cls=DjangoJSONEncoder),
         "player_text_mapping": player_text_mapping,
         "player_text_mapping_json": json.dumps(player_text_mapping, cls=DjangoJSONEncoder),
     }
@@ -2280,8 +2291,87 @@ def _collect_rounds():
 async def collect_rounds_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
-    data = await _collect_rounds()
+    cache_key = f'collect_rounds_api:v{_get_site_data_cache_version()}'
+    data = cache.get(cache_key)
+    if data is None:
+        data = await _collect_rounds()
+        cache.set(cache_key, data, HOME_ROUNDS_CACHE_TTL_SECONDS)
     return JsonResponse({"rounds": data})
+
+
+def _build_scoresheet_bootstrap_payload(requested_date=''):
+    round_queryset = GPTriviaRound.objects.all()
+    date_values = sorted({
+        round_date.isoformat()
+        for round_date in round_queryset.order_by().values_list('date', flat=True).distinct()
+        if round_date
+    }, reverse=True)
+    selected_date = requested_date if requested_date in date_values else (date_values[0] if date_values else '')
+
+    selected_rounds = round_queryset.filter(date=selected_date).order_by('round_number', 'id') if selected_date else GPTriviaRound.objects.none()
+    creator_options = sorted({
+        display_name_for_player_field(creator_name)
+        for creator_name in chain(
+            round_queryset.order_by().values_list('creator', flat=True).distinct(),
+            round_queryset.order_by().values_list('secondary_creator', flat=True).distinct(),
+        )
+        if display_name_for_player_field(creator_name)
+    })
+    major_categories = sorted({
+        category_name
+        for category_name in round_queryset.order_by().values_list('major_category', flat=True).distinct()
+        if category_name
+    })
+    minor_categories = sorted({
+        category_name
+        for category_name in chain(
+            round_queryset.order_by().values_list('minor_category1', flat=True).distinct(),
+            round_queryset.order_by().values_list('minor_category2', flat=True).distinct(),
+            major_categories,
+        )
+        if category_name
+    })
+
+    return {
+        'dates': date_values,
+        'selected_date': selected_date,
+        'creator_options': creator_options,
+        'major_categories': major_categories,
+        'minor_categories': minor_categories,
+        'rounds': GPTriviaRoundSerializer(selected_rounds, many=True).data,
+    }
+
+
+@login_required
+def scoresheet_bootstrap(request):
+    requested_date = (request.GET.get('date') or '').strip()
+    return JsonResponse(_build_scoresheet_bootstrap_payload(requested_date), encoder=CustomJSONEncoder)
+
+
+def _build_scoresheet_presentation_meta_payload(selected_date=''):
+    selected_presentation = _get_scoresheet_presentation(selected_date=selected_date)
+    presentation_history = sorted(
+        list(
+            _ready_presentations_queryset()
+            .only('name', 'crowned_winner')
+            .values('name', 'crowned_winner')
+        ),
+        key=lambda item: _parse_presentation_name_date(item.get('name')) or datetime.date.min,
+    )
+    return {
+        'selected_presentation': (
+            MergedPresentationSerializer(selected_presentation).data
+            if selected_presentation is not None
+            else None
+        ),
+        'crown_history': presentation_history,
+    }
+
+
+@login_required
+def scoresheet_presentation_meta(request):
+    selected_date = (request.GET.get('date') or '').strip()
+    return JsonResponse(_build_scoresheet_presentation_meta_payload(selected_date), encoder=CustomJSONEncoder)
 
 
 PRESENTATION_NAME_DATE_FORMATS = (
@@ -3009,7 +3099,27 @@ class CustomObtainAuthToken(ObtainAuthToken):
 def player_analysis_plot(request, *args, **kwargs):
     from .analysis import PlayerAnalysisPlot
 
-    return PlayerAnalysisPlot.as_view()(request, *args, **kwargs)
+    normalized_query = json.dumps(
+        sorted((key, tuple(request.GET.getlist(key))) for key in request.GET.keys()),
+        separators=(',', ':'),
+    )
+    query_digest = hashlib.md5(normalized_query.encode('utf-8')).hexdigest()
+    cache_key = f'player_analysis_plot:v{_get_site_data_cache_version()}:{query_digest}'
+    cached_payload = cache.get(cache_key)
+    if cached_payload is not None:
+        return JsonResponse(cached_payload)
+
+    response = PlayerAnalysisPlot.as_view()(request, *args, **kwargs)
+    if isinstance(response, JsonResponse) and response.status_code == 200:
+        try:
+            cache.set(
+                cache_key,
+                json.loads(response.content.decode('utf-8')),
+                ANALYSIS_PLOT_CACHE_TTL_SECONDS,
+            )
+        except Exception:
+            pass
+    return response
 
 
 SCORESHEET_GROUP_NAME = 'scoresheet_scoresheet_updates'
@@ -3236,6 +3346,7 @@ def _save_scores_patch(data):
         }
         _schedule_scoresheet_broadcast(message)
 
+    _bump_site_data_cache_version()
     return JsonResponse({
         "message": "Data saved successfully!",
         "presentation_id": presentation.presentation_id,
@@ -3281,6 +3392,7 @@ def create_round(request, date, number):
     # set it's name to "Round {number}"
     # new_round.title = f"Round {number}"
     serializer = GPTriviaRoundSerializer(new_round)
+    _bump_site_data_cache_version()
     return Response(serializer.data)  # Return new round details
 
 @api_view(['DELETE'])
@@ -3312,6 +3424,7 @@ def delete_round(request, round_id):
             'round_id': round_id,
             'selected_date': str(thedate),
         })
+    _bump_site_data_cache_version()
     return Response({'message': 'Round deleted successfully'})
 
 @api_view(['POST'])
@@ -3482,5 +3595,5 @@ def save_scores(request):
     else:
         pass
 
-
+    _bump_site_data_cache_version()
     return JsonResponse({"message": "Data saved successfully!"})

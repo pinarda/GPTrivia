@@ -56,6 +56,8 @@ urlpatterns = [
     path('accounts/password_change/', views.CustomPasswordChangeView.as_view(), name='password_change'),
     path('accounts/password_changed/', views.CustomPasswordChangeDoneView.as_view(), name='password_changed'),
     path('admin/', admin.site.urls),
+    path('api/v1/scoresheet-bootstrap/', views.scoresheet_bootstrap, name='scoresheet_bootstrap'),
+    path('api/v1/scoresheet-presentation-meta/', views.scoresheet_presentation_meta, name='scoresheet_presentation_meta'),
     path('api/v1/trivia-rounds/', views.TriviaRoundList.as_view(), name='trivia_rounds_list'),
     path('api/v1/presentations/', views.PresentationList.as_view(), name='presentations'),
     path('api-token-auth/', csrf_exempt(views.CustomObtainAuthToken.as_view()), name='api_token_auth'),

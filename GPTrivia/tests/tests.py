@@ -13,6 +13,7 @@ from google.auth.transport.requests import Request
 import pickle
 import datetime
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from openai import OpenAI
 
 mail_file_directory = os.path.dirname(os.path.abspath(__file__))
@@ -29,6 +30,7 @@ from django.urls import reverse
 class PlayerAnalysisPlotTests(TestCase):
 
     def setUp(self):
+        cache.clear()
         self.analysis_threshold_patcher = patch('GPTrivia.analysis.MIN_ANALYSIS_ROUNDS', 1)
         self.analysis_threshold_patcher.start()
         self.addCleanup(self.analysis_threshold_patcher.stop)
@@ -831,7 +833,6 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertContains(response, 'id="include-inactive-checkbox" checked', html=False)
         self.assertContains(response, reverse('player_profile', args=['__PROFILE_NAME__']))
         self.assertContains(response, 'buildAnalysisTitle')
-        self.assertContains(response, '"creator": "Alex"')
         self.assertNotContains(response, ': None')
 
     def test_player_analysis_dropdown_includes_inactive_players(self):

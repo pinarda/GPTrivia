@@ -414,3 +414,47 @@ class ScoresheetSyncTests(TestCase):
         self.assertEqual(older_duplicate.notes, "older duplicate")
         self.assertEqual(target_duplicate.host, "Jenny")
         self.assertEqual(target_duplicate.notes, "updated duplicate target")
+
+    def test_scoresheet_bootstrap_returns_requested_date_only(self):
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Round 2",
+            major_category="History",
+            minor_category1="Modern",
+            minor_category2="Flags",
+            date=datetime.date(2026, 3, 19),
+            round_number=1,
+            max_score=10,
+        )
+
+        response = self.client.get(reverse("scoresheet_bootstrap"), {"date": "2026-03-12"})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["selected_date"], "2026-03-12")
+        self.assertEqual(payload["dates"], ["2026-03-19", "2026-03-12"])
+        self.assertEqual([round_data["id"] for round_data in payload["rounds"]], [self.round.id])
+        self.assertIn("Alex", payload["creator_options"])
+        self.assertIn("Megan", payload["creator_options"])
+        self.assertIn("Science", payload["major_categories"])
+        self.assertIn("History", payload["major_categories"])
+        self.assertIn("Physics", payload["minor_categories"])
+        self.assertIn("Flags", payload["minor_categories"])
+
+    def test_scoresheet_presentation_meta_returns_selected_presentation_and_history(self):
+        older_presentation = MergedPresentation.objects.create(
+            name="03.05.2026",
+            presentation_id="presentation-older",
+            crowned_winner="Alex",
+            status=MergedPresentation.STATUS_READY,
+        )
+
+        response = self.client.get(reverse("scoresheet_presentation_meta"), {"date": "2026-03-12"})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["selected_presentation"]["presentation_id"], self.presentation.presentation_id)
+        self.assertEqual(
+            [(item["name"], item["crowned_winner"]) for item in payload["crown_history"]],
+            [(older_presentation.name, "Alex"), (self.presentation.name, "Jenny")],
+        )

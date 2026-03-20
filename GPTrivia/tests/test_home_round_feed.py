@@ -2,6 +2,7 @@ import datetime
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
@@ -10,6 +11,7 @@ from GPTrivia.models import GPTriviaRound, MergedPresentation, SubmittedRound
 
 class HomeRoundFeedTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user(username="Alex", password="pw")
         self.client.force_login(self.user)
 
@@ -150,6 +152,23 @@ class HomeRoundFeedTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["rounds"], [])
+
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_uses_short_cache(self, mock_get_round_titles_and_links):
+        mock_get_round_titles_and_links.return_value = (
+            ["https://example.com/new-round"],
+            ["Fresh Round"],
+            ["Ichigo"],
+            ["https://example.com/source-round"],
+            ["2026-03-14"],
+        )
+
+        first_response = self.client.get(reverse("collect_rounds_api"))
+        second_response = self.client.get(reverse("collect_rounds_api"))
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(mock_get_round_titles_and_links.call_count, 1)
 
     @patch(
         "GPTrivia.views.create_presentation",

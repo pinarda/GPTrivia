@@ -1270,6 +1270,8 @@ const PlayerTable = () => {
       typeof window !== 'undefined' && window.location?.origin
         ? window.location.origin.replace(/\/$/, '')
         : fallbackBaseUrl;
+    const scoresheetBootstrapUrl = `${url}/api/v1/scoresheet-bootstrap/`;
+    const scoresheetPresentationMetaUrl = `${url}/api/v1/scoresheet-presentation-meta/`;
 
     const wsRef = useRef(null);
     const pingIntervalRef = useRef(null);
@@ -1506,8 +1508,13 @@ const PlayerTable = () => {
     useEffect(() => {
       let isCancelled = false;
       const controller = new AbortController();
+      const params = new URLSearchParams();
+      const requestedScoresheetDate = selectedDate || requestedDate;
+      if (requestedScoresheetDate) {
+        params.set('date', requestedScoresheetDate);
+      }
 
-      fetch(url + '/api/v1/trivia-rounds/', {
+      fetch(`${scoresheetBootstrapUrl}${params.toString() ? `?${params.toString()}` : ''}`, {
             headers: getApiHeaders(),
             credentials: 'same-origin',
             signal: controller.signal,
@@ -1519,35 +1526,16 @@ const PlayerTable = () => {
           }
           return response.json();
         })
-        .then(json => {
+        .then(payload => {
             if (isCancelled) {
                 return;
             }
-            const majorCategoryValues = json.map(item => item.major_category);
-            const minor1CategoryValues = json.map(item => item.minor_category1);
-            const minor2CategoryValues = json.map(item => item.minor_category2);
-            const allPlayers = json.map(item => getDisplayNameForPlayerField(item.creator));
-            // Get unique values by converting to a Set and then back to an Array
-            const uniqueMajorCategories = [...new Set(majorCategoryValues)];
-            // let the minor categories include the major categories as well
-            const uniqueMinor1Categories = [...new Set(minor1CategoryValues), ...new Set(minor2CategoryValues), ...uniqueMajorCategories];
-            const uniqueMinor2Categories = [...new Set(minor1CategoryValues), ...new Set(minor2CategoryValues), ...uniqueMajorCategories];
-            // let's turn these into sets and then back into arrays to remove duplicates
-            const uniqueMinor1CategoriesSet = new Set(uniqueMinor1Categories);
-            const uniqueMinor2CategoriesSet = new Set(uniqueMinor2Categories);
-            // now back to arrays
-            const finalUniqueMinor1Categories = [...uniqueMinor1CategoriesSet];
-            const finalUniqueMinor2Categories = [...uniqueMinor2CategoriesSet];
-
-            const uniquePlayers = [...new Set(allPlayers)];
-            // reset page load flag
-
-            setAllPlayers(uniquePlayers);
-            setMajorCategories(uniqueMajorCategories);
-            setMinor1Categories(finalUniqueMinor1Categories);
-            setMinor2Categories(finalUniqueMinor2Categories);
-          console.log(json);
-            const uniqueDates = [...new Set(json.map(item => item.date))];
+            const bootstrapRounds = Array.isArray(payload.rounds) ? payload.rounds : [];
+            const uniqueDates = Array.isArray(payload.dates) ? payload.dates : [];
+            setAllPlayers(Array.isArray(payload.creator_options) ? payload.creator_options : []);
+            setMajorCategories(Array.isArray(payload.major_categories) ? payload.major_categories : []);
+            setMinor1Categories(Array.isArray(payload.minor_categories) ? payload.minor_categories : []);
+            setMinor2Categories(Array.isArray(payload.minor_categories) ? payload.minor_categories : []);
             setDates(prevDates => {
                 if (
                     prevDates.length === uniqueDates.length &&
@@ -1558,8 +1546,10 @@ const PlayerTable = () => {
                 return uniqueDates;
             });
 
-            const effectiveSelectedDate = resolveScoresheetDate(selectedDate, requestedDate, uniqueDates);
+            const effectiveSelectedDate = payload.selected_date || resolveScoresheetDate(selectedDate, requestedDate, uniqueDates);
             if (!effectiveSelectedDate) {
+                setRounds([]);
+                setPlayers(defaultPlayers);
                 setLoadedRoundsDate('');
                 return;
             }
@@ -1568,13 +1558,12 @@ const PlayerTable = () => {
                 setSelectedDate(effectiveSelectedDate);
             }
 
-            const filteredRounds = json.filter(round => round.date === effectiveSelectedDate);
             const nextRoundSnapshot = {};
-            filteredRounds.forEach(round => {
+            bootstrapRounds.forEach(round => {
               nextRoundSnapshot[round.id] = makeRoundSnapshot(round);
             });
             serverRoundSnapshotRef.current = nextRoundSnapshot;
-            setRounds(filteredRounds);
+            setRounds(bootstrapRounds);
             setLoadedRoundsDate(effectiveSelectedDate);
 
             if (
@@ -1582,7 +1571,7 @@ const PlayerTable = () => {
                 lastHydratedRoundsDateRef.current !== effectiveSelectedDate ||
                 tempTitlesLengthRef.current === 0
             ) {
-                setTempTitles(filteredRounds.map(round => round.title));
+                setTempTitles(bootstrapRounds.map(round => round.title));
             }
 
             if (
@@ -1590,7 +1579,7 @@ const PlayerTable = () => {
                 lastHydratedRoundsDateRef.current !== effectiveSelectedDate ||
                 tempLinksLengthRef.current === 0
             ) {
-                setTempLinks(filteredRounds.map(round => round.link));
+                setTempLinks(bootstrapRounds.map(round => round.link));
             }
 
             prevUpdateFlagRef.current = updateFlag;
@@ -1598,48 +1587,48 @@ const PlayerTable = () => {
 
 
           let initialCooperativeStatus = {};
-            filteredRounds.forEach(round => {
+            bootstrapRounds.forEach(round => {
               initialCooperativeStatus[round.title] = round.cooperative || false;
             });
             setCooperativeStatus(initialCooperativeStatus);
 
             let initialReplayStatus = {};
-            filteredRounds.forEach(round => {
+            bootstrapRounds.forEach(round => {
                 initialReplayStatus[round.title] = round.replay || false;
             });
             setIsReplay(initialReplayStatus);
 
             // also set the initial Major Categories
             let initialMajorCategories = {};
-            filteredRounds.forEach(round => {
+            bootstrapRounds.forEach(round => {
                 initialMajorCategories[round.title] = round.major_category || '';
             });
             setSelectedMajorCategories(initialMajorCategories);
 
             // also set the initial Minor Categories
             let initialMinor1Categories = {};
-            filteredRounds.forEach(round => {
+            bootstrapRounds.forEach(round => {
                 initialMinor1Categories[round.title] = round.minor_category1 || '';
             });
             setSelectedMinor1Categories(initialMinor1Categories);
 
             // also set the initial Minor Categories
             let initialMinor2Categories = {};
-            filteredRounds.forEach(round => {
+            bootstrapRounds.forEach(round => {
                 initialMinor2Categories[round.title] = round.minor_category2 || '';
             });
             setSelectedMinor2Categories(initialMinor2Categories);
 
             // also set the initial Max Scores
             let initialMaxScores = {};
-            filteredRounds.forEach(round => {
+            bootstrapRounds.forEach(round => {
                 initialMaxScores[round.title] = round.max_score || 10;
             });
             setMaxScores(initialMaxScores);
 
           let roundCreators = {};
           let secondaryCreators = {};
-          for (let round of filteredRounds) {
+          for (let round of bootstrapRounds) {
             roundCreators[round.title] = round.creator;
             secondaryCreators[round.title] = round.secondary_creator || '';
           }
@@ -1655,7 +1644,7 @@ const PlayerTable = () => {
           setSecondaryRoundCreators(secondaryCreators);
 
           // start by setting the playerNames to the default players
-            let playerNames = [...defaultPlayers, ...extractPlayersFromRounds(filteredRounds)];
+            let playerNames = [...defaultPlayers, ...extractPlayersFromRounds(bootstrapRounds)];
 
           // Get unique player names
           playerNames = [...new Set(playerNames)];
@@ -1664,7 +1653,7 @@ const PlayerTable = () => {
           const initialScores = {};
           playerNames.forEach(player => {
             initialScores[player] = {};
-            filteredRounds.forEach(round => {
+            bootstrapRounds.forEach(round => {
               initialScores[player][round.title] = getMergedRoundScoreMap(round)[player] ?? null;
             });
           });
@@ -1681,7 +1670,7 @@ const PlayerTable = () => {
             isCancelled = true;
             controller.abort();
         };
-    }, [defaultPlayers, getApiHeaders, getNormalizedCreatorName, requestedDate, selectedDate, updateFlag, url]);
+    }, [defaultPlayers, getApiHeaders, getNormalizedCreatorName, requestedDate, scoresheetBootstrapUrl, selectedDate, updateFlag]);
 
     useEffect(() => {
         if (!selectedDate || loadedRoundsDate !== selectedDate) {
@@ -1698,7 +1687,10 @@ const PlayerTable = () => {
 
         let isCancelled = false;
 
-        fetch(url + '/api/v1/presentations/', {
+        const params = new URLSearchParams();
+        params.set('date', selectedDate);
+
+        fetch(`${scoresheetPresentationMetaUrl}?${params.toString()}`, {
             headers: getApiHeaders(),
             credentials: 'same-origin',
         })
@@ -1709,7 +1701,7 @@ const PlayerTable = () => {
           }
           return response.json();
         })
-        .then(json => {
+        .then(payload => {
             if (isCancelled) {
                 return;
             }
@@ -1718,37 +1710,10 @@ const PlayerTable = () => {
             }
 
             presentationHydrationKeyRef.current = hydrationKey;
-            setPresentations(json);
-            // strip the score_ prefix from the player names
-            const selectedPresentation = json.find(presentation => convertDate(presentation.name) === selectedDate)
+            const crownHistory = Array.isArray(payload.crown_history) ? payload.crown_history : [];
+            setPresentations(crownHistory);
+            const selectedPresentation = payload.selected_presentation || null;
             serverPresentationSnapshotRef.current = makePresentationSnapshot(selectedPresentation);
-            // const playerList = selectedPresentation.player_list;
-
-            // start by setting the playerNames to the default players
-
-            // let playerNames = [];
-            // if (playerList) {
-            //     console.log('playerList:', playerList);
-            //     playerNames = [...playerList];
-            // }
-            // else {
-            //     playerNames = [...defaultPlayers];
-            //     for (let round of json) {
-            //         for (let key of Object.keys(round)) {
-            //             if (key.startsWith('score_') && round[key] !== 0 && round[key] !== null) {
-            //                 playerNames.push(key);
-            //             }
-            //         }
-            //     }
-            // }
-
-          // Get unique player names
-          // playerNames = [...new Set(playerNames)];
-          // setPlayers(playerNames);
-            // get all the playernames via selectedPresentation.player_list
-            // the format of the player_list is ["score_alex": "score_alex", "score_dan":"score_day", ...]
-            // so we need to extract the keys from the object i.e. "Alex", "Dan", etc.
-            // start by converting player_list from a string to an object
 
             let plist = null;
             if(selectedPresentation) {
@@ -1775,7 +1740,7 @@ const PlayerTable = () => {
                 setScorekeeper(selectedPresentation.scorekeeper || defaultHost);
                 setTiebreakWinner(selectedPresentation.tiebreak_winner || '');
                 setCrownedWinner(selectedPresentation.crowned_winner || '');
-                setInheritedCrownedWinner(getInheritedCrownedWinner(json, selectedDate));
+                setInheritedCrownedWinner(getInheritedCrownedWinner(crownHistory, selectedDate));
                 setNotes(selectedPresentation.notes || '');
 
                 // style_points may arrive as object or stringified JSON
@@ -1801,7 +1766,7 @@ const PlayerTable = () => {
                 setScorekeeper(defaultHost);
                 setTiebreakWinner('');
                 setCrownedWinner('');
-                setInheritedCrownedWinner(getInheritedCrownedWinner(json, selectedDate));
+                setInheritedCrownedWinner(getInheritedCrownedWinner(crownHistory, selectedDate));
                 setNotes('');
                 setStylePoints({});
                 setSelectedRounds(resolvedPlayers.reduce((acc, curr) => ({...acc, [curr]: "Select"}), {}));
@@ -1818,7 +1783,7 @@ const PlayerTable = () => {
         return () => {
             isCancelled = true;
         };
-    }, [defaultHost, getApiHeaders, loadedRoundsDate, selectedDate, updateFlag, url]);
+    }, [defaultHost, getApiHeaders, loadedRoundsDate, scoresheetPresentationMetaUrl, selectedDate, updateFlag]);
 
     useEffect(() => {
       if (players.length > 0 && rounds.length > 0) {
@@ -2132,6 +2097,7 @@ const PlayerTable = () => {
             if (!sortedDates.includes(nextDate)) {
                 // setDates(prevDates => [...prevDates, eventOrDate.target.value]);
                 setSelectedDate(nextDate);
+                setRounds([]);
                 setTempTitles([]);
                 setTempLinks([]);
                 setPresID(0);
@@ -2139,19 +2105,9 @@ const PlayerTable = () => {
             }
 
             setSelectedDate(nextDate);
-            const filteredRounds = rounds.filter(round => round.date === nextDate);
-            setRounds(filteredRounds);
-            let initialTempTitles = [];
-            filteredRounds.forEach(round => {
-                initialTempTitles.push(round.title);
-            });
-            setTempTitles(initialTempTitles);
-
-            let initialTempLinks = [];
-            filteredRounds.forEach(round => {
-                initialTempLinks.push(round.link);
-            });
-            setTempLinks(initialTempLinks);
+            setRounds([]);
+            setTempTitles([]);
+            setTempLinks([]);
         }
 
         // else {
