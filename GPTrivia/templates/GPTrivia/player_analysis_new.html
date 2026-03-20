@@ -931,8 +931,9 @@
     }
 
     function normalizePlotTitleConfig(titleText, compactLayout) {
+        const normalizedTitleText = compactLayout ? wrapAnalysisTitleText(titleText) : titleText;
         return {
-            text: titleText,
+            text: normalizedTitleText,
             x: 0.5,
             xanchor: 'center',
             y: 0.98,
@@ -944,6 +945,30 @@
                 size: compactLayout ? 15 : 18,
             },
         };
+    }
+
+    function wrapAnalysisTitleText(titleText, maxLineLength = 28) {
+        const words = String(titleText || '').split(/\s+/).filter(Boolean);
+        if (!words.length) {
+            return '';
+        }
+
+        const lines = [];
+        let currentLine = words[0];
+
+        for (let index = 1; index < words.length; index += 1) {
+            const nextWord = words[index];
+            const nextLine = `${currentLine} ${nextWord}`;
+            if (nextLine.length <= maxLineLength) {
+                currentLine = nextLine;
+            } else {
+                lines.push(currentLine);
+                currentLine = nextWord;
+            }
+        }
+
+        lines.push(currentLine);
+        return lines.join('<br>');
     }
 
     function getPlotContainerWidth(divId, compactFallback = 320, desktopFallback = 620) {
@@ -1152,6 +1177,19 @@
                 ...(extraLayout.margin || {}),
             },
         };
+    }
+
+    function buildCompactCategoryTickLabel(label) {
+        const parts = String(label || '').split(/\s+/).filter(Boolean);
+        if (parts.length <= 1) {
+            return label;
+        }
+        if (parts.length === 2) {
+            return `${parts[0]}<br>${parts[1]}`;
+        }
+
+        const midpoint = Math.ceil(parts.length / 2);
+        return `${parts.slice(0, midpoint).join(' ')}<br>${parts.slice(midpoint).join(' ')}`;
     }
 
     function getSquareCellHeatmapLayout(divId, columnCount, rowCount) {
@@ -2031,6 +2069,7 @@
 
     function renderCatBar(data) {
         setPlotDescription('catBar', buildPlotDescription('catBar', data));
+        const compactLayout = isCompactAnalysisLayout();
         const trace = {
             x: data.categories,
             y: data.mean_values,
@@ -2040,7 +2079,23 @@
             }
         };
 
-        const layout = buildResponsiveBarLayout('catBar', data);
+        const layout = buildResponsiveBarLayout('catBar', data, {
+            xaxis: {
+                title: data.xaxis,
+                tickangle: compactLayout ? 0 : -30,
+                tickmode: compactLayout ? 'array' : undefined,
+                tickvals: compactLayout ? data.categories : undefined,
+                ticktext: compactLayout ? data.categories.map(buildCompactCategoryTickLabel) : undefined,
+                tickfont: {
+                    size: compactLayout ? 9 : 12,
+                },
+            },
+            margin: {
+                b: compactLayout ? 122 : 92,
+                l: compactLayout ? 42 : 66,
+                r: compactLayout ? 18 : 26,
+            },
+        });
 
         Plotly.newPlot('catBar', [trace], layout, {displaylogo: false, responsive: true});
     }

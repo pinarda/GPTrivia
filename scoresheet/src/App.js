@@ -3864,7 +3864,7 @@ const PlayerTable = () => {
                 markDirty();
               }}
               multiline
-              rows={2}
+              rows={isCompactScreen ? 1 : 2}
               placeholder="Enter Nightly Notes"
             />
           </MetadataNotesFieldWrapper>
