@@ -14,7 +14,7 @@
       --profile-player-color: {{ player_color }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260319o">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260320a">
 {% endblock %}
 
 {% block extra_meta %}
@@ -67,7 +67,15 @@
                         >
                             {% if defer_profile_stats %}
                                 <div class="profile-deferred-placeholder profile-deferred-placeholder--summary">
-                                    Loading profile stats...
+                                    <span class="profile-loading-message">
+                                        <span>Loading profile stats...</span>
+                                        <img
+                                            class="profile-loading-spinner"
+                                            src="{% static 'GPTrivia/css/ouroboros.png' %}"
+                                            alt=""
+                                            aria-hidden="true"
+                                        >
+                                    </span>
                                 </div>
                             {% else %}
                                 {% include 'GPTrivia/_player_profile_summary.html' %}
@@ -96,7 +104,15 @@
                     >
                         {% if defer_profile_stats %}
                             <div class="profile-deferred-placeholder profile-deferred-placeholder--timeline">
-                                Loading timeline...
+                                <span class="profile-loading-message">
+                                    <span>Loading timeline...</span>
+                                    <img
+                                        class="profile-loading-spinner"
+                                        src="{% static 'GPTrivia/css/ouroboros.png' %}"
+                                        alt=""
+                                        aria-hidden="true"
+                                    >
+                                </span>
                             </div>
                         {% else %}
                             {% include 'GPTrivia/_player_profile_timeline.html' %}
@@ -661,6 +677,18 @@
         }
 
         let profileCreatorPanelsLoadPromise = null;
+        const profileLoadingSpinnerSrc = "{% static 'GPTrivia/css/ouroboros.png' %}";
+
+        function buildProfileLoadingPlaceholder(message) {
+            return `
+                <div class="profile-deferred-placeholder profile-deferred-placeholder--summary">
+                    <span class="profile-loading-message">
+                        <span>${message}</span>
+                        <img class="profile-loading-spinner" src="${profileLoadingSpinnerSrc}" alt="" aria-hidden="true">
+                    </span>
+                </div>
+            `;
+        }
 
         async function ensureProfileCreatorPanelsLoaded(targetPanel) {
             if (!targetPanel || targetPanel.dataset.panelLoaded === 'true') {
@@ -678,6 +706,13 @@
                     const roundsPanel = document.getElementById('created-rounds-panel');
 
                     try {
+                        if (categoriesPanel && categoriesPanel.dataset.panelLoaded !== 'true') {
+                            categoriesPanel.innerHTML = buildProfileLoadingPlaceholder('Loading created round categories...');
+                        }
+                        if (roundsPanel && roundsPanel.dataset.panelLoaded !== 'true') {
+                            roundsPanel.innerHTML = buildProfileLoadingPlaceholder('Loading created rounds...');
+                        }
+
                         const response = await fetch(panelsUrl, {
                             headers: {
                                 'Accept': 'application/json',

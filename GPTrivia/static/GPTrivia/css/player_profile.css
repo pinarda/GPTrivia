@@ -207,6 +207,21 @@ a {
     text-align: center;
 }
 
+.profile-loading-message {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.profile-loading-spinner {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex: 0 0 auto;
+    animation: profile-loading-spin 1.8s linear infinite;
+}
+
 .profile-deferred-placeholder--summary {
     min-height: 8.2rem;
 }
@@ -1404,6 +1419,15 @@ a {
 
 .profile-table-empty--hidden {
     display: none;
+}
+
+@keyframes profile-loading-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .summary-stats {
