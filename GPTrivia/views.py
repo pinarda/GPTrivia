@@ -3,7 +3,7 @@ from django.template.loader import render_to_string
 from .forms import GPTriviaRoundForm, ProfileIntroForm, ProfilePictureForm
 from .models import GPTriviaRound, MergedPresentation, PresentationBuildState, Profile
 from django.db import transaction
-from django.db.models import Avg, F, FloatField, Case, When, Sum, Count
+from django.db.models import Avg, F, FloatField, Case, When, Sum, Count, Q
 from django.contrib.auth import views as auth_views
 from django.urls import reverse, reverse_lazy
 from django.shortcuts import render
@@ -1080,6 +1080,80 @@ def _profile_player_matches_any_creator(player_field, *round_creators):
     )
 
 
+def _profile_creator_name_variants(player_field):
+    player_name = display_name_for_player_field(player_field)
+    if player_name == 'Dan':
+        return {'Dad', 'Dan'}
+    if player_name == 'Debi':
+        return {'Mom', 'Debi'}
+    return {player_name} if player_name else set()
+
+
+def _profile_creator_round_query(player_field):
+    creator_variants = _profile_creator_name_variants(player_field)
+    if not creator_variants:
+        return Q(pk__in=[])
+    return Q(creator__in=creator_variants) | Q(secondary_creator__in=creator_variants)
+
+
+def _count_created_rounds_for_profile_player(player_field):
+    return GPTriviaRound.objects.filter(_profile_creator_round_query(player_field)).count()
+
+
+def _build_profile_creator_panels_context(player_name, score_field):
+    created_rounds = list(
+        GPTriviaRound.objects
+        .filter(_profile_creator_round_query(score_field))
+        .order_by('-date', 'round_number')
+    )
+
+    for round_obj in created_rounds:
+        round_summary = _summarize_profile_round_scores(round_obj)
+        round_obj.high_score = round_summary['high_score']
+        round_obj.average_score = round_summary['average_score']
+        round_obj.high_score_display = round_summary['high_score_display']
+        round_obj.average_score_display = round_summary['average_score_display']
+
+    all_categories = sorted({
+        category
+        for category in GPTriviaRound.objects.values_list('major_category', flat=True)
+        if category
+    })
+    all_minor_categories = sorted({
+        category
+        for category in GPTriviaRound.objects.values_list('minor_category1', flat=True)
+        if category
+    } | {
+        category
+        for category in GPTriviaRound.objects.values_list('minor_category2', flat=True)
+        if category
+    })
+
+    created_category_counts = {
+        category: 0
+        for category in all_categories
+    }
+    for round_obj in created_rounds:
+        if round_obj.major_category:
+            created_category_counts[round_obj.major_category] = (
+                created_category_counts.get(round_obj.major_category, 0) + 1
+            )
+
+    created_rounds_cat_list = [
+        {'major_category': category, 'num_rounds': created_category_counts.get(category, 0)}
+        for category in all_categories
+    ]
+
+    return {
+        'player_name': player_name,
+        'created_rounds': created_rounds,
+        'created_rounds_cat': created_rounds_cat_list,
+        'available_major_categories': all_categories,
+        'available_minor_categories': all_minor_categories,
+        'created_rounds_count': len(created_rounds),
+    }
+
+
 def _get_profile_round_creator_fields(round_obj):
     return {
         player_field_for_name(creator_name)
@@ -1687,69 +1761,59 @@ def _build_profile_deferred_stats_context(
 
 
 @login_required
-def player_profile_dict(request, player_name, form=None, intro_form=None, include_form=False, include_deferred_stats=True):
+def player_profile_dict(
+    request,
+    player_name,
+    form=None,
+    intro_form=None,
+    include_form=False,
+    include_deferred_stats=True,
+    include_creator_panels=False,
+):
     player_name = display_name_for_player_field(player_name)
     score_field = player_field_for_name(player_name)
 
-    all_rounds = list(GPTriviaRound.objects.all().order_by('-date', 'round_number'))
-    flattened_rounds = [
-        {
-            **flatten_round_for_analysis(round_obj),
-            'normalized_creator': display_name_for_player_field(round_obj.creator),
-        }
-        for round_obj in all_rounds
-    ]
-
-    global_player_names = _get_global_player_names()
-    if player_name not in global_player_names:
+    profile_user = User.objects.filter(username__iexact=player_name).first()
+    if not profile_user and player_name not in _get_global_player_names():
         raise Http404("Player profile not available")
-    active_player_names = _get_recently_active_profile_player_names(all_rounds)
+    profile = profile_user.profile if profile_user else None
+
+    all_profile_player_names = sorted({
+        display_name_for_player_field(profile.user.username)
+        for profile in Profile.objects.select_related('user')
+        if profile.user_id and display_name_for_player_field(profile.user.username)
+    })
 
     player_color = get_player_color(player_name)
     brightness = (0.5 * int(player_color[1:3], 16)) + int(player_color[3:5], 16) + (0.25 * int(player_color[5:7], 16))
     text_color = 'white' if brightness < 300 else 'black'
+    created_rounds_count = _count_created_rounds_for_profile_player(score_field)
 
-    created_rounds = [
-        round_obj for round_obj in all_rounds
-        if _profile_player_matches_any_creator(
-            score_field,
-            round_obj.creator,
-            getattr(round_obj, 'secondary_creator', ''),
-        )
-    ]
-    for round_obj in created_rounds:
-        round_summary = _summarize_profile_round_scores(round_obj)
-        round_obj.high_score = round_summary['high_score']
-        round_obj.average_score = round_summary['average_score']
-        round_obj.high_score_display = round_summary['high_score_display']
-        round_obj.average_score_display = round_summary['average_score_display']
-    created_rounds_count = len(created_rounds)
+    created_rounds = []
+    created_rounds_cat_list = []
+    available_major_categories = []
+    available_minor_categories = []
+    if include_creator_panels:
+        creator_panels_context = _build_profile_creator_panels_context(player_name, score_field)
+        created_rounds = creator_panels_context['created_rounds']
+        created_rounds_cat_list = creator_panels_context['created_rounds_cat']
+        available_major_categories = creator_panels_context['available_major_categories']
+        available_minor_categories = creator_panels_context['available_minor_categories']
+        created_rounds_count = creator_panels_context['created_rounds_count']
 
-    all_categories = sorted({
-        round_data['major_category']
-        for round_data in flattened_rounds
-        if round_data['major_category']
-    })
-    all_minor_categories = sorted({
-        category
-        for round_data in flattened_rounds
-        for category in (round_data['minor_category1'], round_data['minor_category2'])
-        if category
-    })
-    created_category_counts = {
-        category: 0
-        for category in all_categories
-    }
-    for round_obj in created_rounds:
-        if round_obj.major_category:
-            created_category_counts[round_obj.major_category] = created_category_counts.get(round_obj.major_category, 0) + 1
-    created_rounds_cat_list = [
-        {'major_category': category, 'num_rounds': created_category_counts.get(category, 0)}
-        for category in all_categories
-    ]
-
-    deferred_stats = (
-        _build_profile_deferred_stats_context(
+    deferred_stats = {}
+    if include_deferred_stats:
+        all_rounds = list(GPTriviaRound.objects.all().order_by('-date', 'round_number'))
+        flattened_rounds = [
+            {
+                **flatten_round_for_analysis(round_obj),
+                'normalized_creator': display_name_for_player_field(round_obj.creator),
+            }
+            for round_obj in all_rounds
+        ]
+        global_player_names = _get_global_player_names()
+        active_player_names = _get_recently_active_profile_player_names(all_rounds)
+        deferred_stats = _build_profile_deferred_stats_context(
             all_rounds,
             flattened_rounds,
             player_name,
@@ -1758,12 +1822,7 @@ def player_profile_dict(request, player_name, form=None, intro_form=None, includ
             active_player_names,
             global_player_names,
         )
-        if include_deferred_stats else
-        {}
-    )
 
-    profile_user = User.objects.filter(username__iexact=player_name).first()
-    profile = profile_user.profile if profile_user else None
     profile_page_chrome_color = _get_profile_page_color_value(
         profile,
         'profile_page_chrome_color',
@@ -1819,13 +1878,15 @@ def player_profile_dict(request, player_name, form=None, intro_form=None, includ
         'player_color': player_color,
         'created_rounds_count': created_rounds_count,
         'profile_stats_url': reverse('player_profile_stats', kwargs={'player_name': player_name}),
+        'profile_creator_panels_url': reverse('player_profile_creator_panels', kwargs={'player_name': player_name}),
         'created_rounds_cat': created_rounds_cat_list,
         'created_rounds': created_rounds,
-        'available_major_categories': all_categories,
-        'available_minor_categories': all_minor_categories,
-        'player_color_mapping': build_player_color_mapping(global_player_names),
+        'available_major_categories': available_major_categories,
+        'available_minor_categories': available_minor_categories,
+        'player_color_mapping': build_player_color_mapping(all_profile_player_names),
         'text_color': text_color,
         'defer_profile_stats': not include_deferred_stats,
+        'defer_profile_creator_panels': not include_creator_panels,
     }
     context.update(deferred_stats)
 
@@ -2047,13 +2108,24 @@ class RoundMaker(View):
 
 @login_required
 def player_profile(request, player_name):
-    context = player_profile_dict(request, player_name, include_form=True, include_deferred_stats=False)
+    context = player_profile_dict(
+        request,
+        player_name,
+        include_form=True,
+        include_deferred_stats=False,
+        include_creator_panels=False,
+    )
     return render(request, 'GPTrivia/player_profile.html', context)
 
 
 @login_required
 def player_profile_stats(request, player_name):
-    context = player_profile_dict(request, player_name, include_deferred_stats=True)
+    context = player_profile_dict(
+        request,
+        player_name,
+        include_deferred_stats=True,
+        include_creator_panels=False,
+    )
     summary_html = render_to_string('GPTrivia/_player_profile_summary.html', context, request=request)
     timeline_html = render_to_string('GPTrivia/_player_profile_timeline.html', context, request=request)
     stats_payload = {
@@ -2084,6 +2156,29 @@ def player_profile_stats(request, player_name):
         'timeline_html': timeline_html,
         'stats': stats_payload,
     }, encoder=DjangoJSONEncoder)
+
+
+@login_required
+def player_profile_creator_panels(request, player_name):
+    context = player_profile_dict(
+        request,
+        player_name,
+        include_deferred_stats=False,
+        include_creator_panels=True,
+    )
+    return JsonResponse({
+        'ok': True,
+        'created_categories_html': render_to_string(
+            'GPTrivia/_player_profile_created_categories_panel.html',
+            context,
+            request=request,
+        ),
+        'created_rounds_html': render_to_string(
+            'GPTrivia/_player_profile_created_rounds_panel.html',
+            context,
+            request=request,
+        ),
+    })
 
 
 @sync_to_async          # runs blocking code in a thread-pool

@@ -756,8 +756,37 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertContains(response, '?player=Alex')
         self.assertContains(response, '?creator=Alex')
         self.assertContains(response, reverse('player_profile_stats', args=['Alex']))
+        self.assertContains(response, reverse('player_profile_creator_panels', args=['Alex']))
         self.assertContains(response, 'Reset Page Colors to Default')
         self.assertTrue(response.context['defer_profile_stats'])
+        self.assertTrue(response.context['defer_profile_creator_panels'])
+        self.assertNotContains(response, 'Test Title')
+
+    def test_profile_creator_panels_load_separately(self):
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Loaded Later Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-01-01",
+            round_number=1,
+            max_score=10,
+            score_alex=8,
+            score_megan=6,
+        )
+
+        response = self.client.get(
+            reverse('player_profile_creator_panels', args=['Alex']),
+            HTTP_ACCEPT='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['ok'])
+        self.assertIn('Loaded Later Round', payload['created_rounds_html'])
+        self.assertIn('Created Round Categories', payload['created_categories_html'])
 
     def test_player_analysis_prefills_from_query_params(self):
         GPTriviaRound.objects.create(
@@ -867,18 +896,15 @@ class PlayerAnalysisViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['created_rounds_count'], 1)
-        self.assertEqual(
-            [round_obj.title for round_obj in response.context['created_rounds']],
-            ['Shared Creation Round'],
+        panels_response = self.client.get(
+            reverse('player_profile_creator_panels', args=['Alex']),
+            HTTP_ACCEPT='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
-        self.assertEqual(
-            next(
-                item['num_rounds']
-                for item in response.context['created_rounds_cat']
-                if item['major_category'] == 'Science'
-            ),
-            1,
-        )
+        self.assertEqual(panels_response.status_code, 200)
+        payload = panels_response.json()
+        self.assertIn('Shared Creation Round', payload['created_rounds_html'])
+        self.assertIn('Science', payload['created_categories_html'])
 
     def test_profile_view_shows_intro_and_streak_timeline(self):
         self.user.profile.profile_intro = "Trivia goblin with a science streak."

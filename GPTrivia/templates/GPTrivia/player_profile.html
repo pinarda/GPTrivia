@@ -139,591 +139,35 @@
                     </button>
                 </div>
 
-                <section id="created-categories-panel" class="profile-data-panel" hidden>
-                    <div class="profile-data-panel-header profile-data-panel-header--created-rounds">
-                        <div>
-                            <h2>Created Round Categories</h2>
-                            <p>These are the categories for every round created by this player.</p>
+                <section
+                    id="created-categories-panel"
+                    class="profile-data-panel"
+                    data-profile-creator-panels-url="{{ profile_creator_panels_url }}"
+                    data-panel-loaded="{% if defer_profile_creator_panels %}false{% else %}true{% endif %}"
+                    hidden
+                >
+                    {% if defer_profile_creator_panels %}
+                        <div class="profile-deferred-placeholder profile-deferred-placeholder--summary">
+                            Load this panel to view created round categories.
                         </div>
-                        {% if created_rounds_cat %}
-                        <input
-                            id="created-categories-search"
-                            class="profile-table-search"
-                            type="search"
-                            placeholder="Search categories"
-                            aria-label="Search created round categories"
-                        >
-                        {% endif %}
-                    </div>
-
-                    {% if created_rounds_cat %}
-                    <div class="profile-table-shell">
-                        <div class="profile-table-wrap">
-                            <table cellpadding="0" cellspacing="0" id="createdRoundsTable">
-                                <thead>
-                                    <tr>
-                                        <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Major Category</th>
-                                        <th class="profile-sortable-header" data-sort-type="number" tabindex="0" scope="col">Rounds</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for round in created_rounds_cat %}
-                                        <tr data-search="{{ round.major_category|lower }} {{ round.num_rounds }}">
-                                            <td>
-                                                <a
-                                                    class="profile-round-link"
-                                                    href="{% url 'rounds_list' %}?creator_search={{ player_name|urlencode }}&category_search={{ round.major_category|urlencode }}"
-                                                >
-                                                    {{ round.major_category }}
-                                                </a>
-                                            </td>
-                                            <td>{{ round.num_rounds }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        <p class="profile-table-empty profile-table-empty--hidden" data-empty-message>No category results match your search.</p>
-                    </div>
                     {% else %}
-                        <p class="profile-table-empty">No created round categories yet.</p>
+                        {% include 'GPTrivia/_player_profile_created_categories_panel.html' %}
                     {% endif %}
                 </section>
 
-                <section id="created-rounds-panel" class="profile-data-panel" hidden>
-                    <div class="profile-data-panel-header profile-data-panel-header--created-rounds">
-                        <div>
-                            <h2>Created Rounds</h2>
-                            <p class="profile-created-rounds-helper">Expand a row for the extra stats, or open the slides inline without leaving the profile page.</p>
+                <section
+                    id="created-rounds-panel"
+                    class="profile-data-panel"
+                    data-profile-creator-panels-url="{{ profile_creator_panels_url }}"
+                    data-panel-loaded="{% if defer_profile_creator_panels %}false{% else %}true{% endif %}"
+                    hidden
+                >
+                    {% if defer_profile_creator_panels %}
+                        <div class="profile-deferred-placeholder profile-deferred-placeholder--summary">
+                            Load this panel to view created rounds.
                         </div>
-                        {% if created_rounds %}
-                        <div class="profile-created-rounds-tools">
-                            <input
-                                id="created-rounds-search"
-                                class="profile-table-search"
-                                type="search"
-                                placeholder="Search title, category, date, or cooperative"
-                                aria-label="Search created rounds"
-                            >
-                            <label class="profile-mobile-sort-label" for="created-rounds-sort">Sort</label>
-                            <select id="created-rounds-sort" class="profile-mobile-sort" aria-label="Sort created rounds">
-                                <option value="date-desc">Date: Newest</option>
-                                <option value="date-asc">Date: Oldest</option>
-                                <option value="title-asc">Title: A-Z</option>
-                                <option value="title-desc">Title: Z-A</option>
-                                <option value="high-desc">High Score</option>
-                                <option value="average-desc">Average Score</option>
-                            </select>
-                            {% if can_edit_round_categories %}
-                                <button
-                                    id="created-rounds-save-button"
-                                    class="profile-player-button profile-created-rounds-save-button"
-                                    type="button"
-                                    disabled
-                                >
-                                    Save Category Changes
-                                </button>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    {% if created_rounds %}
-                    <div class="profile-table-shell">
-                        <div class="profile-table-wrap profile-rounds-desktop-shell">
-                            <table cellpadding="0" cellspacing="0" id="playerRoundsTable">
-                                <thead>
-                                    <tr>
-                                        <th scope="col" class="profile-round-action-heading" aria-hidden="true"></th>
-                                        <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Title</th>
-                                        <th class="profile-sortable-header" data-sort-type="date" tabindex="0" scope="col">Date</th>
-                                        <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Category</th>
-                                        <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Minor 1</th>
-                                        <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Minor 2</th>
-                                        <th class="profile-sortable-header" data-sort-type="number" tabindex="0" scope="col">Round</th>
-                                        <th class="profile-sortable-header" data-sort-type="text" tabindex="0" scope="col">Co-op</th>
-                                        <th class="profile-sortable-header" data-sort-type="number" tabindex="0" scope="col">Max</th>
-                                        <th class="profile-sortable-header" data-sort-type="number" tabindex="0" scope="col">High</th>
-                                        <th class="profile-sortable-header" data-sort-type="number" tabindex="0" scope="col">Average</th>
-                                        <th scope="col">Slides</th>
-                                    </tr>
-                                </thead>
-                                {% for round in created_rounds %}
-                                    <tbody
-                                        class="profile-round-group"
-                                        data-search-group
-                                        data-round-id="{{ round.id }}"
-                                        data-search-base="{{ round.title|lower }} {{ round.date }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }} {% if round.cooperative %}coop cooperative co-op{% endif %} {{ round.high_score_display|lower }} {{ round.average_score_display|lower }}"
-                                        data-search="{{ round.title|lower }} {{ round.date }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }} {% if round.cooperative %}coop cooperative co-op{% endif %} {{ round.high_score_display|lower }} {{ round.average_score_display|lower }} {{ round.major_category|lower }} {{ round.minor_category1|lower }} {{ round.minor_category2|lower }}"
-                                    >
-                                        <tr class="profile-round-summary-row">
-                                            <td class="profile-round-action-cell">
-                                                <button
-                                                    class="profile-round-expander"
-                                                    type="button"
-                                                    data-details-target="profile-round-details-{{ forloop.counter0 }}"
-                                                    aria-expanded="false"
-                                                    aria-label="Show more information for {{ round.title }}"
-                                                >
-                                                    <span class="profile-round-expander-icon" aria-hidden="true">+</span>
-                                                </button>
-                                            </td>
-                                            <td>
-                                                <a
-                                                    class="profile-round-link"
-                                                    href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}&creator_search={{ player_name|urlencode }}&date_search={{ round.date|date:'F j, Y'|urlencode }}"
-                                                >
-                                                    {{ round.title }}
-                                                </a>
-                                            </td>
-                                            <td data-sort-value="{{ round.date|date:'Y-m-d' }}">{{ round.date }}</td>
-                                            <td>
-                                                {% if can_edit_round_categories %}
-                                                    <form
-                                                        class="profile-round-edit-form profile-round-category-form"
-                                                        method="post"
-                                                        action="{% url 'update_profile_round_category' round.id %}"
-                                                    >
-                                                        {% csrf_token %}
-                                                        <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                        <select
-                                                            class="profile-round-edit-control profile-round-category-select"
-                                                            name="major_category"
-                                                            data-round-id="{{ round.id }}"
-                                                            data-field-name="major_category"
-                                                            data-allow-custom="true"
-                                                            aria-label="Set category for {{ round.title }}"
-                                                        >
-                                                            <option value="">—</option>
-                                                            {% for category in available_major_categories %}
-                                                                <option value="{{ category }}" {% if round.major_category == category %}selected{% endif %}>{{ category }}</option>
-                                                            {% endfor %}
-                                                            <option value="__add_new__">Add new…</option>
-                                                        </select>
-                                                    </form>
-                                                {% else %}
-                                                    {{ round.major_category|default:"—" }}
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if can_edit_round_categories %}
-                                                    <form
-                                                        class="profile-round-edit-form"
-                                                        method="post"
-                                                        action="{% url 'update_profile_round_category' round.id %}"
-                                                    >
-                                                        {% csrf_token %}
-                                                        <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                        <select
-                                                            class="profile-round-edit-control profile-round-category-select"
-                                                            name="minor_category1"
-                                                            data-round-id="{{ round.id }}"
-                                                            data-field-name="minor_category1"
-                                                            data-allow-custom="true"
-                                                            aria-label="Set minor category 1 for {{ round.title }}"
-                                                        >
-                                                            <option value="">—</option>
-                                                            {% for category in available_minor_categories %}
-                                                                <option value="{{ category }}" {% if round.minor_category1 == category %}selected{% endif %}>{{ category }}</option>
-                                                            {% endfor %}
-                                                            <option value="__add_new__">Add new…</option>
-                                                        </select>
-                                                    </form>
-                                                {% else %}
-                                                    {{ round.minor_category1|default:"—" }}
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if can_edit_round_categories %}
-                                                    <form
-                                                        class="profile-round-edit-form"
-                                                        method="post"
-                                                        action="{% url 'update_profile_round_category' round.id %}"
-                                                    >
-                                                        {% csrf_token %}
-                                                        <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                        <select
-                                                            class="profile-round-edit-control profile-round-category-select"
-                                                            name="minor_category2"
-                                                            data-round-id="{{ round.id }}"
-                                                            data-field-name="minor_category2"
-                                                            data-allow-custom="true"
-                                                            aria-label="Set minor category 2 for {{ round.title }}"
-                                                        >
-                                                            <option value="">—</option>
-                                                            {% for category in available_minor_categories %}
-                                                                <option value="{{ category }}" {% if round.minor_category2 == category %}selected{% endif %}>{{ category }}</option>
-                                                            {% endfor %}
-                                                            <option value="__add_new__">Add new…</option>
-                                                        </select>
-                                                    </form>
-                                                {% else %}
-                                                    {{ round.minor_category2|default:"—" }}
-                                                {% endif %}
-                                            </td>
-                                            <td data-sort-value="{{ round.round_number }}">{{ round.round_number }}</td>
-                                            <td data-sort-value="{{ round.cooperative|yesno:'1,0' }}">{{ round.cooperative|yesno:"Yes,No" }}</td>
-                                            <td data-sort-value="{{ round.max_score|default_if_none:'' }}">{{ round.max_score|default:"—" }}</td>
-                                            <td data-sort-value="{{ round.high_score|default_if_none:'' }}">{{ round.high_score_display }}</td>
-                                            <td data-sort-value="{{ round.average_score|default_if_none:'' }}">{{ round.average_score_display }}</td>
-                                            <td>
-                                                <button
-                                                    class="slides-button profile-player-button"
-                                                    type="button"
-                                                    data-presentation-url="{{ round.link }}"
-                                                    data-slides-target="profile-round-slides-{{ forloop.counter0 }}"
-                                                    aria-expanded="false"
-                                                >
-                                                    Slides
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr id="profile-round-details-{{ forloop.counter0 }}" class="profile-round-detail-row" hidden>
-                                            <td colspan="12">
-                                                <div class="profile-round-detail-grid">
-                                                    <div class="profile-round-detail-item">
-                                                        <span class="profile-round-detail-label">Category</span>
-                                                        {% if can_edit_round_categories %}
-                                                            <form
-                                                                class="profile-round-edit-form profile-round-category-form"
-                                                                method="post"
-                                                                action="{% url 'update_profile_round_category' round.id %}"
-                                                            >
-                                                                {% csrf_token %}
-                                                                <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                                <select
-                                                                    class="profile-round-edit-control profile-round-category-select"
-                                                                    name="major_category"
-                                                                    data-round-id="{{ round.id }}"
-                                                                    data-field-name="major_category"
-                                                                    data-allow-custom="true"
-                                                                    aria-label="Set category for {{ round.title }}"
-                                                                >
-                                                                    <option value="">—</option>
-                                                                    {% for category in available_major_categories %}
-                                                                        <option value="{{ category }}" {% if round.major_category == category %}selected{% endif %}>{{ category }}</option>
-                                                                    {% endfor %}
-                                                                    <option value="__add_new__">Add new…</option>
-                                                                </select>
-                                                            </form>
-                                                        {% else %}
-                                                            <span class="profile-round-detail-value">{{ round.major_category|default:"—" }}</span>
-                                                        {% endif %}
-                                                    </div>
-                                                    <div class="profile-round-detail-item">
-                                                        <span class="profile-round-detail-label">Minor 1</span>
-                                                        {% if can_edit_round_categories %}
-                                                            <form
-                                                                class="profile-round-edit-form"
-                                                                method="post"
-                                                                action="{% url 'update_profile_round_category' round.id %}"
-                                                            >
-                                                                {% csrf_token %}
-                                                                <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                                <select
-                                                                    class="profile-round-edit-control profile-round-category-select"
-                                                                    name="minor_category1"
-                                                                    data-round-id="{{ round.id }}"
-                                                                    data-field-name="minor_category1"
-                                                                    data-allow-custom="true"
-                                                                    aria-label="Set minor category 1 for {{ round.title }}"
-                                                                >
-                                                                    <option value="">—</option>
-                                                                    {% for category in available_minor_categories %}
-                                                                        <option value="{{ category }}" {% if round.minor_category1 == category %}selected{% endif %}>{{ category }}</option>
-                                                                    {% endfor %}
-                                                                    <option value="__add_new__">Add new…</option>
-                                                                </select>
-                                                            </form>
-                                                        {% else %}
-                                                            <span class="profile-round-detail-value">{{ round.minor_category1|default:"—" }}</span>
-                                                        {% endif %}
-                                                    </div>
-                                                    <div class="profile-round-detail-item">
-                                                        <span class="profile-round-detail-label">Minor 2</span>
-                                                        {% if can_edit_round_categories %}
-                                                            <form
-                                                                class="profile-round-edit-form"
-                                                                method="post"
-                                                                action="{% url 'update_profile_round_category' round.id %}"
-                                                            >
-                                                                {% csrf_token %}
-                                                                <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                                <select
-                                                                    class="profile-round-edit-control profile-round-category-select"
-                                                                    name="minor_category2"
-                                                                    data-round-id="{{ round.id }}"
-                                                                    data-field-name="minor_category2"
-                                                                    data-allow-custom="true"
-                                                                    aria-label="Set minor category 2 for {{ round.title }}"
-                                                                >
-                                                                    <option value="">—</option>
-                                                                    {% for category in available_minor_categories %}
-                                                                        <option value="{{ category }}" {% if round.minor_category2 == category %}selected{% endif %}>{{ category }}</option>
-                                                                    {% endfor %}
-                                                                    <option value="__add_new__">Add new…</option>
-                                                                </select>
-                                                            </form>
-                                                        {% else %}
-                                                            <span class="profile-round-detail-value">{{ round.minor_category2|default:"—" }}</span>
-                                                        {% endif %}
-                                                    </div>
-                                                    <div class="profile-round-detail-item">
-                                                        <span class="profile-round-detail-label">Round</span>
-                                                        <span class="profile-round-detail-value">{{ round.round_number }}</span>
-                                                    </div>
-                                                    <div class="profile-round-detail-item">
-                                                        <span class="profile-round-detail-label">Co-op</span>
-                                                        <span class="profile-round-detail-value">{{ round.cooperative|yesno:"Yes,No" }}</span>
-                                                    </div>
-                                                    <div class="profile-round-detail-item profile-round-detail-item--scores">
-                                                        <span class="profile-round-detail-label">Scores</span>
-                                                        <div class="profile-round-score-strip">
-                                                            <div class="profile-round-score-chip">
-                                                                <span class="profile-round-score-chip-label">Max</span>
-                                                                <span class="profile-round-score-chip-value">{{ round.max_score|default:"—" }}</span>
-                                                            </div>
-                                                            <div class="profile-round-score-chip">
-                                                                <span class="profile-round-score-chip-label">High</span>
-                                                                <span class="profile-round-score-chip-value">{{ round.high_score_display }}</span>
-                                                            </div>
-                                                            <div class="profile-round-score-chip">
-                                                                <span class="profile-round-score-chip-label">Average</span>
-                                                                <span class="profile-round-score-chip-value">{{ round.average_score_display }}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="profile-round-detail-item profile-round-detail-item--action">
-                                                        <span class="profile-round-detail-label">Slides</span>
-                                                        <button
-                                                            class="slides-button profile-player-button profile-round-detail-slides-button"
-                                                            type="button"
-                                                            data-presentation-url="{{ round.link }}"
-                                                            data-slides-target="profile-round-slides-{{ forloop.counter0 }}"
-                                                            aria-expanded="false"
-                                                        >
-                                                            Slides
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr id="profile-round-slides-{{ forloop.counter0 }}" class="profile-round-slides-row" hidden>
-                                            <td colspan="12">
-                                                <div class="profile-round-slides-shell">
-                                                    <p class="profile-round-slides-link-row">
-                                                        <a
-                                                            class="profile-round-link profile-round-slides-link"
-                                                            href="{{ round.link }}"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                        >
-                                                            Open round in Google Slides
-                                                        </a>
-                                                    </p>
-                                                    <iframe
-                                                        class="profile-round-slides-frame"
-                                                        title="{{ round.title }} slides"
-                                                        loading="lazy"
-                                                        allowfullscreen="true"
-                                                        mozallowfullscreen="true"
-                                                        webkitallowfullscreen="true"
-                                                    ></iframe>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                {% endfor %}
-                            </table>
-                        </div>
-                        <div class="profile-rounds-mobile-list" id="playerRoundsMobileList">
-                            {% for round in created_rounds %}
-                                <div
-                                    class="profile-round-mobile-card"
-                                    data-search-group
-                                    data-round-id="{{ round.id }}"
-                                    data-search-base="{{ round.title|lower }} {{ round.date }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }} {% if round.cooperative %}coop cooperative co-op{% endif %} {{ round.high_score_display|lower }} {{ round.average_score_display|lower }}"
-                                    data-search="{{ round.title|lower }} {{ round.date }} {{ round.max_score }} {{ round.round_number }} {{ round.cooperative|yesno:'yes,no' }} {% if round.cooperative %}coop cooperative co-op{% endif %} {{ round.high_score_display|lower }} {{ round.average_score_display|lower }} {{ round.major_category|lower }} {{ round.minor_category1|lower }} {{ round.minor_category2|lower }}"
-                                    data-sort-title="{{ round.title|lower }}"
-                                    data-sort-date="{{ round.date|date:'Y-m-d' }}"
-                                    data-sort-high="{{ round.high_score|default_if_none:'-1' }}"
-                                    data-sort-average="{{ round.average_score|default_if_none:'-1' }}"
-                                >
-                                    <div class="profile-round-mobile-summary">
-                                        <button
-                                            class="profile-round-expander"
-                                            type="button"
-                                            data-details-target="profile-round-mobile-details-{{ forloop.counter0 }}"
-                                            aria-expanded="false"
-                                            aria-label="Show more information for {{ round.title }}"
-                                        >
-                                            <span class="profile-round-expander-icon" aria-hidden="true">+</span>
-                                        </button>
-                                        <a
-                                            class="profile-round-link profile-round-mobile-title"
-                                            href="{% url 'rounds_list' %}?title_search={{ round.title|urlencode }}&creator_search={{ player_name|urlencode }}&date_search={{ round.date|date:'F j, Y'|urlencode }}"
-                                        >
-                                            {{ round.title }}
-                                        </a>
-                                        <div class="profile-round-mobile-date">{{ round.date }}</div>
-                                    </div>
-                                    <div id="profile-round-mobile-details-{{ forloop.counter0 }}" class="profile-round-mobile-details" hidden>
-                                        <div class="profile-round-detail-grid">
-                                            <div class="profile-round-detail-item">
-                                                <span class="profile-round-detail-label">Category</span>
-                                                {% if can_edit_round_categories %}
-                                                    <form
-                                                        class="profile-round-edit-form profile-round-category-form"
-                                                        method="post"
-                                                        action="{% url 'update_profile_round_category' round.id %}"
-                                                    >
-                                                        {% csrf_token %}
-                                                        <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                        <select
-                                                            class="profile-round-edit-control profile-round-category-select"
-                                                            name="major_category"
-                                                            data-round-id="{{ round.id }}"
-                                                            data-field-name="major_category"
-                                                            data-allow-custom="true"
-                                                            aria-label="Set category for {{ round.title }}"
-                                                        >
-                                                            <option value="">—</option>
-                                                            {% for category in available_major_categories %}
-                                                                <option value="{{ category }}" {% if round.major_category == category %}selected{% endif %}>{{ category }}</option>
-                                                            {% endfor %}
-                                                            <option value="__add_new__">Add new…</option>
-                                                        </select>
-                                                    </form>
-                                                {% else %}
-                                                    <span class="profile-round-detail-value">{{ round.major_category|default:"—" }}</span>
-                                                {% endif %}
-                                            </div>
-                                            <div class="profile-round-detail-item">
-                                                <span class="profile-round-detail-label">Minor 1</span>
-                                                {% if can_edit_round_categories %}
-                                                    <form
-                                                        class="profile-round-edit-form"
-                                                        method="post"
-                                                        action="{% url 'update_profile_round_category' round.id %}"
-                                                    >
-                                                        {% csrf_token %}
-                                                        <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                        <select
-                                                            class="profile-round-edit-control profile-round-category-select"
-                                                            name="minor_category1"
-                                                            data-round-id="{{ round.id }}"
-                                                            data-field-name="minor_category1"
-                                                            data-allow-custom="true"
-                                                            aria-label="Set minor category 1 for {{ round.title }}"
-                                                        >
-                                                            <option value="">—</option>
-                                                            {% for category in available_minor_categories %}
-                                                                <option value="{{ category }}" {% if round.minor_category1 == category %}selected{% endif %}>{{ category }}</option>
-                                                            {% endfor %}
-                                                            <option value="__add_new__">Add new…</option>
-                                                        </select>
-                                                    </form>
-                                                {% else %}
-                                                    <span class="profile-round-detail-value">{{ round.minor_category1|default:"—" }}</span>
-                                                {% endif %}
-                                            </div>
-                                            <div class="profile-round-detail-item">
-                                                <span class="profile-round-detail-label">Minor 2</span>
-                                                {% if can_edit_round_categories %}
-                                                    <form
-                                                        class="profile-round-edit-form"
-                                                        method="post"
-                                                        action="{% url 'update_profile_round_category' round.id %}"
-                                                    >
-                                                        {% csrf_token %}
-                                                        <input type="hidden" name="next_panel" value="created-rounds-panel">
-                                                        <select
-                                                            class="profile-round-edit-control profile-round-category-select"
-                                                            name="minor_category2"
-                                                            data-round-id="{{ round.id }}"
-                                                            data-field-name="minor_category2"
-                                                            data-allow-custom="true"
-                                                            aria-label="Set minor category 2 for {{ round.title }}"
-                                                        >
-                                                            <option value="">—</option>
-                                                            {% for category in available_minor_categories %}
-                                                                <option value="{{ category }}" {% if round.minor_category2 == category %}selected{% endif %}>{{ category }}</option>
-                                                            {% endfor %}
-                                                            <option value="__add_new__">Add new…</option>
-                                                        </select>
-                                                    </form>
-                                                {% else %}
-                                                    <span class="profile-round-detail-value">{{ round.minor_category2|default:"—" }}</span>
-                                                {% endif %}
-                                            </div>
-                                            <div class="profile-round-detail-item">
-                                                <span class="profile-round-detail-label">Round</span>
-                                                <span class="profile-round-detail-value">{{ round.round_number }}</span>
-                                            </div>
-                                            <div class="profile-round-detail-item">
-                                                <span class="profile-round-detail-label">Co-op</span>
-                                                <span class="profile-round-detail-value">{{ round.cooperative|yesno:"Yes,No" }}</span>
-                                            </div>
-                                            <div class="profile-round-detail-item profile-round-detail-item--scores">
-                                                <span class="profile-round-detail-label">Scores</span>
-                                                <div class="profile-round-score-strip">
-                                                    <div class="profile-round-score-chip">
-                                                        <span class="profile-round-score-chip-label">Max</span>
-                                                        <span class="profile-round-score-chip-value">{{ round.max_score|default:"—" }}</span>
-                                                    </div>
-                                                    <div class="profile-round-score-chip">
-                                                        <span class="profile-round-score-chip-label">High</span>
-                                                        <span class="profile-round-score-chip-value">{{ round.high_score_display }}</span>
-                                                    </div>
-                                                    <div class="profile-round-score-chip">
-                                                        <span class="profile-round-score-chip-label">Average</span>
-                                                        <span class="profile-round-score-chip-value">{{ round.average_score_display }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="profile-round-detail-item profile-round-detail-item--action">
-                                                <span class="profile-round-detail-label">Slides</span>
-                                                <button
-                                                    class="slides-button profile-player-button profile-round-detail-slides-button"
-                                                    type="button"
-                                                    data-presentation-url="{{ round.link }}"
-                                                    data-slides-target="profile-round-mobile-slides-{{ forloop.counter0 }}"
-                                                    aria-expanded="false"
-                                                >
-                                                    Slides
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div id="profile-round-mobile-slides-{{ forloop.counter0 }}" class="profile-round-mobile-slides" hidden>
-                                            <div class="profile-round-slides-shell">
-                                                <p class="profile-round-slides-link-row">
-                                                    <a
-                                                        class="profile-round-link profile-round-slides-link"
-                                                        href="{{ round.link }}"
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                    >
-                                                        Open round in Google Slides
-                                                    </a>
-                                                </p>
-                                                <iframe
-                                                    class="profile-round-slides-frame"
-                                                    title="{{ round.title }} slides"
-                                                    loading="lazy"
-                                                    allowfullscreen="true"
-                                                    mozallowfullscreen="true"
-                                                    webkitallowfullscreen="true"
-                                                ></iframe>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                        <p class="profile-table-empty profile-table-empty--hidden" data-empty-message>No created rounds match your search.</p>
-                    </div>
                     {% else %}
-                        <p class="profile-table-empty">No created rounds yet.</p>
+                        {% include 'GPTrivia/_player_profile_created_rounds_panel.html' %}
                     {% endif %}
                 </section>
 
@@ -1199,7 +643,95 @@
             }
         }
 
-        function toggleProfilePanel(button) {
+        function initializeProfilePanelSearches(root = document) {
+            root.querySelectorAll('.profile-table-search').forEach(input => {
+                if (input.dataset.searchReady === 'true') {
+                    return;
+                }
+                const panel = input.closest('.profile-data-panel');
+                if (!panel) {
+                    return;
+                }
+                input.addEventListener('input', () => {
+                    filterProfileTableRows(panel.id, input.value);
+                });
+                filterProfileTableRows(panel.id, input.value);
+                input.dataset.searchReady = 'true';
+            });
+        }
+
+        let profileCreatorPanelsLoadPromise = null;
+
+        async function ensureProfileCreatorPanelsLoaded(targetPanel) {
+            if (!targetPanel || targetPanel.dataset.panelLoaded === 'true') {
+                return true;
+            }
+
+            if (!profileCreatorPanelsLoadPromise) {
+                const panelsUrl = targetPanel.dataset.profileCreatorPanelsUrl || '';
+                if (!panelsUrl) {
+                    return false;
+                }
+
+                profileCreatorPanelsLoadPromise = (async () => {
+                    const categoriesPanel = document.getElementById('created-categories-panel');
+                    const roundsPanel = document.getElementById('created-rounds-panel');
+
+                    try {
+                        const response = await fetch(panelsUrl, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                        });
+                        if (!response.ok) {
+                            throw new Error(`Creator panels fetch failed with status ${response.status}`);
+                        }
+
+                        const payload = await response.json();
+                        if (!payload.ok) {
+                            throw new Error('Creator panels fetch failed.');
+                        }
+
+                        if (categoriesPanel) {
+                            categoriesPanel.innerHTML = payload.created_categories_html || '';
+                            categoriesPanel.dataset.panelLoaded = 'true';
+                        }
+                        if (roundsPanel) {
+                            roundsPanel.innerHTML = payload.created_rounds_html || '';
+                            roundsPanel.dataset.panelLoaded = 'true';
+                        }
+
+                        initializeProfilePanelSearches(categoriesPanel || document);
+                        initializeProfilePanelSearches(roundsPanel || document);
+                        initializeProfileRoundCategoryForms();
+                        initializeProfileMobileSorting();
+                        initializeProfileRoundRowToggles();
+                        initializeSlidesButtons();
+                        initializeProfileTableSorting();
+                        setPlayerLinkHoverColors();
+                        setButtonColors();
+                        return true;
+                    } catch (error) {
+                        console.error('Error loading creator panels:', error);
+                        const fallbackHtml = '<p class="profile-table-empty">Unable to load this panel right now.</p>';
+                        if (categoriesPanel && categoriesPanel.dataset.panelLoaded !== 'true') {
+                            categoriesPanel.innerHTML = fallbackHtml;
+                        }
+                        if (roundsPanel && roundsPanel.dataset.panelLoaded !== 'true') {
+                            roundsPanel.innerHTML = fallbackHtml;
+                        }
+                        return false;
+                    } finally {
+                        profileCreatorPanelsLoadPromise = null;
+                    }
+                })();
+            }
+
+            return profileCreatorPanelsLoadPromise;
+        }
+
+        async function toggleProfilePanel(button) {
             const panelId = button.dataset.panelTarget;
             const groupName = button.dataset.panelGroup || '';
             const targetPanel = document.getElementById(panelId);
@@ -1208,6 +740,9 @@
             }
 
             const willOpen = targetPanel.hidden;
+            if (willOpen) {
+                await ensureProfileCreatorPanelsLoaded(targetPanel);
+            }
             const groupedButtons = Array.from(document.querySelectorAll('.profile-panel-toggle')).filter(otherButton => {
                 return (otherButton.dataset.panelGroup || '') === groupName;
             });
@@ -1233,21 +768,12 @@
             });
 
             document.querySelectorAll('.profile-panel-toggle').forEach(button => {
-                button.addEventListener('click', () => {
-                    toggleProfilePanel(button);
+                button.addEventListener('click', async () => {
+                    await toggleProfilePanel(button);
                 });
             });
 
-            document.querySelectorAll('.profile-table-search').forEach(input => {
-                const panel = input.closest('.profile-data-panel');
-                if (!panel) {
-                    return;
-                }
-                input.addEventListener('input', () => {
-                    filterProfileTableRows(panel.id, input.value);
-                });
-                filterProfileTableRows(panel.id, input.value);
-            });
+            initializeProfilePanelSearches();
 
             const params = new URLSearchParams(window.location.search);
             const requestedPanel = params.get('panel');
