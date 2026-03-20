@@ -1,4 +1,5 @@
 import {
+  applyPresentationFieldsForSelectedDate,
   applyPatchToPresentationSnapshot,
   applyPatchToRoundSnapshot,
   buildScoresheetPatch,
@@ -230,6 +231,22 @@ describe('scoresheet sync helpers', () => {
       alex: ['Round 1', 'Round 2'],
       megan: 'Round 3',
     });
+  });
+
+  test('applyPresentationFieldsForSelectedDate updates the selected presentation row in memory', () => {
+    expect(
+      applyPresentationFieldsForSelectedDate(
+        [
+          { name: '03.11.2026', crowned_winner: 'Alex', notes: '' },
+          { name: '03.12.2026', crowned_winner: '', notes: '' },
+        ],
+        '2026-03-12',
+        { crowned_winner: 'Megan' },
+      ),
+    ).toEqual([
+      { name: '03.11.2026', crowned_winner: 'Alex', notes: '' },
+      { name: '03.12.2026', crowned_winner: 'Megan', notes: '' },
+    ]);
   });
 });
 

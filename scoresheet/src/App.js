@@ -30,6 +30,7 @@ import dayjs from 'dayjs';
 import Badge from '@mui/material/Badge';
 import { motion, useAnimation } from "framer-motion";
 import {
+  applyPresentationFieldsForSelectedDate,
   applyPatchToPresentationSnapshot,
   applyPatchToRoundSnapshot,
   buildScoresheetPatch,
@@ -2472,6 +2473,11 @@ const PlayerTable = () => {
 
         if (nextWinnerName !== crownedWinner) {
           setCrownedWinner(nextWinnerName);
+          setPresentations(prevPresentations => applyPresentationFieldsForSelectedDate(
+            prevPresentations,
+            selectedDate,
+            { crowned_winner: nextWinnerName },
+          ));
           markDirty();
         }
       };

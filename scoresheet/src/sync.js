@@ -301,6 +301,37 @@ export function applyPatchToPresentationSnapshot(snapshot, presentationUpdates) 
   };
 }
 
+function parsePresentationNameDate(presentationName) {
+  const name = String(presentationName || '');
+  if (!name.includes('.')) {
+    return '';
+  }
+
+  const [month, day, year] = name.split('.');
+  if (!month || !day || !year) {
+    return '';
+  }
+
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
+export function applyPresentationFieldsForSelectedDate(presentations, selectedDate, fields) {
+  if (!selectedDate || !fields || Object.keys(fields).length === 0) {
+    return presentations || [];
+  }
+
+  return (presentations || []).map((presentation) => {
+    if (parsePresentationNameDate(presentation?.name) !== selectedDate) {
+      return presentation;
+    }
+
+    return {
+      ...presentation,
+      ...fields,
+    };
+  });
+}
+
 export function shouldIgnoreScoresheetMessage(message, clientId, pendingMutationIds) {
   if (!message || !message.client_id || !message.mutation_id) {
     return false;
