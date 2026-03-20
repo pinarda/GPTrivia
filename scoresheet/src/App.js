@@ -2030,6 +2030,11 @@ const PlayerTable = () => {
         if (!confirmChange) return;
 
       const displayName = getDisplayNameForPlayerField(playerToRemove);
+      const confirmDeletePlayer = window.confirm(
+        `Are you sure you want to delete ${displayName || 'this player'} and all scores?`,
+      );
+      if (!confirmDeletePlayer) return;
+
       clearJokerRouletteForPlayer(playerToRemove);
 
       setPlayers(prevPlayers => prevPlayers.filter(player => player !== playerToRemove));
