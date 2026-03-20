@@ -125,11 +125,12 @@ main {
 
 #rounds-spinner {
     display: inline-block;
-    width: 1.7rem;
-    height: 1.7rem;
+    width: auto;
+    height: 2rem;
     margin: 0;
     vertical-align: middle;
     transform-origin: center;
+    filter: hue-rotate(0deg) saturate(1.2) brightness(1.05);
 }
 
 .loading-cell{
@@ -141,6 +142,10 @@ main {
 
 .loading-inline-spinner {
     animation: spin 1.8s linear infinite;
+}
+
+body.site-shell[data-profile-theme="light"] #rounds-spinner {
+    filter: hue-rotate(0deg) saturate(1.8) brightness(0.96) contrast(1.08);
 }
 
 @keyframes spin {

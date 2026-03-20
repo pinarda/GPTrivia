@@ -217,13 +217,18 @@ a {
 
 .profile-loading-spinner {
     display: inline-block;
-    width: 1.7rem;
-    height: 1.7rem;
+    width: auto;
+    height: 2rem;
     flex: 0 0 auto;
     object-fit: contain;
     vertical-align: middle;
     transform-origin: center;
+    filter: hue-rotate(0deg) saturate(1.2) brightness(1.05);
     animation: profile-loading-spin 1.8s linear infinite;
+}
+
+body.site-shell[data-profile-theme="light"] .profile-loading-spinner {
+    filter: hue-rotate(0deg) saturate(1.8) brightness(0.96) contrast(1.08);
 }
 
 .profile-deferred-placeholder--summary {
@@ -1428,10 +1433,27 @@ a {
 @keyframes profile-loading-spin {
     from {
         transform: rotate(0deg);
+        filter: hue-rotate(0deg) saturate(1.2) brightness(1.05);
     }
     to {
         transform: rotate(360deg);
+        filter: hue-rotate(-360deg) saturate(1.2) brightness(1.05);
     }
+}
+
+@keyframes profile-loading-spin-light {
+    from {
+        transform: rotate(0deg);
+        filter: hue-rotate(0deg) saturate(1.8) brightness(0.96) contrast(1.08);
+    }
+    to {
+        transform: rotate(360deg);
+        filter: hue-rotate(-360deg) saturate(1.8) brightness(0.96) contrast(1.08);
+    }
+}
+
+body.site-shell[data-profile-theme="light"] .profile-loading-spinner {
+    animation-name: profile-loading-spin-light;
 }
 
 .summary-stats {
