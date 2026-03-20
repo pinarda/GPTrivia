@@ -1,4 +1,4 @@
-const CACHE_NAME = "hail-science-trivia";
+const CACHE_NAME = "hail-science-trivia-v2";
 // const STATIC_ASSETS = [
 //   "/",
 //   "/static/"
@@ -18,16 +18,18 @@ self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    ).then(() => self.clients.claim())
   );
   console.log('SW: Activated');
 });
 
 self.addEventListener("fetch", event => {
+  if (event.request.method !== "GET") {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then(
-      cached => cached || fetch(event.request)
-    )
+    fetch(event.request).catch(() => caches.match(event.request))
   );
   console.log('SW: Fetched');
 });
