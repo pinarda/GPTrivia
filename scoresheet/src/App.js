@@ -635,9 +635,9 @@ import {
       @media (max-width: 1000px) {
         && textarea {
           font-size: 1rem;
-          line-height: 1.25;
-          padding: 0.26rem 0.5rem;
-          min-height: 3rem !important;
+          line-height: 1.3;
+          padding: 0.38rem 0.5rem;
+          min-height: 4.35rem !important;
         }
       }
     `;
