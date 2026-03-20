@@ -216,15 +216,13 @@ a {
 }
 
 .profile-loading-spinner {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-block;
     width: 1.7rem;
     height: 1.7rem;
     flex: 0 0 auto;
-    font-size: 1.3rem;
-    line-height: 1;
-    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
+    object-fit: contain;
+    vertical-align: middle;
+    transform-origin: center;
     animation: profile-loading-spin 1.8s linear infinite;
 }
 

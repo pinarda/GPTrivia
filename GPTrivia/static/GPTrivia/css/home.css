@@ -124,15 +124,12 @@ main {
 }
 
 #rounds-spinner {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-block;
     width: 1.7rem;
     height: 1.7rem;
-    font-size: 1.25rem;
-    line-height: 1;
-    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
     margin: 0;
+    vertical-align: middle;
+    transform-origin: center;
 }
 
 .loading-cell{
@@ -142,7 +139,7 @@ main {
     gap:0.5rem;               /* space between spinner and text */
 }
 
-.loading-snake-icon {
+.loading-inline-spinner {
     animation: spin 1.8s linear infinite;
 }
 

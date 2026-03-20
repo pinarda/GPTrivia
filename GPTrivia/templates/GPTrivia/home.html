@@ -986,7 +986,12 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                     <div id="rounds-placeholder" class="round-selection-table-row">
                       <div class="round-selection-table-cell loading-cell" colspan="6">
                           <span id="rounds-loading-text">Loading rounds…</span>
-                          <span id="rounds-spinner" class="loading-snake-icon" aria-hidden="true">🐍</span>
+                          <img
+                              src="{% static 'GPTrivia/css/ouroboros.png' %}"
+                              id="rounds-spinner"
+                              class="spinner loading-inline-spinner"
+                              alt="Loading…"
+                          >
                       </div>
                     </div>
 

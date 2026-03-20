@@ -14,7 +14,7 @@
       --profile-player-color: {{ player_color }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260320a">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260320b">
 {% endblock %}
 
 {% block extra_meta %}
@@ -69,7 +69,11 @@
                                 <div class="profile-deferred-placeholder profile-deferred-placeholder--summary">
                                     <span class="profile-loading-message">
                                         <span>Loading profile stats...</span>
-                                        <span class="profile-loading-spinner" aria-hidden="true">🐍</span>
+                                        <img
+                                            class="profile-loading-spinner"
+                                            src="{% static 'GPTrivia/css/ouroboros.png' %}"
+                                            alt="Loading…"
+                                        >
                                     </span>
                                 </div>
                             {% else %}
@@ -101,7 +105,11 @@
                             <div class="profile-deferred-placeholder profile-deferred-placeholder--timeline">
                                 <span class="profile-loading-message">
                                     <span>Loading timeline...</span>
-                                    <span class="profile-loading-spinner" aria-hidden="true">🐍</span>
+                                    <img
+                                        class="profile-loading-spinner"
+                                        src="{% static 'GPTrivia/css/ouroboros.png' %}"
+                                        alt="Loading…"
+                                    >
                                 </span>
                             </div>
                         {% else %}
@@ -673,7 +681,7 @@
                 <div class="profile-deferred-placeholder profile-deferred-placeholder--summary">
                     <span class="profile-loading-message">
                         <span>${message}</span>
-                        <span class="profile-loading-spinner" aria-hidden="true">🐍</span>
+                        <img class="profile-loading-spinner" src="{% static 'GPTrivia/css/ouroboros.png' %}" alt="Loading…">
                     </span>
                 </div>
             `;
