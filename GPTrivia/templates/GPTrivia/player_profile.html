@@ -69,12 +69,7 @@
                                 <div class="profile-deferred-placeholder profile-deferred-placeholder--summary">
                                     <span class="profile-loading-message">
                                         <span>Loading profile stats...</span>
-                                        <img
-                                            class="profile-loading-spinner"
-                                            src="{% static 'GPTrivia/css/ouroboros.png' %}"
-                                            alt=""
-                                            aria-hidden="true"
-                                        >
+                                        <span class="profile-loading-spinner" aria-hidden="true">🐍</span>
                                     </span>
                                 </div>
                             {% else %}
@@ -106,12 +101,7 @@
                             <div class="profile-deferred-placeholder profile-deferred-placeholder--timeline">
                                 <span class="profile-loading-message">
                                     <span>Loading timeline...</span>
-                                    <img
-                                        class="profile-loading-spinner"
-                                        src="{% static 'GPTrivia/css/ouroboros.png' %}"
-                                        alt=""
-                                        aria-hidden="true"
-                                    >
+                                    <span class="profile-loading-spinner" aria-hidden="true">🐍</span>
                                 </span>
                             </div>
                         {% else %}
@@ -677,14 +667,13 @@
         }
 
         let profileCreatorPanelsLoadPromise = null;
-        const profileLoadingSpinnerSrc = "{% static 'GPTrivia/css/ouroboros.png' %}";
 
         function buildProfileLoadingPlaceholder(message) {
             return `
                 <div class="profile-deferred-placeholder profile-deferred-placeholder--summary">
                     <span class="profile-loading-message">
                         <span>${message}</span>
-                        <img class="profile-loading-spinner" src="${profileLoadingSpinnerSrc}" alt="" aria-hidden="true">
+                        <span class="profile-loading-spinner" aria-hidden="true">🐍</span>
                     </span>
                 </div>
             `;

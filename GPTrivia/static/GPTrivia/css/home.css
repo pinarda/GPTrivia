@@ -124,13 +124,14 @@ main {
 }
 
 #rounds-spinner {
-    display: inline-block;
-    width:70%;
-    height:70%;
-    transform-origin:center;
-    vertical-align:middle;
-    margin-left: 5px; /* Space between button and spinner */
-    margin-top: 5px; /* Space between button and spinner */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    font-size: 1.25rem;
+    line-height: 1;
+    margin: 0;
 }
 
 .loading-cell{
@@ -140,12 +141,8 @@ main {
     gap:0.5rem;               /* space between spinner and text */
 }
 
-.spinner-wrap{
-    display:inline-block;
-    width:50px;
-    height:50px;
-    overflow:hidden;        /* anything that sticks out is clipped */
-    vertical-align:middle;
+.loading-snake-icon {
+    animation: spin 1.8s linear infinite;
 }
 
 @keyframes spin {

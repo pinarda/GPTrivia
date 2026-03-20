@@ -216,9 +216,14 @@ a {
 }
 
 .profile-loading-spinner {
-    width: 1.5rem;
-    height: 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    height: 1.7rem;
     flex: 0 0 auto;
+    font-size: 1.3rem;
+    line-height: 1;
     animation: profile-loading-spin 1.8s linear infinite;
 }
 
