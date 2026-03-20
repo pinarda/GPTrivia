@@ -347,8 +347,8 @@ import {
 
     const RoundSwitchFormControl = styled(StyledFormControl)`
       @media (max-width: 1000px) {
-        max-width: 12.25rem;
-        width: min(100%, 12.25rem);
+        max-width: 11.5rem;
+        width: min(100%, 11.5rem);
         padding: 0.34rem 0.42rem 0.42rem;
         border: 2px solid var(--scoresheet-border-soft, rgba(255, 255, 255, 0.22));
         box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
@@ -383,6 +383,18 @@ import {
       width: 100%;
       max-width: 100%;
       min-width: 0;
+
+      && .MuiOutlinedInput-notchedOutline {
+        border-color: #1e7662;
+        border-width: 2px;
+      }
+
+      &&:hover .MuiOutlinedInput-notchedOutline,
+      &&.Mui-focused .MuiOutlinedInput-notchedOutline,
+      && .Mui-focused .MuiOutlinedInput-notchedOutline {
+        border-color: #2c9d84;
+        border-width: 2px;
+      }
 
       && .MuiSelect-select {
         overflow: hidden;
@@ -420,7 +432,7 @@ import {
 
       @media (max-width: 1000px) {
         display: block;
-        width: min(100%, 22.4rem);
+        width: min(100%, 21.35rem);
         padding: 0.38rem 0.62rem;
         background-color: var(--scoresheet-surface, #333);
         border: 1px solid var(--scoresheet-border-soft, rgba(255, 255, 255, 0.22));
@@ -971,6 +983,10 @@ import {
 
       @media (min-width: 1001px) {
         display: contents;
+      }
+
+      @media (max-width: 1000px) {
+        gap: 0.4rem;
       }
     `;
 
@@ -3144,8 +3160,8 @@ const PlayerTable = () => {
                     },
                   },
                   sx: {
-                    minWidth: isCompactScreen ? (isSmallScreen ? '9.6rem' : '10.25rem') : '9.5rem',
-                    maxWidth: isCompactScreen ? (isSmallScreen ? '9.6rem' : '10.25rem') : '10.25rem',
+                    minWidth: isCompactScreen ? (isSmallScreen ? '9.1rem' : '9.7rem') : '9.5rem',
+                    maxWidth: isCompactScreen ? (isSmallScreen ? '9.1rem' : '9.7rem') : '10.25rem',
                     margin: isCompactScreen ? 0 : '0.4rem',
                     backgroundColor: dateFieldBg,
                     '& .MuiInputBase-root': {
@@ -3211,7 +3227,7 @@ const PlayerTable = () => {
           </RoundSwitchSelect>
         </RoundSwitchFormControl>
       </CompactTopControlGroup>
-      <RoundSwitchHelper>Use these menus to change the visible round or date.</RoundSwitchHelper>
+      <RoundSwitchHelper>Click above to change the visible round or date.</RoundSwitchHelper>
     </RoundNavigationStack>
   );
 
