@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260320k">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260320l">
 {% endblock %}
 
 {% block content %}
@@ -930,6 +930,16 @@
         return window.matchMedia('(max-width: 768px)').matches;
     }
 
+    function getPlotContainerWidth(divId, compactFallback = 320, desktopFallback = 620) {
+        const compactLayout = isCompactAnalysisLayout();
+        const plotElement = document.getElementById(divId);
+        const cardElement = document.querySelector(`[data-plot-card="${divId}"]`);
+        return Math.max(
+            compactLayout ? compactFallback : desktopFallback,
+            (cardElement ? cardElement.clientWidth : plotElement?.clientWidth) || 0
+        );
+    }
+
     function buildViolinXPositions(count) {
         const compactLayout = isCompactAnalysisLayout();
         const start = compactLayout ? 1.05 : 1.1;
@@ -1030,12 +1040,12 @@
                     size: compactLayout ? 10 : 12,
                 },
                 automargin: true,
-                gridcolor: 'rgba(255, 255, 255, 0.2)',
+                gridcolor: analysisGridColor,
             },
             yaxis: {
                 title: data.yaxis,
                 automargin: true,
-                gridcolor: 'rgba(255, 255, 255, 0.2)',
+                gridcolor: analysisGridColor,
             },
             plot_bgcolor: 'rgba(0,0,0,0)',
             paper_bgcolor: 'rgba(0,0,0,0)',
@@ -1062,32 +1072,73 @@
         };
     }
 
-    function getSquareCellHeatmapLayout(divId, columnCount, rowCount) {
-        const compactLayout = window.matchMedia('(max-width: 768px)').matches;
-        const plotElement = document.getElementById(divId);
-        const cardElement = document.querySelector(`[data-plot-card="${divId}"]`);
-        const containerWidth = Math.max(
-            compactLayout ? 300 : 520,
-            (cardElement ? cardElement.clientWidth : plotElement?.clientWidth) || 0
-        );
-        const margin = {
-            l: compactLayout ? 70 : 88,
-            r: compactLayout ? 34 : 48,
-            t: compactLayout ? 86 : 96,
-            b: compactLayout ? 94 : 118,
+    function buildResponsiveBarLayout(targetId, data, extraLayout = {}) {
+        const compactLayout = isCompactAnalysisLayout();
+        const containerWidth = getPlotContainerWidth(targetId, 320, 720);
+        const baseLayout = {
+            title: data.title,
+            autosize: true,
+            height: compactLayout ? Math.max(340, Math.min(containerWidth * 0.94, 430)) : 500,
+            margin: {
+                t: compactLayout ? 64 : 78,
+                r: compactLayout ? 10 : 20,
+                b: compactLayout ? 112 : 92,
+                l: compactLayout ? 54 : 70,
+            },
+            xaxis: {
+                title: data.xaxis,
+                tickangle: compactLayout ? -45 : -30,
+                tickfont: {
+                    size: compactLayout ? 10 : 12,
+                },
+                automargin: true,
+                gridcolor: analysisGridColor,
+            },
+            yaxis: {
+                title: data.yaxis,
+                automargin: true,
+                gridcolor: analysisGridColor,
+            },
+            bargap: compactLayout ? 0.2 : 0.32,
+            showlegend: false,
         };
-        const availableInnerWidth = Math.max(150, containerWidth - margin.l - margin.r);
-        const scaledInnerWidth = Math.max(
-            compactLayout ? 120 : 160,
-            availableInnerWidth * 0.5
-        );
-        const cellSize = scaledInnerWidth / Math.max(columnCount, 1);
+
+        return {
+            ...baseLayout,
+            ...extraLayout,
+            xaxis: {
+                ...baseLayout.xaxis,
+                ...(extraLayout.xaxis || {}),
+            },
+            yaxis: {
+                ...baseLayout.yaxis,
+                ...(extraLayout.yaxis || {}),
+            },
+            margin: {
+                ...baseLayout.margin,
+                ...(extraLayout.margin || {}),
+            },
+        };
+    }
+
+    function getSquareCellHeatmapLayout(divId, columnCount, rowCount) {
+        const compactLayout = isCompactAnalysisLayout();
+        const plotElement = document.getElementById(divId);
+        const containerWidth = getPlotContainerWidth(divId, 320, 640);
+        const margin = {
+            l: compactLayout ? 52 : 88,
+            r: compactLayout ? 16 : 48,
+            t: compactLayout ? 72 : 96,
+            b: compactLayout ? 76 : 118,
+        };
+        const availableInnerWidth = Math.max(180, containerWidth - margin.l - margin.r);
+        const cellSize = availableInnerWidth / Math.max(columnCount, 1);
         const innerHeight = cellSize * Math.max(rowCount, 1);
-        const width = Math.round(scaledInnerWidth + margin.l + margin.r);
+        const width = Math.round(containerWidth);
         const height = Math.round(innerHeight + margin.t + margin.b);
 
         if (plotElement) {
-            plotElement.style.width = `${width}px`;
+            plotElement.style.width = '100%';
             plotElement.style.maxWidth = '100%';
             plotElement.style.margin = '0 auto';
             plotElement.style.height = `${height}px`;
@@ -1098,6 +1149,7 @@
             width,
             height,
             margin,
+            compactLayout,
         };
     }
 
@@ -1584,19 +1636,9 @@
             }
         };
 
-        const layout = {
-            title: data.title,
-            xaxis: { title: data.xaxis },
-            yaxis: { title: data.yaxis },
-            plot_bgcolor:'rgba(0,0,0,0)',
-            paper_bgcolor:'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
-            },
-        };
+        const layout = buildResponsiveBarLayout('player-bar-space', data);
 
-        Plotly.newPlot('player-bar-space', [trace], layout);
+        Plotly.newPlot('player-bar-space', [trace], layout, {displaylogo: false, responsive: true});
     }
 
     function renderPlayerCatBar(data) {
@@ -1609,19 +1651,9 @@
             }
         };
 
-        const layout = {
-            title: data.title,
-            xaxis: { title: data.xaxis },
-            yaxis: { title: data.yaxis },
-            plot_bgcolor:'rgba(0,0,0,0)',
-            paper_bgcolor:'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
-            },
-        };
+        const layout = buildResponsiveBarLayout('player-cat-bar-space', data);
 
-        Plotly.newPlot('player-cat-bar-space', [trace], layout);
+        Plotly.newPlot('player-cat-bar-space', [trace], layout, {displaylogo: false, responsive: true});
     }
 
     function brightenColor(color, percent) {
@@ -1691,28 +1723,23 @@
             line: {color: lineColor, width: 4}
         };
 
+        const compactLayout = isCompactAnalysisLayout();
         const layout = {
-            title: data.title,
-            xaxis: {
-                title: data.xaxis,
-                type: 'category',
-                gridcolor: 'rgba(255, 255, 255, 0.2)', // Make gridlines
-                tickangle: -45,
-                {#automargin: true // Adjust the margin automatically#}
-            },
-            yaxis: {
-                title: data.yaxis,
-                gridcolor: 'rgba(255, 255, 255, 0.2)' // Make gridlines
-            },
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
-            }
+            ...buildResponsiveBarLayout('time-series-creator', data, {
+                height: compactLayout ? 360 : 500,
+                xaxis: {
+                    title: data.xaxis,
+                    type: 'category',
+                    tickangle: compactLayout ? -55 : -45,
+                },
+                yaxis: {
+                    title: data.yaxis,
+                },
+                bargap: undefined,
+            }),
         };
 
-        Plotly.newPlot('time-series-creator', [trace], layout);
+        Plotly.newPlot('time-series-creator', [trace], layout, {displaylogo: false, responsive: true});
     }
 
 
@@ -1727,19 +1754,9 @@
             }
         };
 
-        const layout = {
-            title: data.title,
-            xaxis: { title: data.xaxis },
-            yaxis: { title: data.yaxis },
-            plot_bgcolor:'rgba(0,0,0,0)',
-            paper_bgcolor:'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
-            },
-        };
+        const layout = buildResponsiveBarLayout('bar-space', data);
 
-        Plotly.newPlot('bar-space', [trace], layout);
+        Plotly.newPlot('bar-space', [trace], layout, {displaylogo: false, responsive: true});
     }
 
     function renderViolin(data) {
@@ -1758,6 +1775,8 @@
 
     function renderPCA(data) {
         setPlotDescription('PCAplot', buildPlotDescription('PCAplot', data));
+        const compactLayout = isCompactAnalysisLayout();
+        const containerWidth = getPlotContainerWidth('PCAplot', 320, 720);
         // Trace for the principal component scores
         {#const scoresTrace = {#}
         {#    x: data.PC1,#}
@@ -1783,13 +1802,13 @@
             type: 'scatter3d',
             text: data.loadings.variables,
             textposition: 'top center',
-            font: {
+            textfont: {
                 color: analysisTextColor,
                 family: "YoungSerif",
-                size: 6
+                size: compactLayout ? 8 : 10
             },
             marker: {
-                size: 12,
+                size: compactLayout ? 8 : 12,
                 color: data.colors, // Use the same colors array or a separate one if needed
                 colorscale: 'Viridis',
                 opacity: 1
@@ -1797,16 +1816,19 @@
 
         const layout = {
             title: data.title,
+            autosize: true,
+            height: compactLayout ? Math.max(390, Math.min(containerWidth * 1.05, 520)) : 760,
+            margin: {
+                t: compactLayout ? 66 : 82,
+                r: compactLayout ? 4 : 14,
+                b: compactLayout ? 6 : 16,
+                l: compactLayout ? 4 : 14,
+            },
             scene: {
                 xaxis: { title: 'PC1' },
                 yaxis: { title: 'PC2' },
-                zaxis: { title: 'PC3' }
-            },
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
+                zaxis: { title: 'PC3' },
+                aspectmode: 'cube',
             },
             showlegend: false // Disable the legend if needed
         };
@@ -1839,6 +1861,8 @@
             colorbar: {
                 title: 'Correlation',
                 titleside: 'left',
+                thickness: heatmapLayout.compactLayout ? 10 : 16,
+                len: heatmapLayout.compactLayout ? 0.8 : 0.9,
             },
         };
 
@@ -1849,21 +1873,21 @@
             margin: heatmapLayout.margin,
             xaxis: {
                 title: 'Player',
-                tickangle: -45,
+                tickangle: heatmapLayout.compactLayout ? -35 : -45,
+                tickfont: {
+                    size: heatmapLayout.compactLayout ? 9 : 11,
+                },
                 automargin: true,
             },
             yaxis: {
                 title: 'Player',
+                tickfont: {
+                    size: heatmapLayout.compactLayout ? 9 : 11,
+                },
                 automargin: true,
                 scaleanchor: 'x',
                 scaleratio: 1,
             },
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
-            }
         };
 
         Plotly.newPlot('CorrMatrix', [trace], layout, {responsive: true});
@@ -1914,6 +1938,8 @@
             colorbar: {
                 title: 'Bias (points)',
                 titleside: 'left',
+                thickness: heatmapLayout.compactLayout ? 10 : 16,
+                len: heatmapLayout.compactLayout ? 0.8 : 0.9,
             },
         };
 
@@ -1924,21 +1950,21 @@
             margin: heatmapLayout.margin,
             xaxis: {
                 title: 'Player',
-                tickangle: -45,
+                tickangle: heatmapLayout.compactLayout ? -35 : -45,
+                tickfont: {
+                    size: heatmapLayout.compactLayout ? 9 : 11,
+                },
                 automargin: true,
             },
             yaxis: {
                 title: 'Creator',
+                tickfont: {
+                    size: heatmapLayout.compactLayout ? 9 : 11,
+                },
                 automargin: true,
                 scaleanchor: 'x',
                 scaleratio: 1,
             },
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
-            }
         };
 
         Plotly.newPlot('CreatorMatrix', [trace], layout, {responsive: true});
@@ -1979,19 +2005,9 @@
             }
         };
 
-        const layout = {
-            title: data.title,
-            xaxis: { title: data.xaxis },
-            yaxis: { title: data.yaxis },
-            plot_bgcolor:'rgba(0,0,0,0)',
-            paper_bgcolor:'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
-            },
-        };
+        const layout = buildResponsiveBarLayout('catBar', data);
 
-        Plotly.newPlot('catBar', [trace], layout);
+        Plotly.newPlot('catBar', [trace], layout, {displaylogo: false, responsive: true});
     }
 
 
@@ -2006,20 +2022,10 @@
             }
         };
 
-        const layout = {
-            title: data.title,
-            xaxis: { title: data.xaxis },
-            yaxis: { title: data.yaxis },
-            plot_bgcolor:'rgba(0,0,0,0)',
-            paper_bgcolor:'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
-            },
-        };
+        const layout = buildResponsiveBarLayout('creatorBar', data);
 
         // change the styling of creator bar
-        Plotly.newPlot('creatorBar', [trace], layout);
+        Plotly.newPlot('creatorBar', [trace], layout, {displaylogo: false, responsive: true});
     }
 
     function renderTriviaNightStreak(data) {
@@ -2186,24 +2192,22 @@ function renderJokerPercentage(data) {
             });
         });
 
-        const layout = applyPlotTheme({
-            title: data.title,
+        const compactLayout = isCompactAnalysisLayout();
+        const layout = buildResponsiveBarLayout(targetId, data, {
             xaxis: {
                 title: { text: data.xaxis },
-                tickangle: -35,
-                automargin: true,
+                tickangle: compactLayout ? -45 : -35,
             },
             yaxis: {
                 title: { text: data.yaxis },
                 rangemode: 'tozero',
             },
             margin: {
-                t: 60,
-                r: 20,
-                b: 90,
-                l: 65,
+                t: compactLayout ? 64 : 60,
+                r: compactLayout ? 10 : 20,
+                b: compactLayout ? 108 : 90,
+                l: compactLayout ? 54 : 65,
             },
-            showlegend: false,
         });
 
         Plotly.newPlot(targetId, traces, layout, {

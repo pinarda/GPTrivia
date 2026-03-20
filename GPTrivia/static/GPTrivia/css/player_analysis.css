@@ -288,6 +288,10 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
     max-width: 100% !important;
 }
 
+.plot-div .svg-container {
+    height: 100% !important;
+}
+
 .plot-div--standard {
     min-height: 500px;
 }
@@ -459,12 +463,39 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
     }
 
     .analysis-plot-card {
-        padding: 0.85rem 0.8rem 0.95rem;
+        width: 100%;
+        padding: 0.85rem 0.55rem 0.95rem;
+        gap: 0.6rem;
+    }
+
+    .plot-div {
+        min-height: 360px;
+    }
+
+    .plot-div--standard {
+        min-height: 360px;
+    }
+
+    .plot-div--matrix {
+        min-height: 320px;
+    }
+
+    .plot-div--tall {
+        min-height: 520px;
+    }
+
+    .analysis-plot-description {
+        font-size: 0.96rem;
+        line-height: 1.4;
     }
 
     .analysis-plot-loading {
         min-height: 150px;
         font-size: 0.96rem;
+    }
+
+    .analysis-plot-checkbox {
+        top: 48px;
     }
 }
 
