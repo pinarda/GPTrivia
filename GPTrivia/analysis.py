@@ -3,6 +3,7 @@ import json
 
 import numpy as np
 import pandas as pd
+from django.core.cache import cache
 from django.http import JsonResponse
 from scipy.stats import pearsonr
 from sklearn.decomposition import PCA
@@ -21,6 +22,12 @@ from .player_scores import (
     player_field_for_name,
 )
 
+ANALYSIS_INTERMEDIATE_CACHE_TTL_SECONDS = 60 * 60 * 24
+ANALYSIS_SITE_DATA_CACHE_VERSION_KEY = 'site_data_cache_version'
+
+
+def _analysis_site_data_cache_version():
+    return cache.get_or_set(ANALYSIS_SITE_DATA_CACHE_VERSION_KEY, 1, None)
 
 
 def calculate_pvalues(df):
@@ -123,20 +130,76 @@ class PlayerAnalysisPlot(View):
         ]
 
     @staticmethod
-    def _recently_active_player_fields(rounds):
+    def _coerce_round_date(value):
+        if isinstance(value, datetime.datetime):
+            return value.date()
+        if isinstance(value, datetime.date):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.date.fromisoformat(value)
+            except ValueError:
+                return None
+        return None
+
+    @classmethod
+    def _recently_active_player_fields(cls, rounds):
         cutoff_date = _analysis_current_trivia_date() - datetime.timedelta(days=365)
         active_fields = set()
 
         for round_obj in rounds or []:
-            round_date = getattr(round_obj, 'date', None)
+            round_date = (
+                cls._coerce_round_date(round_obj.get('date'))
+                if isinstance(round_obj, dict)
+                else cls._coerce_round_date(getattr(round_obj, 'date', None))
+            )
             if not round_date or round_date < cutoff_date:
                 continue
 
-            for player_field, score_value in get_round_score_map(round_obj, include_null_fixed=False).items():
+            score_map = (
+                {
+                    key: value
+                    for key, value in round_obj.items()
+                    if str(key).startswith('score_') and value is not None
+                }
+                if isinstance(round_obj, dict)
+                else get_round_score_map(round_obj, include_null_fixed=False)
+            )
+            for player_field, score_value in score_map.items():
                 if isinstance(score_value, (int, float)):
                     active_fields.add(player_field)
 
         return active_fields
+
+    def _get_analysis_base_dataset(self, misc, force_refresh=False):
+        include_coop = self._should_include_coop(misc)
+        cache_key = (
+            f'analysis_intermediate:v{_analysis_site_data_cache_version()}:'
+            f'include_coop:{int(include_coop)}'
+        )
+        if not force_refresh:
+            cached_payload = cache.get(cache_key)
+            if cached_payload is not None:
+                return cached_payload
+
+        queryset_rounds = self._apply_misc_filters(GPTriviaRound.objects.all(), misc)
+        records = self._queryset_to_records(queryset_rounds)
+        payload = {
+            'records': records,
+            'recently_active_fields': sorted(self._recently_active_player_fields(records)),
+            'global_eligible_player_fields': get_eligible_player_fields(records, min_rounds=MIN_ANALYSIS_ROUNDS),
+        }
+        cache.set(cache_key, payload, ANALYSIS_INTERMEDIATE_CACHE_TTL_SECONDS)
+        return payload
+
+    @staticmethod
+    def filter_records(records, creator, category):
+        filtered_records = records
+        if creator:
+            filtered_records = [record for record in filtered_records if record.get('creator') == creator]
+        if category:
+            filtered_records = [record for record in filtered_records if record.get('major_category') == category]
+        return filtered_records
 
     def get(self, request):
         creator = request.GET.get('creator', '')
@@ -145,17 +208,16 @@ class PlayerAnalysisPlot(View):
         misc = request.GET.get('misc', '') or request.GET.get('include_coop', '')
         chart_type = request.GET.get('chart_type', '')
         dadj = request.GET.get('dadj', '')
-        queryset_rounds_1 = self._apply_misc_filters(GPTriviaRound.objects.all(), misc)
-        all_round_objects = list(queryset_rounds_1)
-        recently_active_fields = self._recently_active_player_fields(all_round_objects)
+        force_refresh = str(request.GET.get('refresh') or '').strip().lower() in {'1', 'true', 'yes', 'reload'}
+        base_dataset = self._get_analysis_base_dataset(misc, force_refresh=force_refresh)
+        all_round_records = base_dataset['records']
+        recently_active_fields = set(base_dataset['recently_active_fields'])
         self.recently_active_player_fields = set(recently_active_fields)
         self.recently_active_player_names = {
             display_name_for_player_field(player_field)
             for player_field in self.recently_active_player_fields
         }
-        self.global_eligible_player_fields = set(
-            get_eligible_player_fields(all_round_objects, min_rounds=MIN_ANALYSIS_ROUNDS)
-        )
+        self.global_eligible_player_fields = set(base_dataset['global_eligible_player_fields'])
         if self._should_include_inactive(misc):
             self.eligible_player_fields = set(self.global_eligible_player_fields)
         else:
@@ -170,9 +232,9 @@ class PlayerAnalysisPlot(View):
                 {'error': f'Player {player} has not played enough rounds for analysis'},
                 status=400,
             )
-        queryset_rounds = self.filter_data(queryset_rounds_1, creator, category, player, misc)
-        filtered_rounds = self._records_with_scores(self._queryset_to_records(queryset_rounds))
-        all_rounds = self._records_with_scores(self._queryset_to_records(queryset_rounds_1))
+        filtered_round_records = self.filter_records(all_round_records, creator, category)
+        filtered_rounds = self._records_with_scores(filtered_round_records)
+        all_rounds = self._records_with_scores(all_round_records)
 
         if chart_type == 'chart1':
             return self.get_chart1_data(filtered_rounds, all_rounds, creator, category, player, misc)
@@ -207,7 +269,7 @@ class PlayerAnalysisPlot(View):
         if chart_type == 'bias_chart':
             return self.get_bias_chart_data(filtered_rounds, all_rounds, creator, category, player, misc, dadj)
         if chart_type == 'trivia_night_streak':
-            return self.trivia_night_streak(filtered_rounds, self._queryset_to_records(queryset_rounds_1), creator, category, player, misc)
+            return self.trivia_night_streak(filtered_rounds, all_round_records, creator, category, player, misc)
         if chart_type == 'joker_percentage':
             return self.joker_percentage(filtered_rounds, all_rounds, creator, category, player, misc)
         if chart_type == 'joker_creator_summary':

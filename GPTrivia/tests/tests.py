@@ -6,6 +6,7 @@ from unittest.mock import patch
 from django.test import TestCase, RequestFactory
 from django.http import JsonResponse
 from GPTrivia.models import GPTriviaRound, MergedPresentation
+from GPTrivia.player_scores import flatten_round_for_analysis as flatten_round_for_analysis_impl
 from GPTrivia.views import player_analysis, player_profile
 from ..mail import create_presentation
 from googleapiclient.discovery import build
@@ -243,6 +244,24 @@ class PlayerAnalysisPlotTests(TestCase):
         self.assertEqual(second_response.status_code, 200)
         self.assertEqual(refresh_response.status_code, 200)
         self.assertEqual(mock_as_view.call_count, 2)
+
+    @patch('GPTrivia.analysis.flatten_round_for_analysis', wraps=flatten_round_for_analysis_impl)
+    def test_player_analysis_reuses_cached_intermediate_records(self, mock_flatten_round):
+        first_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'bar',
+            'creator': 'Jenny',
+        })
+        first_call_count = mock_flatten_round.call_count
+
+        second_response = self.client.get(reverse('player_analysis_plot'), {
+            'chart_type': 'violin',
+            'creator': 'Jenny',
+        })
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertGreater(first_call_count, 0)
+        self.assertEqual(mock_flatten_round.call_count, first_call_count)
 
     def test_cat_bar_data(self):
         rounds = GPTriviaRound.objects.all()
