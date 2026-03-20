@@ -339,6 +339,37 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
     text-decoration: none;
 }
 
+.analysis-plot-loading {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    width: 100%;
+    min-height: 180px;
+    color: var(--analysis-page-text);
+    font-family: YoungSerif;
+    font-size: 1rem;
+    line-height: 1.3;
+    text-align: center;
+}
+
+.analysis-plot-loading-spinner {
+    width: 2rem;
+    height: 2rem;
+    object-fit: contain;
+    flex: 0 0 auto;
+    animation: analysis-loading-spin 1.8s linear infinite;
+}
+
+@keyframes analysis-loading-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(-360deg);
+    }
+}
+
 #joker_percentage {
     padding-bottom: 30px;
     padding-top: 15px;
@@ -429,6 +460,11 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
 
     .analysis-plot-card {
         padding: 0.85rem 0.8rem 0.95rem;
+    }
+
+    .analysis-plot-loading {
+        min-height: 150px;
+        font-size: 0.96rem;
     }
 }
 
