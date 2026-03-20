@@ -125,12 +125,12 @@ main {
 
 #rounds-spinner {
     display: inline-block;
-    width: auto;
+    width: 2rem;
     height: 2rem;
     margin: 0;
     vertical-align: middle;
     transform-origin: center;
-    filter: hue-rotate(0deg) saturate(1.2) brightness(1.05);
+    color: var(--home-table-text);
 }
 
 .loading-cell{
@@ -145,7 +145,7 @@ main {
 }
 
 body.site-shell[data-profile-theme="light"] #rounds-spinner {
-    filter: hue-rotate(0deg) saturate(1.8) brightness(0.96) contrast(1.08);
+    color: var(--home-table-text);
 }
 
 @keyframes spin {
