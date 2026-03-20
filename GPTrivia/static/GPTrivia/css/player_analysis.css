@@ -228,6 +228,9 @@ body.site-shell[data-profile-theme="light"] .table-class th {
 #column-checkboxes {
     text-align: center;
     margin: 10px 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .inline-checkbox {
@@ -379,6 +382,22 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
     padding-top: 15px;
 }
 
+#rounds-table {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+    padding-bottom: 0.25rem;
+}
+
+#rounds-table .table-class {
+    width: max-content;
+    min-width: 100%;
+    table-layout: auto;
+}
+
 .table-class {
     width: 100%;
     text-align: center;
@@ -496,6 +515,42 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
 
     .analysis-plot-checkbox {
         top: 48px;
+    }
+
+    #column-checkboxes {
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        text-align: left;
+        padding: 0 0.2rem 0.3rem;
+        margin: 0.5rem 0 0.75rem;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .inline-checkbox {
+        white-space: nowrap;
+        font-size: 0.88rem;
+        margin-right: 0.8rem;
+    }
+
+    #rounds-table {
+        margin: 0;
+        padding-bottom: 0.45rem;
+    }
+
+    #rounds-table .table-class {
+        min-width: 39rem;
+    }
+
+    .table-class th,
+    .table-class td {
+        padding: 0.38rem 0.45rem;
+        font-size: 0.82rem;
+        line-height: 1.25;
+    }
+
+    .table-class .max-width-column {
+        max-width: 10rem;
     }
 }
 
