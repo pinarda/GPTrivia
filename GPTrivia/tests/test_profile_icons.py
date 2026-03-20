@@ -10,6 +10,7 @@ from django.urls import reverse
 from PIL import Image
 
 from GPTrivia.models import GPTriviaRound, Profile
+from GPTrivia.profile_media import get_profile_avatar_url, get_profile_picture_url
 from GPTrivia.views import _build_player_icon_map
 
 
@@ -92,7 +93,7 @@ class ProfileIconTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'scoresheet-player-icons')
-        self.assertContains(response, 'profile_icons')
+        self.assertContains(response, get_profile_avatar_url(profile))
         self.assertContains(response, 'Alex')
 
     def test_player_icon_map_falls_back_to_profile_picture_when_icon_is_unavailable(self):
@@ -108,7 +109,7 @@ class ProfileIconTests(TestCase):
             icon_map = _build_player_icon_map()
 
         self.assertIn('Alex', icon_map)
-        self.assertIn(profile.profile_picture.name, icon_map['Alex'])
+        self.assertEqual(icon_map['Alex'], get_profile_avatar_url(profile))
 
     def test_upload_profile_picture_crops_selected_square_region_and_updates_color_and_theme(self):
         user = User.objects.create_user(username='Alex', password='pw')
@@ -237,7 +238,31 @@ class ProfileIconTests(TestCase):
         response = self.client.get(reverse('player_profile', args=['Alex']))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, profile.profile_picture.name)
+        self.assertContains(response, get_profile_picture_url(profile))
+
+    def test_profile_picture_media_endpoint_serves_uploaded_picture(self):
+        user = User.objects.create_user(username='Alex', password='pw')
+        profile = user.profile
+        profile.profile_picture = self._make_uploaded_image(color=(30, 30, 180))
+        profile.save()
+
+        self.client.force_login(user)
+        response = self.client.get(get_profile_picture_url(profile))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response['Content-Type'].startswith('image/'))
+
+    def test_profile_avatar_media_endpoint_serves_profile_icon(self):
+        user = User.objects.create_user(username='Alex', password='pw')
+        profile = user.profile
+        profile.profile_picture = self._make_uploaded_image(color=(80, 20, 220))
+        profile.save()
+
+        self.client.force_login(user)
+        response = self.client.get(get_profile_avatar_url(profile))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response['Content-Type'].startswith('image/'))
 
     def test_profile_view_defaults_page_color_inputs_to_profile_palette(self):
         user = User.objects.create_user(username='Alex', password='pw')

@@ -55,6 +55,7 @@ from django.core import serializers
 from rest_framework.renderers import JSONRenderer
 from datetime import date
 from django.utils import timezone
+from django.http import FileResponse
 from .models import JeopardyQuestion, JeopardyRound, PushSubscription, SubmittedRound
 from .player_scores import (
     FIXED_SCORE_FIELDS,
@@ -81,6 +82,7 @@ from .blog_posts import (
 )
 from .profile_media import get_profile_avatar_url, get_profile_picture_url
 import re
+import mimetypes
 
 
 gmail_key = '8f35edc691b918094035b22807266a1e468bf5f0'
@@ -797,6 +799,39 @@ def upload_profile_picture(request):
 
     context = player_profile_dict(request, request.user.username, form=form, include_deferred_stats=False)
     return render(request, 'GPTrivia/player_profile.html', context)
+
+
+def _serve_profile_media_file(file_field):
+    if not file_field:
+        raise Http404("Profile image not found.")
+
+    try:
+        file_field.open('rb')
+    except Exception as exc:
+        raise Http404("Profile image not found.") from exc
+
+    content_type = mimetypes.guess_type(getattr(file_field, 'name', '') or '')[0] or 'application/octet-stream'
+    response = FileResponse(file_field, content_type=content_type)
+    response['Cache-Control'] = 'private, max-age=3600'
+    return response
+
+
+@login_required
+def profile_picture_media(request, player_name, version):
+    profile_user = get_object_or_404(User, username__iexact=player_name)
+    profile = profile_user.profile
+    return _serve_profile_media_file(profile.profile_picture)
+
+
+@login_required
+def profile_avatar_media(request, player_name, version):
+    profile_user = get_object_or_404(User, username__iexact=player_name)
+    profile = profile_user.profile
+    if profile.has_custom_profile_picture():
+        profile.ensure_profile_icon()
+
+    avatar_file = profile.profile_icon or profile.profile_picture
+    return _serve_profile_media_file(avatar_file)
 
 
 @login_required
