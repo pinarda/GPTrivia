@@ -355,6 +355,14 @@ import {
       }
     `;
 
+    const RoundNavigationStack = styled.div`
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      gap: 0.45rem;
+    `;
+
     const JokerFormControl = styled(StyledFormControl).attrs(({ className }) => ({
       className: className ? `star-ricochet ${className}` : 'star-ricochet',
     }))`
@@ -407,57 +415,20 @@ import {
         }
     `;
 
-    const RoundSwitchMobileHeader = styled.div`
-      display: none;
-
-      @media (max-width: 1000px) {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.38rem;
-        margin-bottom: 0.22rem;
-        color: var(--scoresheet-text, #fff);
-        font-family: "Monaco";
-        text-align: center;
-      }
-    `;
-
-    const RoundSwitchChevron = styled.span`
-      font-size: 0.96rem;
-      line-height: 1;
-      opacity: 0.82;
-    `;
-
-    const RoundSwitchMobileTitle = styled.span`
-      font-size: 0.95rem;
-      font-weight: 700;
-      line-height: 1.1;
-      letter-spacing: 0.01em;
-    `;
-
-    const RoundSwitchBadge = styled.span`
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.08rem 0.32rem;
-      border: 1px solid var(--scoresheet-border-soft, rgba(255, 255, 255, 0.22));
-      font-size: 0.58rem;
-      line-height: 1.1;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      opacity: 0.88;
-    `;
-
     const RoundSwitchHelper = styled.div`
       display: none;
 
       @media (max-width: 1000px) {
         display: block;
-        margin-top: 0.28rem;
+        width: min(100%, 22.4rem);
+        padding: 0.38rem 0.62rem;
+        background-color: var(--scoresheet-surface, #333);
+        border: 1px solid var(--scoresheet-border-soft, rgba(255, 255, 255, 0.22));
+        box-sizing: border-box;
         color: var(--scoresheet-text-muted, rgba(255, 255, 255, 0.5));
         font-family: "Monaco";
-        font-size: 0.7rem;
-        line-height: 1.25;
+        font-size: 0.74rem;
+        line-height: 1.3;
         text-align: center;
       }
     `;
@@ -3131,8 +3102,9 @@ const PlayerTable = () => {
 
 
   const roundNavigationControls = (
-    <CompactTopControlGroup>
-      <StyledFormControl>
+    <RoundNavigationStack>
+      <CompactTopControlGroup>
+        <StyledFormControl>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
               open={openDatePicker}
@@ -3218,15 +3190,9 @@ const PlayerTable = () => {
               }}
               />
           </LocalizationProvider>
-      </StyledFormControl>
+        </StyledFormControl>
 
-      <RoundSwitchFormControl>
-          <RoundSwitchMobileHeader>
-            <RoundSwitchChevron aria-hidden="true">‹</RoundSwitchChevron>
-            <RoundSwitchMobileTitle>Switch Round</RoundSwitchMobileTitle>
-            <RoundSwitchChevron aria-hidden="true">›</RoundSwitchChevron>
-            <RoundSwitchBadge>Current</RoundSwitchBadge>
-          </RoundSwitchMobileHeader>
+        <RoundSwitchFormControl>
           <StyledInputLabel className={"showonsmall"}>Switch Round</StyledInputLabel>
             <RoundSwitchSelect
               className={"showonsmall"}
@@ -3243,9 +3209,10 @@ const PlayerTable = () => {
                   <MenuItem key={index} value={index+2}>{round.title}</MenuItem>
               ))}
           </RoundSwitchSelect>
-          <RoundSwitchHelper>Use this menu to change the visible round.</RoundSwitchHelper>
-      </RoundSwitchFormControl>
-    </CompactTopControlGroup>
+        </RoundSwitchFormControl>
+      </CompactTopControlGroup>
+      <RoundSwitchHelper>Use these menus to change the visible round or date.</RoundSwitchHelper>
+    </RoundNavigationStack>
   );
 
   const detailsPanelContent = (
