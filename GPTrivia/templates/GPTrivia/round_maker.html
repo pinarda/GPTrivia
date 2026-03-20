@@ -105,7 +105,6 @@
                         <label for="coop" class="checkbox-label">
                             <input type="checkbox" id="coop" name="coop" class="swoop-coop-box"> Coop?
                         </label>
-                        <input type="hidden" id="coop-choice-set" value="">
                     </div>
                     <!-- Question and Answer Fields -->
                     {% for i in 10|get_range %}
@@ -151,9 +150,9 @@
                 </div>
                 <p id="preview-requirements-message" class="preview-requirements-message">
                     {% if user.is_authenticated %}
-                        Enter a round title and set the co-op status to unlock preview.
+                        Enter a round title to unlock preview.
                     {% else %}
-                        Enter a round title, choose a creator, and set the co-op status to unlock preview.
+                        Enter a round title and choose a creator to unlock preview.
                     {% endif %}
                 </p>
                 <!-- Google Slides Embed -->
@@ -198,7 +197,7 @@
         '#question-6', '#question-7', '#question-8', '#question-9', '#question-10',
         '#answer-1', '#answer-2', '#answer-3', '#answer-4', '#answer-5',
         '#answer-6', '#answer-7', '#answer-8', '#answer-9', '#answer-10',
-        '#round-title', '#round-creator', '#coop', '#coop-choice-set'
+        '#round-title', '#round-creator', '#coop'
     ];
 
     function getPersistedFields() {
@@ -327,6 +326,7 @@
         loadData();
         saveData();
         updatePreviewButtonState();
+        window.setTimeout(updatePreviewButtonState, 0);
     });
 
     function hasRoundMakerCreatorSelection() {
@@ -338,10 +338,6 @@
         return Boolean((document.getElementById('round-title')?.value || '').trim());
     }
 
-    function hasRoundMakerCoopSelection() {
-        return (document.getElementById('coop-choice-set')?.value || '') === '1';
-    }
-
     function updatePreviewButtonState() {
         const previewButton = document.getElementById('preview-button');
         const requirementsMessage = document.getElementById('preview-requirements-message');
@@ -349,7 +345,7 @@
             return;
         }
 
-        const isReady = hasRoundMakerTitle() && hasRoundMakerCreatorSelection() && hasRoundMakerCoopSelection();
+        const isReady = hasRoundMakerTitle() && hasRoundMakerCreatorSelection();
         previewButton.disabled = !isReady;
         previewButton.setAttribute('aria-disabled', String(!isReady));
 
@@ -381,11 +377,6 @@
         });
 
         $('#coop').on('change', function() {
-            const coopChoiceField = document.getElementById('coop-choice-set');
-            if (coopChoiceField) {
-                coopChoiceField.value = '1';
-                persistRoundMakerField(coopChoiceField);
-            }
             suppressPreviewRequirementsMessage = false;
             updatePreviewButtonState();
         });
@@ -671,7 +662,7 @@
         }
 
         $('#preview-button').on('click', function() {
-            if (!hasRoundMakerTitle() || !hasRoundMakerCreatorSelection() || !hasRoundMakerCoopSelection()) {
+            if (!hasRoundMakerTitle() || !hasRoundMakerCreatorSelection()) {
                 updatePreviewButtonState();
                 return;
             }
