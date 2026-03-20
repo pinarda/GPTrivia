@@ -1,6 +1,7 @@
 import io
 import tempfile
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -8,7 +9,8 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
-from GPTrivia.models import GPTriviaRound
+from GPTrivia.models import GPTriviaRound, Profile
+from GPTrivia.views import _build_player_icon_map
 
 
 class ProfileIconTests(TestCase):
@@ -92,6 +94,23 @@ class ProfileIconTests(TestCase):
         self.assertContains(response, 'scoresheet-player-icons')
         self.assertContains(response, 'profile_icons')
         self.assertContains(response, 'Alex')
+        self.assertContains(response, '?v=')
+
+    def test_player_icon_map_falls_back_to_profile_picture_when_icon_is_unavailable(self):
+        user = User.objects.create_user(username='Alex', password='pw')
+        profile = user.profile
+        profile.profile_picture = self._make_uploaded_image(color=(20, 120, 220))
+        profile.save()
+        profile.profile_icon.delete(save=False)
+        type(profile).objects.filter(pk=profile.pk).update(profile_icon='')
+        profile.refresh_from_db()
+
+        with patch.object(Profile, 'ensure_profile_icon', return_value=False):
+            icon_map = _build_player_icon_map()
+
+        self.assertIn('Alex', icon_map)
+        self.assertIn(profile.profile_picture.name, icon_map['Alex'])
+        self.assertIn('?v=', icon_map['Alex'])
 
     def test_upload_profile_picture_crops_selected_square_region_and_updates_color_and_theme(self):
         user = User.objects.create_user(username='Alex', password='pw')
@@ -203,6 +222,21 @@ class ProfileIconTests(TestCase):
         self.assertContains(response, '--profile-page-trivia-color-two: #222222;')
         self.assertContains(response, '--profile-page-trivia-color-three: #333333;')
         self.assertContains(response, 'Player Color')
+
+    def test_profile_view_uses_cache_busted_profile_picture_url(self):
+        user = User.objects.create_user(username='Alex', password='pw')
+        self._make_profile_round_history()
+        profile = user.profile
+        profile.profile_picture = self._make_uploaded_image(color=(30, 30, 180))
+        profile.save()
+        profile.refresh_from_db()
+
+        self.client.force_login(user)
+        response = self.client.get(reverse('player_profile', args=['Alex']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, profile.profile_picture.name)
+        self.assertContains(response, '?v=')
 
     def test_profile_view_defaults_page_color_inputs_to_profile_palette(self):
         user = User.objects.create_user(username='Alex', password='pw')

@@ -79,6 +79,7 @@ from .blog_posts import (
     get_other_trivia_plots_blog_context,
     get_roboalex_blog_context,
 )
+from .profile_media import get_profile_avatar_url, get_profile_picture_url
 import re
 
 
@@ -787,7 +788,9 @@ def upload_profile_picture(request):
     if request.method == 'POST':
         form = ProfilePictureForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
-            form.save()
+            profile = form.save()
+            if profile.has_custom_profile_picture():
+                profile.ensure_profile_icon(force=True)
             return redirect('player_profile', player_name=request.user.username)
     else:
         form = ProfilePictureForm(instance=profile)
@@ -848,17 +851,18 @@ def _build_player_icon_map():
         if profile.has_custom_profile_picture():
             profile.ensure_profile_icon()
 
-        if not profile.profile_icon:
+        icon_url = get_profile_avatar_url(profile, include_default=False)
+        if not icon_url:
             continue
 
         display_name = display_name_for_player_field(profile.user.username)
         if not display_name:
             continue
 
-        icon_map[display_name] = profile.profile_icon.url
+        icon_map[display_name] = icon_url
         player_field = player_field_for_name(display_name)
         if player_field:
-            icon_map[player_field] = profile.profile_icon.url
+            icon_map[player_field] = icon_url
 
     return icon_map
 
@@ -1833,7 +1837,7 @@ def player_profile_dict(
     profile_card_muted_text_color = _with_alpha(profile_card_text_color, 0.72)
     if form is None and include_form:
         form = ProfilePictureForm(instance=profile)
-    profile_picture_url = profile.profile_picture.url if profile else '/media/default.jpg'
+    profile_picture_url = get_profile_picture_url(profile)
     is_own_profile = bool(
         profile_user
         and request.user.is_authenticated

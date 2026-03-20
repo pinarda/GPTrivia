@@ -1,4 +1,5 @@
 from .models import Profile
+from .profile_media import get_profile_avatar_url
 
 
 def site_profile_context(request):
@@ -16,12 +17,7 @@ def site_profile_context(request):
     theme = getattr(profile, "site_theme", "default") or "default"
     profile_link = f"/player_profile/{request.user.username}/"
 
-    icon_url = ""
-    if profile:
-        if profile.profile_icon:
-            icon_url = profile.profile_icon.url
-        elif profile.profile_picture:
-            icon_url = profile.profile_picture.url
+    icon_url = get_profile_avatar_url(profile, include_default=True)
 
     return {
         "site_profile_theme": theme,
