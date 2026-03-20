@@ -472,7 +472,7 @@ import {
         box-sizing: border-box;
         color: var(--scoresheet-text-muted, rgba(255, 255, 255, 0.5));
         font-family: "Monaco";
-        font-size: 0.74rem;
+        font-size: 0.72rem;
         line-height: 1.3;
         text-align: center;
       }
@@ -3153,6 +3153,7 @@ const PlayerTable = () => {
 
   const roundNavigationControls = (
     <RoundNavigationStack>
+      <RoundSwitchHelper>Select below to change round or date.</RoundSwitchHelper>
       <RoundNavigationControlGroup>
         <RoundDateFormControl>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -3262,7 +3263,6 @@ const PlayerTable = () => {
           </RoundSwitchSelect>
         </RoundSwitchFormControl>
       </RoundNavigationControlGroup>
-      <RoundSwitchHelper>Select below for round or date.</RoundSwitchHelper>
     </RoundNavigationStack>
   );
 
@@ -3864,7 +3864,7 @@ const PlayerTable = () => {
                 markDirty();
               }}
               multiline
-              rows={1}
+              rows={2}
               placeholder="Enter Nightly Notes"
             />
           </MetadataNotesFieldWrapper>
