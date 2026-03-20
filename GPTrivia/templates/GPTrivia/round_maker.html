@@ -220,6 +220,8 @@
     }
 
     let suppressPreviewRequirementsMessage = false;
+    let previewRequestInFlight = false;
+    let previewLockedUntilChanges = false;
 
     function clearStoredRoundMakerData() {
         getPersistedFields().forEach((field) => {
@@ -346,12 +348,19 @@
         }
 
         const isReady = hasRoundMakerTitle() && hasRoundMakerCreatorSelection();
-        previewButton.disabled = !isReady;
-        previewButton.setAttribute('aria-disabled', String(!isReady));
+        const isDisabled = !isReady || previewRequestInFlight || previewLockedUntilChanges;
+        previewButton.disabled = isDisabled;
+        previewButton.setAttribute('aria-disabled', String(isDisabled));
 
         if (requirementsMessage) {
             requirementsMessage.style.display = (isReady || suppressPreviewRequirementsMessage) ? 'none' : 'block';
         }
+    }
+
+    function unlockPreviewButtonForChanges() {
+        suppressPreviewRequirementsMessage = false;
+        previewLockedUntilChanges = false;
+        updatePreviewButtonState();
     }
 
 
@@ -371,14 +380,8 @@
     }
 
     $(document).ready(function() {
-        $('#round-title, #round-creator').on('input change', function() {
-            suppressPreviewRequirementsMessage = false;
-            updatePreviewButtonState();
-        });
-
-        $('#coop').on('change', function() {
-            suppressPreviewRequirementsMessage = false;
-            updatePreviewButtonState();
+        $('#round-title, #round-creator, #coop, #theme-selector, #iconCheckbox, input[id^="question-"], input[id^="answer-"]').on('input change', function() {
+            unlockPreviewButtonForChanges();
         });
 
         $('#chat-form').on('submit', function(e) {
@@ -662,10 +665,16 @@
         }
 
         $('#preview-button').on('click', function() {
+            if (previewRequestInFlight || previewLockedUntilChanges) {
+                updatePreviewButtonState();
+                return;
+            }
             if (!hasRoundMakerTitle() || !hasRoundMakerCreatorSelection()) {
                 updatePreviewButtonState();
                 return;
             }
+            previewRequestInFlight = true;
+            updatePreviewButtonState();
             $('#preview-spinner').show();  // Show spinner
             const iurls = {};
             var requests = 10;
@@ -713,17 +722,24 @@
                     success: function (data) {
                         $('#preview-spinner').hide();  // Hide spinner
                         presentationId = data.new_id;  // Update the presentationId variable with the new id
+                        previewRequestInFlight = false;
+                        previewLockedUntilChanges = true;
+                        updatePreviewButtonState();
                         updateIframeSrc()
                         $('#slides-preview').css('display', 'block');
                         $('#submit-button').css('display', 'block');
                     },
                     error: function(error) {
                         $('#preview-spinner').hide();
+                        previewRequestInFlight = false;
+                        updatePreviewButtonState();
                         console.error('Error generating preview:', error);
                     }
                 });
             }).catch(function(error) {
                 $('#preview-spinner').hide();
+                previewRequestInFlight = false;
+                updatePreviewButtonState();
                 console.error('Error generating icons:', error);
             });
         });
