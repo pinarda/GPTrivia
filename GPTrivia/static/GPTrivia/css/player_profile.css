@@ -1590,6 +1590,11 @@ a {
 
     .profile-settings-actions {
         flex-direction: column;
+        align-items: center;
+    }
+
+    .profile-settings-actions .profile-player-button {
+        width: min(100%, 240px);
     }
 
     .profile-settings-secondary-actions {
