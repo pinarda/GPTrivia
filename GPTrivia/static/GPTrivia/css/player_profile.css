@@ -584,6 +584,15 @@ a {
 
     .profile-intro-copy {
         grid-area: intro;
+        align-self: start;
+        min-height: 0;
+        max-height: 10.75rem;
+    }
+
+    .profile-intro-form,
+    .profile-intro-box {
+        max-height: 10.75rem;
+        overflow-y: auto;
     }
 
     .profile-deferred-placeholder--summary {
