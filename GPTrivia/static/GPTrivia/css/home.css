@@ -130,7 +130,7 @@ main {
     margin: 0;
     vertical-align: middle;
     transform-origin: center;
-    color: var(--home-table-text);
+    object-fit: contain;
 }
 
 .loading-cell{
@@ -142,10 +142,6 @@ main {
 
 .loading-inline-spinner {
     animation: spin 1.8s linear infinite;
-}
-
-body.site-shell[data-profile-theme="light"] #rounds-spinner {
-    color: var(--home-table-text);
 }
 
 @keyframes spin {

@@ -222,12 +222,8 @@ a {
     flex: 0 0 auto;
     vertical-align: middle;
     transform-origin: center;
-    color: var(--profile-page-text);
+    object-fit: contain;
     animation: profile-loading-spin 1.8s linear infinite;
-}
-
-body.site-shell[data-profile-theme="light"] .profile-loading-spinner {
-    color: var(--profile-page-text);
 }
 
 .profile-deferred-placeholder--summary {

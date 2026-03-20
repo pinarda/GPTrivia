@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/home.css' %}?v=20260320a">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/home.css' %}?v=20260320b">
   <style>
 :root {
     --shell-chrome-color: #0073cc;
@@ -986,20 +986,12 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                     <div id="rounds-placeholder" class="round-selection-table-row">
                       <div class="round-selection-table-cell loading-cell" colspan="6">
                           <span id="rounds-loading-text">Loading rounds…</span>
-                          <svg
+                          <img
+                              src="{% static 'GPTrivia/css/ouroboros.png' %}"
                               id="rounds-spinner"
-                              class="loading-inline-spinner loading-ouroboros-spinner"
-                              viewBox="0 0 64 64"
-                              aria-hidden="true"
-                              focusable="false"
+                              class="loading-inline-spinner"
+                              alt="Loading..."
                           >
-                              <g fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
-                                  <path d="M19 52c-7-4.2-11.5-11.9-11.5-20.5C7.5 18 18.5 7 32 7h8.5c8.3 0 15 6.3 15 14.1 0 5.8-3.7 10.9-9 13l-2.5-4.6 6-1.2-3.1-5.2-5.6 2-4.5-3.9 1 5.7-4.3 3.9 5.7-.3 3.8 4.4"/>
-                                  <circle cx="32" cy="34" r="17" opacity="0.45"/>
-                                  <path d="M44 22.5c3.1 2.9 5 7 5 11.5 0 8.8-7.2 16-16 16s-16-7.2-16-16 7.2-16 16-16c3.4 0 6.6 0.9 9.4 2.5" opacity="0.72"/>
-                                  <circle cx="44.5" cy="12.4" r="1.8" fill="currentColor" stroke="none"/>
-                              </g>
-                          </svg>
                       </div>
                     </div>
 
