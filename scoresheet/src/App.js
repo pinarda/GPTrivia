@@ -345,6 +345,16 @@ import {
         }
       `;
 
+    const RoundSwitchFormControl = styled(StyledFormControl)`
+      @media (max-width: 1000px) {
+        max-width: 12.25rem;
+        width: min(100%, 12.25rem);
+        padding: 0.34rem 0.42rem 0.42rem;
+        border: 2px solid var(--scoresheet-border-soft, rgba(255, 255, 255, 0.22));
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+      }
+    `;
+
     const JokerFormControl = styled(StyledFormControl).attrs(({ className }) => ({
       className: className ? `star-ricochet ${className}` : 'star-ricochet',
     }))`
@@ -395,6 +405,83 @@ import {
         @media (max-width: 1000px) {
           font-size: 0.92rem;
         }
+    `;
+
+    const RoundSwitchMobileHeader = styled.div`
+      display: none;
+
+      @media (max-width: 1000px) {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.38rem;
+        margin-bottom: 0.22rem;
+        color: var(--scoresheet-text, #fff);
+        font-family: "Monaco";
+        text-align: center;
+      }
+    `;
+
+    const RoundSwitchChevron = styled.span`
+      font-size: 0.96rem;
+      line-height: 1;
+      opacity: 0.82;
+    `;
+
+    const RoundSwitchMobileTitle = styled.span`
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: 0.01em;
+    `;
+
+    const RoundSwitchBadge = styled.span`
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.08rem 0.32rem;
+      border: 1px solid var(--scoresheet-border-soft, rgba(255, 255, 255, 0.22));
+      font-size: 0.58rem;
+      line-height: 1.1;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.88;
+    `;
+
+    const RoundSwitchHelper = styled.div`
+      display: none;
+
+      @media (max-width: 1000px) {
+        display: block;
+        margin-top: 0.28rem;
+        color: var(--scoresheet-text-muted, rgba(255, 255, 255, 0.5));
+        font-family: "Monaco";
+        font-size: 0.7rem;
+        line-height: 1.25;
+        text-align: center;
+      }
+    `;
+
+    const RoundSwitchSelect = styled(StyledSelect)`
+      @media (max-width: 1000px) {
+        && .MuiOutlinedInput-notchedOutline {
+          border-width: 2px;
+          border-color: var(--scoresheet-border-soft, rgba(255, 255, 255, 0.22));
+        }
+
+        &&:hover .MuiOutlinedInput-notchedOutline,
+        &&.Mui-focused .MuiOutlinedInput-notchedOutline,
+        && .Mui-focused .MuiOutlinedInput-notchedOutline {
+          border-width: 2px;
+          border-color: var(--scoresheet-border-soft, rgba(255, 255, 255, 0.22));
+        }
+
+        && .MuiSelect-select {
+          font-size: 0.98rem;
+          font-weight: 700;
+          text-align: center;
+        }
+      }
     `;
 
 
@@ -3133,10 +3220,17 @@ const PlayerTable = () => {
           </LocalizationProvider>
       </StyledFormControl>
 
-      <StyledFormControl>
-          <StyledInputLabel className={"showonsmall"}>View Round</StyledInputLabel>
-            <StyledSelect
+      <RoundSwitchFormControl>
+          <RoundSwitchMobileHeader>
+            <RoundSwitchChevron aria-hidden="true">‹</RoundSwitchChevron>
+            <RoundSwitchMobileTitle>Switch Round</RoundSwitchMobileTitle>
+            <RoundSwitchChevron aria-hidden="true">›</RoundSwitchChevron>
+            <RoundSwitchBadge>Current</RoundSwitchBadge>
+          </RoundSwitchMobileHeader>
+          <StyledInputLabel className={"showonsmall"}>Switch Round</StyledInputLabel>
+            <RoundSwitchSelect
               className={"showonsmall"}
+              inputProps={{ 'aria-label': 'Switch Round' }}
               value={selectedColumnIndex.toString()}
               MenuProps={dropdownMenuProps}
               onChange={e => {
@@ -3148,8 +3242,9 @@ const PlayerTable = () => {
               {rounds.map((round, index) => (
                   <MenuItem key={index} value={index+2}>{round.title}</MenuItem>
               ))}
-          </StyledSelect>
-      </StyledFormControl>
+          </RoundSwitchSelect>
+          <RoundSwitchHelper>Use this menu to change the visible round.</RoundSwitchHelper>
+      </RoundSwitchFormControl>
     </CompactTopControlGroup>
   );
 
