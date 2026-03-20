@@ -930,6 +930,22 @@
         return window.matchMedia('(max-width: 768px)').matches;
     }
 
+    function normalizePlotTitleConfig(titleText, compactLayout) {
+        return {
+            text: titleText,
+            x: 0.5,
+            xanchor: 'center',
+            y: 0.98,
+            yanchor: 'top',
+            automargin: true,
+            font: {
+                color: analysisTextColor,
+                family: 'YoungSerif',
+                size: compactLayout ? 15 : 18,
+            },
+        };
+    }
+
     function getPlotContainerWidth(divId, compactFallback = 320, desktopFallback = 620) {
         const compactLayout = isCompactAnalysisLayout();
         const plotElement = document.getElementById(divId);
@@ -938,6 +954,21 @@
             compactLayout ? compactFallback : desktopFallback,
             (cardElement ? cardElement.clientWidth : plotElement?.clientWidth) || 0
         );
+    }
+
+    function preparePlotContainer(divId, height) {
+        const plotElement = document.getElementById(divId);
+        if (!plotElement) {
+            return;
+        }
+
+        plotElement.style.width = '100%';
+        plotElement.style.maxWidth = '100%';
+        plotElement.style.margin = '0 auto';
+        if (height) {
+            plotElement.style.height = `${height}px`;
+            plotElement.style.minHeight = `${height}px`;
+        }
     }
 
     function buildViolinXPositions(count) {
@@ -1075,19 +1106,21 @@
     function buildResponsiveBarLayout(targetId, data, extraLayout = {}) {
         const compactLayout = isCompactAnalysisLayout();
         const containerWidth = getPlotContainerWidth(targetId, 320, 720);
+        const height = compactLayout ? Math.max(340, Math.min(containerWidth * 0.94, 430)) : 500;
+        preparePlotContainer(targetId, height);
         const baseLayout = {
-            title: data.title,
+            title: normalizePlotTitleConfig(data.title, compactLayout),
             autosize: true,
-            height: compactLayout ? Math.max(340, Math.min(containerWidth * 0.94, 430)) : 500,
+            height,
             margin: {
-                t: compactLayout ? 64 : 78,
-                r: compactLayout ? 10 : 20,
+                t: compactLayout ? 84 : 92,
+                r: compactLayout ? 18 : 26,
                 b: compactLayout ? 112 : 92,
-                l: compactLayout ? 54 : 70,
+                l: compactLayout ? 46 : 66,
             },
             xaxis: {
                 title: data.xaxis,
-                tickangle: compactLayout ? -45 : -30,
+                tickangle: compactLayout ? -38 : -30,
                 tickfont: {
                     size: compactLayout ? 10 : 12,
                 },
@@ -1777,6 +1810,8 @@
         setPlotDescription('PCAplot', buildPlotDescription('PCAplot', data));
         const compactLayout = isCompactAnalysisLayout();
         const containerWidth = getPlotContainerWidth('PCAplot', 320, 720);
+        const height = compactLayout ? Math.max(390, Math.min(containerWidth * 1.05, 520)) : 760;
+        preparePlotContainer('PCAplot', height);
         // Trace for the principal component scores
         {#const scoresTrace = {#}
         {#    x: data.PC1,#}
@@ -1815,11 +1850,11 @@
         }};
 
         const layout = {
-            title: data.title,
+            title: normalizePlotTitleConfig(data.title, compactLayout),
             autosize: true,
-            height: compactLayout ? Math.max(390, Math.min(containerWidth * 1.05, 520)) : 760,
+            height,
             margin: {
-                t: compactLayout ? 66 : 82,
+                t: compactLayout ? 78 : 92,
                 r: compactLayout ? 4 : 14,
                 b: compactLayout ? 6 : 16,
                 l: compactLayout ? 4 : 14,
@@ -1867,7 +1902,7 @@
         };
 
         const layout = {
-            title: data.title_corr,
+            title: normalizePlotTitleConfig(data.title_corr, heatmapLayout.compactLayout),
             width: heatmapLayout.width,
             height: heatmapLayout.height,
             margin: heatmapLayout.margin,
@@ -1944,7 +1979,7 @@
         };
 
         const layout = {
-            title: data.title_corr,
+            title: normalizePlotTitleConfig(data.title_corr, heatmapLayout.compactLayout),
             width: heatmapLayout.width,
             height: heatmapLayout.height,
             margin: heatmapLayout.margin,
@@ -2030,6 +2065,7 @@
 
     function renderTriviaNightStreak(data) {
         setPlotDescription('trivia-night-streak', buildPlotDescription('trivia-night-streak', data));
+        const compactLayout = isCompactAnalysisLayout();
         const trace = {
             x: data.dates,
             y: data.streaks,
@@ -2037,7 +2073,7 @@
             mode: 'lines+markers',
             marker: {
                 color: 'rgba(64, 224, 208, 1)',  // Bright turquoise for markers
-                size: 8
+                size: compactLayout ? 7 : 8
             },
             line: {
                 color: 'rgba(255, 127, 80, 1)',  // Coral color for line
@@ -2045,27 +2081,31 @@
             }
         };
 
-        const layout = {
-            title: data.title,
+        const layout = buildResponsiveBarLayout('trivia-night-streak', {
+            ...data,
+            xaxis: 'Date',
+            yaxis: 'Current Streak',
+        }, {
+            height: compactLayout ? 360 : 500,
             xaxis: {
-                title: 'Date'
+                title: 'Date',
+                type: 'category',
+                tickangle: compactLayout ? -55 : -45,
             },
             yaxis: {
-                title: 'Current Streak'
+                title: 'Current Streak',
+                rangemode: 'tozero',
+                dtick: 1,
             },
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            font: {
-                color: "#ffffff",
-                family: "YoungSerif"
-            }
-        };
+            bargap: undefined,
+        });
 
         const config = {
             scrollZoom: false, // Disable scroll to zoom
             displayModeBar: true,
             modeBarButtonsToRemove: ['zoom2d', 'pan2d', 'select2d', 'lasso2d'], // Remove some interactivity buttons
-            displaylogo: false // Remove Plotly logo
+            displaylogo: false, // Remove Plotly logo
+            responsive: true,
         };
 
         Plotly.newPlot('trivia-night-streak', [trace], layout, config);
