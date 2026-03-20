@@ -2092,7 +2092,7 @@
         const layout = buildResponsiveBarLayout('catBar', data, {
             xaxis: {
                 title: data.xaxis,
-                tickangle: compactLayout ? 0 : -30,
+                tickangle: compactLayout ? -28 : -30,
                 tickmode: compactLayout ? 'array' : undefined,
                 tickvals: compactLayout ? data.categories : undefined,
                 ticktext: compactLayout ? data.categories.map(buildCompactCategoryTickLabel) : undefined,
