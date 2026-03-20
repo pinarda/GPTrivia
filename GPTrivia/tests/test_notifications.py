@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
@@ -58,3 +59,22 @@ class NotificationSubscriptionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"success": True, "deleted": True})
         self.assertFalse(PushSubscription.objects.filter(endpoint="https://example.com/push/123").exists())
+
+
+class ScheduledNotificationTests(TestCase):
+    @patch("GPTrivia.management.commands.send_trivia_push.send_push_to_all")
+    @patch("GPTrivia.management.commands.send_trivia_push.async_to_sync")
+    def test_send_trivia_push_counts_only_unused_round_creators(self, mock_async_to_sync, mock_send_push):
+        mock_async_to_sync.return_value = lambda: [
+            {"creator": "Alex", "is_new": True},
+            {"creator": "Megan", "is_new": True},
+            {"creator": "Jenny", "is_new": False},
+            {"creator": "Chris", "is_new": False},
+        ]
+
+        call_command("send_trivia_push")
+
+        mock_send_push.assert_called_once_with(
+            "Trivia at 7:30pm PST!",
+            "We have unused rounds from 2 different creators (Alex, Megan).",
+        )
