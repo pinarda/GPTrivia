@@ -188,6 +188,7 @@ class ProfileIconTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Enable Round Analysis')
+        self.assertContains(response, 'OpenAI response storage is disabled for these requests.')
 
         toggle_response = self.client.post(
             reverse('toggle_round_analysis_opt_in', args=['Alex']),

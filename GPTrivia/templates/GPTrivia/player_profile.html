@@ -361,7 +361,14 @@
                         <button class="expand-collapse-button profile-player-button" id="passwordbtn" type="submit">Change Password</button>
                     </form>
 
-                    <form class="profile-inline-form" method="post" action="{% url 'toggle_round_analysis_opt_in' player_name=player_name %}">
+                    <form
+                        class="profile-inline-form"
+                        method="post"
+                        action="{% url 'toggle_round_analysis_opt_in' player_name=player_name %}"
+                        data-round-analysis-opt-in-form="true"
+                        data-enabling-round-analysis="{% if profile.round_analysis_opt_in %}false{% else %}true{% endif %}"
+                        data-round-analysis-confirm="Enabling round analysis gives permission for your rounds to be read by GPT for question extraction and classification. OpenAI response storage is disabled for these requests. Continue?"
+                    >
                         {% csrf_token %}
                         <input type="hidden" name="round_analysis_opt_in" value="{% if profile.round_analysis_opt_in %}0{% else %}1{% endif %}">
                         <button class="expand-collapse-button profile-player-button" id="round-analysis-opt-in-btn" type="submit">
@@ -1702,6 +1709,18 @@
                 initializeNotificationButton(notifyBtn);
                 notifyBtn.addEventListener('click', toggleNotificationsForDevice);
             }
+
+            document.querySelectorAll('[data-round-analysis-opt-in-form="true"]').forEach(form => {
+                form.addEventListener('submit', event => {
+                    if (form.dataset.enablingRoundAnalysis !== 'true') {
+                        return;
+                    }
+                    const confirmMessage = form.dataset.roundAnalysisConfirm || '';
+                    if (confirmMessage && !window.confirm(confirmMessage)) {
+                        event.preventDefault();
+                    }
+                });
+            });
 
             setButtonColors();
             setPlayerLinkHoverColors();
