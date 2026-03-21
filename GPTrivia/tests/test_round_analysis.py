@@ -11,6 +11,7 @@ from PIL import Image
 
 from GPTrivia.models import GPTriviaRound, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun
 from GPTrivia.round_analysis import (
+    _apply_apps_script_media_links,
     _analyze_round_slides,
     _extract_embedded_slide_media_assets,
     _extract_slide_media_items,
@@ -402,6 +403,37 @@ class RoundAnalysisTests(TestCase):
             "https://example.com/audio-placeholder.png",
         )
 
+    def test_apply_apps_script_media_links_updates_audio_placeholder_to_external_url(self):
+        enriched_items = _apply_apps_script_media_links(
+            [
+                {
+                    "kind": "audio",
+                    "element_id": "image-audio-control",
+                    "url": "",
+                    "playable_url": "",
+                    "placeholder_url": "https://example.com/audio-placeholder.png",
+                    "likely_audio_control": True,
+                }
+            ],
+            {
+                "image-audio-control": {
+                    "linked_url": "https://drive.google.com/file/d/audio123/view?usp=sharing",
+                    "linked_kind": "audio",
+                }
+            },
+        )
+
+        self.assertEqual(len(enriched_items), 1)
+        self.assertEqual(enriched_items[0]["kind"], "audio")
+        self.assertEqual(
+            enriched_items[0]["playable_url"],
+            "https://drive.google.com/file/d/audio123/view?usp=sharing",
+        )
+        self.assertEqual(
+            enriched_items[0]["url"],
+            "https://drive.google.com/file/d/audio123/view?usp=sharing",
+        )
+
     def test_extract_embedded_slide_media_assets_prefers_audio_over_icon_images(self):
         pptx_buffer = io.BytesIO()
         with zipfile.ZipFile(pptx_buffer, "w") as archive:
@@ -633,6 +665,7 @@ class RoundAnalysisTests(TestCase):
         self.assertFalse(saved_entry.media_file)
 
     @patch("GPTrivia.round_analysis._is_placeholder_media_url", return_value=True)
+    @patch("GPTrivia.round_analysis.get_round_analysis_playable_media_url", return_value="")
     @patch(
         "GPTrivia.round_analysis.get_round_analysis_playable_media_asset",
         return_value={
@@ -642,7 +675,7 @@ class RoundAnalysisTests(TestCase):
             "kind": "audio",
         },
     )
-    def test_round_analysis_media_streams_embedded_audio_when_placeholder_only(self, _asset_mock, _placeholder_mock):
+    def test_round_analysis_media_streams_embedded_audio_when_placeholder_only(self, _asset_mock, _rebuilt_url_mock, _placeholder_mock):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
             title="Embedded Audio Round",
@@ -726,7 +759,54 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], "https://drive.google.com/file/d/audio123/view?usp=sharing")
 
+    @patch(
+        "GPTrivia.round_analysis.get_round_analysis_playable_media_url",
+        return_value="https://drive.google.com/file/d/audio456/view?usp=sharing",
+    )
     @patch("GPTrivia.round_analysis._is_placeholder_media_url", return_value=True)
+    def test_round_analysis_media_redirects_to_rebuilt_slide_link(self, _placeholder_mock, _rebuilt_url_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Rebuilt Audio Round",
+            major_category="Music",
+            minor_category1="Songs",
+            minor_category2="",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/rebuilt-audio-round/edit#slide=id.r1",
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="music",
+            source_presentation_id="rebuilt-audio-round",
+            source_slide_range="1-1",
+        )
+        entry = RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="Clip 1",
+            answer_text="Song",
+            round_type="music",
+            media_kind="audio",
+            media_url="https://example.com/audio-placeholder.png",
+            source_slide_number=1,
+            player_correctness={"Alex": ""},
+        )
+
+        response = self.client.get(reverse("round_analysis_media", args=[entry.id]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "https://drive.google.com/file/d/audio456/view?usp=sharing")
+
+    @patch("GPTrivia.round_analysis._is_placeholder_media_url", return_value=True)
+    @patch("GPTrivia.round_analysis.get_round_analysis_playable_media_url", return_value="")
     @patch(
         "GPTrivia.round_analysis.get_round_analysis_playable_media_asset",
         return_value={
@@ -736,7 +816,7 @@ class RoundAnalysisTests(TestCase):
             "kind": "audio",
         },
     )
-    def test_round_analysis_media_ignores_saved_image_for_audio_entry(self, _asset_mock, _placeholder_mock):
+    def test_round_analysis_media_ignores_saved_image_for_audio_entry(self, _asset_mock, _rebuilt_url_mock, _placeholder_mock):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
             title="Audio Entry With Old Icon",

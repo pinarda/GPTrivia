@@ -19,11 +19,13 @@ import requests
 from django.core.files.base import ContentFile
 from django.db import close_old_connections
 from django.utils import timezone
+import httplib2
 from PIL import Image, ImageOps
 
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
+from google_auth_httplib2 import AuthorizedHttp
 
 from .models import GPTriviaRound, MergedPresentation, PushSubscription, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun
 from .player_scores import display_name_for_player_field, get_all_player_fields
@@ -205,6 +207,28 @@ def _load_google_credentials():
     return credentials
 
 
+def _build_script_service(credentials):
+    http = httplib2.Http(timeout=60)
+    authorized_http = AuthorizedHttp(credentials, http=http)
+    return build('script', 'v1', http=authorized_http, cache_discovery=False)
+
+
+def _run_apps_script_function(function_name, parameters):
+    from .mail import APPS_SCRIPT_ID
+
+    credentials = _load_google_credentials()
+    script_service = _build_script_service(credentials)
+    request = {
+        'function': function_name,
+        'parameters': parameters,
+        'devMode': True,
+    }
+    response = script_service.scripts().run(scriptId=APPS_SCRIPT_ID, body=request).execute()
+    if response.get('error'):
+        raise RuntimeError(response['error'])
+    return ((response.get('response') or {}).get('result')) or []
+
+
 def _dimension_magnitude(dimension):
     try:
         return float((dimension or {}).get('magnitude') or 0)
@@ -302,6 +326,55 @@ def _extract_playable_media_url(element, *, placeholder_urls=None):
         if candidate_list:
             return candidate_list[0]
     return ''
+
+
+def _fetch_slide_media_links_via_apps_script(presentation_id, slide_id):
+    if not presentation_id or not slide_id:
+        return {}
+
+    try:
+        linked_media_rows = _run_apps_script_function(
+            'getSlideLinkedMediaUrls',
+            [presentation_id, slide_id],
+        )
+    except Exception:
+        logger.exception(
+            "Could not fetch linked slide media URLs via Apps Script for %s slide %s",
+            presentation_id,
+            slide_id,
+        )
+        return {}
+
+    linked_media_map = {}
+    for row in linked_media_rows or []:
+        if not isinstance(row, dict):
+            continue
+        element_id = str(row.get('element_id') or '').strip()
+        linked_url = str(row.get('linked_url') or '').strip()
+        if not element_id or not linked_url:
+            continue
+        linked_media_map[element_id] = {
+            'linked_url': linked_url,
+            'linked_kind': _normalize_media_kind(row.get('linked_kind') or ''),
+        }
+    return linked_media_map
+
+
+def _apply_apps_script_media_links(media_items, linked_media_map):
+    enriched_items = []
+    for media_item in media_items or []:
+        enriched_item = dict(media_item)
+        linked_media = linked_media_map.get(str(media_item.get('element_id') or '').strip(), {})
+        linked_url = str(linked_media.get('linked_url') or '').strip()
+        linked_kind = _normalize_media_kind(linked_media.get('linked_kind') or '')
+        if linked_url and not _is_placeholder_media_url(linked_url, expected_kind=linked_kind or media_item.get('kind')):
+            enriched_item['playable_url'] = linked_url
+            if enriched_item.get('kind') in {'audio', 'video'} or enriched_item.get('likely_audio_control'):
+                enriched_item['url'] = linked_url
+            if linked_kind in {'audio', 'video'}:
+                enriched_item['kind'] = linked_kind
+        enriched_items.append(enriched_item)
+    return enriched_items
 
 
 def _is_placeholder_media_url(url, *, expected_kind=''):
@@ -412,6 +485,38 @@ def get_round_analysis_playable_media_asset(entry):
             if asset.get('kind') == preferred_kind:
                 return asset
     return embedded_assets[0]
+
+
+def get_round_analysis_playable_media_url(entry):
+    if not entry or not entry.source_slide_number:
+        return ''
+
+    expected_kind = _normalize_media_kind(entry.media_kind)
+    if expected_kind not in {'audio', 'video'}:
+        return ''
+
+    try:
+        slide_payload = _build_round_slide_payload(entry.round, include_thumbnails=False)
+    except Exception:
+        logger.exception(
+            "Could not rebuild slide payload to locate linked media for analysis entry %s",
+            getattr(entry, 'id', ''),
+        )
+        return ''
+
+    source_slide = _find_slide_by_number(slide_payload, entry.source_slide_number)
+    if not source_slide:
+        return ''
+
+    media_items = source_slide.get('media_items') or []
+    for preferred_kind in [expected_kind, 'audio', 'video']:
+        for media_item in media_items:
+            if _normalize_media_kind(media_item.get('kind')) != preferred_kind:
+                continue
+            playable_url = str(media_item.get('playable_url') or media_item.get('url') or '').strip()
+            if playable_url and not _is_placeholder_media_url(playable_url, expected_kind=preferred_kind):
+                return playable_url
+    return ''
 
 
 def _extract_slide_media_items(slide):
@@ -552,7 +657,7 @@ def _fetch_slide_thumbnail_data_url(slides_service, credentials, presentation_id
     return f"data:{mime_type};base64,{encoded_bytes}"
 
 
-def _build_round_slide_payload(round_obj):
+def _build_round_slide_payload(round_obj, *, include_thumbnails=True):
     from .mail import (
         ROUND_SOURCE_MERGED_DECK,
         ROUND_SOURCE_UNKNOWN,
@@ -611,21 +716,34 @@ def _build_round_slide_payload(round_obj):
     for offset, slide in enumerate(selected_slides, start=start_index + 1):
         slide_text = re.sub(r'\s+', ' ', _extract_slide_text(slide)).strip()
         media_items = _extract_slide_media_items(slide)
+        slide_id = slide.get('objectId', '')
+        if media_items and any(
+            (media_item.get('kind') in {'audio', 'video'} or media_item.get('likely_audio_control'))
+            and not media_item.get('playable_url')
+            for media_item in media_items
+        ):
+            media_items = _apply_apps_script_media_links(
+                media_items,
+                _fetch_slide_media_links_via_apps_script(presentation_id, slide_id),
+            )
         if not slide_text and not media_items:
             continue
         slide_text_rows.append(
             {
                 'slide_number': offset,
-                'slide_id': slide.get('objectId', ''),
-                'slide_url': _google_slide_url(presentation_id, slide.get('objectId', '')),
+                'slide_id': slide_id,
+                'slide_url': _google_slide_url(presentation_id, slide_id),
                 'text': slide_text,
                 'speaker_notes': re.sub(r'\s+', ' ', _extract_speaker_notes_text(slide)).strip(),
                 'media_items': media_items,
-                'thumbnail_data_url': _fetch_slide_thumbnail_data_url(
-                    slides_service,
-                    credentials,
-                    presentation_id,
-                    slide.get('objectId', ''),
+                'thumbnail_data_url': (
+                    _fetch_slide_thumbnail_data_url(
+                        slides_service,
+                        credentials,
+                        presentation_id,
+                        slide_id,
+                    )
+                    if include_thumbnails else ''
                 ),
             }
         )

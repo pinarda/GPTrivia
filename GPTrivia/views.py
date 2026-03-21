@@ -924,7 +924,11 @@ def round_analysis_status(request, round_id):
 
 @login_required
 def round_analysis_media(request, entry_id):
-    from .round_analysis import _is_placeholder_media_url, get_round_analysis_playable_media_asset
+    from .round_analysis import (
+        _is_placeholder_media_url,
+        get_round_analysis_playable_media_asset,
+        get_round_analysis_playable_media_url,
+    )
 
     entry = get_object_or_404(
         RoundQuestionAnalysisEntry.objects.select_related('round', 'run'),
@@ -936,6 +940,10 @@ def round_analysis_media(request, entry_id):
 
     if entry.media_url and not _is_placeholder_media_url(entry.media_url, expected_kind=expected_kind):
         return redirect(entry.media_url)
+
+    rebuilt_playable_url = get_round_analysis_playable_media_url(entry)
+    if rebuilt_playable_url:
+        return redirect(rebuilt_playable_url)
 
     if entry.media_file:
         saved_file_content_type = mimetypes.guess_type(entry.media_file.name)[0] or 'application/octet-stream'
