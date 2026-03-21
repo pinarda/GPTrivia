@@ -143,8 +143,6 @@ def _run_round_analysis_batch(*, run_ids, batch_label=''):
         if not runs:
             return
 
-        _notify_alex_round_analysis_started(runs, batch_label=batch_label)
-
         success_count = 0
         failed_count = 0
         for run in runs:
@@ -1192,21 +1190,6 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
         ]
     )
     RoundQuestionAnalysisRun.objects.filter(round=run.round).exclude(id=run.id).delete()
-
-
-def _notify_alex_round_analysis_started(runs, *, batch_label=''):
-    if not runs:
-        return
-
-    if len(runs) == 1:
-        round_obj = runs[0].round
-        title = "Round Analysis Started"
-        body = f"Started analyzing {round_obj.title} ({round_obj.date:%m/%d/%Y})."
-    else:
-        title = "Round Analysis Started"
-        label = batch_label or f"{len(runs)} rounds"
-        body = f"Started analyzing {label}."
-    _send_push_to_username(ANALYSIS_NOTIFICATION_USERNAME, title, body)
 
 
 def _notify_alex_round_analysis_finished(runs, *, batch_label='', success_count=0, failed_count=0):
