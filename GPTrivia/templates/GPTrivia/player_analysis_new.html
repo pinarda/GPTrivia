@@ -1225,7 +1225,14 @@
     function getSquareCellHeatmapLayout(divId, columnCount, rowCount) {
         const compactLayout = isCompactAnalysisLayout();
         const plotElement = document.getElementById(divId);
-        const containerWidth = getPlotContainerWidth(divId, 320, 640);
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+        const availableContainerWidth = getPlotContainerWidth(divId, 320, 640);
+        const containerWidth = compactLayout
+            ? availableContainerWidth
+            : Math.min(
+                availableContainerWidth,
+                Math.max(440, Math.min(viewportWidth * 0.46, 620))
+            );
         const margin = {
             l: compactLayout ? 52 : 88,
             r: compactLayout ? 16 : 48,
@@ -1239,7 +1246,7 @@
         const height = Math.round(innerHeight + margin.t + margin.b);
 
         if (plotElement) {
-            plotElement.style.width = '100%';
+            plotElement.style.width = `${width}px`;
             plotElement.style.maxWidth = '100%';
             plotElement.style.margin = '0 auto';
             plotElement.style.height = `${height}px`;
