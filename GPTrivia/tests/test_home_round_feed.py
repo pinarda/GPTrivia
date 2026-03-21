@@ -264,3 +264,7 @@ class HomeRoundFeedTests(TestCase):
             stored_round.link,
             "https://docs.google.com/presentation/d/presentation-generated/edit#slide=id.copied-round",
         )
+        self.assertEqual(
+            stored_round.source_link,
+            "https://docs.google.com/presentation/d/source-merged/edit#slide=id.round-start",
+        )

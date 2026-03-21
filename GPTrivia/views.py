@@ -2439,7 +2439,7 @@ def _collect_rounds():
             "title": trivia_round.title,
             "creator": trivia_round.creator,
             "link": trivia_round.link,
-            "old_link": trivia_round.link,
+            "old_link": trivia_round.source_link or trivia_round.link,
             "presentation_id": _extract_google_presentation_id(trivia_round.link),
             "shared_date": trivia_round.date.isoformat() if trivia_round.date else "",
             "coop": bool(trivia_round.cooperative),
@@ -3059,6 +3059,7 @@ def home(request):
                 # round coop will be 0 if the checkbox is not checked, 1 if it is
                 new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
                 new_round.link = round_links[round_index]
+                new_round.source_link = ordered_old_links[round_index] or ordered_links[round_index]
                 new_round.save()
                 if ordered_rounds[round_index].get('is_new') and not new_round.replay:
                     round_ids_for_analysis.append(new_round.id)
@@ -3219,6 +3220,7 @@ def home(request):
                 new_round.replay = 0
                 new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
                 new_round.link = new_links[round_index]
+                new_round.source_link = ordered_old_links[round_index] or ordered_links[round_index]
                 new_round.save()
                 if ordered_rounds[round_index].get('is_new') and not new_round.replay:
                     round_ids_for_analysis.append(new_round.id)

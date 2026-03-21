@@ -885,6 +885,33 @@ class PlayerAnalysisViewTests(TestCase):
         self.assertIn('Loaded Later Round', payload['created_rounds_html'])
         self.assertIn('Created Round Categories', payload['created_categories_html'])
 
+    def test_profile_creator_panels_prefer_source_link_when_available(self):
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Source Link Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Motion",
+            date="2023-01-01",
+            round_number=1,
+            max_score=10,
+            score_alex=8,
+            score_megan=6,
+            link="https://docs.google.com/presentation/d/copied-deck/edit#slide=id.copy",
+            source_link="https://docs.google.com/presentation/d/original-source/edit",
+        )
+
+        response = self.client.get(
+            reverse('player_profile_creator_panels', args=['Alex']),
+            HTTP_ACCEPT='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn('https://docs.google.com/presentation/d/original-source/edit', payload['created_rounds_html'])
+        self.assertNotIn('https://docs.google.com/presentation/d/copied-deck/edit#slide=id.copy', payload['created_rounds_html'])
+
     def test_player_analysis_prefills_from_query_params(self):
         GPTriviaRound.objects.create(
             creator="Alex",

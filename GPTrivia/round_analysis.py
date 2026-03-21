@@ -166,7 +166,8 @@ def _build_round_slide_payload(round_obj):
         _infer_historical_round_slide_range,
     )
 
-    source_meta = _classify_round_source_link(round_obj.link)
+    analysis_link = round_obj.source_link or round_obj.link
+    source_meta = _classify_round_source_link(analysis_link)
     source_type = source_meta.get('source_type')
     presentation_id = source_meta.get('presentation_id')
     slide_id = source_meta.get('slide_id')
@@ -228,6 +229,7 @@ def _build_round_slide_payload(round_obj):
     return {
         'presentation_id': presentation_id,
         'slide_range_label': f"{start_index + 1}-{end_index + 1}",
+        'analysis_link': analysis_link,
         'slides': slide_text_rows,
     }
 

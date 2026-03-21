@@ -177,7 +177,7 @@
                             <button
                                 class="slides-button profile-player-button"
                                 type="button"
-                                data-presentation-url="{{ round.link }}"
+                                data-presentation-url="{% if round.source_link %}{{ round.source_link }}{% else %}{{ round.link }}{% endif %}"
                                 data-slides-target="profile-round-slides-{{ forloop.counter0 }}"
                                 aria-expanded="false"
                             >
@@ -305,7 +305,7 @@
                                     <button
                                         class="slides-button profile-player-button profile-round-detail-slides-button"
                                         type="button"
-                                        data-presentation-url="{{ round.link }}"
+                                        data-presentation-url="{% if round.source_link %}{{ round.source_link }}{% else %}{{ round.link }}{% endif %}"
                                         data-slides-target="profile-round-slides-{{ forloop.counter0 }}"
                                         aria-expanded="false"
                                     >
@@ -321,7 +321,7 @@
                                 <p class="profile-round-slides-link-row">
                                     <a
                                         class="profile-round-link profile-round-slides-link"
-                                        href="{{ round.link }}"
+                                        href="{% if round.source_link %}{{ round.source_link }}{% else %}{{ round.link }}{% endif %}"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                     >
@@ -493,7 +493,7 @@
                             <button
                                 class="slides-button profile-player-button profile-round-detail-slides-button"
                                 type="button"
-                                data-presentation-url="{{ round.link }}"
+                                data-presentation-url="{% if round.source_link %}{{ round.source_link }}{% else %}{{ round.link }}{% endif %}"
                                 data-slides-target="profile-round-mobile-slides-{{ forloop.counter0 }}"
                                 aria-expanded="false"
                             >
@@ -506,7 +506,7 @@
                             <p class="profile-round-slides-link-row">
                                 <a
                                     class="profile-round-link profile-round-slides-link"
-                                    href="{{ round.link }}"
+                                    href="{% if round.source_link %}{{ round.source_link }}{% else %}{{ round.link }}{% endif %}"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >
