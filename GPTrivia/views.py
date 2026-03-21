@@ -834,6 +834,12 @@ def _creator_allows_round_analysis(creator_name):
     return bool(_build_round_analysis_opt_in_map([creator_name]).get(str(creator_name or '').strip(), False))
 
 
+def _round_supports_manual_analysis(round_obj):
+    if not round_obj:
+        return False
+    return str(getattr(round_obj, 'major_category', '') or '').strip().casefold() != 'music'
+
+
 def _build_round_analysis_status_map(round_ids):
     normalized_round_ids = []
     seen_round_ids = set()
@@ -849,10 +855,16 @@ def _build_round_analysis_status_map(round_ids):
 
     from .round_analysis import latest_analysis_run_map
 
-    round_rows = list(GPTriviaRound.objects.filter(id__in=normalized_round_ids).values('id', 'creator'))
+    round_rows = list(
+        GPTriviaRound.objects.filter(id__in=normalized_round_ids).values('id', 'creator', 'major_category')
+    )
     creator_opt_in_map = _build_round_analysis_opt_in_map([row['creator'] for row in round_rows])
     creator_by_round_id = {
         row['id']: row['creator']
+        for row in round_rows
+    }
+    major_category_by_round_id = {
+        row['id']: row.get('major_category') or ''
         for row in round_rows
     }
     latest_run_map = latest_analysis_run_map(normalized_round_ids)
@@ -868,7 +880,10 @@ def _build_round_analysis_status_map(round_ids):
                 latest_run=latest_run_map.get(round_id),
                 has_completed_entries=round_id in rounds_with_completed_entries,
             ),
-            'can_trigger': bool(creator_opt_in_map.get(creator_by_round_id.get(round_id, ''), False)),
+            'can_trigger': bool(
+                creator_opt_in_map.get(creator_by_round_id.get(round_id, ''), False)
+                and str(major_category_by_round_id.get(round_id, '')).strip().casefold() != 'music'
+            ),
         }
         for round_id in normalized_round_ids
     }
@@ -985,6 +1000,16 @@ def trigger_round_analysis(request, round_id):
                 'status': _build_round_analysis_status_map([round_obj.id])[round_obj.id],
             }, status=400)
         messages.error(request, f"{round_obj.title} is marked as a replay round and cannot be analyzed.")
+        return redirect(next_url)
+
+    if not _round_supports_manual_analysis(round_obj):
+        if wants_json:
+            return JsonResponse({
+                'ok': False,
+                'message': f"{round_obj.title} is a music round and analysis is currently disabled for music rounds.",
+                'status': _build_round_analysis_status_map([round_obj.id])[round_obj.id],
+            }, status=400)
+        messages.error(request, f"{round_obj.title} is a music round and analysis is currently disabled for music rounds.")
         return redirect(next_url)
 
     if not _creator_allows_round_analysis(round_obj.creator):

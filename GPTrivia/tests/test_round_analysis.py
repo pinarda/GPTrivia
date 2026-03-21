@@ -98,6 +98,26 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(RoundQuestionAnalysisRun.objects.exists())
 
+    def test_trigger_round_analysis_rejects_music_round(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Music Round",
+            major_category="Music",
+            minor_category1="Songs",
+            minor_category2="",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/music-round/edit#slide=id.r1",
+        )
+
+        response = self.client.post(reverse("trigger_round_analysis", args=[round_obj.id]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(RoundQuestionAnalysisRun.objects.exists())
+
     def test_trigger_round_analysis_rejects_creator_without_opt_in(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Megan",
@@ -976,6 +996,29 @@ class RoundAnalysisTests(TestCase):
             replay=False,
             cooperative=False,
             link="https://docs.google.com/presentation/d/opt-in-required/edit#slide=id.r1",
+        )
+
+        response = self.client.get(reverse("rounds_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(
+            response,
+            reverse("trigger_round_analysis", args=[round_obj.id]),
+        )
+
+    def test_rounds_list_hides_analyze_button_for_music_round(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Music Round",
+            major_category="Music",
+            minor_category1="Songs",
+            minor_category2="",
+            date=datetime.date(2026, 3, 20),
+            round_number=5,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/music-round/edit#slide=id.r1",
         )
 
         response = self.client.get(reverse("rounds_list"))
