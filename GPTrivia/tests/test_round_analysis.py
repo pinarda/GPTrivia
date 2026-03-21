@@ -4,6 +4,7 @@ import datetime
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
 from django.test import TestCase
 from django.urls import reverse
 from PIL import Image
@@ -724,6 +725,59 @@ class RoundAnalysisTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], "https://drive.google.com/file/d/audio123/view?usp=sharing")
+
+    @patch("GPTrivia.round_analysis._is_placeholder_media_url", return_value=True)
+    @patch(
+        "GPTrivia.round_analysis.get_round_analysis_playable_media_asset",
+        return_value={
+            "filename": "clip.mp3",
+            "content_type": "audio/mpeg",
+            "content": b"mp3-bytes",
+            "kind": "audio",
+        },
+    )
+    def test_round_analysis_media_ignores_saved_image_for_audio_entry(self, _asset_mock, _placeholder_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Audio Entry With Old Icon",
+            major_category="Music",
+            minor_category1="Songs",
+            minor_category2="",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/audio-icon-round/edit#slide=id.r1",
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="music",
+            source_presentation_id="audio-icon-round",
+            source_slide_range="1-1",
+        )
+        entry = RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="Clip 1",
+            answer_text="Song",
+            round_type="music",
+            media_kind="audio",
+            media_url="https://example.com/audio-placeholder.png",
+            source_slide_number=1,
+            player_correctness={"Alex": ""},
+        )
+        entry.media_file.save("old-icon.png", ContentFile(b"png-bytes"), save=True)
+
+        response = self.client.get(reverse("round_analysis_media", args=[entry.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "audio/mpeg")
+        self.assertIn('filename="clip.mp3"', response["Content-Disposition"])
 
     @patch("GPTrivia.round_analysis._download_media_file", return_value=None)
     @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})

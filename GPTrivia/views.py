@@ -938,13 +938,15 @@ def round_analysis_media(request, entry_id):
         return redirect(entry.media_url)
 
     if entry.media_file:
-        file_handle = entry.media_file.open('rb')
-        response = FileResponse(
-            file_handle,
-            content_type=mimetypes.guess_type(entry.media_file.name)[0] or 'application/octet-stream',
-        )
-        response['Content-Disposition'] = f'inline; filename="{os.path.basename(entry.media_file.name)}"'
-        return response
+        saved_file_content_type = mimetypes.guess_type(entry.media_file.name)[0] or 'application/octet-stream'
+        if saved_file_content_type.startswith(f'{expected_kind}/'):
+            file_handle = entry.media_file.open('rb')
+            response = FileResponse(
+                file_handle,
+                content_type=saved_file_content_type,
+            )
+            response['Content-Disposition'] = f'inline; filename="{os.path.basename(entry.media_file.name)}"'
+            return response
 
     asset = get_round_analysis_playable_media_asset(entry)
     if not asset:
