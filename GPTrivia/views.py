@@ -58,7 +58,7 @@ from datetime import date
 from django.utils import timezone
 from django.http import FileResponse
 from django.core.cache import cache
-from .models import JeopardyQuestion, JeopardyRound, PushSubscription, SubmittedRound
+from .models import JeopardyQuestion, JeopardyRound, PushSubscription, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun, SubmittedRound
 from .player_scores import (
     FIXED_SCORE_FIELDS,
     MIN_ANALYSIS_ROUNDS,
@@ -752,6 +752,14 @@ def rounds_list(request):
     player_fields = _get_global_player_fields()
     player_names = [display_name_for_player_field(field) for field in player_fields]
     player_color_mapping = build_player_color_mapping(player_names)
+    from .round_analysis import latest_analysis_run_map
+
+    analysis_run_map = latest_analysis_run_map([round_obj.id for round_obj in rounds])
+    completed_run_ids_with_entries = set(
+        RoundQuestionAnalysisEntry.objects.filter(run_id__in=[run.id for run in analysis_run_map.values()])
+        .values_list('run_id', flat=True)
+        .distinct()
+    )
     text_color = {}
     for player in player_names:
         player_color = player_color_mapping[player]
@@ -768,9 +776,73 @@ def rounds_list(request):
         'initial_creator_search': initial_creator_search,
         'initial_category_search': initial_category_search,
         'initial_date_search': initial_date_search,
+        'analysis_status_map': {
+            round_id: {
+                'status': run.status,
+                'status_label': run.get_status_display(),
+                'has_completed_entries': run.status == RoundQuestionAnalysisRun.STATUS_COMPLETED and run.id in completed_run_ids_with_entries,
+            }
+            for round_id, run in analysis_run_map.items()
+        },
     }
 
     return render(request, 'GPTrivia/rounds_list.html', context)
+
+
+@login_required
+def round_analysis_list(request):
+    from .round_analysis import latest_completed_runs_with_entries
+
+    requested_round_id = (request.GET.get('round_id') or '').strip()
+    selected_round_id = None
+    try:
+        if requested_round_id:
+            selected_round_id = int(requested_round_id)
+    except (TypeError, ValueError):
+        selected_round_id = None
+
+    latest_runs = latest_completed_runs_with_entries(round_id=selected_round_id)
+    player_names = _get_global_player_names()
+    round_options = list(
+        GPTriviaRound.objects.order_by('-date', '-round_number', 'title').values('id', 'title', 'date', 'round_number')
+    )
+    return render(
+        request,
+        'GPTrivia/round_analysis_list.html',
+        {
+            'latest_runs': latest_runs,
+            'player_names': player_names,
+            'selected_round_id': selected_round_id,
+            'round_options': round_options,
+        },
+    )
+
+
+@login_required
+def trigger_round_analysis(request, round_id):
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    round_obj = get_object_or_404(GPTriviaRound, id=round_id)
+    next_url = (request.POST.get('next') or request.META.get('HTTP_REFERER') or reverse('rounds_list')).strip()
+
+    if round_obj.replay:
+        messages.error(request, f"{round_obj.title} is marked as a replay round and cannot be analyzed.")
+        return redirect(next_url)
+
+    from .round_analysis import queue_round_analysis
+
+    queued_run_ids = queue_round_analysis(
+        round_obj.id,
+        trigger_type=RoundQuestionAnalysisRun.TRIGGER_MANUAL,
+        initiated_by=request.user.username if request.user.is_authenticated else '',
+    )
+    if queued_run_ids:
+        messages.success(request, f"Round analysis queued for {round_obj.title}.")
+    else:
+        messages.info(request, f"Round analysis is already running for {round_obj.title}.")
+
+    return redirect(next_url)
 
 
 def blog_roboalex(request):
@@ -2845,6 +2917,7 @@ def home(request):
                     "old_link": request.POST.get(f"round_old_link_{idx}"),
                     "shared_date": request.POST.get(f"round_shared_date_{idx}"),
                     "coop": request.POST.get(f"round_coop_{idx}"),
+                    "is_new": str(request.POST.get(f"round_is_new_{idx}") or '').strip().lower() in {'1', 'true', 'yes', 'on'},
                 }
             # make sure there's at least one round, or else just return
             if not round_order:
@@ -2964,6 +3037,7 @@ def home(request):
             )
             print (new_presentation_id, creators, round_titles)
 
+            round_ids_for_analysis = []
             for round_index in range(len(round_titles)):
                 new_round = GPTriviaRound()
                 # Assign the round_data fields to the GPTriviaRound instance
@@ -2981,8 +3055,21 @@ def home(request):
                 new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
                 new_round.link = round_links[round_index]
                 new_round.save()
+                if ordered_rounds[round_index].get('is_new') and not new_round.replay:
+                    round_ids_for_analysis.append(new_round.id)
 
             _mark_selected_submitted_rounds_consumed(ordered_rounds)
+            if round_ids_for_analysis:
+                from .round_analysis import queue_round_analysis_batch
+
+                transaction.on_commit(
+                    lambda queued_ids=list(round_ids_for_analysis), initiated_by=(request.user.username if request.user.is_authenticated else ''), label=f"new rounds from {presentation_name}": queue_round_analysis_batch(
+                        queued_ids,
+                        trigger_type=RoundQuestionAnalysisRun.TRIGGER_AUTO,
+                        initiated_by=initiated_by,
+                        batch_label=label,
+                    )
+                )
 
         elif action == 'update':
 
@@ -3000,6 +3087,7 @@ def home(request):
                     "old_link": request.POST.get(f"round_old_link_{idx}"),
                     "shared_date": request.POST.get(f"round_shared_date_{idx}"),
                     "coop": request.POST.get(f"round_coop_{idx}"),
+                    "is_new": str(request.POST.get(f"round_is_new_{idx}") or '').strip().lower() in {'1', 'true', 'yes', 'on'},
                 }
 
             if not round_order:
@@ -3110,6 +3198,7 @@ def home(request):
             response_presentation = selected_presentation
             response_presentation_id = updated_presentation_id
 
+            round_ids_for_analysis = []
             for round_index in range(len(round_titles)):
                 new_round = GPTriviaRound()
                 # Assign the round_data fields to the GPTriviaRound instance
@@ -3126,8 +3215,21 @@ def home(request):
                 new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
                 new_round.link = new_links[round_index]
                 new_round.save()
+                if ordered_rounds[round_index].get('is_new') and not new_round.replay:
+                    round_ids_for_analysis.append(new_round.id)
 
             _mark_selected_submitted_rounds_consumed(ordered_rounds)
+            if round_ids_for_analysis:
+                from .round_analysis import queue_round_analysis_batch
+
+                transaction.on_commit(
+                    lambda queued_ids=list(round_ids_for_analysis), initiated_by=(request.user.username if request.user.is_authenticated else ''), label=f"new rounds from {presentation_name}": queue_round_analysis_batch(
+                        queued_ids,
+                        trigger_type=RoundQuestionAnalysisRun.TRIGGER_AUTO,
+                        initiated_by=initiated_by,
+                        batch_label=label,
+                    )
+                )
 
         if ajax_request and response_presentation is not None:
             return JsonResponse(

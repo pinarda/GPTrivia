@@ -227,6 +227,69 @@ class PushSubscription(models.Model):
         return f"Subscription for {self.user or 'anonymous'}"
 
 
+class RoundQuestionAnalysisRun(models.Model):
+    STATUS_PENDING = 'pending'
+    STATUS_RUNNING = 'running'
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_RUNNING, 'Running'),
+        (STATUS_COMPLETED, 'Completed'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+
+    TRIGGER_AUTO = 'auto'
+    TRIGGER_MANUAL = 'manual'
+    TRIGGER_CHOICES = [
+        (TRIGGER_AUTO, 'Auto'),
+        (TRIGGER_MANUAL, 'Manual'),
+    ]
+
+    round = models.ForeignKey('GPTriviaRound', on_delete=models.CASCADE, related_name='question_analysis_runs')
+    trigger_type = models.CharField(max_length=16, choices=TRIGGER_CHOICES, default=TRIGGER_AUTO)
+    initiated_by = models.CharField(max_length=100, blank=True, default='')
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    round_type = models.CharField(max_length=100, blank=True, default='')
+    notes = models.TextField(blank=True, default='')
+    source_presentation_id = models.CharField(max_length=255, blank=True, default='')
+    source_slide_range = models.CharField(max_length=64, blank=True, default='')
+    error_message = models.TextField(blank=True, default='')
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+
+    def __str__(self):
+        return f"{self.round.title} analysis ({self.status})"
+
+
+class RoundQuestionAnalysisEntry(models.Model):
+    run = models.ForeignKey(RoundQuestionAnalysisRun, on_delete=models.CASCADE, related_name='entries')
+    round = models.ForeignKey('GPTriviaRound', on_delete=models.CASCADE, related_name='question_analysis_entries')
+    round_name = models.CharField(max_length=150)
+    round_date = models.DateField(null=True, blank=True)
+    question_number = models.IntegerField(default=1)
+    question_text = models.TextField(blank=True, default='')
+    answer_text = models.TextField(blank=True, default='')
+    round_type = models.CharField(max_length=100, blank=True, default='')
+    notes = models.TextField(blank=True, default='')
+    major_category = models.CharField(max_length=100, blank=True, default='')
+    minor_category1 = models.CharField(max_length=100, blank=True, default='')
+    minor_category2 = models.CharField(max_length=100, blank=True, default='')
+    player_correctness = jsonfield.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['round_date', 'round_name', 'question_number', 'id']
+
+    def __str__(self):
+        return f"{self.round_name} Q{self.question_number}"
+
+
 class JeopardyRound(models.Model):
     JEOPARDY = 'JEOPARDY'
     DOUBLE_JEOPARDY = 'DOUBLE_JEOPARDY'

@@ -3,7 +3,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/rounds_list.css' %}?v=20260319d">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/rounds_list.css' %}?v=20260320a">
 {% endblock %}
 
 {% block extra_meta %}
@@ -66,10 +66,14 @@
                     <input class="rounds-column-search" type="text" placeholder="Search" data-column-index="{{ forloop.counter|add:9 }}">
                 </th>
                 {% endfor %}
+                <th>
+                    <div class="rounds-column-label">Analysis</div>
+                </th>
             </tr>
         </thead>
         <tbody>
             {% for round_row in round_rows %}
+                {% with analysis_status=analysis_status_map|get_item:round_row.round.id %}
                 <tr>
             <td class="title-cell">{{ round_row.round.title }}</td>
             {% with player_class=round_row.round.creator %}
@@ -100,7 +104,25 @@
             {% for player_field in player_fields %}
             <td>{{ round_row.score_values|get_item:player_field }}</td>
             {% endfor %}
+            <td class="round-analysis-cell">
+                {% if not round_row.round.replay %}
+                    <form method="post" action="{% url 'trigger_round_analysis' round_id=round_row.round.id %}" class="round-analysis-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" class="round-analysis-button">Analyze</button>
+                    </form>
+                {% endif %}
+                {% if analysis_status %}
+                    <div class="round-analysis-status round-analysis-status-{{ analysis_status.status }}">
+                        {{ analysis_status.status_label }}
+                    </div>
+                    {% if analysis_status.has_completed_entries %}
+                        <a class="round-analysis-view-link" href="{% url 'round_analysis_list' %}?round_id={{ round_row.round.id }}">View</a>
+                    {% endif %}
+                {% endif %}
+            </td>
         </tr>
+                {% endwith %}
         {% endfor %}
     </tbody>
 </table>

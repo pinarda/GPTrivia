@@ -1482,6 +1482,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                     [`round_link_${index}`]: round.link || '',
                     [`round_old_link_${index}`]: round.old_link || '',
                     [`round_shared_date_${index}`]: round.shared_date || '',
+                    [`round_is_new_${index}`]: round.is_new ? '1' : '0',
                 };
 
                 Object.entries(fields).forEach(([name, value]) => {

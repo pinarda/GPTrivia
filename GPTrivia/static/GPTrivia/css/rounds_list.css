@@ -176,6 +176,80 @@ body.site-shell[data-profile-theme="light"] .round-date-link:focus-visible {
     font-size: 0.98rem;
 }
 
+.round-analysis-cell {
+    min-width: 120px;
+}
+
+.round-analysis-form {
+    margin: 0 0 0.35rem;
+}
+
+.round-analysis-button,
+.round-analysis-view-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0.45rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--rounds-page-text);
+    font-size: 0.92rem;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.18s ease, opacity 0.18s ease, border-color 0.18s ease;
+}
+
+.round-analysis-button:hover,
+.round-analysis-button:focus-visible,
+.round-analysis-view-link:hover,
+.round-analysis-view-link:focus-visible {
+    transform: translateY(-1px);
+    opacity: 0.88;
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.round-analysis-status {
+    margin-top: 0.1rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.round-analysis-status-pending,
+.round-analysis-status-running {
+    color: #ffd166;
+}
+
+.round-analysis-status-completed {
+    color: #8be28b;
+}
+
+.round-analysis-status-failed {
+    color: #ff8b8b;
+}
+
+body.site-shell[data-profile-theme="light"] .round-analysis-button,
+body.site-shell[data-profile-theme="light"] .round-analysis-view-link {
+    border-color: rgba(45, 48, 71, 0.15);
+    background: rgba(45, 48, 71, 0.06);
+    color: #1b2530;
+}
+
+body.site-shell[data-profile-theme="light"] .round-analysis-status-pending,
+body.site-shell[data-profile-theme="light"] .round-analysis-status-running {
+    color: #8a5d00;
+}
+
+body.site-shell[data-profile-theme="light"] .round-analysis-status-completed {
+    color: #0c6d35;
+}
+
+body.site-shell[data-profile-theme="light"] .round-analysis-status-failed {
+    color: #9f1d20;
+}
+
 body.site-shell[data-profile-theme="light"] #roundList tbody td,
 body.site-shell[data-profile-theme="light"] #roundList tbody tr td {
     color: #1b2530;
@@ -254,5 +328,12 @@ body.site-shell[data-profile-theme="light"] #roundList tbody .title-cell a {
         min-height: 38px;
         padding: 0.46rem 0.64rem;
         font-size: 0.88rem;
+    }
+
+    .round-analysis-button,
+    .round-analysis-view-link {
+        min-height: 34px;
+        padding: 0.36rem 0.62rem;
+        font-size: 0.82rem;
     }
 }

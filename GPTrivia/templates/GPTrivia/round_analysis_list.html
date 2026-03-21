@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load GPTrivia_extras %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/round_analysis_list.css' %}?v=20260320a">
+{% endblock %}
+
+{% block content %}
+<div class="round-analysis-page">
+    <div class="round-analysis-header-card">
+        <div>
+            <h1>Round Question Analysis</h1>
+            <p>Latest completed GPT extraction for each round lives here so we can quickly inspect the questions, answers, inferred type, and blank player-correctness columns.</p>
+        </div>
+        <form method="get" class="round-analysis-filter-form">
+            <label for="round-analysis-round-id">Round</label>
+            <select id="round-analysis-round-id" name="round_id">
+                <option value="">All analyzed rounds</option>
+                {% for option in round_options %}
+                    <option value="{{ option.id }}" {% if selected_round_id == option.id %}selected{% endif %}>
+                        {{ option.date|date:"m/d/Y" }} · Round {{ option.round_number }} · {{ option.title }}
+                    </option>
+                {% endfor %}
+            </select>
+            <button type="submit">Filter</button>
+        </form>
+    </div>
+
+    {% if latest_runs %}
+        {% for run in latest_runs %}
+            <section class="round-analysis-run-card">
+                <div class="round-analysis-run-header">
+                    <div>
+                        <h2>{{ run.round.date|date:"F j, Y" }} · Round {{ run.round.round_number }} · {{ run.round.title }}</h2>
+                        <p>{{ run.round.creator }} · {{ run.round_type|default:"Unclassified" }}{% if run.source_slide_range %} · Slides {{ run.source_slide_range }}{% endif %}</p>
+                    </div>
+                    <div class="round-analysis-run-meta">
+                        <a href="{% url 'rounds_list' %}?date_search={{ run.round.date|date:'Y-m-d' }}">Open in Rounds List</a>
+                    </div>
+                </div>
+                {% if run.notes %}
+                    <div class="round-analysis-run-notes">{{ run.notes }}</div>
+                {% endif %}
+                <div class="round-analysis-table-wrap">
+                    <table class="round-analysis-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Type</th>
+                                <th>Major</th>
+                                <th>Minor 1</th>
+                                <th>Minor 2</th>
+                                <th>Question</th>
+                                <th>Answer</th>
+                                {% for player_name in player_names %}
+                                    <th>{{ player_name }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in run.entries.all %}
+                                <tr>
+                                    <td>{{ entry.question_number }}</td>
+                                    <td>{{ entry.round_type }}</td>
+                                    <td>{{ entry.major_category }}</td>
+                                    <td>{{ entry.minor_category1 }}</td>
+                                    <td>{{ entry.minor_category2 }}</td>
+                                    <td class="round-analysis-question">{{ entry.question_text }}</td>
+                                    <td class="round-analysis-answer">{{ entry.answer_text }}</td>
+                                    {% for player_name in player_names %}
+                                        <td>{{ entry.player_correctness|get_item:player_name }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        {% endfor %}
+    {% else %}
+        <div class="round-analysis-empty-card">
+            No completed round analysis has been saved yet.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
