@@ -110,6 +110,17 @@ def main():
             }
         print_block("apps_script_debug_rows", debug_rows)
 
+        try:
+            page_element_debug = _run_apps_script_function(
+                "debugSlidePageElements",
+                [slide_payload.get("presentation_id"), slide_id],
+            )
+        except Exception as exc:
+            page_element_debug = {
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+        print_block("apps_script_page_element_debug", page_element_debug)
+
     return 0
 
 
