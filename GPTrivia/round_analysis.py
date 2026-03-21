@@ -359,6 +359,9 @@ def _analyze_round_slides(round_obj, slide_payload):
         "If a category does not fit, leave that category blank. "
         "major_category must be chosen from the allowed major categories when possible. "
         "minor categories should be chosen from the allowed minor categories when possible. "
+        "Do not repeat the major category in either minor category slot. "
+        "If no useful minor category fits, leave the minor category blank. "
+        "Do not duplicate the same minor category twice. "
         "Do not invent missing answers; leave answer_text blank if it is not recoverable."
     )
     client = _get_openai_client()
@@ -408,6 +411,28 @@ def _normalize_media_kind(value):
     if media_kind in {'text', 'image', 'video', 'audio'}:
         return media_kind
     return media_kind
+
+
+def _normalize_analysis_categories(entry):
+    major_category = str(entry.get('major_category') or '').strip()
+    minor_category1 = str(entry.get('minor_category1') or '').strip()
+    minor_category2 = str(entry.get('minor_category2') or '').strip()
+
+    used_normalized = {
+        major_category.casefold()
+        for major_category in [major_category]
+        if major_category
+    }
+    cleaned_minors = []
+    for minor_value in [minor_category1, minor_category2]:
+        normalized_minor = minor_value.casefold()
+        if not minor_value or normalized_minor in used_normalized:
+            cleaned_minors.append('')
+            continue
+        used_normalized.add(normalized_minor)
+        cleaned_minors.append(minor_value)
+
+    return major_category, cleaned_minors[0], cleaned_minors[1]
 
 
 def _find_slide_by_number(slide_payload, slide_number):
@@ -495,6 +520,7 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
         media_kind = _normalize_media_kind(entry.get('media_kind') or (chosen_media or {}).get('kind'))
         media_url = (chosen_media or {}).get('url') or ''
         source_slide_url = (chosen_slide or {}).get('slide_url') or ''
+        major_category, minor_category1, minor_category2 = _normalize_analysis_categories(entry)
 
         analysis_entry = RoundQuestionAnalysisEntry.objects.create(
             run=run,
@@ -511,9 +537,9 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
             source_slide_number=source_slide_number,
             source_slide_url=source_slide_url,
             notes=normalized_notes,
-            major_category=str(entry.get('major_category') or '').strip(),
-            minor_category1=str(entry.get('minor_category1') or '').strip(),
-            minor_category2=str(entry.get('minor_category2') or '').strip(),
+            major_category=major_category,
+            minor_category1=minor_category1,
+            minor_category2=minor_category2,
             player_correctness=dict(empty_correctness),
         )
         try:

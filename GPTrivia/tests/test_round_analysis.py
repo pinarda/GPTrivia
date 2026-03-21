@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from GPTrivia.models import GPTriviaRound, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun
+from GPTrivia.round_analysis import _normalize_analysis_categories
 
 
 class RoundAnalysisTests(TestCase):
@@ -182,6 +183,21 @@ class RoundAnalysisTests(TestCase):
         self.assertContains(response, "Crab Nebula")
         self.assertContains(response, "Open linked image")
         self.assertContains(response, "Open source slide")
+
+    def test_normalize_analysis_categories_blanks_duplicate_major_and_minor_values(self):
+        major, minor1, minor2 = _normalize_analysis_categories({
+            "major_category": "Sports",
+            "minor_category1": "Sports",
+            "minor_category2": "Sports",
+        })
+        self.assertEqual((major, minor1, minor2), ("Sports", "", ""))
+
+        major, minor1, minor2 = _normalize_analysis_categories({
+            "major_category": "Sports",
+            "minor_category1": "Team Names",
+            "minor_category2": "Team Names",
+        })
+        self.assertEqual((major, minor1, minor2), ("Sports", "Team Names", ""))
 
     def test_rounds_list_disables_analyze_button_for_existing_analysis(self):
         round_obj = GPTriviaRound.objects.create(
