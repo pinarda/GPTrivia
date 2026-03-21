@@ -257,6 +257,7 @@ def _create_openai_text_response_http(*, instructions, input_items, max_output_t
         "instructions": instructions,
         "input": input_items,
         "max_output_tokens": max_output_tokens,
+        "store": False,
     }
     if reasoning_effort:
         request_kwargs["reasoning"] = {"effort": reasoning_effort}
@@ -281,6 +282,7 @@ def _create_openai_text_response(client, *, instructions, input_items, max_outpu
             "instructions": instructions,
             "input": input_items,
             "max_output_tokens": max_output_tokens,
+            "store": False,
         }
         if reasoning_effort:
             request_kwargs["reasoning"] = {"effort": reasoning_effort}

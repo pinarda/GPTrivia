@@ -54,6 +54,36 @@ class RoundMakerTests(TestCase):
 
         self.assertEqual(response, "Swoop! Legacy client works.")
         post_mock.assert_called_once()
+        self.assertFalse(post_mock.call_args.kwargs["json"]["store"])
+
+    def test_openai_text_response_sets_store_false_for_sdk_client(self):
+        class ResponsePayload:
+            output_text = "Swoop! SDK client works."
+
+        class ResponsesClient:
+            def __init__(self):
+                self.create_calls = []
+
+            def create(self, **kwargs):
+                self.create_calls.append(kwargs)
+                return ResponsePayload()
+
+        class ModernClient:
+            def __init__(self):
+                self.responses = ResponsesClient()
+
+        client = ModernClient()
+
+        response = views._create_openai_text_response(
+            client=client,
+            instructions="Test instructions",
+            input_items="Test input",
+            max_output_tokens=42,
+        )
+
+        self.assertEqual(response, "Swoop! SDK client works.")
+        self.assertEqual(len(client.responses.create_calls), 1)
+        self.assertFalse(client.responses.create_calls[0]["store"])
 
     def test_round_maker_get_shows_creator_selector_for_anonymous_users(self):
         response = self.client.get(reverse("round_maker"))
