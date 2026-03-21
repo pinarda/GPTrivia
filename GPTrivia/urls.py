@@ -51,6 +51,7 @@ urlpatterns = [
     path('player_profile/<str:player_name>/stats/', views.player_profile_stats, name='player_profile_stats'),
     path('player_profile/<str:player_name>/creator-panels/', views.player_profile_creator_panels, name='player_profile_creator_panels'),
     path('player_profile/<str:player_name>/intro/', views.update_profile_intro, name='update_profile_intro'),
+    path('player_profile/<str:player_name>/round-analysis-opt-in/', views.toggle_round_analysis_opt_in, name='toggle_round_analysis_opt_in'),
     path('player_media/picture/<str:player_name>/<str:version>/', views.profile_picture_media, name='profile_picture_media'),
     path('player_media/avatar/<str:player_name>/<str:version>/', views.profile_avatar_media, name='profile_avatar_media'),
     path('player_profile_round/<int:round_id>/category/', views.update_profile_round_category, name='update_profile_round_category'),

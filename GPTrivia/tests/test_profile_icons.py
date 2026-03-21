@@ -180,6 +180,24 @@ class ProfileIconTests(TestCase):
         with Image.open(user.profile.profile_picture.path) as saved_image:
             self.assertEqual(saved_image.size, (720, 720))
 
+    def test_profile_view_shows_round_analysis_opt_in_button_and_toggle_updates_profile(self):
+        user = User.objects.create_user(username='Alex', password='pw')
+        self.client.force_login(user)
+
+        response = self.client.get(reverse('player_profile', args=['Alex']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Enable Round Analysis')
+
+        toggle_response = self.client.post(
+            reverse('toggle_round_analysis_opt_in', args=['Alex']),
+            {'round_analysis_opt_in': '1'},
+        )
+
+        self.assertEqual(toggle_response.status_code, 302)
+        user.profile.refresh_from_db()
+        self.assertTrue(user.profile.round_analysis_opt_in)
+
     def test_scoresheet_view_applies_saved_light_theme(self):
         user = User.objects.create_user(username='Alex', password='pw')
         profile = user.profile

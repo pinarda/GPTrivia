@@ -801,6 +801,38 @@ def _serialize_round_analysis_status(round_id, latest_run=None, has_completed_en
     }
 
 
+def _build_round_analysis_opt_in_map(creator_names):
+    normalized_names = []
+    seen_names = set()
+    for creator_name in creator_names or []:
+        normalized_name = str(creator_name or '').strip()
+        if not normalized_name:
+            continue
+        folded_name = normalized_name.casefold()
+        if folded_name in seen_names:
+            continue
+        seen_names.add(folded_name)
+        normalized_names.append(normalized_name)
+
+    if not normalized_names:
+        return {}
+
+    opted_in_usernames = {
+        username.casefold(): True
+        for username in Profile.objects.filter(
+            round_analysis_opt_in=True,
+        ).values_list('user__username', flat=True)
+    }
+    return {
+        creator_name: bool(opted_in_usernames.get(creator_name.casefold()))
+        for creator_name in normalized_names
+    }
+
+
+def _creator_allows_round_analysis(creator_name):
+    return bool(_build_round_analysis_opt_in_map([creator_name]).get(str(creator_name or '').strip(), False))
+
+
 def _build_round_analysis_status_map(round_ids):
     normalized_round_ids = []
     seen_round_ids = set()
@@ -816,20 +848,40 @@ def _build_round_analysis_status_map(round_ids):
 
     from .round_analysis import latest_analysis_run_map
 
+    round_rows = list(GPTriviaRound.objects.filter(id__in=normalized_round_ids).values('id', 'creator'))
+    creator_opt_in_map = _build_round_analysis_opt_in_map([row['creator'] for row in round_rows])
+    creator_by_round_id = {
+        row['id']: row['creator']
+        for row in round_rows
+    }
     latest_run_map = latest_analysis_run_map(normalized_round_ids)
     rounds_with_completed_entries = set(
         RoundQuestionAnalysisEntry.objects.filter(round_id__in=normalized_round_ids)
         .values_list('round_id', flat=True)
         .distinct()
     )
-    return {
-        round_id: _serialize_round_analysis_status(
-            round_id,
-            latest_run=latest_run_map.get(round_id),
-            has_completed_entries=round_id in rounds_with_completed_entries,
-        )
+    status_map = {
+        round_id: {
+            **_serialize_round_analysis_status(
+                round_id,
+                latest_run=latest_run_map.get(round_id),
+                has_completed_entries=round_id in rounds_with_completed_entries,
+            ),
+            'can_trigger': bool(creator_opt_in_map.get(creator_by_round_id.get(round_id, ''), False)),
+        }
         for round_id in normalized_round_ids
     }
+    for round_id in normalized_round_ids:
+        if round_id not in status_map:
+            status_map[round_id] = {
+                **_serialize_round_analysis_status(
+                    round_id,
+                    latest_run=None,
+                    has_completed_entries=False,
+                ),
+                'can_trigger': False,
+            }
+    return status_map
 
 
 @login_required
@@ -886,6 +938,16 @@ def trigger_round_analysis(request, round_id):
                 'status': _build_round_analysis_status_map([round_obj.id])[round_obj.id],
             }, status=400)
         messages.error(request, f"{round_obj.title} is marked as a replay round and cannot be analyzed.")
+        return redirect(next_url)
+
+    if not _creator_allows_round_analysis(round_obj.creator):
+        if wants_json:
+            return JsonResponse({
+                'ok': False,
+                'message': f"{round_obj.creator} has not opted in to round analysis.",
+                'status': _build_round_analysis_status_map([round_obj.id])[round_obj.id],
+            }, status=403)
+        messages.error(request, f"{round_obj.creator} has not opted in to round analysis.")
         return redirect(next_url)
 
     if RoundQuestionAnalysisRun.objects.filter(
@@ -1034,6 +1096,30 @@ def upload_profile_picture(request):
 
     context = player_profile_dict(request, request.user.username, form=form, include_deferred_stats=False)
     return render(request, 'GPTrivia/player_profile.html', context)
+
+
+@login_required
+def toggle_round_analysis_opt_in(request, player_name):
+    if request.method != 'POST':
+        raise Http404("Round analysis preference updates must be submitted with POST.")
+
+    normalized_player_name = display_name_for_player_field(player_name)
+    if display_name_for_player_field(request.user.username) != normalized_player_name:
+        messages.error(request, "You can only update round analysis settings for your own profile.")
+        return redirect('player_profile', player_name=normalized_player_name)
+
+    profile, _created = Profile.objects.get_or_create(user=request.user)
+    desired_state = _is_truthy_form_value(request.POST.get('round_analysis_opt_in'))
+    if profile.round_analysis_opt_in != desired_state:
+        profile.round_analysis_opt_in = desired_state
+        profile.save(update_fields=['round_analysis_opt_in'])
+
+    if desired_state:
+        messages.success(request, "Round analysis is enabled for your rounds.")
+    else:
+        messages.success(request, "Round analysis is disabled for your rounds.")
+
+    return redirect('player_profile', player_name=request.user.username)
 
 
 def _serve_profile_media_file(file_field):
@@ -2123,6 +2209,7 @@ def player_profile_dict(
     )
 
     context = {
+        'profile': profile,
         'profile_user': profile_user,
         'profile_page_chrome_color': profile_page_chrome_color,
         'profile_card_color': profile_card_color,
@@ -3139,7 +3226,11 @@ def home(request):
                 new_round.link = round_links[round_index]
                 new_round.source_link = ordered_old_links[round_index] or ordered_links[round_index]
                 new_round.save()
-                if ordered_rounds[round_index].get('is_new') and not new_round.replay:
+                if (
+                    ordered_rounds[round_index].get('is_new')
+                    and not new_round.replay
+                    and _creator_allows_round_analysis(new_round.creator)
+                ):
                     round_ids_for_analysis.append(new_round.id)
 
             _mark_selected_submitted_rounds_consumed(ordered_rounds)
@@ -3300,7 +3391,11 @@ def home(request):
                 new_round.link = new_links[round_index]
                 new_round.source_link = ordered_old_links[round_index] or ordered_links[round_index]
                 new_round.save()
-                if ordered_rounds[round_index].get('is_new') and not new_round.replay:
+                if (
+                    ordered_rounds[round_index].get('is_new')
+                    and not new_round.replay
+                    and _creator_allows_round_analysis(new_round.creator)
+                ):
                     round_ids_for_analysis.append(new_round.id)
 
             _mark_selected_submitted_rounds_consumed(ordered_rounds)

@@ -1,17 +1,21 @@
+import io
 import datetime
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
+from PIL import Image
 
 from GPTrivia.models import GPTriviaRound, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun
-from GPTrivia.round_analysis import _normalize_analysis_categories, _store_round_analysis
+from GPTrivia.round_analysis import _normalize_analysis_categories, _optimize_analysis_image_content, _store_round_analysis
 
 
 class RoundAnalysisTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="Alex", password="pw")
+        self.user.profile.round_analysis_opt_in = True
+        self.user.profile.save(update_fields=["round_analysis_opt_in"])
         self.client.force_login(self.user)
 
     @patch(
@@ -76,6 +80,26 @@ class RoundAnalysisTests(TestCase):
             replay=True,
             cooperative=False,
             link="https://docs.google.com/presentation/d/replay-round/edit#slide=id.r1",
+        )
+
+        response = self.client.post(reverse("trigger_round_analysis", args=[round_obj.id]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(RoundQuestionAnalysisRun.objects.exists())
+
+    def test_trigger_round_analysis_rejects_creator_without_opt_in(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="No Opt In Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/no-opt-in/edit#slide=id.r1",
         )
 
         response = self.client.post(reverse("trigger_round_analysis", args=[round_obj.id]))
@@ -274,6 +298,7 @@ class RoundAnalysisTests(TestCase):
         self.assertTrue(payload["show_already_analyzed"])
         self.assertTrue(payload["has_completed_entries"])
         self.assertIn(f"round_id={round_obj.id}", payload["view_url"])
+        self.assertTrue(payload["can_trigger"])
 
     def test_normalize_analysis_categories_blanks_duplicate_major_and_minor_values(self):
         major, minor1, minor2 = _normalize_analysis_categories({
@@ -289,6 +314,17 @@ class RoundAnalysisTests(TestCase):
             "minor_category2": "Team Names",
         })
         self.assertEqual((major, minor1, minor2), ("Sports", "Team Names", ""))
+
+    def test_optimize_analysis_image_content_caps_image_dimensions(self):
+        image_buffer = io.BytesIO()
+        Image.new("RGB", (2400, 1800), (120, 80, 220)).save(image_buffer, format="JPEG")
+        optimized_content, optimized_extension = _optimize_analysis_image_content(image_buffer.getvalue())
+
+        self.assertEqual(optimized_extension, ".jpg")
+        self.assertTrue(optimized_content)
+
+        with Image.open(io.BytesIO(optimized_content)) as optimized_image:
+            self.assertLessEqual(max(optimized_image.size), 512)
 
     @patch("GPTrivia.round_analysis._download_media_file", return_value=None)
     @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
@@ -476,3 +512,26 @@ class RoundAnalysisTests(TestCase):
         self.assertContains(response, "Already analyzed")
         self.assertNotContains(response, 'disabled aria-disabled="true"', html=False)
         self.assertContains(response, f'data-status-url="/round-analysis/{round_obj.id}/status/"', html=False)
+
+    def test_rounds_list_hides_analyze_button_for_creator_without_opt_in(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Opt In Required",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=4,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/opt-in-required/edit#slide=id.r1",
+        )
+
+        response = self.client.get(reverse("rounds_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(
+            response,
+            reverse("trigger_round_analysis", args=[round_obj.id]),
+        )

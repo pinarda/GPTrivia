@@ -14,7 +14,7 @@
       --profile-player-color: {{ player_color }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260320f">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260320g">
 {% endblock %}
 
 {% block extra_meta %}
@@ -359,6 +359,18 @@
 
                     <form class="profile-inline-form" action="{% url 'password_change' %}">
                         <button class="expand-collapse-button profile-player-button" id="passwordbtn" type="submit">Change Password</button>
+                    </form>
+
+                    <form class="profile-inline-form" method="post" action="{% url 'toggle_round_analysis_opt_in' player_name=player_name %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="round_analysis_opt_in" value="{% if profile.round_analysis_opt_in %}0{% else %}1{% endif %}">
+                        <button class="expand-collapse-button profile-player-button" id="round-analysis-opt-in-btn" type="submit">
+                            {% if profile.round_analysis_opt_in %}
+                                Disable Round Analysis
+                            {% else %}
+                                Enable Round Analysis
+                            {% endif %}
+                        </button>
                     </form>
 
                     <button class="expand-collapse-button profile-player-button" id="notificationbtn" type="button">Enable Notifications</button>

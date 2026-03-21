@@ -105,7 +105,7 @@
             <td>{{ round_row.score_values|get_item:player_field }}</td>
             {% endfor %}
             <td class="round-analysis-cell" data-round-id="{{ round_row.round.id }}" data-status-url="{% url 'round_analysis_status' round_id=round_row.round.id %}">
-                {% if not round_row.round.replay %}
+                {% if not round_row.round.replay and analysis_status.can_trigger %}
                     <form method="post" action="{% url 'trigger_round_analysis' round_id=round_row.round.id %}" class="round-analysis-form" data-round-id="{{ round_row.round.id }}">
                         {% csrf_token %}
                         <input type="hidden" name="next" value="{{ request.get_full_path }}">

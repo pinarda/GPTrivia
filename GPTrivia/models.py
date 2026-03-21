@@ -45,6 +45,7 @@ class Profile(models.Model):
     profile_intro = models.TextField(blank=True, default='')
     site_theme = models.CharField(max_length=16, choices=THEME_CHOICES, default=THEME_DEFAULT)
     profile_page_theme = models.CharField(max_length=16, choices=THEME_CHOICES, default=THEME_DEFAULT)
+    round_analysis_opt_in = models.BooleanField(default=False)
     swoop_conversation_history = jsonfield.JSONField(default=list, blank=True)
 
     def __str__(self):

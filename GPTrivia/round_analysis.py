@@ -6,6 +6,7 @@ import pickle
 import re
 import threading
 import traceback
+from io import BytesIO
 from itertools import chain
 from pathlib import Path
 from urllib.parse import urlparse
@@ -14,6 +15,7 @@ import requests
 from django.core.files.base import ContentFile
 from django.db import close_old_connections
 from django.utils import timezone
+from PIL import Image, ImageOps
 
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -24,6 +26,8 @@ from .player_scores import display_name_for_player_field, get_all_player_fields
 
 logger = logging.getLogger(__name__)
 ANALYSIS_NOTIFICATION_USERNAME = 'Alex'
+ROUND_ANALYSIS_IMAGE_MAX_DIMENSION = 512
+ROUND_ANALYSIS_IMAGE_JPEG_QUALITY = 72
 
 
 def _google_slide_url(presentation_id, slide_id=''):
@@ -595,6 +599,38 @@ def _guess_media_filename(round_obj, question_number, media_item, response):
     return f"{round_stub}-q{question_number}{extension}"
 
 
+def _optimize_analysis_image_content(raw_content):
+    try:
+        with Image.open(BytesIO(raw_content)) as source_image:
+            source_image = ImageOps.exif_transpose(source_image)
+            if max(source_image.size) > ROUND_ANALYSIS_IMAGE_MAX_DIMENSION:
+                source_image.thumbnail(
+                    (ROUND_ANALYSIS_IMAGE_MAX_DIMENSION, ROUND_ANALYSIS_IMAGE_MAX_DIMENSION),
+                    Image.LANCZOS,
+                )
+
+            has_alpha = 'A' in source_image.getbands()
+            output_buffer = BytesIO()
+            if has_alpha:
+                source_image.save(output_buffer, format='PNG', optimize=True)
+                extension = '.png'
+            else:
+                source_image = source_image.convert('RGB')
+                source_image.save(
+                    output_buffer,
+                    format='JPEG',
+                    quality=ROUND_ANALYSIS_IMAGE_JPEG_QUALITY,
+                    optimize=True,
+                    progressive=True,
+                )
+                extension = '.jpg'
+            output_buffer.seek(0)
+            return output_buffer.getvalue(), extension
+    except Exception:
+        logger.exception("Could not optimize round analysis image content.")
+        return None, ''
+
+
 def _download_media_file(round_obj, question_number, media_item):
     if not media_item or media_item.get('kind') != 'image':
         return None
@@ -605,8 +641,14 @@ def _download_media_file(round_obj, question_number, media_item):
 
     response = requests.get(download_url, timeout=30)
     response.raise_for_status()
+    optimized_content, optimized_extension = _optimize_analysis_image_content(response.content)
+    if not optimized_content:
+        return None
+
     filename = _guess_media_filename(round_obj, question_number, media_item, response)
-    return filename, ContentFile(response.content)
+    if optimized_extension:
+        filename = f"{Path(filename).stem}{optimized_extension}"
+    return filename, ContentFile(optimized_content)
 
 
 def _store_round_analysis(run, slide_payload, analysis_payload):
