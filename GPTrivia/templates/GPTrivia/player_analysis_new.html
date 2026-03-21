@@ -1085,11 +1085,12 @@
         const xPositions = options.xPositions || buildViolinXPositions(labels.length);
         const xaxisOverrides = options.xaxis || {};
         const marginOverrides = options.margin || {};
+        const titleOverrides = options.title || {};
         const step = xPositions.length > 1 ? (xPositions[1] - xPositions[0]) : (compactLayout ? 1.38 : 1.52);
         const rangePadding = compactLayout ? 0.95 : 1.02;
 
         const baseLayout = {
-            title: data.title,
+            title: normalizePlotTitleConfig(data.title, compactLayout),
             autosize: true,
             margin: {
                 t: compactLayout ? 78 : 88,
@@ -1145,6 +1146,10 @@
 
         return {
             ...baseLayout,
+            title: {
+                ...baseLayout.title,
+                ...titleOverrides,
+            },
             xaxis: {
                 ...baseLayout.xaxis,
                 ...xaxisOverrides,
@@ -2077,6 +2082,15 @@
             includeMeanShapes: true,
             plotData: data.plot_data,
             xPositions: traces.xPositions,
+            title: compactLayout ? {
+                text: wrapAnalysisTitleText(data.title, 22),
+                font: {
+                    color: analysisTextColor,
+                    family: 'YoungSerif',
+                    size: 13,
+                },
+                y: 0.94,
+            } : {},
             xaxis: (compactLayout && isCategoryView) ? {
                 tickangle: -28,
                 tickmode: 'array',
@@ -2088,9 +2102,12 @@
                 automargin: false,
             } : {},
             margin: (compactLayout && isCategoryView) ? {
+                t: 92,
                 b: 132,
                 l: 42,
                 r: 18,
+            } : (compactLayout ? {
+                t: 92,
             } : {},
         });
 
@@ -2099,11 +2116,24 @@
 
     function renderCreatorViolin(data) {
         setPlotDescription('creator-violin-space', buildPlotDescription('creator-violin-space', data));
+        const compactLayout = isCompactAnalysisLayout();
         const traces = buildNumericViolinTraces(data.categories, data.plot_data, data.colors, data.hover_texts);
         const layout = buildResponsiveViolinLayout(data, data.categories, {
             includeMeanShapes: true,
             plotData: data.plot_data,
             xPositions: traces.xPositions,
+            title: compactLayout ? {
+                text: wrapAnalysisTitleText(data.title, 22),
+                font: {
+                    color: analysisTextColor,
+                    family: 'YoungSerif',
+                    size: 13,
+                },
+                y: 0.94,
+            } : {},
+            margin: compactLayout ? {
+                t: 92,
+            } : {},
         });
 
         Plotly.newPlot('creator-violin-space', traces, layout, {displaylogo: false, responsive: true});
