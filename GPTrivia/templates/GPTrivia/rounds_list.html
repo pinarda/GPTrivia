@@ -112,13 +112,18 @@
                         <button
                             type="submit"
                             class="round-analysis-button"
-                            {% if analysis_status and analysis_status.has_any_run %}disabled aria-disabled="true"{% endif %}
+                            {% if analysis_status and analysis_status.is_active %}disabled aria-disabled="true"{% endif %}
                         >
-                            {% if analysis_status and analysis_status.has_any_run %}Analyzed{% else %}Analyze{% endif %}
+                            {% if analysis_status and analysis_status.has_any_run and not analysis_status.is_active %}Analyze Again{% else %}Analyze{% endif %}
                         </button>
                     </form>
                 {% endif %}
                 {% if analysis_status %}
+                    {% if analysis_status.has_any_run and not analysis_status.is_active %}
+                        <div class="round-analysis-status round-analysis-status-completed">
+                            Already analyzed
+                        </div>
+                    {% endif %}
                     <div class="round-analysis-status round-analysis-status-{{ analysis_status.status }}">
                         {{ analysis_status.status_label }}
                     </div>

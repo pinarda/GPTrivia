@@ -781,6 +781,10 @@ def rounds_list(request):
                 'status': run.status,
                 'status_label': run.get_status_display(),
                 'has_any_run': True,
+                'is_active': run.status in {
+                    RoundQuestionAnalysisRun.STATUS_PENDING,
+                    RoundQuestionAnalysisRun.STATUS_RUNNING,
+                },
                 'has_completed_entries': run.status == RoundQuestionAnalysisRun.STATUS_COMPLETED and run.id in completed_run_ids_with_entries,
             }
             for round_id, run in analysis_run_map.items()
@@ -831,8 +835,11 @@ def trigger_round_analysis(request, round_id):
         messages.error(request, f"{round_obj.title} is marked as a replay round and cannot be analyzed.")
         return redirect(next_url)
 
-    if RoundQuestionAnalysisRun.objects.filter(round=round_obj).exists():
-        messages.info(request, f"{round_obj.title} has already been analyzed.")
+    if RoundQuestionAnalysisRun.objects.filter(
+        round=round_obj,
+        status__in=[RoundQuestionAnalysisRun.STATUS_PENDING, RoundQuestionAnalysisRun.STATUS_RUNNING],
+    ).exists():
+        messages.info(request, f"Round analysis is already running for {round_obj.title}.")
         return redirect(next_url)
 
     from .round_analysis import queue_round_analysis

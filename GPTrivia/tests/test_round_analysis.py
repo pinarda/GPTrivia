@@ -83,7 +83,8 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(RoundQuestionAnalysisRun.objects.exists())
 
-    def test_trigger_round_analysis_rejects_round_with_existing_analysis(self):
+    @patch("GPTrivia.round_analysis.queue_round_analysis", return_value=[456])
+    def test_trigger_round_analysis_allows_round_with_existing_completed_analysis(self, queue_mock):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
             title="Already Analyzed",
@@ -106,7 +107,11 @@ class RoundAnalysisTests(TestCase):
         response = self.client.post(reverse("trigger_round_analysis", args=[round_obj.id]))
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(RoundQuestionAnalysisRun.objects.filter(round=round_obj).count(), 1)
+        queue_mock.assert_called_once_with(
+            round_obj.id,
+            trigger_type=RoundQuestionAnalysisRun.TRIGGER_MANUAL,
+            initiated_by="Alex",
+        )
 
     @patch("GPTrivia.round_analysis.queue_round_analysis", return_value=[123])
     def test_trigger_round_analysis_queues_non_replay_round(self, queue_mock):
@@ -282,7 +287,83 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(saved_entries[0].media_url, "https://example.com/actor-1.png")
         self.assertEqual(saved_entries[1].media_url, "https://example.com/actor-2.png")
 
-    def test_rounds_list_disables_analyze_button_for_existing_analysis(self):
+    @patch("GPTrivia.round_analysis._download_media_file", return_value=None)
+    @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
+    def test_store_round_analysis_replaces_older_runs_for_round(self, _correctness_mock, _download_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Replace Older Run",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/replace-older-run/edit#slide=id.r1",
+        )
+        old_run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="picture",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=old_run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="Old question",
+            answer_text="Old answer",
+            round_type="picture",
+            player_correctness={"Alex": ""},
+        )
+        new_run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+        )
+        slide_payload = {
+            "presentation_id": "replace-older-run",
+            "slide_range_label": "1-1",
+            "slides": [
+                {
+                    "slide_number": 1,
+                    "slide_id": "slide-question",
+                    "slide_url": "https://docs.google.com/presentation/d/replace-older-run/edit#slide=id.slide-question",
+                    "text": "New question",
+                    "media_items": [],
+                }
+            ],
+        }
+        analysis_payload = {
+            "round_type": "short answer",
+            "notes": "Updated analysis",
+            "questions": [
+                {
+                    "question_number": 1,
+                    "source_slide_number": 1,
+                    "question_text": "New question",
+                    "instruction_text": "",
+                    "answer_text": "New answer",
+                    "media_kind": "",
+                    "major_category": "Science",
+                    "minor_category1": "Physics",
+                    "minor_category2": "",
+                }
+            ],
+        }
+
+        _store_round_analysis(new_run, slide_payload, analysis_payload)
+
+        self.assertEqual(RoundQuestionAnalysisRun.objects.filter(round=round_obj).count(), 1)
+        self.assertFalse(RoundQuestionAnalysisRun.objects.filter(id=old_run.id).exists())
+        self.assertTrue(RoundQuestionAnalysisRun.objects.filter(id=new_run.id).exists())
+        saved_entries = list(RoundQuestionAnalysisEntry.objects.filter(run=new_run))
+        self.assertEqual(len(saved_entries), 1)
+        self.assertEqual(saved_entries[0].question_text, "New question")
+
+    def test_rounds_list_keeps_analyze_button_enabled_for_existing_analysis(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
             title="Disable Button Round",
@@ -305,5 +386,6 @@ class RoundAnalysisTests(TestCase):
         response = self.client.get(reverse("rounds_list"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Analyzed")
-        self.assertContains(response, 'disabled aria-disabled="true"', html=False)
+        self.assertContains(response, "Analyze Again")
+        self.assertContains(response, "Already analyzed")
+        self.assertNotContains(response, 'disabled aria-disabled="true"', html=False)

@@ -62,15 +62,19 @@ def queue_round_analysis_batch(round_ids, *, trigger_type=RoundQuestionAnalysisR
         round_obj.id: round_obj
         for round_obj in GPTriviaRound.objects.filter(id__in=normalized_ids, replay=False)
     }
-    existing_round_ids = set(
+    active_round_ids = set(
         RoundQuestionAnalysisRun.objects.filter(
             round_id__in=queueable_rounds.keys(),
+            status__in=[
+                RoundQuestionAnalysisRun.STATUS_PENDING,
+                RoundQuestionAnalysisRun.STATUS_RUNNING,
+            ],
         ).values_list('round_id', flat=True)
     )
 
     queued_run_ids = []
     for round_id in normalized_ids:
-        if round_id not in queueable_rounds or round_id in existing_round_ids:
+        if round_id not in queueable_rounds or round_id in active_round_ids:
             continue
         run = RoundQuestionAnalysisRun.objects.create(
             round_id=round_id,
@@ -676,6 +680,7 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
             'updated_at',
         ]
     )
+    RoundQuestionAnalysisRun.objects.filter(round=run.round).exclude(id=run.id).delete()
 
 
 def _notify_alex_round_analysis_started(runs, *, batch_label=''):
