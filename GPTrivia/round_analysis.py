@@ -201,6 +201,83 @@ def _likely_audio_control_image(*, element_title='', element_description='', wid
     return bool(max_dimension and max_dimension <= 72 and min_dimension <= 72)
 
 
+def _looks_like_google_image_asset(url):
+    normalized_url = str(url or '').strip().lower()
+    if not normalized_url:
+        return False
+    return any(
+        domain in normalized_url
+        for domain in [
+            'googleusercontent.com',
+            'lh3.googleusercontent.com',
+            'lh4.googleusercontent.com',
+            'lh5.googleusercontent.com',
+            'lh6.googleusercontent.com',
+            'gstatic.com',
+        ]
+    )
+
+
+def _collect_nested_urls(value, *, parent_key=''):
+    discovered_urls = []
+    if isinstance(value, dict):
+        for key, nested_value in value.items():
+            nested_parent_key = str(key or '')
+            if isinstance(nested_value, str):
+                normalized_candidate = nested_value.strip()
+                if normalized_candidate.startswith(('http://', 'https://')):
+                    discovered_urls.append((parent_key, nested_parent_key, normalized_candidate))
+            else:
+                discovered_urls.extend(
+                    _collect_nested_urls(
+                        nested_value,
+                        parent_key=nested_parent_key,
+                    )
+                )
+    elif isinstance(value, list):
+        for nested_value in value:
+            discovered_urls.extend(_collect_nested_urls(nested_value, parent_key=parent_key))
+    return discovered_urls
+
+
+def _extract_playable_media_url(element, *, placeholder_urls=None):
+    placeholder_url_set = {
+        str(url or '').strip()
+        for url in (placeholder_urls or [])
+        if str(url or '').strip()
+    }
+    direct_link_candidates = []
+    fallback_candidates = []
+    for container_key, url_key, candidate_url in _collect_nested_urls(element):
+        normalized_container_key = str(container_key or '').casefold()
+        normalized_url_key = str(url_key or '').casefold()
+        if candidate_url in placeholder_url_set:
+            continue
+        if normalized_url_key in {'contenturl', 'sourceurl'}:
+            continue
+
+        is_linkish = normalized_container_key == 'link' or normalized_url_key in {
+            'url',
+            'uri',
+            'href',
+            'embedurl',
+            'mediaurl',
+            'resourceurl',
+        }
+        if is_linkish:
+            direct_link_candidates.append(candidate_url)
+        else:
+            fallback_candidates.append(candidate_url)
+
+    for candidate_list in [direct_link_candidates, fallback_candidates]:
+        for candidate_url in candidate_list:
+            if not _looks_like_google_image_asset(candidate_url):
+                return candidate_url
+        if candidate_list:
+            return candidate_list[0]
+    return ''
+
+
 def _extract_slide_media_items(slide):
     media_items = []
     def walk_page_elements(page_elements):
@@ -217,6 +294,7 @@ def _extract_slide_media_items(slide):
 
             image = element.get('image')
             if image:
+                placeholder_url = image.get('sourceUrl') or image.get('contentUrl') or ''
                 likely_audio_control = _likely_audio_control_image(
                     element_title=element_title,
                     element_description=element_description,
@@ -224,12 +302,18 @@ def _extract_slide_media_items(slide):
                     height=height,
                     image=image,
                 )
+                playable_url = _extract_playable_media_url(
+                    element,
+                    placeholder_urls=[placeholder_url],
+                )
                 media_items.append(
                     {
                         'kind': 'audio' if likely_audio_control else 'image',
                         'element_id': element_id,
-                        'url': image.get('sourceUrl') or image.get('contentUrl') or '',
-                        'download_url': image.get('contentUrl') or image.get('sourceUrl') or '',
+                        'url': playable_url if likely_audio_control else (placeholder_url or playable_url),
+                        'download_url': '' if likely_audio_control else (image.get('contentUrl') or image.get('sourceUrl') or ''),
+                        'placeholder_url': placeholder_url,
+                        'playable_url': playable_url,
                         'description': element_description,
                         'title': element_title,
                         'position_x': position_x,
@@ -243,12 +327,14 @@ def _extract_slide_media_items(slide):
 
             video = element.get('video')
             if video:
+                playable_url = _extract_playable_media_url(element)
                 media_items.append(
                     {
                         'kind': 'video',
                         'element_id': element_id,
-                        'url': video.get('url') or video.get('sourceUrl') or '',
+                        'url': playable_url or video.get('url') or video.get('sourceUrl') or '',
                         'download_url': '',
+                        'playable_url': playable_url or video.get('url') or video.get('sourceUrl') or '',
                         'description': element_description or video.get('id') or video.get('source') or '',
                         'title': element_title,
                         'position_x': position_x,
@@ -262,12 +348,14 @@ def _extract_slide_media_items(slide):
 
             audio = element.get('audio')
             if audio:
+                playable_url = _extract_playable_media_url(element)
                 media_items.append(
                     {
                         'kind': 'audio',
                         'element_id': element_id,
-                        'url': audio.get('url') or audio.get('sourceUrl') or '',
+                        'url': playable_url or audio.get('url') or audio.get('sourceUrl') or '',
                         'download_url': '',
+                        'playable_url': playable_url or audio.get('url') or audio.get('sourceUrl') or '',
                         'description': element_description or audio.get('id') or '',
                         'title': element_title,
                         'position_x': position_x,
@@ -784,7 +872,15 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
         source_slide_number = context['source_slide_number']
 
         media_kind = _normalize_media_kind(entry.get('media_kind') or (chosen_media or {}).get('kind'))
-        media_url = (chosen_media or {}).get('url') or ''
+        if chosen_media and chosen_media.get('likely_audio_control') and media_kind == 'image':
+            media_kind = 'audio'
+        media_url = (
+            (chosen_media or {}).get('playable_url')
+            or (chosen_media or {}).get('url')
+            or ''
+        )
+        if chosen_media and chosen_media.get('likely_audio_control') and not (chosen_media or {}).get('playable_url'):
+            media_url = ''
         source_slide_url = (chosen_slide or {}).get('slide_url') or ''
         major_category, minor_category1, minor_category2 = _normalize_analysis_categories(entry)
 

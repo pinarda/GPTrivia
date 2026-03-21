@@ -357,6 +357,47 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(media_items[0]["kind"], "audio")
         self.assertTrue(media_items[0]["likely_audio_control"])
 
+    def test_extract_slide_media_items_prefers_playable_link_for_audio_placeholder_images(self):
+        media_items = _extract_slide_media_items(
+            {
+                "pageElements": [
+                    {
+                        "objectId": "image-audio-control",
+                        "title": "Audio clip",
+                        "description": "Click to play song",
+                        "size": {
+                            "width": {"magnitude": 48, "unit": "PT"},
+                            "height": {"magnitude": 48, "unit": "PT"},
+                        },
+                        "transform": {"translateX": 10, "translateY": 20},
+                        "image": {
+                            "contentUrl": "https://example.com/audio-placeholder.png",
+                        },
+                        "imageProperties": {
+                            "link": {
+                                "url": "https://drive.google.com/file/d/audio123/view?usp=sharing",
+                            }
+                        },
+                    }
+                ]
+            }
+        )
+
+        self.assertEqual(len(media_items), 1)
+        self.assertEqual(
+            media_items[0]["url"],
+            "https://drive.google.com/file/d/audio123/view?usp=sharing",
+        )
+        self.assertEqual(
+            media_items[0]["playable_url"],
+            "https://drive.google.com/file/d/audio123/view?usp=sharing",
+        )
+        self.assertEqual(media_items[0]["download_url"], "")
+        self.assertEqual(
+            media_items[0]["placeholder_url"],
+            "https://example.com/audio-placeholder.png",
+        )
+
     @patch("GPTrivia.round_analysis._collect_category_options", return_value=(["Music"], ["Songs"]))
     @patch("GPTrivia.views._get_openai_client", return_value=object())
     @patch("GPTrivia.views._create_openai_text_response", return_value='{"round_type":"music","notes":"","questions":[]}')
@@ -490,6 +531,78 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(len(saved_entries), 2)
         self.assertEqual(saved_entries[0].media_url, "https://example.com/actor-1.png")
         self.assertEqual(saved_entries[1].media_url, "https://example.com/actor-2.png")
+
+    @patch("GPTrivia.round_analysis._download_media_file", return_value=None)
+    @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
+    def test_store_round_analysis_uses_playable_url_for_audio_placeholders(self, _correctness_mock, _download_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Music Identify Round",
+            major_category="Music",
+            minor_category1="Songs",
+            minor_category2="",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/music-round/edit#slide=id.r1",
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+        )
+
+        slide_payload = {
+            "presentation_id": "music-round",
+            "slide_range_label": "1-1",
+            "slides": [
+                {
+                    "slide_number": 1,
+                    "slide_id": "slide-question",
+                    "slide_url": "https://docs.google.com/presentation/d/music-round/edit#slide=id.slide-question",
+                    "text": "Name the song and artist.",
+                    "media_items": [
+                        {
+                            "kind": "audio",
+                            "media_index": 1,
+                            "url": "https://drive.google.com/file/d/audio123/view?usp=sharing",
+                            "playable_url": "https://drive.google.com/file/d/audio123/view?usp=sharing",
+                            "download_url": "",
+                            "placeholder_url": "https://example.com/audio-placeholder.png",
+                            "likely_audio_control": True,
+                        }
+                    ],
+                }
+            ],
+        }
+        analysis_payload = {
+            "round_type": "music",
+            "notes": "Identify the song and artist from the clip.",
+            "questions": [
+                {
+                    "question_number": 1,
+                    "source_slide_number": 1,
+                    "question_text": "Clip 1",
+                    "instruction_text": "Name the song and artist.",
+                    "answer_text": "Song One - Artist One",
+                    "media_kind": "image",
+                    "major_category": "Music",
+                    "minor_category1": "Songs",
+                    "minor_category2": "",
+                }
+            ],
+        }
+
+        _store_round_analysis(run, slide_payload, analysis_payload)
+
+        saved_entry = RoundQuestionAnalysisEntry.objects.get(run=run)
+        self.assertEqual(saved_entry.media_kind, "audio")
+        self.assertEqual(
+            saved_entry.media_url,
+            "https://drive.google.com/file/d/audio123/view?usp=sharing",
+        )
+        self.assertFalse(saved_entry.media_file)
 
     @patch("GPTrivia.round_analysis._download_media_file", return_value=None)
     @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
