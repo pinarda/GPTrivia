@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import shutil
 import socket
 import subprocess
@@ -249,14 +250,14 @@ def main() -> int:
         print("5. Leave that menu visible, then come back here and press Enter.\n")
         input("Press Enter once the Drive menu is visible...")
 
-        print("\nSafari automation window opened.")
+        print("\nSafari tab is open.")
         try:
             candidates = collect_candidate_drive_elements_via_apple_events()
         except RuntimeError as exc:
             print(str(exc))
             print(
                 "\nSafari opened fine, but JavaScript injection failed. "
-                "The most common fix is enabling `Develop > Allow JavaScript from Apple Events` in Safari."
+                "Enable `Develop > Allow JavaScript from Apple Events` in Safari, then rerun the probe."
             )
             return 1
         print("\nDOM candidates with Drive/file signals:")
