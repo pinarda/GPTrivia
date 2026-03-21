@@ -713,6 +713,7 @@ def _build_round_slide_payload(round_obj, *, include_thumbnails=True):
     slide_text_rows = []
     for offset, slide in enumerate(selected_slides, start=start_index + 1):
         slide_text = re.sub(r'\s+', ' ', _extract_slide_text(slide)).strip()
+        text_items = _extract_slide_text_items(slide)
         media_items = _extract_slide_media_items(slide)
         slide_id = slide.get('objectId', '')
         if media_items and any(
@@ -732,6 +733,7 @@ def _build_round_slide_payload(round_obj, *, include_thumbnails=True):
                 'slide_id': slide_id,
                 'slide_url': _google_slide_url(presentation_id, slide_id),
                 'text': slide_text,
+                'text_items': text_items,
                 'speaker_notes': re.sub(r'\s+', ' ', _extract_speaker_notes_text(slide)).strip(),
                 'media_items': media_items,
                 'thumbnail_data_url': (
@@ -789,6 +791,16 @@ def _empty_player_correctness_map():
 
 
 def _analyze_round_slides(round_obj, slide_payload):
+    classification = _classify_round_structure(round_obj, slide_payload)
+    if classification.get('strategy') == 'picture_grid_layout':
+        deterministic_payload = _extract_picture_grid_questions_by_layout(round_obj, slide_payload, classification)
+        if deterministic_payload:
+            return deterministic_payload
+
+    return _analyze_round_slides_with_gpt(round_obj, slide_payload, classification=classification)
+
+
+def _analyze_round_slides_with_gpt(round_obj, slide_payload, *, classification=None):
     from .views import _create_openai_text_response, _get_openai_client
 
     major_categories, minor_categories = _collect_category_options()
@@ -805,13 +817,15 @@ def _analyze_round_slides(round_obj, slide_payload):
         'round_creator': round_obj.creator,
         'presentation_id': slide_payload['presentation_id'],
         'slide_range': slide_payload['slide_range_label'],
+        'classification': classification or {},
         'slides': serialized_slides,
         'allowed_major_categories': major_categories,
         'allowed_minor_categories': minor_categories,
     }
     instructions = (
         "You analyze a trivia round from a Google Slides deck. "
-        "Infer the overall round type and extract the question/answer pairs from the slide text and any media metadata. "
+        "A first-pass classifier has already identified the round structure. "
+        "Use that classification as the default unless the slide evidence clearly contradicts it, and then extract the question/answer pairs from the slide text and any media metadata. "
         "Return strict JSON only with this schema: "
         "{\"round_type\": string, \"notes\": string, \"questions\": ["
         "{\"question_number\": integer, \"source_slide_number\": integer, "
@@ -822,7 +836,8 @@ def _analyze_round_slides(round_obj, slide_payload):
         "Use short round types like picture, matching, multiple choice, short answer, music, video, audio, puzzle, or mixed. "
         "Pair question slides with answer slides when possible. Preserve wording from the slides instead of paraphrasing heavily. "
         "Rendered slide thumbnails are also provided and should be treated as the full slide view with all visible page elements available for inspection. "
-        "Use those thumbnails to understand slides that reveal text or answers one element at a time through animations. "
+        "Text items in the payload come directly from slide page elements, including text that may only appear after clicks or animations, so do not ignore answers just because they are not visible in the initial static thumbnail. "
+        "Use thumbnails only for layout and media context, not as the sole source of visible text. "
         "If the round is multimedia, use the round title, answer text, nearby slide text, and media metadata to infer what the player is supposed to identify or do. "
         "For example, infer prompts like identify the person, identify the place, name the song and artist, identify the movie, or explain the matching rule. "
         "Some Google Slides audio clips appear in pageElements as tiny clickable image placeholders rather than true audio objects. "
@@ -936,6 +951,306 @@ def _parse_optional_positive_int(value):
     except (TypeError, ValueError):
         return None
     return parsed_value if parsed_value > 0 else None
+
+
+def _normalize_text_content(text):
+    return re.sub(r'\s+', ' ', str(text or '')).strip()
+
+
+def _text_center(text_item):
+    return (
+        float(text_item.get('position_x') or 0) + (float(text_item.get('width') or 0) / 2.0),
+        float(text_item.get('position_y') or 0) + (float(text_item.get('height') or 0) / 2.0),
+    )
+
+
+def _media_center(media_item):
+    return (
+        float(media_item.get('position_x') or 0) + (float(media_item.get('width') or 0) / 2.0),
+        float(media_item.get('position_y') or 0) + (float(media_item.get('height') or 0) / 2.0),
+    )
+
+
+def _distance_between_points(point_a, point_b):
+    return ((point_a[0] - point_b[0]) ** 2 + (point_a[1] - point_b[1]) ** 2) ** 0.5
+
+
+def _extract_numeric_prefix(value):
+    match = re.match(r'^\s*(\d+)[\)\].:\-]*\s*(.+?)\s*$', str(value or ''))
+    if not match:
+        return None, _normalize_text_content(value)
+    return int(match.group(1)), _normalize_text_content(match.group(2))
+
+
+def _extract_shape_text_content(shape):
+    return ''.join(
+        _extract_text_elements_content(
+            (shape.get('text') or {}).get('textElements', [])
+        )
+    )
+
+
+def _extract_text_elements_content(text_elements):
+    text_chunks = []
+    for text_element in text_elements or []:
+        text_run = text_element.get('textRun')
+        auto_text = text_element.get('autoText')
+        if text_run and 'content' in text_run:
+            text_chunks.append(text_run['content'])
+        elif auto_text and 'content' in auto_text:
+            text_chunks.append(auto_text['content'])
+    return text_chunks
+
+
+def _extract_table_text_chunks(table):
+    table_chunks = []
+    for row in table.get('tableRows', []) or []:
+        for cell in row.get('tableCells', []) or []:
+            table_chunks.extend(
+                _extract_text_elements_content(
+                    ((cell or {}).get('text') or {}).get('textElements', [])
+                )
+            )
+    return table_chunks
+
+
+def _extract_slide_text_items(slide):
+    text_items = []
+
+    def walk_page_elements(page_elements):
+        for element in page_elements or []:
+            transform = element.get('transform') or {}
+            size = element.get('size') or {}
+            position_x = float(transform.get('translateX') or 0)
+            position_y = float(transform.get('translateY') or 0)
+            width = _dimension_magnitude(size.get('width'))
+            height = _dimension_magnitude(size.get('height'))
+            element_id = element.get('objectId', '')
+
+            candidate_texts = []
+            shape = element.get('shape') or {}
+            if shape:
+                candidate_texts.append(_extract_shape_text_content(shape))
+
+            table = element.get('table') or {}
+            if table:
+                candidate_texts.append(' '.join(_extract_table_text_chunks(table)))
+
+            word_art = element.get('wordArt') or {}
+            if word_art.get('renderedText'):
+                candidate_texts.append(word_art['renderedText'])
+
+            element_title = str(element.get('title') or '').strip()
+            element_description = str(element.get('description') or '').strip()
+            if element_title:
+                candidate_texts.append(element_title)
+            if element_description:
+                candidate_texts.append(element_description)
+
+            for raw_text in candidate_texts:
+                normalized_text = _normalize_text_content(raw_text)
+                if not normalized_text:
+                    continue
+                text_items.append(
+                    {
+                        'element_id': element_id,
+                        'text': normalized_text,
+                        'position_x': position_x,
+                        'position_y': position_y,
+                        'width': width,
+                        'height': height,
+                    }
+                )
+
+            element_group = element.get('elementGroup') or {}
+            if element_group:
+                walk_page_elements(element_group.get('children', []))
+
+    walk_page_elements(slide.get('pageElements', []))
+    return text_items
+
+
+def _expand_text_items_to_answer_candidates(text_items):
+    answer_candidates = []
+    for text_item in text_items or []:
+        raw_lines = [
+            _normalize_text_content(line)
+            for line in re.split(r'[\r\n]+', str(text_item.get('text') or ''))
+        ]
+        lines = [line for line in raw_lines if line]
+        if not lines:
+            continue
+
+        line_height = (float(text_item.get('height') or 0) / max(len(lines), 1)) if len(lines) > 1 else float(text_item.get('height') or 0)
+        for line_index, line_text in enumerate(lines):
+            label_number, cleaned_text = _extract_numeric_prefix(line_text)
+            if not cleaned_text and label_number is None:
+                continue
+            answer_candidates.append(
+                {
+                    'text': cleaned_text or _normalize_text_content(line_text),
+                    'label_number': label_number,
+                    'position_x': float(text_item.get('position_x') or 0),
+                    'position_y': float(text_item.get('position_y') or 0) + (line_height * line_index),
+                    'width': float(text_item.get('width') or 0),
+                    'height': line_height or float(text_item.get('height') or 0),
+                }
+            )
+    return answer_candidates
+
+
+def _find_nearest_numeric_label_for_media(media_item, text_items):
+    media_midpoint = _media_center(media_item)
+    candidate_labels = []
+    for text_item in text_items or []:
+        label_number, cleaned_text = _extract_numeric_prefix(text_item.get('text'))
+        if label_number is None:
+            normalized_text = _normalize_text_content(text_item.get('text'))
+            if re.fullmatch(r'\d+', normalized_text):
+                label_number = int(normalized_text)
+                cleaned_text = normalized_text
+        if label_number is None:
+            continue
+        candidate_labels.append(
+            (
+                _distance_between_points(media_midpoint, _text_center(text_item)),
+                label_number,
+            )
+        )
+    if not candidate_labels:
+        return None
+    candidate_labels.sort(key=lambda item: item[0])
+    return candidate_labels[0][1]
+
+
+def _infer_picture_instruction(round_obj, slide_text):
+    normalized_context = f"{round_obj.title} {slide_text}".casefold()
+    if any(keyword in normalized_context for keyword in ['where', 'location', 'place', 'landmark', 'map']):
+        return "Identify the pictured place."
+    if any(keyword in normalized_context for keyword in ['who', 'actor', 'celebrity', 'person', 'president']):
+        return "Identify the pictured person."
+    if any(keyword in normalized_context for keyword in ['movie', 'film', 'show', 'character']):
+        return "Identify the pictured entertainment clue."
+    return "Identify the pictured item."
+
+
+def _classify_round_structure(round_obj, slide_payload):
+    slides = slide_payload.get('slides', [])
+    max_image_count = max(
+        (
+            len([media_item for media_item in slide.get('media_items', []) if media_item.get('kind') == 'image'])
+            for slide in slides
+        ),
+        default=0,
+    )
+    has_audio_or_video = any(
+        media_item.get('kind') in {'audio', 'video'}
+        for slide in slides
+        for media_item in slide.get('media_items', [])
+    )
+
+    if has_audio_or_video:
+        normalized_title = f"{round_obj.title} {round_obj.major_category}".casefold()
+        return {
+            'round_type': 'music' if 'music' in normalized_title or str(round_obj.major_category or '').casefold() == 'music' else 'video',
+            'strategy': 'gpt_multimedia',
+            'notes': 'Classified from embedded audio/video media.',
+        }
+
+    if max_image_count >= 2:
+        return {
+            'round_type': 'picture',
+            'strategy': 'picture_grid_layout',
+            'notes': 'Classified as a multi-image picture round from slide layout.',
+        }
+
+    if max_image_count == 1:
+        return {
+            'round_type': 'picture',
+            'strategy': 'gpt_picture',
+            'notes': 'Classified as a picture round with one image per question slide.',
+        }
+
+    return {
+        'round_type': 'short answer',
+        'strategy': 'gpt_text',
+        'notes': 'Classified as a text-first round from slide layout.',
+    }
+
+
+def _extract_picture_grid_questions_by_layout(round_obj, slide_payload, classification):
+    slides = slide_payload.get('slides', [])
+    for slide_index, question_slide in enumerate(slides[:-1]):
+        image_items = [
+            media_item
+            for media_item in question_slide.get('media_items', [])
+            if media_item.get('kind') == 'image'
+        ]
+        if len(image_items) < 2:
+            continue
+
+        answer_slide = slides[slide_index + 1]
+        answer_candidates = _expand_text_items_to_answer_candidates(answer_slide.get('text_items', []))
+        if len(answer_candidates) < len(image_items):
+            continue
+
+        question_text_items = question_slide.get('text_items', [])
+        label_to_answer = {
+            candidate['label_number']: candidate
+            for candidate in answer_candidates
+            if candidate.get('label_number') is not None and candidate.get('text')
+        }
+
+        extracted_questions = []
+        used_answer_indexes = set()
+        for media_item in image_items:
+            label_number = _find_nearest_numeric_label_for_media(media_item, question_text_items)
+            answer_candidate = label_to_answer.get(label_number) if label_number is not None else None
+
+            if answer_candidate is None:
+                media_midpoint = _media_center(media_item)
+                remaining_candidates = [
+                    (candidate_index, candidate)
+                    for candidate_index, candidate in enumerate(answer_candidates)
+                    if candidate_index not in used_answer_indexes and candidate.get('text')
+                ]
+                if not remaining_candidates:
+                    continue
+                candidate_index, answer_candidate = min(
+                    remaining_candidates,
+                    key=lambda item: _distance_between_points(media_midpoint, _text_center(item[1])),
+                )
+                used_answer_indexes.add(candidate_index)
+            else:
+                for candidate_index, candidate in enumerate(answer_candidates):
+                    if candidate is answer_candidate:
+                        used_answer_indexes.add(candidate_index)
+                        break
+
+            question_number = len(extracted_questions) + 1
+            label_suffix = f" {label_number}" if label_number is not None else f" {question_number}"
+            extracted_questions.append(
+                {
+                    'question_number': question_number,
+                    'source_slide_number': question_slide.get('slide_number'),
+                    'question_text': f"Picture{label_suffix}",
+                    'instruction_text': _infer_picture_instruction(round_obj, question_slide.get('text') or ''),
+                    'answer_text': answer_candidate.get('text') or '',
+                    'media_kind': 'image',
+                    'media_index': media_item.get('media_index'),
+                    'major_category': round_obj.major_category or '',
+                    'minor_category1': round_obj.minor_category1 or '',
+                    'minor_category2': round_obj.minor_category2 or '',
+                }
+            )
+
+        if len(extracted_questions) >= 2:
+            return {
+                'round_type': classification.get('round_type') or 'picture',
+                'notes': classification.get('notes') or 'Extracted from answer-slide layout.',
+                'questions': extracted_questions,
+            }
+    return None
 
 
 def _choose_media_candidates_for_entry(slide_payload, entry):

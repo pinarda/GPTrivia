@@ -13,6 +13,8 @@ from GPTrivia.models import GPTriviaRound, RoundQuestionAnalysisEntry, RoundQues
 from GPTrivia.round_analysis import (
     _apply_apps_script_media_links,
     _analyze_round_slides,
+    _classify_round_structure,
+    _extract_picture_grid_questions_by_layout,
     _extract_embedded_slide_media_assets,
     _extract_slide_media_items,
     _is_placeholder_media_url,
@@ -361,6 +363,163 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(len(media_items), 1)
         self.assertEqual(media_items[0]["kind"], "audio")
         self.assertTrue(media_items[0]["likely_audio_control"])
+
+    def test_classify_round_structure_marks_multi_image_slide_as_picture_grid(self):
+        round_obj = GPTriviaRound(
+            title="Faces Round",
+            creator="Alex",
+            major_category="Entertainment",
+            minor_category1="Movies",
+            minor_category2="",
+        )
+        slide_payload = {
+            "slides": [
+                {
+                    "slide_number": 1,
+                    "text": "Identify these actors.",
+                    "text_items": [],
+                    "media_items": [
+                        {"kind": "image", "media_index": 1},
+                        {"kind": "image", "media_index": 2},
+                    ],
+                }
+            ]
+        }
+
+        classification = _classify_round_structure(round_obj, slide_payload)
+
+        self.assertEqual(classification["round_type"], "picture")
+        self.assertEqual(classification["strategy"], "picture_grid_layout")
+
+    def test_extract_picture_grid_questions_by_layout_matches_numbered_answers(self):
+        round_obj = GPTriviaRound(
+            title="Faces Round",
+            creator="Alex",
+            major_category="Entertainment",
+            minor_category1="Movies",
+            minor_category2="",
+        )
+        slide_payload = {
+            "slides": [
+                {
+                    "slide_number": 1,
+                    "text": "Identify the pictured actor.",
+                    "text_items": [
+                        {
+                            "text": "1",
+                            "position_x": 20,
+                            "position_y": 20,
+                            "width": 20,
+                            "height": 20,
+                        },
+                        {
+                            "text": "2",
+                            "position_x": 220,
+                            "position_y": 20,
+                            "width": 20,
+                            "height": 20,
+                        },
+                    ],
+                    "media_items": [
+                        {
+                            "kind": "image",
+                            "media_index": 1,
+                            "url": "https://example.com/actor-1.png",
+                            "download_url": "https://example.com/actor-1.png",
+                            "position_x": 0,
+                            "position_y": 0,
+                            "width": 150,
+                            "height": 150,
+                        },
+                        {
+                            "kind": "image",
+                            "media_index": 2,
+                            "url": "https://example.com/actor-2.png",
+                            "download_url": "https://example.com/actor-2.png",
+                            "position_x": 200,
+                            "position_y": 0,
+                            "width": 150,
+                            "height": 150,
+                        },
+                    ],
+                },
+                {
+                    "slide_number": 2,
+                    "text": "1. Actor One 2. Actor Two",
+                    "text_items": [
+                        {
+                            "text": "1. Actor One",
+                            "position_x": 0,
+                            "position_y": 190,
+                            "width": 150,
+                            "height": 30,
+                        },
+                        {
+                            "text": "2. Actor Two",
+                            "position_x": 200,
+                            "position_y": 190,
+                            "width": 150,
+                            "height": 30,
+                        },
+                    ],
+                    "media_items": [],
+                },
+            ]
+        }
+        classification = {
+            "round_type": "picture",
+            "strategy": "picture_grid_layout",
+            "notes": "Classified as a multi-image picture round from slide layout.",
+        }
+
+        analysis_payload = _extract_picture_grid_questions_by_layout(round_obj, slide_payload, classification)
+
+        self.assertEqual(analysis_payload["round_type"], "picture")
+        self.assertEqual(len(analysis_payload["questions"]), 2)
+        self.assertEqual(analysis_payload["questions"][0]["answer_text"], "Actor One")
+        self.assertEqual(analysis_payload["questions"][1]["answer_text"], "Actor Two")
+        self.assertEqual(analysis_payload["questions"][0]["media_index"], 1)
+        self.assertEqual(analysis_payload["questions"][1]["media_index"], 2)
+
+    @patch("GPTrivia.round_analysis._analyze_round_slides_with_gpt")
+    def test_analyze_round_slides_uses_layout_extractor_for_picture_grid(self, gpt_mock):
+        round_obj = GPTriviaRound(
+            title="Faces Round",
+            creator="Alex",
+            major_category="Entertainment",
+            minor_category1="Movies",
+            minor_category2="",
+        )
+        slide_payload = {
+            "slides": [
+                {
+                    "slide_number": 1,
+                    "text": "Identify the pictured actor.",
+                    "text_items": [
+                        {"text": "1", "position_x": 20, "position_y": 20, "width": 20, "height": 20},
+                        {"text": "2", "position_x": 220, "position_y": 20, "width": 20, "height": 20},
+                    ],
+                    "media_items": [
+                        {"kind": "image", "media_index": 1, "position_x": 0, "position_y": 0, "width": 150, "height": 150},
+                        {"kind": "image", "media_index": 2, "position_x": 200, "position_y": 0, "width": 150, "height": 150},
+                    ],
+                },
+                {
+                    "slide_number": 2,
+                    "text": "1. Actor One 2. Actor Two",
+                    "text_items": [
+                        {"text": "1. Actor One", "position_x": 0, "position_y": 190, "width": 150, "height": 30},
+                        {"text": "2. Actor Two", "position_x": 200, "position_y": 190, "width": 150, "height": 30},
+                    ],
+                    "media_items": [],
+                },
+            ]
+        }
+
+        analysis_payload = _analyze_round_slides(round_obj, slide_payload)
+
+        gpt_mock.assert_not_called()
+        self.assertEqual(len(analysis_payload["questions"]), 2)
 
     def test_extract_slide_media_items_prefers_playable_link_for_audio_placeholder_images(self):
         media_items = _extract_slide_media_items(
