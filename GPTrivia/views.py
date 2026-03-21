@@ -40,6 +40,7 @@ import logging
 import requests
 from urllib.parse import urlencode
 import hashlib
+from io import BytesIO
 
 ## API Libs
 from rest_framework import generics
@@ -919,6 +920,42 @@ def round_analysis_status(request, round_id):
     return JsonResponse({
         'status': _build_round_analysis_status_map([round_obj.id])[round_obj.id],
     })
+
+
+@login_required
+def round_analysis_media(request, entry_id):
+    from .round_analysis import _is_placeholder_media_url, get_round_analysis_playable_media_asset
+
+    entry = get_object_or_404(
+        RoundQuestionAnalysisEntry.objects.select_related('round', 'run'),
+        id=entry_id,
+    )
+    expected_kind = str(entry.media_kind or '').strip().lower()
+    if expected_kind not in {'audio', 'video'}:
+        raise Http404("Playable media is only available for audio or video entries.")
+
+    if entry.media_url and not _is_placeholder_media_url(entry.media_url, expected_kind=expected_kind):
+        return redirect(entry.media_url)
+
+    if entry.media_file:
+        file_handle = entry.media_file.open('rb')
+        response = FileResponse(
+            file_handle,
+            content_type=mimetypes.guess_type(entry.media_file.name)[0] or 'application/octet-stream',
+        )
+        response['Content-Disposition'] = f'inline; filename="{os.path.basename(entry.media_file.name)}"'
+        return response
+
+    asset = get_round_analysis_playable_media_asset(entry)
+    if not asset:
+        raise Http404("No playable media is available for this round analysis entry.")
+
+    response = FileResponse(
+        BytesIO(asset['content']),
+        content_type=asset.get('content_type') or 'application/octet-stream',
+    )
+    response['Content-Disposition'] = f'inline; filename="{asset.get("filename") or "media"}"'
+    return response
 
 
 @login_required

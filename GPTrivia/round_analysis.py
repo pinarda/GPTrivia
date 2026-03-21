@@ -3,14 +3,17 @@ import json
 import logging
 import mimetypes
 import os
+import posixpath
 import pickle
 import re
 import threading
 import traceback
+import zipfile
 from io import BytesIO
 from itertools import chain
 from pathlib import Path
 from urllib.parse import urlparse
+from xml.etree import ElementTree
 
 import requests
 from django.core.files.base import ContentFile
@@ -20,6 +23,7 @@ from PIL import Image, ImageOps
 
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
 
 from .models import GPTriviaRound, MergedPresentation, PushSubscription, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun
 from .player_scores import display_name_for_player_field, get_all_player_fields
@@ -30,6 +34,7 @@ ANALYSIS_NOTIFICATION_USERNAME = 'Alex'
 ROUND_ANALYSIS_IMAGE_MAX_DIMENSION = 512
 ROUND_ANALYSIS_IMAGE_JPEG_QUALITY = 72
 ROUND_ANALYSIS_THUMBNAIL_SIZE = 'LARGE'
+PPTX_EXPORT_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
 
 
 def _google_slide_url(presentation_id, slide_id=''):
@@ -38,6 +43,27 @@ def _google_slide_url(presentation_id, slide_id=''):
     if presentation_id:
         return f"https://docs.google.com/presentation/d/{presentation_id}/edit"
     return ''
+
+
+def _classify_media_asset_kind(path_or_url, relationship_type=''):
+    normalized_relationship_type = str(relationship_type or '').lower()
+    suffix = Path(urlparse(str(path_or_url or '')).path).suffix.lower()
+    guessed_type = mimetypes.guess_type(str(path_or_url or ''))[0] or ''
+
+    if 'audio' in normalized_relationship_type or guessed_type.startswith('audio/'):
+        return 'audio'
+    if 'video' in normalized_relationship_type or guessed_type.startswith('video/'):
+        return 'video'
+    if guessed_type.startswith('image/'):
+        return 'image'
+
+    if suffix in {'.mp3', '.wav', '.m4a', '.aac', '.ogg', '.oga', '.flac', '.wma'}:
+        return 'audio'
+    if suffix in {'.mp4', '.mov', '.m4v', '.avi', '.wmv', '.webm', '.mkv'}:
+        return 'video'
+    if suffix in {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.webp', '.tif', '.tiff'}:
+        return 'image'
+    return 'media'
 
 
 def queue_round_analysis(round_id, *, trigger_type=RoundQuestionAnalysisRun.TRIGGER_MANUAL, initiated_by=''):
@@ -276,6 +302,116 @@ def _extract_playable_media_url(element, *, placeholder_urls=None):
         if candidate_list:
             return candidate_list[0]
     return ''
+
+
+def _is_placeholder_media_url(url, *, expected_kind=''):
+    normalized_url = str(url or '').strip()
+    if not normalized_url:
+        return True
+
+    classified_kind = _classify_media_asset_kind(normalized_url)
+    normalized_expected_kind = str(expected_kind or '').strip().lower()
+    if normalized_expected_kind in {'audio', 'video'} and classified_kind == 'image':
+        return True
+
+    return _looks_like_google_image_asset(normalized_url)
+
+
+def _export_presentation_as_pptx_bytes(presentation_id, credentials=None):
+    if not presentation_id:
+        return b''
+
+    credentials = credentials or _load_google_credentials()
+    drive_service = build('drive', 'v3', credentials=credentials, cache_discovery=False)
+    request = drive_service.files().export_media(
+        fileId=presentation_id,
+        mimeType=PPTX_EXPORT_MIME_TYPE,
+    )
+    buffer = BytesIO()
+    downloader = MediaIoBaseDownload(buffer, request)
+    done = False
+    while not done:
+        _, done = downloader.next_chunk()
+    return buffer.getvalue()
+
+
+def _extract_embedded_slide_media_assets(pptx_bytes, slide_number):
+    if not pptx_bytes or not slide_number:
+        return []
+
+    relationship_path = f"ppt/slides/_rels/slide{slide_number}.xml.rels"
+    assets = []
+    with zipfile.ZipFile(BytesIO(pptx_bytes)) as archive:
+        if relationship_path not in archive.namelist():
+            return []
+
+        relationship_xml = archive.read(relationship_path)
+        root = ElementTree.fromstring(relationship_xml)
+        namespace = {'rel': 'http://schemas.openxmlformats.org/package/2006/relationships'}
+        for relationship in root.findall('rel:Relationship', namespace):
+            target = str(relationship.attrib.get('Target') or '').strip()
+            if not target:
+                continue
+
+            resolved_path = posixpath.normpath(posixpath.join('ppt/slides', target))
+            if not resolved_path.startswith('ppt/media/'):
+                continue
+            if resolved_path not in archive.namelist():
+                continue
+
+            relationship_type = relationship.attrib.get('Type') or ''
+            asset_kind = _classify_media_asset_kind(resolved_path, relationship_type)
+            content_type = mimetypes.guess_type(resolved_path)[0] or 'application/octet-stream'
+            assets.append(
+                {
+                    'kind': asset_kind,
+                    'filename': Path(resolved_path).name,
+                    'content_type': content_type,
+                    'content': archive.read(resolved_path),
+                }
+            )
+
+    kind_priority = {'audio': 0, 'video': 1, 'image': 2, 'media': 3}
+    assets.sort(key=lambda asset: (kind_priority.get(asset['kind'], 9), asset['filename']))
+    return assets
+
+
+def _extract_presentation_id_for_analysis_round(round_obj, run=None):
+    if run and getattr(run, 'source_presentation_id', ''):
+        return run.source_presentation_id
+
+    analysis_link = getattr(round_obj, 'source_link', '') or getattr(round_obj, 'link', '')
+    if not analysis_link:
+        return ''
+
+    from .mail import _extract_presentation_link_parts
+
+    presentation_id, _slide_id = _extract_presentation_link_parts(analysis_link)
+    return presentation_id or ''
+
+
+def get_round_analysis_playable_media_asset(entry):
+    if not entry or not entry.source_slide_number:
+        return None
+
+    expected_kind = _normalize_media_kind(entry.media_kind)
+    if expected_kind not in {'audio', 'video'}:
+        return None
+
+    presentation_id = _extract_presentation_id_for_analysis_round(entry.round, entry.run)
+    if not presentation_id:
+        return None
+
+    pptx_bytes = _export_presentation_as_pptx_bytes(presentation_id)
+    embedded_assets = _extract_embedded_slide_media_assets(pptx_bytes, entry.source_slide_number)
+    if not embedded_assets:
+        return None
+
+    for preferred_kind in [expected_kind, 'audio', 'video']:
+        for asset in embedded_assets:
+            if asset.get('kind') == preferred_kind:
+                return asset
+    return embedded_assets[0]
 
 
 def _extract_slide_media_items(slide):
@@ -880,6 +1016,8 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
             or ''
         )
         if chosen_media and chosen_media.get('likely_audio_control') and not (chosen_media or {}).get('playable_url'):
+            media_url = ''
+        if _is_placeholder_media_url(media_url, expected_kind=media_kind):
             media_url = ''
         source_slide_url = (chosen_slide or {}).get('slide_url') or ''
         major_category, minor_category1, minor_category2 = _normalize_analysis_categories(entry)

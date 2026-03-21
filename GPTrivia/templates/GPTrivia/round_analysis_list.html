@@ -73,7 +73,11 @@
                                         {% if entry.instruction_text %}
                                             <div class="round-analysis-instruction">{{ entry.instruction_text }}</div>
                                         {% endif %}
-                                        {% if entry.media_file %}
+                                        {% if entry.media_kind == 'audio' or entry.media_kind == 'video' %}
+                                            <div class="round-analysis-media-block">
+                                                <a href="{% url 'round_analysis_media' entry.id %}" target="_blank" rel="noopener noreferrer">Open playable {{ entry.media_kind }}</a>
+                                            </div>
+                                        {% elif entry.media_file %}
                                             <div class="round-analysis-media-block">
                                                 <a href="{{ entry.media_file.url }}" target="_blank" rel="noopener noreferrer">Open saved image</a>
                                                 <img class="round-analysis-media-preview" src="{{ entry.media_file.url }}" alt="Saved media for {{ run.round.title }} question {{ entry.question_number }}">
