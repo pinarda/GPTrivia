@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 import mimetypes
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 ANALYSIS_NOTIFICATION_USERNAME = 'Alex'
 ROUND_ANALYSIS_IMAGE_MAX_DIMENSION = 512
 ROUND_ANALYSIS_IMAGE_JPEG_QUALITY = 72
+ROUND_ANALYSIS_THUMBNAIL_SIZE = 'LARGE'
 
 
 def _google_slide_url(presentation_id, slide_id=''):
@@ -177,56 +179,111 @@ def _load_google_credentials():
     return credentials
 
 
+def _dimension_magnitude(dimension):
+    try:
+        return float((dimension or {}).get('magnitude') or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _likely_audio_control_image(*, element_title='', element_description='', width=0.0, height=0.0, image=None):
+    descriptor_text = f"{element_title} {element_description}".casefold()
+    if any(keyword in descriptor_text for keyword in ['audio', 'music', 'song', 'listen', 'track', 'clip', 'sound']):
+        return True
+
+    image = image or {}
+    source_url = str(image.get('sourceUrl') or '').strip().lower()
+    if source_url and any(keyword in source_url for keyword in ['audio', 'music', 'song', 'listen', 'track']):
+        return True
+
+    max_dimension = max(width, height)
+    min_dimension = min(width, height)
+    return bool(max_dimension and max_dimension <= 72 and min_dimension <= 72)
+
+
 def _extract_slide_media_items(slide):
     media_items = []
-    for element in slide.get('pageElements', []):
-        element_id = element.get('objectId', '')
-        transform = element.get('transform') or {}
-        position_x = float(transform.get('translateX') or 0)
-        position_y = float(transform.get('translateY') or 0)
-        image = element.get('image')
-        if image:
-            media_items.append(
-                {
-                    'kind': 'image',
-                    'element_id': element_id,
-                    'url': image.get('sourceUrl') or image.get('contentUrl') or '',
-                    'download_url': image.get('contentUrl') or image.get('sourceUrl') or '',
-                    'description': image.get('title') or image.get('description') or '',
-                    'position_x': position_x,
-                    'position_y': position_y,
-                }
-            )
-            continue
+    def walk_page_elements(page_elements):
+        for element in page_elements or []:
+            element_id = element.get('objectId', '')
+            transform = element.get('transform') or {}
+            size = element.get('size') or {}
+            position_x = float(transform.get('translateX') or 0)
+            position_y = float(transform.get('translateY') or 0)
+            width = _dimension_magnitude(size.get('width'))
+            height = _dimension_magnitude(size.get('height'))
+            element_title = str(element.get('title') or '').strip()
+            element_description = str(element.get('description') or '').strip()
 
-        video = element.get('video')
-        if video:
-            media_items.append(
-                {
-                    'kind': 'video',
-                    'element_id': element_id,
-                    'url': video.get('url') or video.get('sourceUrl') or '',
-                    'download_url': '',
-                    'description': video.get('id') or video.get('source') or '',
-                    'position_x': position_x,
-                    'position_y': position_y,
-                }
-            )
-            continue
+            image = element.get('image')
+            if image:
+                likely_audio_control = _likely_audio_control_image(
+                    element_title=element_title,
+                    element_description=element_description,
+                    width=width,
+                    height=height,
+                    image=image,
+                )
+                media_items.append(
+                    {
+                        'kind': 'audio' if likely_audio_control else 'image',
+                        'element_id': element_id,
+                        'url': image.get('sourceUrl') or image.get('contentUrl') or '',
+                        'download_url': image.get('contentUrl') or image.get('sourceUrl') or '',
+                        'description': element_description,
+                        'title': element_title,
+                        'position_x': position_x,
+                        'position_y': position_y,
+                        'width': width,
+                        'height': height,
+                        'likely_audio_control': likely_audio_control,
+                    }
+                )
+                continue
 
-        audio = element.get('audio')
-        if audio:
-            media_items.append(
-                {
-                    'kind': 'audio',
-                    'element_id': element_id,
-                    'url': audio.get('url') or audio.get('sourceUrl') or '',
-                    'download_url': '',
-                    'description': audio.get('id') or '',
-                    'position_x': position_x,
-                    'position_y': position_y,
-                }
-            )
+            video = element.get('video')
+            if video:
+                media_items.append(
+                    {
+                        'kind': 'video',
+                        'element_id': element_id,
+                        'url': video.get('url') or video.get('sourceUrl') or '',
+                        'download_url': '',
+                        'description': element_description or video.get('id') or video.get('source') or '',
+                        'title': element_title,
+                        'position_x': position_x,
+                        'position_y': position_y,
+                        'width': width,
+                        'height': height,
+                        'likely_audio_control': False,
+                    }
+                )
+                continue
+
+            audio = element.get('audio')
+            if audio:
+                media_items.append(
+                    {
+                        'kind': 'audio',
+                        'element_id': element_id,
+                        'url': audio.get('url') or audio.get('sourceUrl') or '',
+                        'download_url': '',
+                        'description': element_description or audio.get('id') or '',
+                        'title': element_title,
+                        'position_x': position_x,
+                        'position_y': position_y,
+                        'width': width,
+                        'height': height,
+                        'likely_audio_control': False,
+                    }
+                )
+                continue
+
+            element_group = element.get('elementGroup') or {}
+            if element_group:
+                walk_page_elements(element_group.get('children', []))
+
+    walk_page_elements(slide.get('pageElements', []))
 
     media_items.sort(
         key=lambda item: (
@@ -241,11 +298,42 @@ def _extract_slide_media_items(slide):
     return media_items
 
 
+def _fetch_slide_thumbnail_data_url(slides_service, credentials, presentation_id, slide_id):
+    if not presentation_id or not slide_id:
+        return ''
+
+    thumbnail_response = slides_service.presentations().pages().getThumbnail(
+        presentationId=presentation_id,
+        pageObjectId=slide_id,
+        thumbnailProperties_mimeType='PNG',
+        thumbnailProperties_thumbnailSize=ROUND_ANALYSIS_THUMBNAIL_SIZE,
+    ).execute()
+    content_url = thumbnail_response.get('contentUrl')
+    if not content_url:
+        return ''
+
+    request_headers = {}
+    try:
+        if credentials and credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+        if credentials:
+            credentials.apply(request_headers)
+    except Exception:
+        logger.exception("Could not refresh Google credentials for slide thumbnail fetch.")
+
+    response = requests.get(content_url, headers=request_headers, timeout=30)
+    response.raise_for_status()
+    mime_type = (response.headers.get('Content-Type') or 'image/png').split(';')[0].strip() or 'image/png'
+    encoded_bytes = base64.b64encode(response.content).decode('ascii')
+    return f"data:{mime_type};base64,{encoded_bytes}"
+
+
 def _build_round_slide_payload(round_obj):
     from .mail import (
         ROUND_SOURCE_MERGED_DECK,
         ROUND_SOURCE_UNKNOWN,
         _classify_round_source_link,
+        _extract_speaker_notes_text,
         _extract_slide_text,
         _find_slide_index_for_round_title,
         _infer_historical_round_slide_range,
@@ -307,7 +395,14 @@ def _build_round_slide_payload(round_obj):
                 'slide_id': slide.get('objectId', ''),
                 'slide_url': _google_slide_url(presentation_id, slide.get('objectId', '')),
                 'text': slide_text,
+                'speaker_notes': re.sub(r'\s+', ' ', _extract_speaker_notes_text(slide)).strip(),
                 'media_items': media_items,
+                'thumbnail_data_url': _fetch_slide_thumbnail_data_url(
+                    slides_service,
+                    credentials,
+                    presentation_id,
+                    slide.get('objectId', ''),
+                ),
             }
         )
 
@@ -357,12 +452,20 @@ def _analyze_round_slides(round_obj, slide_payload):
     from .views import _create_openai_text_response, _get_openai_client
 
     major_categories, minor_categories = _collect_category_options()
+    serialized_slides = [
+        {
+            key: value
+            for key, value in slide_data.items()
+            if key != 'thumbnail_data_url'
+        }
+        for slide_data in slide_payload['slides']
+    ]
     input_payload = {
         'round_title': round_obj.title,
         'round_creator': round_obj.creator,
         'presentation_id': slide_payload['presentation_id'],
         'slide_range': slide_payload['slide_range_label'],
-        'slides': slide_payload['slides'],
+        'slides': serialized_slides,
         'allowed_major_categories': major_categories,
         'allowed_minor_categories': minor_categories,
     }
@@ -378,8 +481,12 @@ def _analyze_round_slides(round_obj, slide_payload):
         "]}. "
         "Use short round types like picture, matching, multiple choice, short answer, music, video, audio, puzzle, or mixed. "
         "Pair question slides with answer slides when possible. Preserve wording from the slides instead of paraphrasing heavily. "
+        "Rendered slide thumbnails are also provided and should be treated as the full slide view with all visible page elements available for inspection. "
+        "Use those thumbnails to understand slides that reveal text or answers one element at a time through animations. "
         "If the round is multimedia, use the round title, answer text, nearby slide text, and media metadata to infer what the player is supposed to identify or do. "
         "For example, infer prompts like identify the person, identify the place, name the song and artist, identify the movie, or explain the matching rule. "
+        "Some Google Slides audio clips appear in pageElements as tiny clickable image placeholders rather than true audio objects. "
+        "If media metadata marks an item as likely_audio_control or the rendered slide clearly indicates music/audio, do not classify the round as a picture round just because an image placeholder exists. "
         "If a single slide contains multiple separate question images or other media items, return one question per item. "
         "Use media_index to point to the matching media item on that slide. media_index is 1-based and follows the media_items order already provided in the slide payload, "
         "which is sorted top-to-bottom and then left-to-right. "
@@ -402,12 +509,22 @@ def _analyze_round_slides(round_obj, slide_payload):
         input_items=[
             {
                 'role': 'user',
-                'content': [
-                    {
-                        'type': 'input_text',
-                        'text': json.dumps(input_payload, ensure_ascii=True),
-                    }
-                ],
+                'content': (
+                    [
+                        {
+                            'type': 'input_text',
+                            'text': json.dumps(input_payload, ensure_ascii=True),
+                        }
+                    ]
+                    + [
+                        {
+                            'type': 'input_image',
+                            'image_url': slide_data['thumbnail_data_url'],
+                        }
+                        for slide_data in slide_payload['slides']
+                        if slide_data.get('thumbnail_data_url')
+                    ]
+                ),
             }
         ],
         max_output_tokens=4000,

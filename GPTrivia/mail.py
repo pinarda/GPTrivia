@@ -188,15 +188,87 @@ def _normalize_round_title(text):
 
 
 def _extract_slide_text(slide):
+    return ' '.join(_extract_page_text_chunks(slide.get('pageElements', []))).strip()
+
+
+def _extract_text_elements_content(text_elements):
     text_chunks = []
-    for element in slide.get('pageElements', []):
-        shape = element.get('shape', {})
-        text_elements = shape.get('text', {}).get('textElements', [])
-        for text_element in text_elements:
-            text_run = text_element.get('textRun')
-            if text_run and 'content' in text_run:
-                text_chunks.append(text_run['content'])
-    return ' '.join(text_chunks)
+    for text_element in text_elements or []:
+        text_run = text_element.get('textRun')
+        auto_text = text_element.get('autoText')
+        if text_run and 'content' in text_run:
+            text_chunks.append(text_run['content'])
+        elif auto_text and 'content' in auto_text:
+            text_chunks.append(auto_text['content'])
+    return text_chunks
+
+
+def _extract_table_text_chunks(table):
+    table_chunks = []
+    for row in table.get('tableRows', []) or []:
+        for cell in row.get('tableCells', []) or []:
+            table_chunks.extend(
+                _extract_text_elements_content(
+                    ((cell or {}).get('text') or {}).get('textElements', [])
+                )
+            )
+    return table_chunks
+
+
+def _extract_page_element_text_chunks(element):
+    text_chunks = []
+    shape = element.get('shape') or {}
+    if shape:
+        text_chunks.extend(
+            _extract_text_elements_content(
+                (shape.get('text') or {}).get('textElements', [])
+            )
+        )
+
+    table = element.get('table') or {}
+    if table:
+        text_chunks.extend(_extract_table_text_chunks(table))
+
+    word_art = element.get('wordArt') or {}
+    if word_art.get('renderedText'):
+        text_chunks.append(word_art['renderedText'])
+
+    element_group = element.get('elementGroup') or {}
+    if element_group:
+        text_chunks.extend(_extract_page_text_chunks(element_group.get('children', [])))
+
+    element_title = str(element.get('title') or '').strip()
+    element_description = str(element.get('description') or '').strip()
+    if element_title:
+        text_chunks.append(element_title)
+    if element_description:
+        text_chunks.append(element_description)
+
+    return text_chunks
+
+
+def _extract_page_text_chunks(page_elements):
+    text_chunks = []
+    for element in page_elements or []:
+        text_chunks.extend(_extract_page_element_text_chunks(element))
+    return [
+        text_chunk
+        for text_chunk in text_chunks
+        if str(text_chunk or '').strip()
+    ]
+
+
+def _extract_speaker_notes_text(slide):
+    notes_page = ((slide.get('slideProperties') or {}).get('notesPage') or {})
+    speaker_notes_object_id = ((notes_page.get('notesProperties') or {}).get('speakerNotesObjectId') or '').strip()
+    if not speaker_notes_object_id:
+        return ''
+
+    for element in notes_page.get('pageElements', []) or []:
+        if element.get('objectId') != speaker_notes_object_id:
+            continue
+        return ' '.join(_extract_page_element_text_chunks(element)).strip()
+    return ''
 
 
 def _get_shape_text_content(presentation, element_id):

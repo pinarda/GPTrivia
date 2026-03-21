@@ -9,6 +9,8 @@ from GPTrivia.mail import (
     _build_black_text_style_request,
     _build_update_summary_entries,
     _classify_round_source_link,
+    _extract_slide_text,
+    _extract_speaker_notes_text,
     _find_slide_index_for_round_title,
     _format_pacific_timestamp,
     _get_shape_text_content,
@@ -190,6 +192,80 @@ class MailHelpersTests(SimpleTestCase):
             _find_slide_index_for_round_title(slides, "Flags Picture Round"),
             1,
         )
+
+    def test_extract_slide_text_reads_grouped_word_art_and_table_content(self):
+        slide = {
+            "pageElements": [
+                {
+                    "wordArt": {
+                        "renderedText": "Animated Header",
+                    }
+                },
+                {
+                    "elementGroup": {
+                        "children": [
+                            {
+                                "shape": {
+                                    "text": {
+                                        "textElements": [
+                                            {"textRun": {"content": "Grouped answer 1"}},
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "table": {
+                                    "tableRows": [
+                                        {
+                                            "tableCells": [
+                                                {
+                                                    "text": {
+                                                        "textElements": [
+                                                            {"textRun": {"content": "Table clue"}}
+                                                        ]
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            },
+                        ]
+                    }
+                },
+            ]
+        }
+
+        extracted_text = _extract_slide_text(slide)
+
+        self.assertIn("Animated Header", extracted_text)
+        self.assertIn("Grouped answer 1", extracted_text)
+        self.assertIn("Table clue", extracted_text)
+
+    def test_extract_speaker_notes_text_reads_notes_body(self):
+        slide = {
+            "slideProperties": {
+                "notesPage": {
+                    "notesProperties": {
+                        "speakerNotesObjectId": "speaker-notes-shape",
+                    },
+                    "pageElements": [
+                        {
+                            "objectId": "speaker-notes-shape",
+                            "shape": {
+                                "text": {
+                                    "textElements": [
+                                        {"textRun": {"content": "All answers visible here."}},
+                                    ]
+                                }
+                            },
+                        }
+                    ],
+                }
+            }
+        }
+
+        self.assertEqual(_extract_speaker_notes_text(slide), "All answers visible here.")
 
     def test_get_shape_text_content_skips_slides_without_page_elements(self):
         presentation = {

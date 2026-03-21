@@ -8,7 +8,13 @@ from django.urls import reverse
 from PIL import Image
 
 from GPTrivia.models import GPTriviaRound, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun
-from GPTrivia.round_analysis import _normalize_analysis_categories, _optimize_analysis_image_content, _store_round_analysis
+from GPTrivia.round_analysis import (
+    _analyze_round_slides,
+    _extract_slide_media_items,
+    _normalize_analysis_categories,
+    _optimize_analysis_image_content,
+    _store_round_analysis,
+)
 
 
 class RoundAnalysisTests(TestCase):
@@ -325,6 +331,82 @@ class RoundAnalysisTests(TestCase):
 
         with Image.open(io.BytesIO(optimized_content)) as optimized_image:
             self.assertLessEqual(max(optimized_image.size), 512)
+
+    def test_extract_slide_media_items_marks_audio_placeholder_images(self):
+        media_items = _extract_slide_media_items(
+            {
+                "pageElements": [
+                    {
+                        "objectId": "image-audio-control",
+                        "title": "Audio clip",
+                        "description": "Click to play song",
+                        "size": {
+                            "width": {"magnitude": 48, "unit": "PT"},
+                            "height": {"magnitude": 48, "unit": "PT"},
+                        },
+                        "transform": {"translateX": 10, "translateY": 20},
+                        "image": {
+                            "contentUrl": "https://example.com/audio-placeholder.png",
+                        },
+                    }
+                ]
+            }
+        )
+
+        self.assertEqual(len(media_items), 1)
+        self.assertEqual(media_items[0]["kind"], "audio")
+        self.assertTrue(media_items[0]["likely_audio_control"])
+
+    @patch("GPTrivia.round_analysis._collect_category_options", return_value=(["Music"], ["Songs"]))
+    @patch("GPTrivia.views._get_openai_client", return_value=object())
+    @patch("GPTrivia.views._create_openai_text_response", return_value='{"round_type":"music","notes":"","questions":[]}')
+    def test_analyze_round_slides_includes_slide_thumbnails_and_notes(self, response_mock, _client_mock, _category_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Audio Round",
+            major_category="Music",
+            minor_category1="Songs",
+            minor_category2="",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/audio-round/edit#slide=id.r1",
+        )
+        slide_payload = {
+            "presentation_id": "audio-round",
+            "slide_range_label": "1-1",
+            "slides": [
+                {
+                    "slide_number": 1,
+                    "slide_id": "slide-1",
+                    "slide_url": "https://docs.google.com/presentation/d/audio-round/edit#slide=id.slide-1",
+                    "text": "",
+                    "speaker_notes": "Reveal all lyrics here.",
+                    "media_items": [
+                        {
+                            "kind": "audio",
+                            "media_index": 1,
+                            "title": "Audio clip",
+                            "description": "Click to play song",
+                            "likely_audio_control": True,
+                        }
+                    ],
+                    "thumbnail_data_url": "data:image/png;base64,abc123",
+                }
+            ],
+        }
+
+        _analyze_round_slides(round_obj, slide_payload)
+
+        input_items = response_mock.call_args.kwargs["input_items"]
+        content_items = input_items[0]["content"]
+        self.assertEqual(content_items[1]["type"], "input_image")
+        self.assertEqual(content_items[1]["image_url"], "data:image/png;base64,abc123")
+        serialized_payload = content_items[0]["text"]
+        self.assertIn('"speaker_notes": "Reveal all lyrics here."', serialized_payload)
+        self.assertIn('"likely_audio_control": true', serialized_payload)
 
     @patch("GPTrivia.round_analysis._download_media_file", return_value=None)
     @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
