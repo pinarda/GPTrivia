@@ -44,6 +44,7 @@ urlpatterns = [
     path('rounds/', views.rounds_list, name='rounds_list'),
     path('round-analysis/', views.round_analysis_list, name='round_analysis_list'),
     path('round-analysis/<int:round_id>/trigger/', views.trigger_round_analysis, name='trigger_round_analysis'),
+    path('round-analysis/<int:round_id>/status/', views.round_analysis_status, name='round_analysis_status'),
     path('player_analysis/', views.player_analysis, name='player_analysis'),
     path('player_analysis_legacy/', views.player_analysis_legacy, name='player_analysis_legacy'),
     path('player_profile/<str:player_name>/', views.player_profile, name='player_profile'),

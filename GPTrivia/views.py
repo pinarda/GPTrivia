@@ -752,14 +752,7 @@ def rounds_list(request):
     player_fields = _get_global_player_fields()
     player_names = [display_name_for_player_field(field) for field in player_fields]
     player_color_mapping = build_player_color_mapping(player_names)
-    from .round_analysis import latest_analysis_run_map
-
-    analysis_run_map = latest_analysis_run_map([round_obj.id for round_obj in rounds])
-    completed_run_ids_with_entries = set(
-        RoundQuestionAnalysisEntry.objects.filter(run_id__in=[run.id for run in analysis_run_map.values()])
-        .values_list('run_id', flat=True)
-        .distinct()
-    )
+    analysis_status_map = _build_round_analysis_status_map([round_obj.id for round_obj in rounds])
     text_color = {}
     for player in player_names:
         player_color = player_color_mapping[player]
@@ -776,22 +769,65 @@ def rounds_list(request):
         'initial_creator_search': initial_creator_search,
         'initial_category_search': initial_category_search,
         'initial_date_search': initial_date_search,
-        'analysis_status_map': {
-            round_id: {
-                'status': run.status,
-                'status_label': run.get_status_display(),
-                'has_any_run': True,
-                'is_active': run.status in {
-                    RoundQuestionAnalysisRun.STATUS_PENDING,
-                    RoundQuestionAnalysisRun.STATUS_RUNNING,
-                },
-                'has_completed_entries': run.status == RoundQuestionAnalysisRun.STATUS_COMPLETED and run.id in completed_run_ids_with_entries,
-            }
-            for round_id, run in analysis_run_map.items()
-        },
+        'analysis_status_map': analysis_status_map,
     }
 
     return render(request, 'GPTrivia/rounds_list.html', context)
+
+
+def _serialize_round_analysis_status(round_id, latest_run=None, has_completed_entries=False):
+    is_active = bool(
+        latest_run and latest_run.status in {
+            RoundQuestionAnalysisRun.STATUS_PENDING,
+            RoundQuestionAnalysisRun.STATUS_RUNNING,
+        }
+    )
+    was_analyzed_before = bool(
+        has_completed_entries
+        or (latest_run and latest_run.status == RoundQuestionAnalysisRun.STATUS_COMPLETED)
+    )
+    return {
+        'status': latest_run.status if latest_run else '',
+        'status_label': latest_run.get_status_display() if latest_run else '',
+        'has_any_run': bool(latest_run),
+        'is_active': is_active,
+        'button_label': 'Analyze Again' if was_analyzed_before and not is_active else 'Analyze',
+        'button_disabled': is_active,
+        'show_already_analyzed': bool(was_analyzed_before and not is_active),
+        'has_completed_entries': bool(has_completed_entries),
+        'view_url': f"{reverse('round_analysis_list')}?round_id={round_id}" if has_completed_entries else '',
+    }
+
+
+def _build_round_analysis_status_map(round_ids):
+    normalized_round_ids = []
+    seen_round_ids = set()
+    for round_id in round_ids or []:
+        try:
+            parsed_round_id = int(round_id)
+        except (TypeError, ValueError):
+            continue
+        if parsed_round_id in seen_round_ids:
+            continue
+        seen_round_ids.add(parsed_round_id)
+        normalized_round_ids.append(parsed_round_id)
+
+    from .round_analysis import latest_analysis_run_map
+
+    latest_run_map = latest_analysis_run_map(normalized_round_ids)
+    rounds_with_completed_entries = set(
+        RoundQuestionAnalysisEntry.objects.filter(round_id__in=normalized_round_ids)
+        .values_list('round_id', flat=True)
+        .distinct()
+    )
+    return {
+        round_id: _serialize_round_analysis_status(
+            round_id,
+            latest_run=latest_run_map.get(round_id),
+            has_completed_entries=round_id in rounds_with_completed_entries,
+        )
+        for round_id in normalized_round_ids
+    }
 
 
 @login_required
@@ -824,14 +860,29 @@ def round_analysis_list(request):
 
 
 @login_required
+def round_analysis_status(request, round_id):
+    round_obj = get_object_or_404(GPTriviaRound, id=round_id)
+    return JsonResponse({
+        'status': _build_round_analysis_status_map([round_obj.id])[round_obj.id],
+    })
+
+
+@login_required
 def trigger_round_analysis(request, round_id):
     if request.method != 'POST':
         return JsonResponse({'detail': 'Method not allowed.'}, status=405)
 
     round_obj = get_object_or_404(GPTriviaRound, id=round_id)
     next_url = (request.POST.get('next') or request.META.get('HTTP_REFERER') or reverse('rounds_list')).strip()
+    wants_json = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
     if round_obj.replay:
+        if wants_json:
+            return JsonResponse({
+                'ok': False,
+                'message': f"{round_obj.title} is marked as a replay round and cannot be analyzed.",
+                'status': _build_round_analysis_status_map([round_obj.id])[round_obj.id],
+            }, status=400)
         messages.error(request, f"{round_obj.title} is marked as a replay round and cannot be analyzed.")
         return redirect(next_url)
 
@@ -839,6 +890,12 @@ def trigger_round_analysis(request, round_id):
         round=round_obj,
         status__in=[RoundQuestionAnalysisRun.STATUS_PENDING, RoundQuestionAnalysisRun.STATUS_RUNNING],
     ).exists():
+        if wants_json:
+            return JsonResponse({
+                'ok': True,
+                'message': f"Round analysis is already running for {round_obj.title}.",
+                'status': _build_round_analysis_status_map([round_obj.id])[round_obj.id],
+            })
         messages.info(request, f"Round analysis is already running for {round_obj.title}.")
         return redirect(next_url)
 
@@ -849,10 +906,22 @@ def trigger_round_analysis(request, round_id):
         trigger_type=RoundQuestionAnalysisRun.TRIGGER_MANUAL,
         initiated_by=request.user.username if request.user.is_authenticated else '',
     )
+    status_payload = _build_round_analysis_status_map([round_obj.id])[round_obj.id]
+    message_text = (
+        f"Round analysis queued for {round_obj.title}."
+        if queued_run_ids
+        else f"Round analysis is already running for {round_obj.title}."
+    )
+    if wants_json:
+        return JsonResponse({
+            'ok': bool(queued_run_ids),
+            'message': message_text,
+            'status': status_payload,
+        })
     if queued_run_ids:
-        messages.success(request, f"Round analysis queued for {round_obj.title}.")
+        messages.success(request, message_text)
     else:
-        messages.info(request, f"Round analysis is already running for {round_obj.title}.")
+        messages.info(request, message_text)
 
     return redirect(next_url)
 

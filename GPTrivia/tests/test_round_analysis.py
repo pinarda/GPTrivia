@@ -114,6 +114,51 @@ class RoundAnalysisTests(TestCase):
         )
 
     @patch("GPTrivia.round_analysis.queue_round_analysis", return_value=[123])
+    def test_trigger_round_analysis_returns_json_for_ajax(self, queue_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Ajax Analyze",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=3,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/ajax-analyze/edit#slide=id.r1",
+        )
+
+        with patch(
+            "GPTrivia.views._build_round_analysis_status_map",
+            return_value={
+                round_obj.id: {
+                    "status": "pending",
+                    "status_label": "Pending",
+                    "has_any_run": True,
+                    "is_active": True,
+                    "button_label": "Analyze",
+                    "button_disabled": True,
+                    "show_already_analyzed": False,
+                    "has_completed_entries": False,
+                    "view_url": "",
+                }
+            },
+        ):
+            response = self.client.post(
+                reverse("trigger_round_analysis", args=[round_obj.id]),
+                HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"]["status"], "pending")
+        queue_mock.assert_called_once_with(
+            round_obj.id,
+            trigger_type=RoundQuestionAnalysisRun.TRIGGER_MANUAL,
+            initiated_by="Alex",
+        )
+
+    @patch("GPTrivia.round_analysis.queue_round_analysis", return_value=[123])
     def test_trigger_round_analysis_queues_non_replay_round(self, queue_mock):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
@@ -188,6 +233,47 @@ class RoundAnalysisTests(TestCase):
         self.assertContains(response, "Crab Nebula")
         self.assertContains(response, "Open linked image")
         self.assertContains(response, "Open source slide")
+
+    def test_round_analysis_status_returns_latest_payload(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Status Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/status-round/edit#slide=id.r1",
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="picture",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="Status question",
+            answer_text="Status answer",
+            round_type="picture",
+            player_correctness={"Alex": ""},
+        )
+
+        response = self.client.get(reverse("round_analysis_status", args=[round_obj.id]))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["status"]
+        self.assertEqual(payload["status"], "completed")
+        self.assertEqual(payload["button_label"], "Analyze Again")
+        self.assertTrue(payload["show_already_analyzed"])
+        self.assertTrue(payload["has_completed_entries"])
+        self.assertIn(f"round_id={round_obj.id}", payload["view_url"])
 
     def test_normalize_analysis_categories_blanks_duplicate_major_and_minor_values(self):
         major, minor1, minor2 = _normalize_analysis_categories({
@@ -389,3 +475,4 @@ class RoundAnalysisTests(TestCase):
         self.assertContains(response, "Analyze Again")
         self.assertContains(response, "Already analyzed")
         self.assertNotContains(response, 'disabled aria-disabled="true"', html=False)
+        self.assertContains(response, f'data-status-url="/round-analysis/{round_obj.id}/status/"', html=False)

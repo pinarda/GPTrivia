@@ -3,7 +3,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/rounds_list.css' %}?v=20260320a">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/rounds_list.css' %}?v=20260320b">
 {% endblock %}
 
 {% block extra_meta %}
@@ -104,33 +104,35 @@
             {% for player_field in player_fields %}
             <td>{{ round_row.score_values|get_item:player_field }}</td>
             {% endfor %}
-            <td class="round-analysis-cell">
+            <td class="round-analysis-cell" data-round-id="{{ round_row.round.id }}" data-status-url="{% url 'round_analysis_status' round_id=round_row.round.id %}">
                 {% if not round_row.round.replay %}
-                    <form method="post" action="{% url 'trigger_round_analysis' round_id=round_row.round.id %}" class="round-analysis-form">
+                    <form method="post" action="{% url 'trigger_round_analysis' round_id=round_row.round.id %}" class="round-analysis-form" data-round-id="{{ round_row.round.id }}">
                         {% csrf_token %}
                         <input type="hidden" name="next" value="{{ request.get_full_path }}">
                         <button
                             type="submit"
                             class="round-analysis-button"
-                            {% if analysis_status and analysis_status.is_active %}disabled aria-disabled="true"{% endif %}
+                            {% if analysis_status.button_disabled %}disabled aria-disabled="true"{% endif %}
                         >
-                            {% if analysis_status and analysis_status.has_any_run and not analysis_status.is_active %}Analyze Again{% else %}Analyze{% endif %}
+                            {{ analysis_status.button_label }}
                         </button>
                     </form>
                 {% endif %}
-                {% if analysis_status %}
-                    {% if analysis_status.has_any_run and not analysis_status.is_active %}
+                <div class="round-analysis-meta">
+                    {% if analysis_status.show_already_analyzed %}
                         <div class="round-analysis-status round-analysis-status-completed">
                             Already analyzed
                         </div>
                     {% endif %}
-                    <div class="round-analysis-status round-analysis-status-{{ analysis_status.status }}">
-                        {{ analysis_status.status_label }}
-                    </div>
+                    {% if analysis_status.status_label %}
+                        <div class="round-analysis-status round-analysis-status-{{ analysis_status.status }}">
+                            {{ analysis_status.status_label }}
+                        </div>
+                    {% endif %}
                     {% if analysis_status.has_completed_entries %}
                         <a class="round-analysis-view-link" href="{% url 'round_analysis_list' %}?round_id={{ round_row.round.id }}">View</a>
                     {% endif %}
-                {% endif %}
+                </div>
             </td>
         </tr>
                 {% endwith %}
@@ -143,6 +145,7 @@
     const columnFilters = {};
     const playerColorMapping = {{ playerColorMapping|safe }};
     const textColorMapping = {{ text_color_mapping|safe }};
+    const roundAnalysisPollTimers = new Map();
 
     function applyColumnFilters() {
         const rows = document.querySelectorAll('#roundList tbody tr');
@@ -213,10 +216,167 @@
         });
     }
 
+    function getRoundAnalysisMeta(cell) {
+        let meta = cell.querySelector('.round-analysis-meta');
+        if (!meta) {
+            meta = document.createElement('div');
+            meta.className = 'round-analysis-meta';
+            cell.appendChild(meta);
+        }
+        return meta;
+    }
+
+    function renderRoundAnalysisMeta(cell, status) {
+        const meta = getRoundAnalysisMeta(cell);
+        meta.innerHTML = '';
+
+        if (!status) {
+            return;
+        }
+
+        if (status.show_already_analyzed) {
+            const analyzedBadge = document.createElement('div');
+            analyzedBadge.className = 'round-analysis-status round-analysis-status-completed';
+            analyzedBadge.textContent = 'Already analyzed';
+            meta.appendChild(analyzedBadge);
+        }
+
+        if (status.status_label) {
+            const statusText = document.createElement('div');
+            statusText.className = `round-analysis-status round-analysis-status-${status.status || ''}`;
+            statusText.textContent = status.status_label;
+            meta.appendChild(statusText);
+        }
+
+        if (status.has_completed_entries && status.view_url) {
+            const viewLink = document.createElement('a');
+            viewLink.className = 'round-analysis-view-link';
+            viewLink.href = status.view_url;
+            viewLink.textContent = 'View';
+            meta.appendChild(viewLink);
+        }
+    }
+
+    function renderRoundAnalysisCell(cell, status) {
+        const button = cell.querySelector('.round-analysis-button');
+        if (button && status) {
+            button.textContent = status.button_label || 'Analyze';
+            button.disabled = Boolean(status.button_disabled);
+            if (button.disabled) {
+                button.setAttribute('aria-disabled', 'true');
+            } else {
+                button.removeAttribute('aria-disabled');
+            }
+        }
+        renderRoundAnalysisMeta(cell, status);
+    }
+
+    async function fetchRoundAnalysisStatus(cell) {
+        const response = await fetch(cell.dataset.statusUrl, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+        if (!response.ok) {
+            throw new Error(`Status request failed with ${response.status}`);
+        }
+        const payload = await response.json();
+        return payload.status || null;
+    }
+
+    function stopRoundAnalysisPolling(cell) {
+        const existingTimer = roundAnalysisPollTimers.get(cell.dataset.roundId);
+        if (existingTimer) {
+            window.clearTimeout(existingTimer);
+            roundAnalysisPollTimers.delete(cell.dataset.roundId);
+        }
+    }
+
+    function scheduleRoundAnalysisPoll(cell, delayMs = 2500) {
+        stopRoundAnalysisPolling(cell);
+        const timerId = window.setTimeout(async () => {
+            try {
+                const status = await fetchRoundAnalysisStatus(cell);
+                renderRoundAnalysisCell(cell, status);
+                if (status && status.is_active) {
+                    scheduleRoundAnalysisPoll(cell, 2500);
+                } else {
+                    stopRoundAnalysisPolling(cell);
+                }
+            } catch (error) {
+                console.error(error);
+                if (cell.isConnected) {
+                    scheduleRoundAnalysisPoll(cell, 5000);
+                }
+            }
+        }, delayMs);
+        roundAnalysisPollTimers.set(cell.dataset.roundId, timerId);
+    }
+
+    function buildOptimisticPendingStatus(cell) {
+        const existingViewLink = cell.querySelector('.round-analysis-view-link');
+        return {
+            status: 'pending',
+            status_label: 'Pending',
+            has_any_run: true,
+            is_active: true,
+            button_label: 'Analyze',
+            button_disabled: true,
+            show_already_analyzed: false,
+            has_completed_entries: Boolean(existingViewLink),
+            view_url: existingViewLink ? existingViewLink.href : '',
+        };
+    }
+
+    function wireRoundAnalysisForms() {
+        document.querySelectorAll('.round-analysis-form').forEach(form => {
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const cell = form.closest('.round-analysis-cell');
+                const submitButton = form.querySelector('.round-analysis-button');
+                if (!cell || !submitButton || submitButton.disabled) {
+                    return;
+                }
+
+                renderRoundAnalysisCell(cell, buildOptimisticPendingStatus(cell));
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        body: new FormData(form),
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+                    if (!response.ok) {
+                        throw new Error(`Trigger request failed with ${response.status}`);
+                    }
+                    const payload = await response.json();
+                    renderRoundAnalysisCell(cell, payload.status || null);
+                    if (payload.status && payload.status.is_active) {
+                        scheduleRoundAnalysisPoll(cell, 1200);
+                    } else {
+                        stopRoundAnalysisPolling(cell);
+                    }
+                } catch (error) {
+                    console.error(error);
+                    form.submit();
+                }
+            });
+        });
+
+        document.querySelectorAll('.round-analysis-cell[data-status-url]').forEach(cell => {
+            if (cell.querySelector('.round-analysis-status-pending, .round-analysis-status-running')) {
+                scheduleRoundAnalysisPoll(cell, 2500);
+            }
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         wireRoundListFilters();
         wirePlayerLinkHoverColors();
         updateSlidesButtonColor();
+        wireRoundAnalysisForms();
     });
 </script>
 
