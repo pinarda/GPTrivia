@@ -1083,10 +1083,12 @@
         const includeMeanShapes = !!options.includeMeanShapes;
         const plotData = options.plotData || [];
         const xPositions = options.xPositions || buildViolinXPositions(labels.length);
+        const xaxisOverrides = options.xaxis || {};
+        const marginOverrides = options.margin || {};
         const step = xPositions.length > 1 ? (xPositions[1] - xPositions[0]) : (compactLayout ? 1.38 : 1.52);
         const rangePadding = compactLayout ? 0.95 : 1.02;
 
-        return {
+        const baseLayout = {
             title: data.title,
             autosize: true,
             margin: {
@@ -1139,6 +1141,18 @@
                     size: compactLayout ? 11 : 13,
                 },
             }] : [],
+        };
+
+        return {
+            ...baseLayout,
+            xaxis: {
+                ...baseLayout.xaxis,
+                ...xaxisOverrides,
+            },
+            margin: {
+                ...baseLayout.margin,
+                ...marginOverrides,
+            },
         };
     }
 
@@ -2056,11 +2070,28 @@
 
     function renderPlayerViolin(data) {
         setPlotDescription('player-violin-space', buildPlotDescription('player-violin-space', data));
+        const compactLayout = isCompactAnalysisLayout();
         const traces = buildNumericViolinTraces(data.categories, data.plot_data, data.colors, data.hover_texts);
+        const isCategoryView = data.xaxis === 'Category';
         const layout = buildResponsiveViolinLayout(data, data.categories, {
             includeMeanShapes: true,
             plotData: data.plot_data,
             xPositions: traces.xPositions,
+            xaxis: (compactLayout && isCategoryView) ? {
+                tickangle: -28,
+                tickmode: 'array',
+                tickvals: traces.xPositions,
+                ticktext: data.categories.map(buildCompactCategoryTickLabel),
+                tickfont: {
+                    size: 8,
+                },
+                automargin: false,
+            } : {},
+            margin: (compactLayout && isCategoryView) ? {
+                b: 132,
+                l: 42,
+                r: 18,
+            } : {},
         });
 
         Plotly.newPlot('player-violin-space', traces, layout, {displaylogo: false, responsive: true});
