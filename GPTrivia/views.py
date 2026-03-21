@@ -953,12 +953,12 @@ def round_analysis_media(request, entry_id):
     if expected_kind not in {'audio', 'video'}:
         raise Http404("Playable media is only available for audio or video entries.")
 
-    if entry.media_url and not _is_placeholder_media_url(entry.media_url, expected_kind=expected_kind):
-        return redirect(entry.media_url)
-
     rebuilt_playable_url = get_round_analysis_playable_media_url(entry)
     if rebuilt_playable_url:
         return redirect(rebuilt_playable_url)
+
+    if entry.media_url and not _is_placeholder_media_url(entry.media_url, expected_kind=expected_kind):
+        return redirect(entry.media_url)
 
     if entry.media_file:
         saved_file_content_type = mimetypes.guess_type(entry.media_file.name)[0] or 'application/octet-stream'
@@ -971,7 +971,11 @@ def round_analysis_media(request, entry_id):
             response['Content-Disposition'] = f'inline; filename="{os.path.basename(entry.media_file.name)}"'
             return response
 
-    asset = get_round_analysis_playable_media_asset(entry)
+    try:
+        asset = get_round_analysis_playable_media_asset(entry)
+    except Exception:
+        logger.exception("Could not resolve fallback playable media for round analysis entry %s", entry.id)
+        raise Http404("No playable media is available for this round analysis entry.")
     if not asset:
         raise Http404("No playable media is available for this round analysis entry.")
 
