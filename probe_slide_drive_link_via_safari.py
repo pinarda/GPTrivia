@@ -42,7 +42,12 @@ def webdriver_request(method: str, url: str, *, payload: Optional[Dict[str, Any]
         json=payload,
         timeout=WEBDRIVER_REQUEST_TIMEOUT_SECONDS,
     )
-    response.raise_for_status()
+    if response.status_code >= 400:
+        response_text = response.text.strip()
+        raise RuntimeError(
+            f"WebDriver request failed with HTTP {response.status_code} for {url}.\n"
+            f"Response body: {response_text or '(empty)'}"
+        )
     if not response.content:
         return {}
     return response.json()
@@ -185,6 +190,15 @@ def main() -> int:
                 "or the link is not exposed as a normal DOM href."
             )
         return 0
+    except RuntimeError as exc:
+        print(str(exc))
+        print(
+            "\nIf Safari session creation failed, the usual fixes are:\n"
+            "1. Run `safaridriver --enable` once.\n"
+            "2. In Safari, enable `Develop > Allow Remote Automation`.\n"
+            "3. Re-run this script and approve any macOS automation prompts."
+        )
+        return 1
     finally:
         if session_id:
             delete_session(port, session_id)
