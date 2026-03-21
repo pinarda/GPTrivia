@@ -210,6 +210,13 @@ body.site-shell[data-profile-theme="light"] .round-date-link:focus-visible {
     border-color: rgba(255, 255, 255, 0.4);
 }
 
+.round-analysis-button:disabled,
+.round-analysis-button[aria-disabled="true"] {
+    cursor: default;
+    opacity: 0.5;
+    transform: none;
+}
+
 .round-analysis-status {
     margin-top: 0.1rem;
     margin-bottom: 0.35rem;

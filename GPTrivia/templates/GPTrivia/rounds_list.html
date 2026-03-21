@@ -109,7 +109,13 @@
                     <form method="post" action="{% url 'trigger_round_analysis' round_id=round_row.round.id %}" class="round-analysis-form">
                         {% csrf_token %}
                         <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                        <button type="submit" class="round-analysis-button">Analyze</button>
+                        <button
+                            type="submit"
+                            class="round-analysis-button"
+                            {% if analysis_status and analysis_status.has_any_run %}disabled aria-disabled="true"{% endif %}
+                        >
+                            {% if analysis_status and analysis_status.has_any_run %}Analyzed{% else %}Analyze{% endif %}
+                        </button>
                     </form>
                 {% endif %}
                 {% if analysis_status %}

@@ -82,6 +82,31 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(RoundQuestionAnalysisRun.objects.exists())
 
+    def test_trigger_round_analysis_rejects_round_with_existing_analysis(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Already Analyzed",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/already-analyzed/edit#slide=id.r1",
+        )
+        RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="picture",
+        )
+
+        response = self.client.post(reverse("trigger_round_analysis", args=[round_obj.id]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(RoundQuestionAnalysisRun.objects.filter(round=round_obj).count(), 1)
+
     @patch("GPTrivia.round_analysis.queue_round_analysis", return_value=[123])
     def test_trigger_round_analysis_queues_non_replay_round(self, queue_mock):
         round_obj = GPTriviaRound.objects.create(
@@ -149,3 +174,29 @@ class RoundAnalysisTests(TestCase):
         self.assertContains(response, "Analyzer Round")
         self.assertContains(response, "Name this nebula.")
         self.assertContains(response, "Crab Nebula")
+
+    def test_rounds_list_disables_analyze_button_for_existing_analysis(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Disable Button Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=2,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/disable-button/edit#slide=id.r1",
+        )
+        RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="picture",
+        )
+
+        response = self.client.get(reverse("rounds_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Analyzed")
+        self.assertContains(response, 'disabled aria-disabled="true"', html=False)
