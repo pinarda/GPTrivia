@@ -3,7 +3,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/round_analysis_list.css' %}?v=20260320a">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/round_analysis_list.css' %}?v=20260320b">
 {% endblock %}
 
 {% block content %}
@@ -66,7 +66,29 @@
                                     <td>{{ entry.major_category }}</td>
                                     <td>{{ entry.minor_category1 }}</td>
                                     <td>{{ entry.minor_category2 }}</td>
-                                    <td class="round-analysis-question">{{ entry.question_text }}</td>
+                                    <td class="round-analysis-question">
+                                        {% if entry.question_text %}
+                                            <div class="round-analysis-question-text">{{ entry.question_text }}</div>
+                                        {% endif %}
+                                        {% if entry.instruction_text %}
+                                            <div class="round-analysis-instruction">{{ entry.instruction_text }}</div>
+                                        {% endif %}
+                                        {% if entry.media_file %}
+                                            <div class="round-analysis-media-block">
+                                                <a href="{{ entry.media_file.url }}" target="_blank" rel="noopener noreferrer">Open saved image</a>
+                                                <img class="round-analysis-media-preview" src="{{ entry.media_file.url }}" alt="Saved media for {{ run.round.title }} question {{ entry.question_number }}">
+                                            </div>
+                                        {% elif entry.media_url %}
+                                            <div class="round-analysis-media-block">
+                                                <a href="{{ entry.media_url }}" target="_blank" rel="noopener noreferrer">Open linked {{ entry.media_kind|default:"media" }}</a>
+                                            </div>
+                                        {% endif %}
+                                        {% if entry.source_slide_url %}
+                                            <div class="round-analysis-slide-link">
+                                                <a href="{{ entry.source_slide_url }}" target="_blank" rel="noopener noreferrer">Open source slide</a>
+                                            </div>
+                                        {% endif %}
+                                    </td>
                                     <td class="round-analysis-answer">{{ entry.answer_text }}</td>
                                     {% for player_name in player_names %}
                                         <td>{{ entry.player_correctness|get_item:player_name }}</td>

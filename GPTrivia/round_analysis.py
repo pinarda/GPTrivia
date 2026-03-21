@@ -1,12 +1,17 @@
 import json
 import logging
+import mimetypes
 import os
 import pickle
 import re
 import threading
 import traceback
 from itertools import chain
+from pathlib import Path
+from urllib.parse import urlparse
 
+import requests
+from django.core.files.base import ContentFile
 from django.db import close_old_connections
 from django.utils import timezone
 
@@ -19,6 +24,14 @@ from .player_scores import display_name_for_player_field, get_all_player_fields
 
 logger = logging.getLogger(__name__)
 ANALYSIS_NOTIFICATION_USERNAME = 'Alex'
+
+
+def _google_slide_url(presentation_id, slide_id=''):
+    if presentation_id and slide_id:
+        return f"https://docs.google.com/presentation/d/{presentation_id}/edit#slide=id.{slide_id}"
+    if presentation_id:
+        return f"https://docs.google.com/presentation/d/{presentation_id}/edit"
+    return ''
 
 
 def queue_round_analysis(round_id, *, trigger_type=RoundQuestionAnalysisRun.TRIGGER_MANUAL, initiated_by=''):
@@ -156,6 +169,51 @@ def _load_google_credentials():
     return credentials
 
 
+def _extract_slide_media_items(slide):
+    media_items = []
+    for element in slide.get('pageElements', []):
+        element_id = element.get('objectId', '')
+        image = element.get('image')
+        if image:
+            media_items.append(
+                {
+                    'kind': 'image',
+                    'element_id': element_id,
+                    'url': image.get('sourceUrl') or image.get('contentUrl') or '',
+                    'download_url': image.get('contentUrl') or image.get('sourceUrl') or '',
+                    'description': image.get('title') or image.get('description') or '',
+                }
+            )
+            continue
+
+        video = element.get('video')
+        if video:
+            media_items.append(
+                {
+                    'kind': 'video',
+                    'element_id': element_id,
+                    'url': video.get('url') or video.get('sourceUrl') or '',
+                    'download_url': '',
+                    'description': video.get('id') or video.get('source') or '',
+                }
+            )
+            continue
+
+        audio = element.get('audio')
+        if audio:
+            media_items.append(
+                {
+                    'kind': 'audio',
+                    'element_id': element_id,
+                    'url': audio.get('url') or audio.get('sourceUrl') or '',
+                    'download_url': '',
+                    'description': audio.get('id') or '',
+                }
+            )
+
+    return media_items
+
+
 def _build_round_slide_payload(round_obj):
     from .mail import (
         ROUND_SOURCE_MERGED_DECK,
@@ -213,13 +271,16 @@ def _build_round_slide_payload(round_obj):
     slide_text_rows = []
     for offset, slide in enumerate(selected_slides, start=start_index + 1):
         slide_text = re.sub(r'\s+', ' ', _extract_slide_text(slide)).strip()
-        if not slide_text:
+        media_items = _extract_slide_media_items(slide)
+        if not slide_text and not media_items:
             continue
         slide_text_rows.append(
             {
                 'slide_number': offset,
                 'slide_id': slide.get('objectId', ''),
+                'slide_url': _google_slide_url(presentation_id, slide.get('objectId', '')),
                 'text': slide_text,
+                'media_items': media_items,
             }
         )
 
@@ -279,15 +340,22 @@ def _analyze_round_slides(round_obj, slide_payload):
         'allowed_minor_categories': minor_categories,
     }
     instructions = (
-        "You analyze a trivia round copied into a Google Slides deck. "
-        "Infer the overall round type and extract the question/answer pairs from the slide text. "
+        "You analyze a trivia round from a Google Slides deck. "
+        "Infer the overall round type and extract the question/answer pairs from the slide text and any media metadata. "
         "Return strict JSON only with this schema: "
         "{\"round_type\": string, \"notes\": string, \"questions\": ["
-        "{\"question_number\": integer, \"question_text\": string, \"answer_text\": string, "
-        "\"major_category\": string, \"minor_category1\": string, \"minor_category2\": string}"
+        "{\"question_number\": integer, \"source_slide_number\": integer, "
+        "\"question_text\": string, \"instruction_text\": string, \"answer_text\": string, "
+        "\"media_kind\": string, \"major_category\": string, \"minor_category1\": string, \"minor_category2\": string}"
         "]}. "
         "Use short round types like picture, matching, multiple choice, short answer, music, video, audio, puzzle, or mixed. "
         "Pair question slides with answer slides when possible. Preserve wording from the slides instead of paraphrasing heavily. "
+        "If the round is multimedia, use the round title, answer text, nearby slide text, and media metadata to infer what the player is supposed to identify or do. "
+        "For example, infer prompts like identify the person, identify the place, name the song and artist, identify the movie, or explain the matching rule. "
+        "instruction_text should be the short task description for the player. "
+        "question_text should be the full displayed prompt if visible, otherwise a concise inferred prompt. "
+        "source_slide_number should usually point to the main question slide, not the answer reveal slide. "
+        "media_kind should be image, video, audio, text, or blank. "
         "If a category does not fit, leave that category blank. "
         "major_category must be chosen from the allowed major categories when possible. "
         "minor categories should be chosen from the allowed minor categories when possible. "
@@ -329,6 +397,80 @@ def _parse_analysis_response_json(response_text):
         return json.loads(match.group(1))
 
 
+def _normalize_media_kind(value):
+    media_kind = str(value or '').strip().lower()
+    if media_kind in {'picture', 'photo'}:
+        return 'image'
+    if media_kind in {'music'}:
+        return 'audio'
+    if media_kind in {'video clip'}:
+        return 'video'
+    if media_kind in {'text', 'image', 'video', 'audio'}:
+        return media_kind
+    return media_kind
+
+
+def _find_slide_by_number(slide_payload, slide_number):
+    for slide_data in slide_payload.get('slides', []):
+        if slide_data.get('slide_number') == slide_number:
+            return slide_data
+    return None
+
+
+def _choose_media_for_entry(slide_payload, entry):
+    source_slide_number = entry.get('source_slide_number')
+    try:
+        source_slide_number = int(source_slide_number) if source_slide_number is not None else None
+    except (TypeError, ValueError):
+        source_slide_number = None
+
+    candidate_slides = []
+    if source_slide_number is not None:
+        chosen_slide = _find_slide_by_number(slide_payload, source_slide_number)
+        if chosen_slide:
+            candidate_slides.append(chosen_slide)
+    candidate_slides.extend(
+        slide_data for slide_data in slide_payload.get('slides', [])
+        if slide_data not in candidate_slides
+    )
+
+    normalized_kind = _normalize_media_kind(entry.get('media_kind'))
+    for slide_data in candidate_slides:
+        media_items = slide_data.get('media_items') or []
+        if normalized_kind:
+            matching_item = next((item for item in media_items if item.get('kind') == normalized_kind), None)
+            if matching_item:
+                return slide_data, matching_item
+        if media_items:
+            return slide_data, media_items[0]
+    return (_find_slide_by_number(slide_payload, source_slide_number) if source_slide_number is not None else None), None
+
+
+def _guess_media_filename(round_obj, question_number, media_item, response):
+    content_type = (response.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+    extension = mimetypes.guess_extension(content_type) or ''
+    if not extension:
+        source_url = media_item.get('download_url') or media_item.get('url') or ''
+        path_extension = Path(urlparse(source_url).path).suffix
+        extension = path_extension if path_extension else '.bin'
+    round_stub = re.sub(r'[^a-z0-9]+', '-', round_obj.title.lower()).strip('-')[:50] or f'round-{round_obj.id}'
+    return f"{round_stub}-q{question_number}{extension}"
+
+
+def _download_media_file(round_obj, question_number, media_item):
+    if not media_item or media_item.get('kind') != 'image':
+        return None
+
+    download_url = media_item.get('download_url') or media_item.get('url') or ''
+    if not download_url:
+        return None
+
+    response = requests.get(download_url, timeout=30)
+    response.raise_for_status()
+    filename = _guess_media_filename(round_obj, question_number, media_item, response)
+    return filename, ContentFile(response.content)
+
+
 def _store_round_analysis(run, slide_payload, analysis_payload):
     questions = analysis_payload.get('questions') or []
     empty_correctness = _empty_player_correctness_map()
@@ -338,21 +480,53 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
     normalized_notes = str(analysis_payload.get('notes') or '').strip()
     for index, entry in enumerate(questions, start=1):
         question_number = entry.get('question_number') or index
-        RoundQuestionAnalysisEntry.objects.create(
+        try:
+            question_number = int(question_number)
+        except (TypeError, ValueError):
+            question_number = index
+
+        chosen_slide, chosen_media = _choose_media_for_entry(slide_payload, entry)
+        source_slide_number = chosen_slide.get('slide_number') if chosen_slide else entry.get('source_slide_number')
+        try:
+            source_slide_number = int(source_slide_number) if source_slide_number is not None else None
+        except (TypeError, ValueError):
+            source_slide_number = None
+
+        media_kind = _normalize_media_kind(entry.get('media_kind') or (chosen_media or {}).get('kind'))
+        media_url = (chosen_media or {}).get('url') or ''
+        source_slide_url = (chosen_slide or {}).get('slide_url') or ''
+
+        analysis_entry = RoundQuestionAnalysisEntry.objects.create(
             run=run,
             round=run.round,
             round_name=run.round.title,
             round_date=run.round.date,
-            question_number=int(question_number),
+            question_number=question_number,
             question_text=str(entry.get('question_text') or '').strip(),
+            instruction_text=str(entry.get('instruction_text') or '').strip(),
             answer_text=str(entry.get('answer_text') or '').strip(),
             round_type=normalized_round_type,
+            media_kind=media_kind,
+            media_url=media_url,
+            source_slide_number=source_slide_number,
+            source_slide_url=source_slide_url,
             notes=normalized_notes,
             major_category=str(entry.get('major_category') or '').strip(),
             minor_category1=str(entry.get('minor_category1') or '').strip(),
             minor_category2=str(entry.get('minor_category2') or '').strip(),
             player_correctness=dict(empty_correctness),
         )
+        try:
+            downloaded_media = _download_media_file(run.round, question_number, chosen_media)
+            if downloaded_media:
+                filename, content_file = downloaded_media
+                analysis_entry.media_file.save(filename, content_file, save=True)
+        except Exception:
+            logger.exception(
+                "Could not save analysis media for round %s question %s",
+                run.round_id,
+                question_number,
+            )
 
     run.status = RoundQuestionAnalysisRun.STATUS_COMPLETED
     run.completed_at = timezone.now()

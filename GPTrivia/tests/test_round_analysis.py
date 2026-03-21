@@ -159,8 +159,13 @@ class RoundAnalysisTests(TestCase):
             round_date=round_obj.date,
             question_number=1,
             question_text="Name this nebula.",
+            instruction_text="Identify the pictured nebula.",
             answer_text="Crab Nebula",
             round_type="picture",
+            media_kind="image",
+            media_url="https://example.com/image.png",
+            source_slide_number=2,
+            source_slide_url="https://docs.google.com/presentation/d/source-deck/edit#slide=id.slide2",
             notes="Detected a picture round.",
             major_category="Science",
             minor_category1="Astronomy",
@@ -173,7 +178,10 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Analyzer Round")
         self.assertContains(response, "Name this nebula.")
+        self.assertContains(response, "Identify the pictured nebula.")
         self.assertContains(response, "Crab Nebula")
+        self.assertContains(response, "Open linked image")
+        self.assertContains(response, "Open source slide")
 
     def test_rounds_list_disables_analyze_button_for_existing_analysis(self):
         round_obj = GPTriviaRound.objects.create(

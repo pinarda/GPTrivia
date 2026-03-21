@@ -110,6 +110,32 @@ body.site-shell[data-profile-theme="light"] {
     white-space: normal;
 }
 
+.round-analysis-question-text {
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+}
+
+.round-analysis-instruction {
+    color: var(--round-analysis-muted);
+    margin-bottom: 0.45rem;
+}
+
+.round-analysis-media-block,
+.round-analysis-slide-link {
+    margin-top: 0.45rem;
+}
+
+.round-analysis-media-preview {
+    display: block;
+    max-width: 180px;
+    max-height: 180px;
+    margin-top: 0.45rem;
+    border-radius: 14px;
+    border: 1px solid var(--round-analysis-border);
+    object-fit: contain;
+    background: rgba(255, 255, 255, 0.05);
+}
+
 .round-analysis-empty-card {
     padding: 1.2rem;
 }
