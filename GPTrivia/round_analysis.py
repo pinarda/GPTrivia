@@ -173,6 +173,9 @@ def _extract_slide_media_items(slide):
     media_items = []
     for element in slide.get('pageElements', []):
         element_id = element.get('objectId', '')
+        transform = element.get('transform') or {}
+        position_x = float(transform.get('translateX') or 0)
+        position_y = float(transform.get('translateY') or 0)
         image = element.get('image')
         if image:
             media_items.append(
@@ -182,6 +185,8 @@ def _extract_slide_media_items(slide):
                     'url': image.get('sourceUrl') or image.get('contentUrl') or '',
                     'download_url': image.get('contentUrl') or image.get('sourceUrl') or '',
                     'description': image.get('title') or image.get('description') or '',
+                    'position_x': position_x,
+                    'position_y': position_y,
                 }
             )
             continue
@@ -195,6 +200,8 @@ def _extract_slide_media_items(slide):
                     'url': video.get('url') or video.get('sourceUrl') or '',
                     'download_url': '',
                     'description': video.get('id') or video.get('source') or '',
+                    'position_x': position_x,
+                    'position_y': position_y,
                 }
             )
             continue
@@ -208,8 +215,20 @@ def _extract_slide_media_items(slide):
                     'url': audio.get('url') or audio.get('sourceUrl') or '',
                     'download_url': '',
                     'description': audio.get('id') or '',
+                    'position_x': position_x,
+                    'position_y': position_y,
                 }
             )
+
+    media_items.sort(
+        key=lambda item: (
+            round(item.get('position_y') or 0, -4),
+            item.get('position_x') or 0,
+            item.get('element_id') or '',
+        )
+    )
+    for index, item in enumerate(media_items, start=1):
+        item['media_index'] = index
 
     return media_items
 
@@ -346,12 +365,16 @@ def _analyze_round_slides(round_obj, slide_payload):
         "{\"round_type\": string, \"notes\": string, \"questions\": ["
         "{\"question_number\": integer, \"source_slide_number\": integer, "
         "\"question_text\": string, \"instruction_text\": string, \"answer_text\": string, "
-        "\"media_kind\": string, \"major_category\": string, \"minor_category1\": string, \"minor_category2\": string}"
+        "\"media_kind\": string, \"media_index\": integer, "
+        "\"major_category\": string, \"minor_category1\": string, \"minor_category2\": string}"
         "]}. "
         "Use short round types like picture, matching, multiple choice, short answer, music, video, audio, puzzle, or mixed. "
         "Pair question slides with answer slides when possible. Preserve wording from the slides instead of paraphrasing heavily. "
         "If the round is multimedia, use the round title, answer text, nearby slide text, and media metadata to infer what the player is supposed to identify or do. "
         "For example, infer prompts like identify the person, identify the place, name the song and artist, identify the movie, or explain the matching rule. "
+        "If a single slide contains multiple separate question images or other media items, return one question per item. "
+        "Use media_index to point to the matching media item on that slide. media_index is 1-based and follows the media_items order already provided in the slide payload, "
+        "which is sorted top-to-bottom and then left-to-right. "
         "instruction_text should be the short task description for the player. "
         "question_text should be the full displayed prompt if visible, otherwise a concise inferred prompt. "
         "source_slide_number should usually point to the main question slide, not the answer reveal slide. "
@@ -442,7 +465,15 @@ def _find_slide_by_number(slide_payload, slide_number):
     return None
 
 
-def _choose_media_for_entry(slide_payload, entry):
+def _parse_optional_positive_int(value):
+    try:
+        parsed_value = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed_value if parsed_value > 0 else None
+
+
+def _choose_media_candidates_for_entry(slide_payload, entry):
     source_slide_number = entry.get('source_slide_number')
     try:
         source_slide_number = int(source_slide_number) if source_slide_number is not None else None
@@ -463,12 +494,90 @@ def _choose_media_for_entry(slide_payload, entry):
     for slide_data in candidate_slides:
         media_items = slide_data.get('media_items') or []
         if normalized_kind:
-            matching_item = next((item for item in media_items if item.get('kind') == normalized_kind), None)
-            if matching_item:
-                return slide_data, matching_item
+            matching_items = [item for item in media_items if item.get('kind') == normalized_kind]
+            if matching_items:
+                return slide_data, matching_items
         if media_items:
-            return slide_data, media_items[0]
-    return (_find_slide_by_number(slide_payload, source_slide_number) if source_slide_number is not None else None), None
+            return slide_data, media_items
+    return (
+        _find_slide_by_number(slide_payload, source_slide_number) if source_slide_number is not None else None
+    ), []
+
+
+def _assign_media_to_question_entries(slide_payload, questions):
+    contexts = []
+    for index, entry in enumerate(questions, start=1):
+        question_number = entry.get('question_number') or index
+        try:
+            question_number = int(question_number)
+        except (TypeError, ValueError):
+            question_number = index
+
+        chosen_slide, candidate_media_items = _choose_media_candidates_for_entry(slide_payload, entry)
+        normalized_kind = _normalize_media_kind(
+            entry.get('media_kind') or (candidate_media_items[0].get('kind') if candidate_media_items else '')
+        )
+        source_slide_number = chosen_slide.get('slide_number') if chosen_slide else entry.get('source_slide_number')
+        try:
+            source_slide_number = int(source_slide_number) if source_slide_number is not None else None
+        except (TypeError, ValueError):
+            source_slide_number = None
+
+        contexts.append(
+            {
+                'entry': entry,
+                'index': index,
+                'question_number': question_number,
+                'chosen_slide': chosen_slide,
+                'candidate_media_items': list(candidate_media_items or []),
+                'media_kind': normalized_kind,
+                'source_slide_number': source_slide_number,
+                'chosen_media': None,
+            }
+        )
+
+    grouped_contexts = {}
+    for context in contexts:
+        group_key = (
+            context['source_slide_number'],
+            context['media_kind'] or '',
+        )
+        grouped_contexts.setdefault(group_key, []).append(context)
+
+    for group in grouped_contexts.values():
+        media_items = group[0]['candidate_media_items'] if group else []
+        if not media_items:
+            continue
+
+        ordered_group = sorted(group, key=lambda item: (item['question_number'], item['index']))
+        used_media_indexes = set()
+        unassigned_contexts = []
+
+        for context in ordered_group:
+            preferred_index = _parse_optional_positive_int(context['entry'].get('media_index'))
+            if preferred_index and preferred_index <= len(media_items) and preferred_index not in used_media_indexes:
+                context['chosen_media'] = media_items[preferred_index - 1]
+                used_media_indexes.add(preferred_index)
+            else:
+                unassigned_contexts.append(context)
+
+        next_media_index = 1
+        for context in unassigned_contexts:
+            if len(media_items) == 1:
+                context['chosen_media'] = media_items[0]
+                continue
+
+            while next_media_index in used_media_indexes and next_media_index <= len(media_items):
+                next_media_index += 1
+
+            if next_media_index <= len(media_items):
+                context['chosen_media'] = media_items[next_media_index - 1]
+                used_media_indexes.add(next_media_index)
+                next_media_index += 1
+            else:
+                context['chosen_media'] = media_items[-1]
+
+    return contexts
 
 
 def _guess_media_filename(round_obj, question_number, media_item, response):
@@ -500,22 +609,16 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
     questions = analysis_payload.get('questions') or []
     empty_correctness = _empty_player_correctness_map()
     RoundQuestionAnalysisEntry.objects.filter(run=run).delete()
+    question_contexts = _assign_media_to_question_entries(slide_payload, questions)
 
     normalized_round_type = str(analysis_payload.get('round_type') or '').strip()
     normalized_notes = str(analysis_payload.get('notes') or '').strip()
-    for index, entry in enumerate(questions, start=1):
-        question_number = entry.get('question_number') or index
-        try:
-            question_number = int(question_number)
-        except (TypeError, ValueError):
-            question_number = index
-
-        chosen_slide, chosen_media = _choose_media_for_entry(slide_payload, entry)
-        source_slide_number = chosen_slide.get('slide_number') if chosen_slide else entry.get('source_slide_number')
-        try:
-            source_slide_number = int(source_slide_number) if source_slide_number is not None else None
-        except (TypeError, ValueError):
-            source_slide_number = None
+    for context in question_contexts:
+        entry = context['entry']
+        question_number = context['question_number']
+        chosen_slide = context['chosen_slide']
+        chosen_media = context['chosen_media']
+        source_slide_number = context['source_slide_number']
 
         media_kind = _normalize_media_kind(entry.get('media_kind') or (chosen_media or {}).get('kind'))
         media_url = (chosen_media or {}).get('url') or ''

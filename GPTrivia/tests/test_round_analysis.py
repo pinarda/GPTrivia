@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from GPTrivia.models import GPTriviaRound, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun
-from GPTrivia.round_analysis import _normalize_analysis_categories
+from GPTrivia.round_analysis import _normalize_analysis_categories, _store_round_analysis
 
 
 class RoundAnalysisTests(TestCase):
@@ -198,6 +198,89 @@ class RoundAnalysisTests(TestCase):
             "minor_category2": "Team Names",
         })
         self.assertEqual((major, minor1, minor2), ("Sports", "Team Names", ""))
+
+    @patch("GPTrivia.round_analysis._download_media_file", return_value=None)
+    @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
+    def test_store_round_analysis_assigns_distinct_media_from_same_slide(self, _correctness_mock, _download_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Picture Grid Round",
+            major_category="Entertainment",
+            minor_category1="Movies",
+            minor_category2="Images",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/picture-grid/edit#slide=id.r1",
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+        )
+
+        slide_payload = {
+            "presentation_id": "picture-grid",
+            "slide_range_label": "1-2",
+            "slides": [
+                {
+                    "slide_number": 1,
+                    "slide_id": "slide-question",
+                    "slide_url": "https://docs.google.com/presentation/d/picture-grid/edit#slide=id.slide-question",
+                    "text": "Identify these ten actors.",
+                    "media_items": [
+                        {
+                            "kind": "image",
+                            "media_index": 1,
+                            "url": "https://example.com/actor-1.png",
+                            "download_url": "https://example.com/actor-1.png",
+                        },
+                        {
+                            "kind": "image",
+                            "media_index": 2,
+                            "url": "https://example.com/actor-2.png",
+                            "download_url": "https://example.com/actor-2.png",
+                        },
+                    ],
+                }
+            ],
+        }
+        analysis_payload = {
+            "round_type": "picture",
+            "notes": "Identify the pictured actor.",
+            "questions": [
+                {
+                    "question_number": 1,
+                    "source_slide_number": 1,
+                    "question_text": "Actor 1",
+                    "instruction_text": "Identify the pictured actor.",
+                    "answer_text": "Actor One",
+                    "media_kind": "image",
+                    "major_category": "Entertainment",
+                    "minor_category1": "Movies",
+                    "minor_category2": "",
+                },
+                {
+                    "question_number": 2,
+                    "source_slide_number": 1,
+                    "question_text": "Actor 2",
+                    "instruction_text": "Identify the pictured actor.",
+                    "answer_text": "Actor Two",
+                    "media_kind": "image",
+                    "major_category": "Entertainment",
+                    "minor_category1": "Movies",
+                    "minor_category2": "",
+                },
+            ],
+        }
+
+        _store_round_analysis(run, slide_payload, analysis_payload)
+
+        saved_entries = list(RoundQuestionAnalysisEntry.objects.filter(run=run).order_by("question_number"))
+        self.assertEqual(len(saved_entries), 2)
+        self.assertEqual(saved_entries[0].media_url, "https://example.com/actor-1.png")
+        self.assertEqual(saved_entries[1].media_url, "https://example.com/actor-2.png")
 
     def test_rounds_list_disables_analyze_button_for_existing_analysis(self):
         round_obj = GPTriviaRound.objects.create(
