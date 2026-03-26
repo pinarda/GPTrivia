@@ -798,9 +798,6 @@
             }
 
             const willOpen = targetPanel.hidden;
-            if (willOpen) {
-                await ensureProfileCreatorPanelsLoaded(targetPanel);
-            }
             const groupedButtons = Array.from(document.querySelectorAll('.profile-panel-toggle')).filter(otherButton => {
                 return (otherButton.dataset.panelGroup || '') === groupName;
             });
@@ -813,11 +810,16 @@
             });
 
             groupedButtons.forEach(otherButton => {
-                const expanded = willOpen && otherButton === button;
-                otherButton.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                otherButton.setAttribute('aria-expanded', 'false');
             });
 
-            targetPanel.hidden = !willOpen;
+            if (willOpen) {
+                targetPanel.hidden = false;
+                button.setAttribute('aria-expanded', 'true');
+                await ensureProfileCreatorPanelsLoaded(targetPanel);
+            } else {
+                targetPanel.hidden = true;
+            }
         }
 
         function initializeProfilePanels() {
