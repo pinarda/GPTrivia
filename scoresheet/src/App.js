@@ -372,6 +372,8 @@ import {
       flex-direction: column;
       align-items: center;
       width: auto;
+      max-width: 100%;
+      min-width: 0;
       flex: 0 0 auto;
       gap: 0.45rem;
 
@@ -384,6 +386,8 @@ import {
       display: flex;
       align-items: center;
       justify-content: center;
+      max-width: 100%;
+      min-width: 0;
       gap: 0.4rem;
       flex-wrap: nowrap;
 
@@ -1011,6 +1015,8 @@ import {
       display: flex;
       align-items: center;
       justify-content: center;
+      max-width: 100%;
+      min-width: 0;
       gap: 0.55rem;
       flex-wrap: nowrap;
 
@@ -3483,10 +3489,10 @@ const PlayerTable = () => {
     <>
     <GlobalStyle />
     <StyledTableContainer>
-      <Grid container alignItems="center" spacing={1}>
+      <Grid container alignItems="center" rowSpacing={1} columnSpacing={0} sx={{ width: '100%', margin: 0 }}>
 
         {/* Left Section */}
-        <Grid item xs={12} md={isCompactScreen ? 12 : 4}>
+        <Grid item xs={12} md={isCompactScreen ? 12 : 4} sx={{ minWidth: 0 }}>
           <Box
           display="flex"
           alignItems="center"
@@ -3496,6 +3502,7 @@ const PlayerTable = () => {
           gap={isMobileView ? 0.65 : 0}
           padding={isMobileView ? '0.28rem 0.35rem 0.15rem' : '0.2rem'}
           maxWidth={isMobileView ? '72rem' : 'none'}
+          minWidth={0}
           margin={isMobileView ? '0 auto' : '0'}
           marginLeft={isMobileView ? '0' : '0.2rem'}>
             {/*<StyledFormControl>*/}
@@ -3542,7 +3549,7 @@ const PlayerTable = () => {
         </Grid>
 
         {/* Right Section */}
-        <Grid item xs={12} md={isCompactScreen ? 12 : 8}>
+        <Grid item xs={12} md={isCompactScreen ? 12 : 8} sx={{ minWidth: 0 }}>
           <Box
             display="flex"
             justifyContent={isCompactScreen ? 'center' : 'flex-end'}
@@ -3552,6 +3559,7 @@ const PlayerTable = () => {
             gap={isCompactScreen ? 0.65 : 0}
             padding={isCompactScreen ? '0 0.35rem 0.24rem' : 0}
             maxWidth={isCompactScreen ? '72rem' : 'none'}
+            minWidth={0}
             margin={isCompactScreen ? '0 auto' : 0}
           >
             <StyledButton variant="contained" color="secondary" onClick={() => setIsBottomRowVisible(prevState => !prevState)}>
