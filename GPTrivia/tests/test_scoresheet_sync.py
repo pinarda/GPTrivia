@@ -340,7 +340,7 @@ class ScoresheetSyncTests(TestCase):
 
         payload = {
             "presentation_id": "",
-            "selected_date": "2026-03-12",
+            "selected_date": "2026-03-21",
             "client_id": "client-placeholder",
             "mutation_id": "mutation-placeholder",
             "round_updates": [],
@@ -358,6 +358,47 @@ class ScoresheetSyncTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(MergedPresentation.objects.count(), 0)
+
+    def test_patch_save_creates_presentation_for_new_night_with_rounds(self):
+        MergedPresentation.objects.all().delete()
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Round 1",
+            major_category="History",
+            minor_category1="Modern",
+            minor_category2="",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+        )
+
+        payload = {
+            "presentation_id": "",
+            "selected_date": "2026-03-20",
+            "client_id": "client-new-night",
+            "mutation_id": "mutation-new-night",
+            "round_updates": [],
+            "presentation_updates": {
+                "host": "Alex",
+                "scorekeeper": "Megan",
+                "crowned_winner": "Jenny",
+                "notes": "Fresh night winner saved",
+            },
+        }
+
+        response = self.client.post(
+            reverse("save_scores"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        saved_presentation = MergedPresentation.objects.get(name="03.20.2026")
+        self.assertEqual(saved_presentation.presentation_id, "")
+        self.assertEqual(saved_presentation.host, "Alex")
+        self.assertEqual(saved_presentation.scorekeeper, "Megan")
+        self.assertEqual(saved_presentation.crowned_winner, "Jenny")
+        self.assertEqual(saved_presentation.notes, "Fresh night winner saved")
 
     def test_patch_save_prefers_selected_date_when_presentation_id_is_duplicated(self):
         older_duplicate = MergedPresentation.objects.create(

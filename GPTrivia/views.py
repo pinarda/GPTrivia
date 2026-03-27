@@ -3775,7 +3775,16 @@ def _save_scores_patch(data):
             setattr(presentation, field, value)
             dirty_fields.append(field)
 
-        should_persist_presentation = bool(presentation.pk or presentation.presentation_id)
+        parsed_selected_date = _parse_scoresheet_date(selected_date)
+        has_rounds_for_selected_date = bool(
+            parsed_selected_date
+            and GPTriviaRound.objects.filter(date=parsed_selected_date).exists()
+        )
+        should_persist_presentation = bool(
+            presentation.pk
+            or presentation.presentation_id
+            or (dirty_fields and has_rounds_for_selected_date)
+        )
 
         if should_persist_presentation and (dirty_fields or presentation.pk is None):
             presentation.save()
