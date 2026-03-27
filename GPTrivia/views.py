@@ -141,10 +141,14 @@ ROUND_MAKER_SMART_TEMPLATE_FALLBACK_KEYWORDS = [
     ("FILM", [r"\bfilm\b", r"\bmovie\b", r"\bdirector\b", r"\bactor\b", r"\bactress\b", r"\bcinema\b", r"\bbox office\b"]),
     ("SCIENCE", [r"\bscience\b", r"\bphysics\b", r"\bchemistry\b", r"\bbiology\b", r"\bscientist\b", r"\belement\b", r"\bplanet\b", r"\bcell\b"]),
     ("ANIMALS", [r"\banimal\b", r"\bmammal\b", r"\bbird\b", r"\breptile\b", r"\bspecies\b", r"\bzoolog"]),
+    ("NATURE", [r"\bnature\b", r"\bplant\b", r"\bflower\b", r"\btree\b", r"\bforest\b", r"\becosystem\b", r"\bweather\b", r"\bclimate\b", r"\bgeology\b"]),
     ("LITERATURE", [r"\bbook\b", r"\bnovel\b", r"\bauthor\b", r"\bpoem\b", r"\bliterature\b", r"\bplaywright\b"]),
-    ("ARTS", [r"\bart\b", r"\bartist\b", r"\bpainting\b", r"\bsculpt", r"\btheater\b", r"\bopera\b", r"\bballet\b", r"\barchitecture\b"]),
+    ("ARTS", [r"\bart\b", r"\bartist\b", r"\bpainting\b", r"\bsculpt", r"\bopera\b", r"\bballet\b", r"\barchitecture\b"]),
+    ("THEATER", [r"\btheater\b", r"\btheatre\b", r"\bbroadway\b", r"\bmusical\b", r"\bplay\b", r"\bstage\b"]),
     ("SPORTS", [r"\bsport\b", r"\bteam\b", r"\bgoal\b", r"\bscore\b", r"\bchampionship\b", r"\bolympic\b", r"\bnba\b", r"\bnfl\b", r"\bmlb\b"]),
+    ("FOOTBALL", [r"\bfootball\b", r"\btouchdown\b", r"\bquarterback\b", r"\bsuper bowl\b", r"\bnfl\b", r"\bfield goal\b"]),
     ("TECHNOLOGY", [r"\btechnology\b", r"\bcomputer\b", r"\bsoftware\b", r"\binternet\b", r"\bprogramming\b", r"\bdevice\b", r"\bai\b"]),
+    ("HISTORY", [r"\bhistory\b", r"\bcentury\b", r"\bempire\b", r"\bwar\b", r"\bpresident\b", r"\bancient\b", r"\brevolution\b", r"\bhistorical\b"]),
     ("WRITING", [r"\bwriting\b", r"\bgrammar\b", r"\bspelling\b", r"\bpunctuation\b", r"\banagram\b", r"\bpalindrome\b", r"\bsynonym\b", r"\bword\b"]),
 ]
 GOOGLE_PRESENTATION_ID_PATTERN = re.compile(r"/presentation/d/([A-Za-z0-9_-]+)")

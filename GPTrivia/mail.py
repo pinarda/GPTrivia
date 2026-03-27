@@ -1494,7 +1494,7 @@ def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, sm
         }
     ]
 
-    for question_row in smart_category_plan or []:
+    for display_number, question_row in enumerate(smart_category_plan or [], start=1):
         category_name = str(question_row.get('category') or '').upper().strip()
         slide_pair = category_slide_map.get(category_name) or {}
         question_source_id = slide_pair.get('question')
@@ -1516,6 +1516,13 @@ def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, sm
                 str(question_row.get('question_text') or ''),
             )
         )
+        replace_requests.append(
+            _build_targeted_replace_text_request(
+                duplicated_question_id,
+                '#',
+                str(display_number),
+            )
+        )
 
     refreshed_presentation = service.presentations().get(presentationId=presentation_id).execute()
     answer_insertion_index = _find_smart_template_answers_insertion_index(
@@ -1523,7 +1530,7 @@ def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, sm
         excluded_slide_ids=category_source_slide_ids,
     )
 
-    for question_row in smart_category_plan or []:
+    for display_number, question_row in enumerate(smart_category_plan or [], start=1):
         category_name = str(question_row.get('category') or '').upper().strip()
         slide_pair = category_slide_map.get(category_name) or {}
         answer_source_id = slide_pair.get('answer')
@@ -1550,6 +1557,13 @@ def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, sm
                 duplicated_answer_id,
                 f"{category_name}ANSWER",
                 str(question_row.get('answer_text') or ''),
+            )
+        )
+        replace_requests.append(
+            _build_targeted_replace_text_request(
+                duplicated_answer_id,
+                '#',
+                str(display_number),
             )
         )
 

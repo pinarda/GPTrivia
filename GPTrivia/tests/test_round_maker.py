@@ -157,6 +157,12 @@ class RoundMakerTests(TestCase):
         )
         self.assertTrue(mail._smart_template_slide_map_is_complete(category_slide_map))
 
+    def test_smart_template_categories_include_new_template_buckets(self):
+        self.assertIn("NATURE", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
+        self.assertIn("FOOTBALL", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
+        self.assertIn("HISTORY", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
+        self.assertIn("THEATER", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
+
     @patch("GPTrivia.views.requests.post")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"})
     def test_openai_text_response_uses_http_responses_api_for_legacy_clients(self, post_mock):
@@ -602,6 +608,8 @@ class RoundMakerTests(TestCase):
             request_index[("dup-answer-1", "GEOGRAPHYQUESTION")],
             "Which city is nicknamed the Big Apple?",
         )
+        self.assertEqual(request_index[("dup-question-1", "#")], "1")
+        self.assertEqual(request_index[("dup-answer-1", "#")], "1")
         self.assertEqual(
             request_index[("dup-answer-1", "GEOGRAPHYANSWER")],
             "New York City",
@@ -610,6 +618,8 @@ class RoundMakerTests(TestCase):
             request_index[("dup-answer-2", "SCIENCEQUESTION")],
             "Which planet has the most moons?",
         )
+        self.assertEqual(request_index[("dup-question-2", "#")], "2")
+        self.assertEqual(request_index[("dup-answer-2", "#")], "2")
         self.assertEqual(
             request_index[("dup-answer-2", "SCIENCEANSWER")],
             "Saturn",
