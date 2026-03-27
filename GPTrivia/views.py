@@ -359,18 +359,23 @@ def _build_submitted_round_lookup(submitted_rounds):
     submitted_rounds_by_title = {}
     duplicate_title_keys = set()
 
+    def add_title_key(candidate_title, submitted_round):
+        title_key = _normalize_round_title(candidate_title)
+        if not title_key:
+            return
+        existing_round = submitted_rounds_by_title.get(title_key)
+        if existing_round and existing_round.id != submitted_round.id:
+            duplicate_title_keys.add(title_key)
+            return
+        submitted_rounds_by_title[title_key] = submitted_round
+
     for submitted_round in submitted_rounds:
         normalized_link = _normalize_round_link(submitted_round.link)
         if normalized_link:
             submitted_rounds_by_link[normalized_link] = submitted_round
 
-        title_key = _normalize_round_title(submitted_round.title)
-        if not title_key:
-            continue
-        if title_key in submitted_rounds_by_title:
-            duplicate_title_keys.add(title_key)
-        else:
-            submitted_rounds_by_title[title_key] = submitted_round
+        add_title_key(submitted_round.title, submitted_round)
+        add_title_key(submitted_round.source_title, submitted_round)
 
     return (
         submitted_rounds_by_presentation_id,
@@ -470,11 +475,16 @@ def _save_available_round_metadata(data, *, user=None):
     link_to_store = link or old_link or (submitted_round.link if submitted_round else '') or _build_submitted_round_link(persistence_id)
     defaults = {
         'title': title,
+        'source_title': source_title or title,
         'creator': creator,
         'cooperative': cooperative,
         'link': link_to_store,
-        'is_consumed': False,
-        'submitted_by': user if getattr(user, 'is_authenticated', False) else None,
+        'is_consumed': submitted_round.is_consumed if submitted_round else False,
+        'submitted_by': (
+            user
+            if getattr(user, 'is_authenticated', False)
+            else (submitted_round.submitted_by if submitted_round else None)
+        ),
     }
     saved_round, _ = SubmittedRound.objects.update_or_create(
         presentation_id=persistence_id,
@@ -482,6 +492,144 @@ def _save_available_round_metadata(data, *, user=None):
     )
     _bump_site_data_cache_version()
     return saved_round, ''
+
+
+def _sanitize_inferred_available_round_title(title_text):
+    candidate = str(title_text or '').strip()
+    if candidate.startswith('```'):
+        candidate = re.sub(r'^```(?:text)?\s*', '', candidate)
+        candidate = re.sub(r'\s*```$', '', candidate)
+    candidate = candidate.strip().strip('"').strip("'")
+    candidate = re.sub(r'\s+', ' ', candidate).strip()
+    if '\n' in candidate:
+        candidate = candidate.splitlines()[0].strip()
+    return candidate[:255]
+
+
+def _infer_available_round_title_from_first_slide(link='', old_link='', fallback_title=''):
+    presentation_id = _extract_google_presentation_id(link) or _extract_google_presentation_id(old_link)
+    if not presentation_id:
+        return str(fallback_title or '').strip()
+
+    from googleapiclient.discovery import build
+    from .mail import _extract_slide_text
+    from .round_analysis import (
+        _extract_slide_text_items,
+        _fetch_slide_thumbnail_data_url,
+        _load_google_credentials,
+    )
+
+    credentials = _load_google_credentials()
+    slides_service = build('slides', 'v1', credentials=credentials, cache_discovery=False)
+    presentation = slides_service.presentations().get(presentationId=presentation_id).execute()
+    slides = presentation.get('slides', []) or []
+    if not slides:
+        return str(fallback_title or '').strip()
+
+    first_slide = slides[0]
+    first_slide_id = str(first_slide.get('objectId') or '').strip()
+    slide_text = re.sub(r'\s+', ' ', _extract_slide_text(first_slide)).strip()
+    text_items = _extract_slide_text_items(first_slide)
+    thumbnail_data_url = ''
+    if first_slide_id:
+        try:
+            thumbnail_data_url = _fetch_slide_thumbnail_data_url(
+                slides_service,
+                credentials,
+                presentation_id,
+                first_slide_id,
+            )
+        except Exception:
+            logger.exception("Could not fetch first-slide thumbnail for round title inference.")
+
+    instructions = (
+        "You identify the title of a trivia round from the first slide of a Google Slides deck. "
+        "Choose the most prominent title text on the slide based on layout, size, and overall presentation. "
+        "Prefer the actual round title over creator names, subtitles, dates, instructions, and footer text. "
+        "Return plain text only containing the best round title. Do not use quotes or extra commentary."
+    )
+    input_payload = {
+        'presentation_id': presentation_id,
+        'fallback_title': str(fallback_title or '').strip(),
+        'slide_text': slide_text,
+        'text_items': text_items,
+    }
+    input_content = [
+        {
+            'type': 'input_text',
+            'text': json.dumps(input_payload, ensure_ascii=True),
+        }
+    ]
+    if thumbnail_data_url:
+        input_content.append(
+            {
+                'type': 'input_image',
+                'image_url': thumbnail_data_url,
+            }
+        )
+
+    inferred_title = _create_openai_text_response(
+        _get_openai_client(),
+        instructions=instructions,
+        input_items=[
+            {
+                'role': 'user',
+                'content': input_content,
+            }
+        ],
+        max_output_tokens=80,
+        reasoning_effort="low",
+    )
+    return _sanitize_inferred_available_round_title(inferred_title) or str(fallback_title or '').strip()
+
+
+def _ensure_available_round_identified_title(title, creator, link, old_link, submitted_round=None):
+    if not _creator_allows_round_analysis(creator):
+        return submitted_round, False
+    if submitted_round and submitted_round.source_title:
+        return submitted_round, False
+
+    try:
+        inferred_source_title = _infer_available_round_title_from_first_slide(
+            link=link,
+            old_link=old_link,
+            fallback_title=title,
+        )
+    except Exception:
+        logger.exception("Could not infer available round title for link %s", link or old_link)
+        return submitted_round, False
+
+    inferred_source_title = str(inferred_source_title or '').strip() or str(title or '').strip()
+    if not inferred_source_title:
+        return submitted_round, False
+
+    display_title = (
+        str(submitted_round.title or '').strip()
+        if submitted_round and str(submitted_round.title or '').strip()
+        else inferred_source_title
+    )
+    creator_to_store = (
+        str(submitted_round.creator or '').strip()
+        if submitted_round and str(submitted_round.creator or '').strip()
+        else str(creator or '').strip()
+    )
+    coop_to_store = bool(submitted_round.cooperative) if submitted_round else False
+
+    saved_round, error_message = _save_available_round_metadata(
+        {
+            'title': display_title,
+            'source_title': inferred_source_title,
+            'creator': creator_to_store,
+            'link': link,
+            'old_link': old_link,
+            'coop': coop_to_store,
+        }
+    )
+    if error_message or not saved_round:
+        if error_message:
+            logger.warning("Could not persist inferred available round title: %s", error_message)
+        return submitted_round, False
+    return saved_round, True
 
 
 def _build_round_maker_creator_options():
@@ -2606,17 +2754,35 @@ def _collect_rounds():
     links, titles, creators, old_links, shared_dates = get_round_titles_and_links()
     submitted_rounds = list(SubmittedRound.objects.order_by('-submitted_at'))
     submitted_round_lookup = _build_submitted_round_lookup(submitted_rounds)
+    creator_opt_in_map = _build_round_analysis_opt_in_map(creators)
     matched_submitted_round_ids = set()
     new_rounds = []
     for title, creator, link, old_link, shared_date in zip(titles, creators, links, old_links, shared_dates):
         submitted_round = _find_matching_submitted_round(title, link, old_link, submitted_round_lookup)
+        if creator_opt_in_map.get(str(creator or '').strip()) and (
+            not submitted_round or not str(submitted_round.source_title or '').strip()
+        ):
+            submitted_round, _ = _ensure_available_round_identified_title(
+                title,
+                creator,
+                link,
+                old_link,
+                submitted_round=submitted_round,
+            )
         if submitted_round:
             matched_submitted_round_ids.add(submitted_round.presentation_id)
             if submitted_round.is_consumed:
                 continue
+        display_title = submitted_round.title if submitted_round and submitted_round.title else title
+        source_title = (
+            submitted_round.source_title
+            if submitted_round and submitted_round.source_title
+            else title
+        )
         new_rounds.append(
             {
-                "title": submitted_round.title if submitted_round and submitted_round.title else title,
+                "title": display_title,
+                "source_title": source_title,
                 "creator": submitted_round.creator if submitted_round and submitted_round.creator else creator,
                 "link": link,
                 "old_link": old_link,
@@ -2639,6 +2805,7 @@ def _collect_rounds():
     pending_submitted_rounds = [
         {
             "title": submitted_round.title,
+            "source_title": submitted_round.source_title or submitted_round.title,
             "creator": submitted_round.creator,
             "link": submitted_round.link or _build_submitted_round_link(submitted_round.presentation_id),
             "old_link": submitted_round.link or _build_submitted_round_link(submitted_round.presentation_id),
@@ -2653,6 +2820,7 @@ def _collect_rounds():
     historical_rounds = [
         {
             "title": trivia_round.title,
+            "source_title": trivia_round.title,
             "creator": trivia_round.creator,
             "link": trivia_round.link,
             "old_link": trivia_round.source_link or trivia_round.link,
@@ -2695,6 +2863,7 @@ def save_available_round_metadata(request):
         "ok": True,
         "presentation_id": saved_round.presentation_id,
         "title": saved_round.title,
+        "source_title": saved_round.source_title or saved_round.title,
         "creator": saved_round.creator,
         "coop": bool(saved_round.cooperative),
     })

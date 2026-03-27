@@ -193,6 +193,7 @@ class MergedPresentation(models.Model):
 class SubmittedRound(models.Model):
     presentation_id = models.CharField(max_length=255, unique=True)
     title = models.CharField(max_length=255)
+    source_title = models.CharField(max_length=255, blank=True, default='')
     creator = models.CharField(max_length=100)
     cooperative = models.BooleanField(default=False)
     link = models.CharField(max_length=255, blank=True, default='')

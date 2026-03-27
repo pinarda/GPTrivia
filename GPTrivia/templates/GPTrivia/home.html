@@ -1585,7 +1585,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                     if (body.presentation_id) {
                         round.presentation_id = body.presentation_id;
                     }
-                    round.source_title = payload.title;
+                    round.source_title = body.source_title || payload.source_title || payload.title;
                 })
                 .catch((error) => {
                     if (error && error.name === 'AbortError') {
@@ -1640,7 +1640,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 rowId: index,
                 client_save_key: `round-${index}`,
                 title: round.title || '',
-                source_title: round.title || '',
+                source_title: round.source_title || round.title || '',
                 creator: round.creator || '',
                 link: round.link || '',
                 old_link: round.old_link || '',

@@ -83,6 +83,7 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual(response.status_code, 200)
         round_payload = response.json()["rounds"][0]
         self.assertEqual(round_payload["title"], "Winged Science")
+        self.assertEqual(round_payload["source_title"], "Shared Deck Title")
         self.assertEqual(round_payload["creator"], "Alex")
         self.assertTrue(round_payload["coop"])
         self.assertEqual(round_payload["presentation_id"], "swoop-123")
@@ -113,6 +114,7 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual(save_response.status_code, 200)
         saved_round = SubmittedRound.objects.get(presentation_id="swoop-123")
         self.assertEqual(saved_round.title, "Winged Science")
+        self.assertEqual(saved_round.source_title, "Shared Deck Title")
         self.assertEqual(saved_round.creator, "Alex")
         self.assertTrue(saved_round.cooperative)
 
@@ -121,8 +123,75 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual(response.status_code, 200)
         round_payload = response.json()["rounds"][0]
         self.assertEqual(round_payload["title"], "Winged Science")
+        self.assertEqual(round_payload["source_title"], "Shared Deck Title")
         self.assertEqual(round_payload["creator"], "Alex")
         self.assertTrue(round_payload["coop"])
+
+    @patch("GPTrivia.views._infer_available_round_title_from_first_slide", return_value="GPT Identified Title")
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_identifies_opted_in_creator_round_title_once(
+        self,
+        mock_get_round_titles_and_links,
+        mock_infer_title,
+    ):
+        creator_user = User.objects.create_user(username="Megan", password="pw")
+        creator_user.profile.round_analysis_opt_in = True
+        creator_user.profile.save(update_fields=["round_analysis_opt_in"])
+
+        mock_get_round_titles_and_links.return_value = (
+            ["https://docs.google.com/presentation/d/swoop-456/edit"],
+            ["First Slide Fallback"],
+            ["Megan"],
+            ["https://docs.google.com/presentation/d/swoop-456/edit"],
+            ["2026-03-16"],
+        )
+
+        response = self.client.get(reverse("collect_rounds_api"))
+
+        self.assertEqual(response.status_code, 200)
+        round_payload = response.json()["rounds"][0]
+        self.assertEqual(round_payload["title"], "GPT Identified Title")
+        self.assertEqual(round_payload["source_title"], "GPT Identified Title")
+        self.assertEqual(round_payload["creator"], "Megan")
+        saved_round = SubmittedRound.objects.get(presentation_id="swoop-456")
+        self.assertEqual(saved_round.title, "GPT Identified Title")
+        self.assertEqual(saved_round.source_title, "GPT Identified Title")
+        mock_infer_title.assert_called_once()
+
+    @patch("GPTrivia.views._infer_available_round_title_from_first_slide")
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_reuses_persisted_identified_title_without_reinferring(
+        self,
+        mock_get_round_titles_and_links,
+        mock_infer_title,
+    ):
+        creator_user = User.objects.create_user(username="Megan", password="pw")
+        creator_user.profile.round_analysis_opt_in = True
+        creator_user.profile.save(update_fields=["round_analysis_opt_in"])
+
+        mock_get_round_titles_and_links.return_value = (
+            ["https://docs.google.com/presentation/d/swoop-789/edit"],
+            ["First Slide Fallback"],
+            ["Megan"],
+            ["https://docs.google.com/presentation/d/swoop-789/edit"],
+            ["2026-03-17"],
+        )
+        SubmittedRound.objects.create(
+            presentation_id="swoop-789",
+            title="Manual Edited Title",
+            source_title="GPT Identified Title",
+            creator="Megan",
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/swoop-789/edit",
+        )
+
+        response = self.client.get(reverse("collect_rounds_api"))
+
+        self.assertEqual(response.status_code, 200)
+        round_payload = response.json()["rounds"][0]
+        self.assertEqual(round_payload["title"], "Manual Edited Title")
+        self.assertEqual(round_payload["source_title"], "GPT Identified Title")
+        mock_infer_title.assert_not_called()
 
     @patch("GPTrivia.views.get_round_titles_and_links")
     def test_collect_rounds_api_includes_submitted_rounds_not_yet_seen_in_gmail(self, mock_get_round_titles_and_links):
