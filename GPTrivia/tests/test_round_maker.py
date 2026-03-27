@@ -44,6 +44,43 @@ class RoundMakerTests(TestCase):
             ],
         )
 
+    def test_smart_template_slide_classifier_uses_explicit_question_and_answer_placeholders(self):
+        question_slide = {
+            "pageElements": [
+                {
+                    "shape": {
+                        "text": {
+                            "textElements": [
+                                {"textRun": {"content": "ENTERTAINMENTQUESTION"}},
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+        answer_slide = {
+            "pageElements": [
+                {
+                    "shape": {
+                        "text": {
+                            "textElements": [
+                                {"textRun": {"content": "ENTERTAINMENTANSWER"}},
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+
+        self.assertEqual(
+            mail._classify_smart_template_slide(question_slide),
+            ("ENTERTAINMENT", "question"),
+        )
+        self.assertEqual(
+            mail._classify_smart_template_slide(answer_slide),
+            ("ENTERTAINMENT", "answer"),
+        )
+
     @patch("GPTrivia.views.requests.post")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"})
     def test_openai_text_response_uses_http_responses_api_for_legacy_clients(self, post_mock):
@@ -486,7 +523,7 @@ class RoundMakerTests(TestCase):
         }
 
         self.assertEqual(
-            request_index[("dup-answer-1", "GEOGRAPHY")],
+            request_index[("dup-answer-1", "GEOGRAPHYQUESTION")],
             "Which city is nicknamed the Big Apple?",
         )
         self.assertEqual(
@@ -494,7 +531,7 @@ class RoundMakerTests(TestCase):
             "New York City",
         )
         self.assertEqual(
-            request_index[("dup-answer-2", "SCIENCE")],
+            request_index[("dup-answer-2", "SCIENCEQUESTION")],
             "Which planet has the most moons?",
         )
         self.assertEqual(

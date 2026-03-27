@@ -1323,7 +1323,7 @@ def _classify_smart_template_slide(slide):
         if f"{category_name}ANSWER" in slide_text:
             return category_name, 'answer'
     for category_name in SMART_TRIVIAL_PURSUIT_CATEGORIES:
-        if re.search(rf'\b{re.escape(category_name)}\b', slide_text):
+        if f"{category_name}QUESTION" in slide_text:
             return category_name, 'question'
     return '', ''
 
@@ -1458,7 +1458,7 @@ def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, sm
         replace_requests.append(
             _build_targeted_replace_text_request(
                 duplicated_question_id,
-                category_name,
+                f"{category_name}QUESTION",
                 str(question_row.get('question_text') or ''),
             )
         )
@@ -1487,7 +1487,7 @@ def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, sm
         replace_requests.append(
             _build_targeted_replace_text_request(
                 duplicated_answer_id,
-                category_name,
+                f"{category_name}QUESTION",
                 str(question_row.get('question_text') or ''),
             )
         )
