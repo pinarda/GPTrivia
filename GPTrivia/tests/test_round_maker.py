@@ -162,6 +162,11 @@ class RoundMakerTests(TestCase):
         self.assertIn("FOOTBALL", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
         self.assertIn("HISTORY", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
         self.assertIn("THEATER", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
+        self.assertIn("FOOD", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
+        self.assertIn("GAMES", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
+        self.assertIn("LAW", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
+        self.assertIn("PHILOSOPHY", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
+        self.assertIn("CURRENTEVENTS", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
 
     @patch("GPTrivia.views.requests.post")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"})

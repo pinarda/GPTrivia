@@ -67,4 +67,9 @@ SMART_TRIVIAL_PURSUIT_CATEGORIES = [
     "FOOTBALL",
     "HISTORY",
     "THEATER",
+    "FOOD",
+    "GAMES",
+    "LAW",
+    "PHILOSOPHY",
+    "CURRENTEVENTS",
 ]
