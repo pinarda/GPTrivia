@@ -12,6 +12,7 @@ import {
   getDisplayNameForPlayer,
   getInheritedCrownedWinner,
   getPlayerFieldForName,
+  triggerCrownWinnerAnimation,
 } from './crown';
 import { DEFAULT_VISIBLE_PLAYERS } from './defaultPlayers';
 import {
@@ -343,6 +344,15 @@ describe('scoresheet crown helpers', () => {
     expect(getCrownTheme(4).sparkle).toBe('#ffffff');
     expect(getCrownTheme(5).fill).toBe('#8a5bff');
     expect(getCrownTheme(5).textFill).toBe('#24104d');
+  });
+
+  test('dispatches the crown-winner snake animation event', () => {
+    const dispatchSpy = jest.spyOn(window, 'dispatchEvent');
+
+    triggerCrownWinnerAnimation();
+
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'scoresheet:crown-winner' }));
+    dispatchSpy.mockRestore();
   });
 });
 

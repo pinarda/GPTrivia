@@ -28,6 +28,14 @@ export function getDisplayNameForPlayer(playerField) {
   return getDisplayNameForPlayerField(playerField);
 }
 
+export function triggerCrownWinnerAnimation() {
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+    return;
+  }
+
+  window.dispatchEvent(new Event('scoresheet:crown-winner'));
+}
+
 export function getPlayerFieldForName(players, playerName) {
   const playerField = getPlayerFieldForNameFromScores(playerName);
   if (!playerField) {

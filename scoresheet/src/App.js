@@ -56,6 +56,7 @@ import {
   getCrownStreak,
   getInheritedCrownedWinner,
   getPlayerFieldForName,
+  triggerCrownWinnerAnimation,
 } from './crown';
 import { DEFAULT_VISIBLE_PLAYERS } from './defaultPlayers';
 import {
@@ -2599,6 +2600,7 @@ const PlayerTable = () => {
           selectedDate,
           { crowned_winner: nextWinnerName },
         ));
+        triggerCrownWinnerAnimation();
         markDirty();
       }
     }, [crownedWinner, markDirty, players, selectedDate, sortedPlayersForDisplay, tiebreakWinner]);
