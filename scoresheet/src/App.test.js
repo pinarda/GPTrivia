@@ -249,6 +249,21 @@ describe('scoresheet sync helpers', () => {
       { name: '03.12.2026', crowned_winner: 'Megan', notes: '' },
     ]);
   });
+
+  test('applyPresentationFieldsForSelectedDate inserts a new presentation row when the night is missing', () => {
+    expect(
+      applyPresentationFieldsForSelectedDate(
+        [
+          { name: '03.11.2026', crowned_winner: 'Alex', notes: '' },
+        ],
+        '2026-03-12',
+        { crowned_winner: 'Megan' },
+      ),
+    ).toEqual([
+      { name: '03.11.2026', crowned_winner: 'Alex', notes: '' },
+      { name: '03.12.2026', presentation_id: '', crowned_winner: 'Megan' },
+    ]);
+  });
 });
 
 describe('scoresheet crown helpers', () => {

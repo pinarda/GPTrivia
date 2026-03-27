@@ -315,21 +315,56 @@ function parsePresentationNameDate(presentationName) {
   return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
+function formatPresentationNameDate(selectedDate) {
+  if (!selectedDate || !selectedDate.includes('-')) {
+    return '';
+  }
+
+  const [year, month, day] = selectedDate.split('-');
+  if (!year || !month || !day) {
+    return '';
+  }
+
+  return `${month.padStart(2, '0')}.${day.padStart(2, '0')}.${year}`;
+}
+
 export function applyPresentationFieldsForSelectedDate(presentations, selectedDate, fields) {
   if (!selectedDate || !fields || Object.keys(fields).length === 0) {
     return presentations || [];
   }
 
-  return (presentations || []).map((presentation) => {
+  let didUpdateExistingRow = false;
+  const nextPresentations = (presentations || []).map((presentation) => {
     if (parsePresentationNameDate(presentation?.name) !== selectedDate) {
       return presentation;
     }
 
+    didUpdateExistingRow = true;
     return {
       ...presentation,
       ...fields,
     };
   });
+
+  if (didUpdateExistingRow) {
+    return nextPresentations;
+  }
+
+  const nextPresentationName = formatPresentationNameDate(selectedDate);
+  if (!nextPresentationName) {
+    return nextPresentations;
+  }
+
+  return [
+    ...nextPresentations,
+    {
+      name: nextPresentationName,
+      presentation_id: '',
+      ...fields,
+    },
+  ].sort((left, right) => (
+    parsePresentationNameDate(left?.name).localeCompare(parsePresentationNameDate(right?.name))
+  ));
 }
 
 export function shouldIgnoreScoresheetMessage(message, clientId, pendingMutationIds) {
