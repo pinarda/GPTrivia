@@ -138,23 +138,24 @@ SWOOP_ICON_KEYWORD_PROMPT = (
 )
 ROUND_MAKER_SMART_TEMPLATE_FALLBACK_KEYWORDS = [
     ("GEOGRAPHY", [r"\bcapital\b", r"\bcountry\b", r"\bcity\b", r"\bstate\b", r"\bmap\b", r"\briver\b", r"\bmountain\b", r"\bocean\b", r"\bwhere\b"]),
+    ("FOOD", [r"\bfood\b", r"\bcuisine\b", r"\bdish\b", r"\brecipe\b", r"\bingredient\b", r"\bchef\b", r"\brestaurant\b", r"\bcooking\b"]),
     ("FILM", [r"\bfilm\b", r"\bmovie\b", r"\bdirector\b", r"\bactor\b", r"\bactress\b", r"\bcinema\b", r"\bbox office\b"]),
     ("SCIENCE", [r"\bscience\b", r"\bphysics\b", r"\bchemistry\b", r"\bbiology\b", r"\bscientist\b", r"\belement\b", r"\bplanet\b", r"\bcell\b"]),
-    ("ANIMALS", [r"\banimal\b", r"\bmammal\b", r"\bbird\b", r"\breptile\b", r"\bspecies\b", r"\bzoolog"]),
     ("NATURE", [r"\bnature\b", r"\bplant\b", r"\bflower\b", r"\btree\b", r"\bforest\b", r"\becosystem\b", r"\bweather\b", r"\bclimate\b", r"\bgeology\b"]),
-    ("LITERATURE", [r"\bbook\b", r"\bnovel\b", r"\bauthor\b", r"\bpoem\b", r"\bliterature\b", r"\bplaywright\b"]),
-    ("ARTS", [r"\bart\b", r"\bartist\b", r"\bpainting\b", r"\bsculpt", r"\bopera\b", r"\bballet\b", r"\barchitecture\b"]),
-    ("THEATER", [r"\btheater\b", r"\btheatre\b", r"\bbroadway\b", r"\bmusical\b", r"\bplay\b", r"\bstage\b"]),
-    ("SPORTS", [r"\bsport\b", r"\bteam\b", r"\bgoal\b", r"\bscore\b", r"\bchampionship\b", r"\bolympic\b", r"\bnba\b", r"\bnfl\b", r"\bmlb\b"]),
-    ("FOOTBALL", [r"\bfootball\b", r"\btouchdown\b", r"\bquarterback\b", r"\bsuper bowl\b", r"\bnfl\b", r"\bfield goal\b"]),
-    ("FOOD", [r"\bfood\b", r"\bcuisine\b", r"\bdish\b", r"\brecipe\b", r"\bingredient\b", r"\bchef\b", r"\brestaurant\b", r"\bcooking\b"]),
-    ("GAMES", [r"\bgame\b", r"\bboard game\b", r"\bvideo game\b", r"\bconsole\b", r"\bpuzzle\b", r"\bchess\b", r"\bcard game\b"]),
     ("LAW", [r"\blaw\b", r"\blegal\b", r"\bcourt\b", r"\bjudge\b", r"\bjustice\b", r"\bconstitution\b", r"\bstatute\b", r"\bcrime\b"]),
+    ("ANIMALS", [r"\banimal\b", r"\bmammal\b", r"\bbird\b", r"\breptile\b", r"\bspecies\b", r"\bzoolog"]),
     ("PHILOSOPHY", [r"\bphilosophy\b", r"\bphilosopher\b", r"\bethics\b", r"\bmetaphysics\b", r"\bepistemology\b", r"\bexistential\b", r"\bstoic\b"]),
     ("CURRENTEVENTS", [r"\bcurrent event", r"\bbreaking news\b", r"\bheadline\b", r"\brecent\b", r"\bthis year\b", r"\bnews\b", r"\belection\b"]),
-    ("TECHNOLOGY", [r"\btechnology\b", r"\bcomputer\b", r"\bsoftware\b", r"\binternet\b", r"\bprogramming\b", r"\bdevice\b", r"\bai\b"]),
     ("HISTORY", [r"\bhistory\b", r"\bcentury\b", r"\bempire\b", r"\bwar\b", r"\bpresident\b", r"\bancient\b", r"\brevolution\b", r"\bhistorical\b"]),
+    ("GAMES", [r"\bgame\b", r"\bboard game\b", r"\bvideo game\b", r"\bconsole\b", r"\bpuzzle\b", r"\bchess\b", r"\bcard game\b"]),
+    ("THEATER", [r"\btheater\b", r"\btheatre\b", r"\bbroadway\b", r"\bmusical\b", r"\bplay\b", r"\bstage\b"]),
+    ("ARTS", [r"\bart\b", r"\bartist\b", r"\bpainting\b", r"\bsculpt", r"\bopera\b", r"\bballet\b", r"\barchitecture\b"]),
+    ("LITERATURE", [r"\bbook\b", r"\bnovel\b", r"\bauthor\b", r"\bpoem\b", r"\bliterature\b", r"\bplaywright\b"]),
+    ("FOOTBALL", [r"\bfootball\b", r"\btouchdown\b", r"\bquarterback\b", r"\bsuper bowl\b", r"\bnfl\b", r"\bfield goal\b"]),
+    ("SPORTS", [r"\bsport\b", r"\bteam\b", r"\bgoal\b", r"\bscore\b", r"\bchampionship\b", r"\bolympic\b", r"\bnba\b", r"\bnfl\b", r"\bmlb\b"]),
+    ("TECHNOLOGY", [r"\btechnology\b", r"\bcomputer\b", r"\bsoftware\b", r"\binternet\b", r"\bprogramming\b", r"\bdevice\b", r"\bai\b"]),
     ("WRITING", [r"\bwriting\b", r"\bgrammar\b", r"\bspelling\b", r"\bpunctuation\b", r"\banagram\b", r"\bpalindrome\b", r"\bsynonym\b", r"\bword\b"]),
+    ("ENTERTAINMENT", [r"\btelevision\b", r"\btv\b", r"\bmusic\b", r"\bcelebrity\b", r"\bpop culture\b", r"\bsitcom\b", r"\bband\b", r"\bsinger\b"]),
 ]
 GOOGLE_PRESENTATION_ID_PATTERN = re.compile(r"/presentation/d/([A-Za-z0-9_-]+)")
 HOME_ROUNDS_CACHE_TTL_SECONDS = 20

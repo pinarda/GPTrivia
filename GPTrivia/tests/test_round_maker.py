@@ -157,16 +157,31 @@ class RoundMakerTests(TestCase):
         )
         self.assertTrue(mail._smart_template_slide_map_is_complete(category_slide_map))
 
-    def test_smart_template_categories_include_new_template_buckets(self):
-        self.assertIn("NATURE", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
-        self.assertIn("FOOTBALL", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
-        self.assertIn("HISTORY", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
-        self.assertIn("THEATER", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
-        self.assertIn("FOOD", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
-        self.assertIn("GAMES", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
-        self.assertIn("LAW", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
-        self.assertIn("PHILOSOPHY", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
-        self.assertIn("CURRENTEVENTS", mail.SMART_TRIVIAL_PURSUIT_CATEGORIES)
+    def test_smart_template_categories_match_template_order(self):
+        self.assertEqual(
+            mail.SMART_TRIVIAL_PURSUIT_CATEGORIES,
+            [
+                "GEOGRAPHY",
+                "FOOD",
+                "FILM",
+                "SCIENCE",
+                "NATURE",
+                "LAW",
+                "ANIMALS",
+                "PHILOSOPHY",
+                "CURRENTEVENTS",
+                "HISTORY",
+                "GAMES",
+                "THEATER",
+                "ARTS",
+                "LITERATURE",
+                "SPORTS",
+                "FOOTBALL",
+                "TECHNOLOGY",
+                "WRITING",
+                "ENTERTAINMENT",
+            ],
+        )
 
     @patch("GPTrivia.views.requests.post")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"})
