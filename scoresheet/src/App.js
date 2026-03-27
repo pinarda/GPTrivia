@@ -1197,7 +1197,9 @@ function CrownIcon({ streak }) {
       )}
       {streak >= 4 && (
         <>
-          <path d="M12 0.9L13.1 2.4L14.7 2.9L13.5 4.1L13.8 5.8L12 4.9L10.2 5.8L10.5 4.1L9.3 2.9L10.9 2.4Z" fill={theme.sparkle} opacity="0.98" />
+          {streak >= 5 && (
+            <path d="M12 0.9L13.1 2.4L14.7 2.9L13.5 4.1L13.8 5.8L12 4.9L10.2 5.8L10.5 4.1L9.3 2.9L10.9 2.4Z" fill={theme.sparkle} opacity="0.98" />
+          )}
           <path d="M5.7 4.7L6.3 5.6L7.4 5.9L6.6 6.7L6.7 7.8L5.7 7.3L4.7 7.8L4.8 6.7L4 5.9L5.1 5.6Z" fill={theme.sparkle} opacity="0.95" />
           <path d="M18.3 4.7L18.9 5.6L20 5.9L19.2 6.7L19.3 7.8L18.3 7.3L17.3 7.8L17.4 6.7L16.6 5.9L17.7 5.6Z" fill={theme.sparkle} opacity="0.95" />
           <path d="M7.1 12.6L12 8.8L16.9 12.6" stroke={theme.trim} strokeWidth="0.85" strokeLinecap="round" opacity="0.9" />
