@@ -1320,10 +1320,10 @@ def _classify_smart_template_slide(slide):
         return '', ''
 
     for category_name in SMART_TRIVIAL_PURSUIT_CATEGORIES:
-        if f"{category_name}ANSWER" in slide_text:
+        if re.search(rf'{re.escape(category_name)}\s*ANSWER\b', slide_text):
             return category_name, 'answer'
     for category_name in SMART_TRIVIAL_PURSUIT_CATEGORIES:
-        if f"{category_name}QUESTION" in slide_text:
+        if re.search(rf'{re.escape(category_name)}\s*QUESTION\b', slide_text):
             return category_name, 'question'
     return '', ''
 

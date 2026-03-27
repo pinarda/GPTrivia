@@ -81,6 +81,47 @@ class RoundMakerTests(TestCase):
             ("ENTERTAINMENT", "answer"),
         )
 
+    def test_smart_template_slide_classifier_tolerates_whitespace_between_category_and_placeholder_suffix(self):
+        question_slide = {
+            "pageElements": [
+                {
+                    "shape": {
+                        "text": {
+                            "textElements": [
+                                {"textRun": {"content": "SPORTS"}},
+                                {"textRun": {"content": "\n"}},
+                                {"textRun": {"content": "QUESTION"}},
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+        answer_slide = {
+            "pageElements": [
+                {
+                    "shape": {
+                        "text": {
+                            "textElements": [
+                                {"textRun": {"content": "SPORTS"}},
+                                {"textRun": {"content": " "}},
+                                {"textRun": {"content": "ANSWER"}},
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+
+        self.assertEqual(
+            mail._classify_smart_template_slide(question_slide),
+            ("SPORTS", "question"),
+        )
+        self.assertEqual(
+            mail._classify_smart_template_slide(answer_slide),
+            ("SPORTS", "answer"),
+        )
+
     @patch("GPTrivia.views.requests.post")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"})
     def test_openai_text_response_uses_http_responses_api_for_legacy_clients(self, post_mock):
