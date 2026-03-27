@@ -2755,7 +2755,6 @@ def _collect_rounds():
     submitted_rounds = list(SubmittedRound.objects.order_by('-submitted_at'))
     submitted_round_lookup = _build_submitted_round_lookup(submitted_rounds)
     creator_opt_in_map = _build_round_analysis_opt_in_map(creators)
-    matched_submitted_round_ids = set()
     new_rounds = []
     for title, creator, link, old_link, shared_date in zip(titles, creators, links, old_links, shared_dates):
         submitted_round = _find_matching_submitted_round(title, link, old_link, submitted_round_lookup)
@@ -2769,10 +2768,6 @@ def _collect_rounds():
                 old_link,
                 submitted_round=submitted_round,
             )
-        if submitted_round:
-            matched_submitted_round_ids.add(submitted_round.presentation_id)
-            if submitted_round.is_consumed:
-                continue
         display_title = submitted_round.title if submitted_round and submitted_round.title else title
         source_title = (
             submitted_round.source_title
@@ -2801,22 +2796,6 @@ def _collect_rounds():
                 "is_new": True,
             }
         )
-
-    pending_submitted_rounds = [
-        {
-            "title": submitted_round.title,
-            "source_title": submitted_round.source_title or submitted_round.title,
-            "creator": submitted_round.creator,
-            "link": submitted_round.link or _build_submitted_round_link(submitted_round.presentation_id),
-            "old_link": submitted_round.link or _build_submitted_round_link(submitted_round.presentation_id),
-            "presentation_id": submitted_round.presentation_id,
-            "shared_date": submitted_round.submitted_at.date().isoformat() if submitted_round.submitted_at else "",
-            "coop": bool(submitted_round.cooperative),
-            "is_new": True,
-        }
-        for submitted_round in submitted_rounds
-        if not submitted_round.is_consumed and submitted_round.presentation_id not in matched_submitted_round_ids
-    ]
     historical_rounds = [
         {
             "title": trivia_round.title,
@@ -2831,7 +2810,7 @@ def _collect_rounds():
         }
         for trivia_round in GPTriviaRound.objects.order_by('-date', 'round_number', 'title')
     ]
-    return pending_submitted_rounds + new_rounds + historical_rounds
+    return new_rounds + historical_rounds
 
 async def collect_rounds_api(request):
     if request.method != "GET":

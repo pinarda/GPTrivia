@@ -194,7 +194,7 @@ class HomeRoundFeedTests(TestCase):
         mock_infer_title.assert_not_called()
 
     @patch("GPTrivia.views.get_round_titles_and_links")
-    def test_collect_rounds_api_includes_submitted_rounds_not_yet_seen_in_gmail(self, mock_get_round_titles_and_links):
+    def test_collect_rounds_api_only_shows_available_rounds_from_unread_gmail(self, mock_get_round_titles_and_links):
         mock_get_round_titles_and_links.return_value = ([], [], [], [], [])
         SubmittedRound.objects.create(
             presentation_id="pending-123",
@@ -208,9 +208,7 @@ class HomeRoundFeedTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(len(payload["rounds"]), 1)
-        self.assertEqual(payload["rounds"][0]["title"], "Fresh Swoop Round")
-        self.assertTrue(payload["rounds"][0]["is_new"])
+        self.assertEqual(payload["rounds"], [])
 
     @patch("GPTrivia.views.get_round_titles_and_links")
     def test_collect_rounds_api_dedupes_submitted_round_when_gmail_link_shape_differs(self, mock_get_round_titles_and_links):
@@ -238,7 +236,7 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual(payload[0]["creator"], "Alex")
 
     @patch("GPTrivia.views.get_round_titles_and_links")
-    def test_collect_rounds_api_excludes_consumed_submitted_rounds(self, mock_get_round_titles_and_links):
+    def test_collect_rounds_api_shows_unread_gmail_round_even_if_previously_consumed(self, mock_get_round_titles_and_links):
         mock_get_round_titles_and_links.return_value = (
             ["https://docs.google.com/presentation/d/swoop-123/edit"],
             ["Shared Deck Title"],
@@ -258,7 +256,11 @@ class HomeRoundFeedTests(TestCase):
         response = self.client.get(reverse("collect_rounds_api"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["rounds"], [])
+        round_payload = response.json()["rounds"][0]
+        self.assertEqual(round_payload["title"], "Winged Science")
+        self.assertEqual(round_payload["source_title"], "Shared Deck Title")
+        self.assertEqual(round_payload["creator"], "Alex")
+        self.assertTrue(round_payload["is_new"])
 
     @patch("GPTrivia.views.get_round_titles_and_links")
     def test_collect_rounds_api_uses_short_cache(self, mock_get_round_titles_and_links):
