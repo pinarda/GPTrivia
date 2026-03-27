@@ -125,13 +125,19 @@ a {
 }
 
 .profile-intro-box {
-    min-height: 4.4rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    min-height: 5.25rem;
+    width: 100%;
     padding: 0.85rem 0.95rem;
     background: var(--profile-card-surface);
     border: 1px solid var(--profile-input-border);
     color: var(--profile-card-text);
     line-height: 1.55;
     white-space: pre-wrap;
+    text-align: left;
+    box-sizing: border-box;
 }
 
 .profile-intro-box--empty {
@@ -577,7 +583,6 @@ a {
             "left-stats right-stats";
     }
 
-    .profile-intro-box,
     .profile-intro-form,
     .profile-summary-column,
     .profile-deferred-placeholder--summary {
@@ -594,7 +599,8 @@ a {
     }
 
     .profile-intro-box {
-        min-height: 0;
+        min-height: 5.25rem;
+        height: auto;
     }
 
     .profile-summary-column {
