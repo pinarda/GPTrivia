@@ -441,6 +441,15 @@ class ScoresheetSyncTests(TestCase):
         self.assertIn("Physics", payload["minor_categories"])
         self.assertIn("Flags", payload["minor_categories"])
 
+    def test_scoresheet_bootstrap_allows_valid_requested_date_without_rounds(self):
+        response = self.client.get(reverse("scoresheet_bootstrap"), {"date": "2026-03-20"})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["selected_date"], "2026-03-20")
+        self.assertEqual(payload["dates"], ["2026-03-12"])
+        self.assertEqual(payload["rounds"], [])
+
     def test_scoresheet_presentation_meta_returns_selected_presentation_and_history(self):
         older_presentation = MergedPresentation.objects.create(
             name="03.05.2026",

@@ -43,16 +43,18 @@ export function resolveJokerRoundIndices(jokerRoundIndices) {
 
 export function resolveScoresheetDate(selectedDate, requestedDate, availableDates) {
   const normalizedDates = Array.isArray(availableDates) ? availableDates.filter(Boolean) : [];
-  if (!normalizedDates.length) {
-    return '';
-  }
+  const isValidDateString = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
 
-  if (selectedDate && normalizedDates.includes(selectedDate)) {
+  if (selectedDate && isValidDateString(selectedDate)) {
     return selectedDate;
   }
 
-  if (requestedDate && normalizedDates.includes(requestedDate)) {
+  if (requestedDate && isValidDateString(requestedDate)) {
     return requestedDate;
+  }
+
+  if (!normalizedDates.length) {
+    return '';
   }
 
   return [...normalizedDates].sort().reverse()[0] || '';

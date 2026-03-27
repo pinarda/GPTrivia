@@ -2707,7 +2707,12 @@ def _build_scoresheet_bootstrap_payload(requested_date=''):
         for round_date in round_queryset.order_by().values_list('date', flat=True).distinct()
         if round_date
     }, reverse=True)
-    selected_date = requested_date if requested_date in date_values else (date_values[0] if date_values else '')
+    parsed_requested_date = _parse_scoresheet_date(requested_date)
+    selected_date = (
+        parsed_requested_date.isoformat()
+        if parsed_requested_date
+        else (date_values[0] if date_values else '')
+    )
 
     selected_rounds = round_queryset.filter(date=selected_date).order_by('round_number', 'id') if selected_date else GPTriviaRound.objects.none()
     creator_options = sorted({

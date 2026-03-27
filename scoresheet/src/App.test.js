@@ -393,6 +393,14 @@ describe('scoresheet player defaults', () => {
     ).toBe('2026-03-05');
 
     expect(
+      resolveScoresheetDate('2026-03-20', '', ['2026-03-12', '2026-03-05']),
+    ).toBe('2026-03-20');
+
+    expect(
+      resolveScoresheetDate('', '2026-03-21', ['2026-03-12', '2026-03-05']),
+    ).toBe('2026-03-21');
+
+    expect(
       resolveScoresheetDate('', '', ['2026-03-05', '2026-03-12']),
     ).toBe('2026-03-12');
   });
