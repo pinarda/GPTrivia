@@ -125,19 +125,20 @@ a {
 }
 
 .profile-intro-box {
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-start;
+    display: block;
     min-height: 5.25rem;
     width: 100%;
-    padding: 0.85rem 0.95rem;
+    padding: 0.8rem 0.9rem;
+    border-radius: 0;
     background: var(--profile-card-surface);
     border: 1px solid var(--profile-input-border);
     color: var(--profile-card-text);
-    line-height: 1.55;
-    white-space: pre-wrap;
+    font: inherit;
+    line-height: 1.45;
+    white-space: normal;
     text-align: left;
     box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .profile-intro-box--empty {
