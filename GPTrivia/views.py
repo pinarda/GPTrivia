@@ -84,6 +84,11 @@ from .blog_posts import (
     get_roboalex_blog_context,
 )
 from .profile_media import get_profile_avatar_url, get_profile_picture_url
+from .swoop_templates import (
+    ROUND_MAKER_TEMPLATE_OPTIONS,
+    SMART_TRIVIAL_PURSUIT_CATEGORIES,
+    SMART_TRIVIAL_PURSUIT_TEMPLATE_ID,
+)
 import re
 import mimetypes
 from itertools import chain
@@ -131,6 +136,17 @@ SWOOP_ICON_KEYWORD_PROMPT = (
     "Provide no more than two keywords that summarize the following trivia question. "
     "Return only the keywords and nothing else."
 )
+ROUND_MAKER_SMART_TEMPLATE_FALLBACK_KEYWORDS = [
+    ("GEOGRAPHY", [r"\bcapital\b", r"\bcountry\b", r"\bcity\b", r"\bstate\b", r"\bmap\b", r"\briver\b", r"\bmountain\b", r"\bocean\b", r"\bwhere\b"]),
+    ("FILM", [r"\bfilm\b", r"\bmovie\b", r"\bdirector\b", r"\bactor\b", r"\bactress\b", r"\bcinema\b", r"\bbox office\b"]),
+    ("SCIENCE", [r"\bscience\b", r"\bphysics\b", r"\bchemistry\b", r"\bbiology\b", r"\bscientist\b", r"\belement\b", r"\bplanet\b", r"\bcell\b"]),
+    ("ANIMALS", [r"\banimal\b", r"\bmammal\b", r"\bbird\b", r"\breptile\b", r"\bspecies\b", r"\bzoolog"]),
+    ("LITERATURE", [r"\bbook\b", r"\bnovel\b", r"\bauthor\b", r"\bpoem\b", r"\bliterature\b", r"\bplaywright\b"]),
+    ("ARTS", [r"\bart\b", r"\bartist\b", r"\bpainting\b", r"\bsculpt", r"\btheater\b", r"\bopera\b", r"\bballet\b", r"\barchitecture\b"]),
+    ("SPORTS", [r"\bsport\b", r"\bteam\b", r"\bgoal\b", r"\bscore\b", r"\bchampionship\b", r"\bolympic\b", r"\bnba\b", r"\bnfl\b", r"\bmlb\b"]),
+    ("TECHNOLOGY", [r"\btechnology\b", r"\bcomputer\b", r"\bsoftware\b", r"\binternet\b", r"\bprogramming\b", r"\bdevice\b", r"\bai\b"]),
+    ("WRITING", [r"\bwriting\b", r"\bgrammar\b", r"\bspelling\b", r"\bpunctuation\b", r"\banagram\b", r"\bpalindrome\b", r"\bsynonym\b", r"\bword\b"]),
+]
 GOOGLE_PRESENTATION_ID_PATTERN = re.compile(r"/presentation/d/([A-Za-z0-9_-]+)")
 HOME_ROUNDS_CACHE_TTL_SECONDS = 20
 ANALYSIS_PLOT_CACHE_TTL_SECONDS = 60 * 60 * 24
@@ -843,6 +859,141 @@ class CustomPasswordChangeView(auth_views.PasswordChangeView):
 class CustomPasswordChangeDoneView(auth_views.PasswordChangeDoneView):
     template_name = 'registration/password_changed.html'
 
+
+def _user_can_use_smart_round_templates(user):
+    if not getattr(user, 'is_authenticated', False):
+        return False
+    profile = getattr(user, 'profile', None)
+    return bool(profile and profile.round_analysis_opt_in)
+
+
+def _build_round_maker_template_options(user):
+    can_use_smart_templates = _user_can_use_smart_round_templates(user)
+    return [
+        option
+        for option in ROUND_MAKER_TEMPLATE_OPTIONS
+        if can_use_smart_templates or not option.get('requires_round_analysis')
+    ]
+
+
+def _normalize_round_maker_smart_category(category_value):
+    normalized_category = re.sub(r'[^A-Z]', '', str(category_value or '').upper())
+    if normalized_category in SMART_TRIVIAL_PURSUIT_CATEGORIES:
+        return normalized_category
+    return ''
+
+
+def _ordered_round_maker_question_answer_rows(qas_dict):
+    rows = []
+    for question_number in range(1, 11):
+        key_number = 0 if question_number == 10 else question_number
+        question_text = str((qas_dict or {}).get(f'Question{key_number}') or '').strip()
+        answer_text = str((qas_dict or {}).get(f'Answer{key_number}') or '').strip()
+        if not question_text and not answer_text:
+            continue
+        rows.append(
+            {
+                'question_number': question_number,
+                'question_text': question_text,
+                'answer_text': answer_text,
+            }
+        )
+    return rows
+
+
+def _fallback_round_maker_smart_category(question_text, answer_text=''):
+    combined_text = f"{question_text or ''} {answer_text or ''}".casefold()
+    for category_name, patterns in ROUND_MAKER_SMART_TEMPLATE_FALLBACK_KEYWORDS:
+        for pattern in patterns:
+            if re.search(pattern, combined_text):
+                return category_name
+    return 'ENTERTAINMENT'
+
+
+def _parse_round_maker_smart_category_response(response_text):
+    candidate = str(response_text or '').strip()
+    if candidate.startswith('```'):
+        candidate = re.sub(r'^```(?:json)?\s*', '', candidate)
+        candidate = re.sub(r'\s*```$', '', candidate)
+
+    try:
+        payload = json.loads(candidate)
+    except json.JSONDecodeError:
+        match = re.search(r'(\{.*\})', candidate, re.DOTALL)
+        if not match:
+            raise RuntimeError(f"Smart template classifier did not return valid JSON: {response_text}")
+        payload = json.loads(match.group(1))
+
+    normalized_assignments = {}
+    for row in (payload or {}).get('questions', []) or []:
+        try:
+            question_number = int(row.get('question_number'))
+        except (TypeError, ValueError):
+            continue
+        normalized_category = _normalize_round_maker_smart_category(row.get('category'))
+        if not normalized_category:
+            continue
+        normalized_assignments[question_number] = normalized_category
+    return normalized_assignments
+
+
+def _classify_round_maker_smart_template(round_title, qas_dict):
+    question_rows = _ordered_round_maker_question_answer_rows(qas_dict)
+    if not question_rows:
+        return []
+
+    instructions = (
+        "You classify trivia question and answer pairs into one Trivial Pursuit category each. "
+        "Choose exactly one category from this list for every question: "
+        + ", ".join(SMART_TRIVIAL_PURSUIT_CATEGORIES)
+        + ". "
+        "Prefer FILM for movie-specific questions instead of the broader ENTERTAINMENT bucket. "
+        "Use ENTERTAINMENT for television, music, celebrities, and other pop culture topics that are not specifically film. "
+        "Use WRITING for spelling, grammar, wordplay, and writing craft. "
+        "Use ARTS for visual art, theater, dance, architecture, and fine arts. "
+        "Return strict JSON only in this schema: "
+        "{\"questions\":[{\"question_number\": integer, \"category\": string}]}"
+    )
+    response_text = _create_openai_text_response(
+        _get_openai_client(),
+        instructions=instructions,
+        input_items=[
+            {
+                'role': 'user',
+                'content': [
+                    {
+                        'type': 'input_text',
+                        'text': json.dumps(
+                            {
+                                'round_title': str(round_title or '').strip(),
+                                'questions': question_rows,
+                            },
+                            ensure_ascii=True,
+                        ),
+                    }
+                ],
+            }
+        ],
+        max_output_tokens=400,
+        reasoning_effort="low",
+    )
+    categorized_questions = _parse_round_maker_smart_category_response(response_text)
+
+    plan = []
+    for question_row in question_rows:
+        question_number = question_row['question_number']
+        category_name = categorized_questions.get(question_number) or _fallback_round_maker_smart_category(
+            question_row['question_text'],
+            question_row['answer_text'],
+        )
+        plan.append(
+            {
+                **question_row,
+                'category': category_name,
+            }
+        )
+    return plan
+
 class PreviewView(View):
     def post(self, request, *args, **kwargs):
         round_title = request.POST.get('round_title')
@@ -851,11 +1002,22 @@ class PreviewView(View):
         # Convert the JSON string to a dictionary
         qas_dict = json.loads(qas_json_string)
         icon_links = None
+        smart_category_plan = None
         print(presentation_id)
+        if presentation_id == SMART_TRIVIAL_PURSUIT_TEMPLATE_ID:
+            if not _user_can_use_smart_round_templates(request.user):
+                return JsonResponse({'error': 'This template requires round analysis opt-in.'}, status=403)
+            smart_category_plan = _classify_round_maker_smart_template(round_title, qas_dict)
         if presentation_id == "1x8J9cEpFeMMYAJ_Inxw4Z_2-zYBwa5NMfOsN8pZKVHQ":
             icon_links = json.loads(request.POST.get('icon_urls'))
             print(f"ICON LINKS: {icon_links}")
-        new_id = copy_template(presentation_id, round_title, qas_dict, icon_links)
+        new_id = copy_template(
+            presentation_id,
+            round_title,
+            qas_dict,
+            icon_links,
+            smart_category_plan=smart_category_plan,
+        )
         print (qas_dict)
         return JsonResponse({'new_id': new_id})
 
@@ -2633,6 +2795,8 @@ class RoundMaker(View):
                     if request.user.is_authenticated
                     else ''
                 ),
+                'round_maker_template_options': _build_round_maker_template_options(request.user),
+                'round_maker_can_use_smart_templates': _user_can_use_smart_round_templates(request.user),
             },
         )
 

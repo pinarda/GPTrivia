@@ -107,6 +107,18 @@ class RoundMakerTests(TestCase):
         self.assertContains(response, 'id="preview-button" disabled', html=False)
         self.assertContains(response, "Creator will be saved as Alex.")
         self.assertContains(response, "Enter a round title to unlock preview.")
+        self.assertNotContains(response, "Trivial Pursuit (Smart)")
+
+    def test_round_maker_get_shows_smart_template_for_opted_in_user(self):
+        user = User.objects.create_user(username="alex", password="pw")
+        user.profile.round_analysis_opt_in = True
+        user.profile.save(update_fields=["round_analysis_opt_in"])
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("round_maker"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Trivial Pursuit (Smart)")
 
     def test_round_maker_get_preserves_existing_conversation_history(self):
         session = self.client.session
@@ -298,3 +310,63 @@ class RoundMakerTests(TestCase):
         self.assertEqual(submitted_round.creator, "Megan")
         self.assertTrue(submitted_round.cooperative)
         self.assertIsNone(submitted_round.submitted_by)
+
+    @patch("GPTrivia.views.copy_template", return_value="smart-preview-123")
+    @patch(
+        "GPTrivia.views._classify_round_maker_smart_template",
+        return_value=[
+            {
+                "question_number": 1,
+                "question_text": "Which city is nicknamed the Big Apple?",
+                "answer_text": "New York City",
+                "category": "GEOGRAPHY",
+            }
+        ],
+    )
+    def test_preview_view_uses_smart_template_plan_for_opted_in_user(self, classify_mock, copy_template_mock):
+        user = User.objects.create_user(username="alex", password="pw")
+        user.profile.round_analysis_opt_in = True
+        user.profile.save(update_fields=["round_analysis_opt_in"])
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("preview"),
+            data={
+                "round_title": "Mixed Bag",
+                "presentation_id": "1E0eNh79SX2ZNf-264wQERxPKFhgf2e2BAyrpSEJtyMw",
+                "qas": '{"Question1":"Which city is nicknamed the Big Apple?","Answer1":"New York City"}',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"new_id": "smart-preview-123"})
+        classify_mock.assert_called_once()
+        self.assertEqual(
+            copy_template_mock.call_args.kwargs["smart_category_plan"],
+            [
+                {
+                    "question_number": 1,
+                    "question_text": "Which city is nicknamed the Big Apple?",
+                    "answer_text": "New York City",
+                    "category": "GEOGRAPHY",
+                }
+            ],
+        )
+
+    @patch("GPTrivia.views.copy_template")
+    def test_preview_view_rejects_smart_template_for_non_opted_in_user(self, copy_template_mock):
+        user = User.objects.create_user(username="alex", password="pw")
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("preview"),
+            data={
+                "round_title": "Mixed Bag",
+                "presentation_id": "1E0eNh79SX2ZNf-264wQERxPKFhgf2e2BAyrpSEJtyMw",
+                "qas": '{"Question1":"Which city is nicknamed the Big Apple?","Answer1":"New York City"}',
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["error"], "This template requires round analysis opt-in.")
+        copy_template_mock.assert_not_called()

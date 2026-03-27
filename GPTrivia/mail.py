@@ -24,6 +24,7 @@ import pickle
 from urllib.parse import urlparse
 
 from django.db.models import Q
+from .swoop_templates import SMART_TRIVIAL_PURSUIT_CATEGORIES, SMART_TRIVIAL_PURSUIT_TEMPLATE_ID
 
 MAIL_NAME_MAP = {
     'Alex': 'Alex',
@@ -1130,7 +1131,7 @@ def create_delete_insert_text_requests(element_id, start_index, end_index, new_t
 
     return [delete_text_request, insert_text_request]
 
-def copy_template(template_id, copy_title, qas, icon_links):
+def copy_template(template_id, copy_title, qas, icon_links, smart_category_plan=None):
     credentials=None
     # Check if the token.pickle file exists
     if os.path.exists(token_file_path):
@@ -1191,6 +1192,26 @@ def copy_template(template_id, copy_title, qas, icon_links):
             presentationId=new_presentation_id
         ).execute()
         new_slides = the_new_presentation.get('slides')
+
+        if template_id == SMART_TRIVIAL_PURSUIT_TEMPLATE_ID:
+            _apply_smart_trivial_pursuit_layout(
+                service,
+                new_presentation_id,
+                copy_title,
+                smart_category_plan or [],
+            )
+
+            drive_service = build('drive', 'v3', credentials=credentials)
+            permission = {
+                'type': 'anyone',
+                'role': 'writer'
+            }
+            drive_service.permissions().create(
+                fileId=new_presentation_id,
+                body=permission,
+                fields='id'
+            ).execute()
+            return new_presentation_id
 
         # update text on slides:
 
@@ -1291,6 +1312,168 @@ def build_credentials():
     flow = InstalledAppFlow.from_client_secrets_file(
         CLIENT_SECRET_FILE, SCOPES)
     return flow.run_local_server(port=8080)
+
+
+def _classify_smart_template_slide(slide):
+    slide_text = re.sub(r'\s+', ' ', _extract_slide_text(slide)).upper()
+    if not slide_text:
+        return '', ''
+
+    for category_name in SMART_TRIVIAL_PURSUIT_CATEGORIES:
+        if f"{category_name}ANSWER" in slide_text:
+            return category_name, 'answer'
+    for category_name in SMART_TRIVIAL_PURSUIT_CATEGORIES:
+        if re.search(rf'\b{re.escape(category_name)}\b', slide_text):
+            return category_name, 'question'
+    return '', ''
+
+
+def _build_smart_template_slide_map(slides):
+    category_slide_map = {}
+    first_category_index = None
+
+    for index, slide in enumerate(slides or []):
+        category_name, slide_kind = _classify_smart_template_slide(slide)
+        if not category_name or not slide_kind:
+            continue
+        if first_category_index is None:
+            first_category_index = index
+        category_slide_map.setdefault(category_name, {})[slide_kind] = slide.get('objectId')
+
+    if first_category_index is None:
+        first_category_index = len(slides or [])
+
+    return category_slide_map, first_category_index
+
+
+def _build_targeted_replace_text_request(slide_id, placeholder_text, replacement_text):
+    return {
+        'replaceAllText': {
+            'containsText': {
+                'text': placeholder_text,
+                'matchCase': True,
+            },
+            'replaceText': _sanitize_slides_text(replacement_text),
+            'pageObjectIds': [slide_id],
+        }
+    }
+
+
+def _move_slide_to_index(service, presentation_id, slide_id, insertion_index):
+    service.presentations().batchUpdate(
+        presentationId=presentation_id,
+        body={
+            'requests': [
+                {
+                    'updateSlidesPosition': {
+                        'slideObjectIds': [slide_id],
+                        'insertionIndex': insertion_index,
+                    }
+                }
+            ]
+        },
+    ).execute()
+
+
+def _duplicate_slide_and_get_new_id(service, presentation_id, source_slide_id, known_slide_ids):
+    service.presentations().batchUpdate(
+        presentationId=presentation_id,
+        body={
+            'requests': [
+                {
+                    'duplicateObject': {
+                        'objectId': source_slide_id,
+                    }
+                }
+            ]
+        },
+    ).execute()
+
+    refreshed_presentation = service.presentations().get(
+        presentationId=presentation_id
+    ).execute()
+    for slide in refreshed_presentation.get('slides', []) or []:
+        slide_id = slide.get('objectId')
+        if slide_id and slide_id not in known_slide_ids:
+            known_slide_ids.add(slide_id)
+            return slide_id
+    raise RuntimeError(f"Could not identify duplicated slide for {source_slide_id}.")
+
+
+def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, smart_category_plan):
+    presentation = service.presentations().get(presentationId=presentation_id).execute()
+    slides = presentation.get('slides', []) or []
+    category_slide_map, insertion_index = _build_smart_template_slide_map(slides)
+
+    known_slide_ids = {
+        slide.get('objectId')
+        for slide in slides
+        if slide.get('objectId')
+    }
+    replace_requests = [
+        {
+            'replaceAllText': {
+                'containsText': {
+                    'text': 'RoundTitle',
+                    'matchCase': True,
+                },
+                'replaceText': copy_title,
+            }
+        }
+    ]
+
+    for question_row in smart_category_plan or []:
+        category_name = str(question_row.get('category') or '').upper().strip()
+        slide_pair = category_slide_map.get(category_name) or {}
+        question_source_id = slide_pair.get('question')
+        answer_source_id = slide_pair.get('answer')
+        if not question_source_id or not answer_source_id:
+            raise RuntimeError(f"Smart template is missing a slide pair for {category_name}.")
+
+        duplicated_question_id = _duplicate_slide_and_get_new_id(
+            service,
+            presentation_id,
+            question_source_id,
+            known_slide_ids,
+        )
+        _move_slide_to_index(service, presentation_id, duplicated_question_id, insertion_index)
+        insertion_index += 1
+        replace_requests.append(
+            _build_targeted_replace_text_request(
+                duplicated_question_id,
+                category_name,
+                str(question_row.get('question_text') or ''),
+            )
+        )
+
+        duplicated_answer_id = _duplicate_slide_and_get_new_id(
+            service,
+            presentation_id,
+            answer_source_id,
+            known_slide_ids,
+        )
+        _move_slide_to_index(service, presentation_id, duplicated_answer_id, insertion_index)
+        insertion_index += 1
+        replace_requests.append(
+            _build_targeted_replace_text_request(
+                duplicated_answer_id,
+                f"{category_name}ANSWER",
+                str(question_row.get('answer_text') or ''),
+            )
+        )
+
+    delete_requests = []
+    for slide_pair in category_slide_map.values():
+        for source_slide_id in slide_pair.values():
+            if source_slide_id:
+                delete_requests.append({'deleteObject': {'objectId': source_slide_id}})
+
+    request_batch = replace_requests + delete_requests
+    if request_batch:
+        service.presentations().batchUpdate(
+            presentationId=presentation_id,
+            body={'requests': request_batch},
+        ).execute()
 
 def share_slides(presId):
     credentials=None

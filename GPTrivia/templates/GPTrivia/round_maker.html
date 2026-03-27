@@ -131,13 +131,12 @@
                 <div class="form-group">
                     <label for="theme-selector">Select a theme:</label>
                     <select id="theme-selector">
-                        <option value="theme1">Minimal</option>
-                        <option value="theme3">Plain</option>
-                        <option value="theme2">Trivial Pursuit</option>
-                        <option value="theme4">Geography</option>
-                        <!-- ... other themes ... -->
+                        {% for template_option in round_maker_template_options %}
+                            <option value="{{ template_option.value }}">{{ template_option.label }}</option>
+                        {% endfor %}
                     </select>
                 </div>
+                {{ round_maker_template_options|json_script:"round-maker-template-options" }}
                 <div class="form-group hidden" id="icon-group">
                     <label id="iconLabel" for="iconCheckbox" class="checkbox-label">
                         <input type="checkbox" id="iconCheckbox" name="iconCheckbox" class="swoop-coop-box"> Generate Icons
@@ -538,7 +537,29 @@
     {#});#}
 
     $(document).ready(function() {
-        var presentationId = '109EgKCocHzTtUF9hVJVKEfV0HzFjaBfpWPKXaLNsos0';  // Initial value
+        const templateOptions = JSON.parse(document.getElementById('round-maker-template-options').textContent || '[]');
+        const templateConfigByValue = Object.fromEntries(templateOptions.map((option) => [option.value, option]));
+        var presentationId = '';
+
+        function applySelectedThemeConfig() {
+            var selectedTheme = $('#theme-selector').val();
+            var selectedConfig = templateConfigByValue[selectedTheme];
+            if (!selectedConfig) {
+                console.error('Unknown theme selected:', selectedTheme);
+                $('#icon-group').addClass('hidden');
+                $('#iconCheckbox').prop('checked', false);
+                presentationId = '';
+                return;
+            }
+            presentationId = selectedConfig.presentation_id || '';
+            if (selectedConfig.supports_icons) {
+                $('#icon-group').removeClass('hidden');
+            } else {
+                $('#icon-group').addClass('hidden');
+                $('#iconCheckbox').prop('checked', false);
+            }
+            console.log('Updated presentationId:', presentationId);
+        }
 
 
     $(document).ready(function() {
@@ -592,45 +613,15 @@
             $('#slides-preview').attr('src', iframeSrc);
         }
 
-        // Update iframe src on initial load
+        $('#theme-selector').on('change', function() {
+            applySelectedThemeConfig();
+            updateIframeSrc();
+        });
+        applySelectedThemeConfig();
         updateIframeSrc();
 
         // Update iframe src whenever the window is resized
         $(window).resize(updateIframeSrc);
-
-        $('#theme-selector').on('change', function() {
-            var selectedTheme = $(this).val();
-            console.log('Selected theme:', selectedTheme);
-            switch (selectedTheme) {
-                case 'theme1':
-                    presentationId = '109EgKCocHzTtUF9hVJVKEfV0HzFjaBfpWPKXaLNsos0';
-                    $('#icon-group').addClass('hidden');
-                    console.log('Hiding Checkbox'); // Debugging log
-                    break;
-                case 'theme2':
-                    presentationId = '1x8J9cEpFeMMYAJ_Inxw4Z_2-zYBwa5NMfOsN8pZKVHQ';
-                    $('#icon-group').removeClass('hidden');
-                    console.log('Showing Checkbox'); // Debugging log
-                    break;
-                case 'theme3':
-                    presentationId = '1ZFahoyu0FSUx84IldZjcfTVMKTOzfRevArv9K3KPkmw';
-                    $('#icon-group').addClass('hidden');
-                    console.log('Hiding Checkbox'); // Debugging log
-                    break;
-                case 'theme4':
-                    presentationId = '1w0F26wa0aPGjwJMr33SUXB99C41lZVxF5oMYbhpTL6M';
-                    $('#icon-group').addClass('hidden');
-                    console.log('Hiding Checkbox'); // Debugging log
-                    break;
-                // ... add cases for other themes as needed ...
-                default:
-                    console.error('Unknown theme selected:', selectedTheme);
-                    $('#icon-group').addClass('hidden');
-                    break;
-            }
-
-            console.log('Updated presentationId:', presentationId);
-        });
 
         function sendAjaxRequest(j, iurls) {
             return new Promise((resolve, reject) => {
