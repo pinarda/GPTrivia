@@ -400,6 +400,71 @@ class ScoresheetSyncTests(TestCase):
         self.assertEqual(saved_presentation.crowned_winner, "Jenny")
         self.assertEqual(saved_presentation.notes, "Fresh night winner saved")
 
+    def test_blank_id_scoresheet_presentation_is_reused_and_returned_by_meta(self):
+        MergedPresentation.objects.all().delete()
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Round 1",
+            major_category="History",
+            minor_category1="Modern",
+            minor_category2="",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+        )
+
+        create_payload = {
+            "presentation_id": "",
+            "selected_date": "2026-03-20",
+            "client_id": "client-blank-meta-1",
+            "mutation_id": "mutation-blank-meta-1",
+            "round_updates": [],
+            "presentation_updates": {
+                "host": "Alex",
+                "crowned_winner": "Jenny",
+            },
+        }
+        update_payload = {
+            "presentation_id": "",
+            "selected_date": "2026-03-20",
+            "client_id": "client-blank-meta-2",
+            "mutation_id": "mutation-blank-meta-2",
+            "round_updates": [],
+            "presentation_updates": {
+                "scorekeeper": "Megan",
+                "notes": "Returned by meta",
+            },
+        }
+
+        first_response = self.client.post(
+            reverse("save_scores"),
+            data=json.dumps(create_payload),
+            content_type="application/json",
+        )
+        second_response = self.client.post(
+            reverse("save_scores"),
+            data=json.dumps(update_payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(MergedPresentation.objects.filter(name="03.20.2026").count(), 1)
+
+        response = self.client.get(reverse("scoresheet_presentation_meta"), {"date": "2026-03-20"})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["selected_presentation"]["name"], "03.20.2026")
+        self.assertEqual(payload["selected_presentation"]["presentation_id"], "")
+        self.assertEqual(payload["selected_presentation"]["crowned_winner"], "Jenny")
+        self.assertEqual(payload["selected_presentation"]["scorekeeper"], "Megan")
+        self.assertEqual(payload["selected_presentation"]["notes"], "Returned by meta")
+        self.assertIn(
+            ("03.20.2026", "Jenny"),
+            [(item["name"], item["crowned_winner"]) for item in payload["crown_history"]],
+        )
+
     def test_patch_save_prefers_selected_date_when_presentation_id_is_duplicated(self):
         older_duplicate = MergedPresentation.objects.create(
             name="05.05.2023",

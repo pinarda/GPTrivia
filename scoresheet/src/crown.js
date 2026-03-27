@@ -91,7 +91,23 @@ export function getCrownStreak(
 }
 
 export function getCrownTheme(streak) {
-  if (streak >= 4) {
+  if (streak >= 5) {
+    return {
+      fill: '#8a5bff',
+      stroke: '#efe2ff',
+      base: '#c5a4ff',
+      leftGem: '#ff9cf6',
+      centerGem: '#f7f0ff',
+      rightGem: '#8fe6ff',
+      trim: '#ead8ff',
+      accent: '#b887ff',
+      sparkle: '#fff7ff',
+      textFill: '#24104d',
+      textStroke: '#f8f0ff',
+    };
+  }
+
+  if (streak === 4) {
     return {
       fill: '#7edcff',
       stroke: '#f5fdff',

@@ -2758,7 +2758,7 @@ def _build_scoresheet_presentation_meta_payload(selected_date=''):
     selected_presentation = _get_scoresheet_presentation(selected_date=selected_date)
     presentation_history = sorted(
         list(
-            _ready_presentations_queryset()
+            _ready_presentations_queryset(include_blank_ids=True)
             .only('name', 'crowned_winner')
             .values('name', 'crowned_winner')
         ),
@@ -2828,15 +2828,18 @@ def _delete_presentations_for_date(presentation_date):
         MergedPresentation.objects.filter(id__in=matching_ids).delete()
 
 
-def _ready_presentations_queryset():
-    return MergedPresentation.objects.filter(status=MergedPresentation.STATUS_READY).exclude(presentation_id="")
+def _ready_presentations_queryset(*, include_blank_ids=False):
+    queryset = MergedPresentation.objects.filter(status=MergedPresentation.STATUS_READY)
+    if not include_blank_ids:
+        queryset = queryset.exclude(presentation_id="")
+    return queryset
 
 
 def _delete_stale_ready_presentations_without_rounds():
     round_dates = set(GPTriviaRound.objects.values_list("date", flat=True).distinct())
     stale_ids = [
         presentation.id
-        for presentation in _ready_presentations_queryset().order_by("id")
+        for presentation in _ready_presentations_queryset(include_blank_ids=True).order_by("id")
         if (presentation_date := _parse_presentation_name_date(presentation.name)) is not None
         and presentation_date not in round_dates
     ]
@@ -3687,7 +3690,7 @@ def _build_round_rows(round_queryset, player_fields):
 def _get_scoresheet_presentation(presentation_id=None, selected_date=None):
     if presentation_id:
         return _choose_scoresheet_presentation(
-            _ready_presentations_queryset().filter(presentation_id=presentation_id),
+            _ready_presentations_queryset(include_blank_ids=True).filter(presentation_id=presentation_id),
             presentation_id=presentation_id,
             selected_date=selected_date,
         )
@@ -3699,7 +3702,7 @@ def _get_scoresheet_presentation(presentation_id=None, selected_date=None):
     return _choose_scoresheet_presentation(
         [
             presentation
-            for presentation in _ready_presentations_queryset().order_by("-id")
+            for presentation in _ready_presentations_queryset(include_blank_ids=True).order_by("-id")
             if _parse_presentation_name_date(presentation.name) == parsed_selected_date
         ],
         selected_date=selected_date,
@@ -4031,7 +4034,7 @@ def save_scores(request):
         presentation.save()
     elif date_str:
         try:
-            presentation = _ready_presentations_queryset().get(
+            presentation = _ready_presentations_queryset(include_blank_ids=True).get(
                 name=datetime.datetime.strptime(date_str, '%Y-%m-%d').date().strftime("%m.%d.%Y")
             )
             presentation.joker_round_indices = joker_round_indices
