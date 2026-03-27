@@ -1346,7 +1346,7 @@ def _build_smart_template_slide_map(slides):
     return category_slide_map, first_category_index
 
 
-def _find_smart_template_answers_insertion_index(slides, excluded_slide_ids=None):
+def _find_smart_template_answers_divider_index(slides, excluded_slide_ids=None):
     excluded_ids = set(excluded_slide_ids or [])
     for index, slide in enumerate(slides or []):
         slide_id = slide.get('objectId')
@@ -1354,8 +1354,62 @@ def _find_smart_template_answers_insertion_index(slides, excluded_slide_ids=None
             continue
         slide_text = re.sub(r'\s+', ' ', _extract_slide_text(slide)).upper()
         if re.search(r'\bANSWERS\b', slide_text):
-            return index + 1
-    return len(slides or [])
+            return index
+    return None
+
+
+def _build_smart_template_slide_map_from_expected_order(slides):
+    slides = slides or []
+    divider_index = _find_smart_template_answers_divider_index(slides)
+    category_count = len(SMART_TRIVIAL_PURSUIT_CATEGORIES)
+    if divider_index is None:
+        return {}, len(slides)
+
+    question_start_index = divider_index - category_count
+    answer_start_index = divider_index + 1
+    answer_end_index = answer_start_index + category_count
+    if question_start_index < 0 or answer_end_index > len(slides):
+        return {}, len(slides)
+
+    category_slide_map = {}
+    for offset, category_name in enumerate(SMART_TRIVIAL_PURSUIT_CATEGORIES):
+        question_slide_id = slides[question_start_index + offset].get('objectId')
+        answer_slide_id = slides[answer_start_index + offset].get('objectId')
+        if not question_slide_id or not answer_slide_id:
+            return {}, len(slides)
+        category_slide_map[category_name] = {
+            'question': question_slide_id,
+            'answer': answer_slide_id,
+        }
+
+    return category_slide_map, question_start_index
+
+
+def _smart_template_slide_map_is_complete(category_slide_map):
+    for category_name in SMART_TRIVIAL_PURSUIT_CATEGORIES:
+        slide_pair = category_slide_map.get(category_name) or {}
+        if not slide_pair.get('question') or not slide_pair.get('answer'):
+            return False
+    return True
+
+
+def _resolve_smart_template_slide_map(slides):
+    category_slide_map, first_category_index = _build_smart_template_slide_map(slides)
+    if _smart_template_slide_map_is_complete(category_slide_map):
+        return category_slide_map, first_category_index
+
+    ordered_slide_map, ordered_first_category_index = _build_smart_template_slide_map_from_expected_order(slides)
+    if _smart_template_slide_map_is_complete(ordered_slide_map):
+        return ordered_slide_map, ordered_first_category_index
+
+    return category_slide_map, first_category_index
+
+
+def _find_smart_template_answers_insertion_index(slides, excluded_slide_ids=None):
+    divider_index = _find_smart_template_answers_divider_index(slides, excluded_slide_ids=excluded_slide_ids)
+    if divider_index is None:
+        return len(slides or [])
+    return divider_index + 1
 
 
 def _build_targeted_replace_text_request(slide_id, placeholder_text, replacement_text):
@@ -1415,7 +1469,7 @@ def _duplicate_slide_and_get_new_id(service, presentation_id, source_slide_id, k
 def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, smart_category_plan):
     presentation = service.presentations().get(presentationId=presentation_id).execute()
     slides = presentation.get('slides', []) or []
-    category_slide_map, question_insertion_index = _build_smart_template_slide_map(slides)
+    category_slide_map, question_insertion_index = _resolve_smart_template_slide_map(slides)
 
     known_slide_ids = {
         slide.get('objectId')

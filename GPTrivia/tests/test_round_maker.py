@@ -122,6 +122,41 @@ class RoundMakerTests(TestCase):
             ("SPORTS", "answer"),
         )
 
+    def test_resolve_smart_template_slide_map_falls_back_to_expected_slide_order(self):
+        slides = [
+            {"objectId": "cover", "pageElements": []},
+            {"objectId": "intro", "pageElements": []},
+        ]
+        for category_name in mail.SMART_TRIVIAL_PURSUIT_CATEGORIES:
+            slides.append({"objectId": f"q-{category_name.lower()}", "pageElements": []})
+        slides.append(
+            {
+                "objectId": "answers-divider",
+                "pageElements": [
+                    {
+                        "shape": {
+                            "text": {
+                                "textElements": [
+                                    {"textRun": {"content": "Answers"}},
+                                ]
+                            }
+                        }
+                    }
+                ],
+            }
+        )
+        for category_name in mail.SMART_TRIVIAL_PURSUIT_CATEGORIES:
+            slides.append({"objectId": f"a-{category_name.lower()}", "pageElements": []})
+
+        category_slide_map, first_category_index = mail._resolve_smart_template_slide_map(slides)
+
+        self.assertEqual(first_category_index, 2)
+        self.assertEqual(
+            category_slide_map["SPORTS"],
+            {"question": "q-sports", "answer": "a-sports"},
+        )
+        self.assertTrue(mail._smart_template_slide_map_is_complete(category_slide_map))
+
     @patch("GPTrivia.views.requests.post")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"})
     def test_openai_text_response_uses_http_responses_api_for_legacy_clients(self, post_mock):
