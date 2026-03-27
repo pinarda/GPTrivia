@@ -318,7 +318,7 @@ describe('scoresheet crown helpers', () => {
   });
 
   test('maps streak tiers to bronze, silver, gold, and diamond crown themes', () => {
-    expect(getCrownTheme(1).fill).toBe('#d39a6a');
+    expect(getCrownTheme(1).fill).toBe('#b87333');
     expect(getCrownTheme(1).textFill).toBe('#111111');
     expect(getCrownTheme(2).fill).toBe('#d6e9f5');
     expect(getCrownTheme(2).trim).toBe('#ffffff');

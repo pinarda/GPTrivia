@@ -140,16 +140,16 @@ export function getCrownTheme(streak) {
   }
 
   return {
-    fill: '#d39a6a',
-    stroke: '#f5d6bd',
-    base: '#edd1b7',
-    leftGem: '#ffe0c7',
-    centerGem: '#fff0e3',
-    rightGem: '#f5c29a',
-    trim: '#f7e0ce',
-    accent: '#edbf95',
-    sparkle: '#fff3ea',
+    fill: '#b87333',
+    stroke: '#dfb08c',
+    base: '#d59a72',
+    leftGem: '#f1c29f',
+    centerGem: '#f8dbc4',
+    rightGem: '#cf8451',
+    trim: '#efc5a6',
+    accent: '#d9925f',
+    sparkle: '#fae6d8',
     textFill: '#111111',
-    textStroke: '#9a5f34',
+    textStroke: '#8d4e26',
   };
 }

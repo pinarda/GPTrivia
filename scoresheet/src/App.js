@@ -2580,34 +2580,26 @@ const PlayerTable = () => {
         console.log('rounds changed', rounds);
       }, [rounds]);
 
-    useEffect(() => {
-      const handleCrownWinner = () => {
-        const nextWinnerField =
-          getPlayerFieldForName(players, tiebreakWinner) || sortedPlayersForDisplay[0] || null;
+    const handleCrownWinnerClick = useCallback(() => {
+      const nextWinnerField =
+        getPlayerFieldForName(players, tiebreakWinner) || sortedPlayersForDisplay[0] || null;
 
-        if (!nextWinnerField) {
-          return;
-        }
+      if (!nextWinnerField) {
+        return;
+      }
 
-        const nextWinnerName = getDisplayNameForPlayer(nextWinnerField);
+      const nextWinnerName = getDisplayNameForPlayer(nextWinnerField);
 
-        if (nextWinnerName !== crownedWinner) {
-          setCrownedWinner(nextWinnerName);
-          setPresentations(prevPresentations => applyPresentationFieldsForSelectedDate(
-            prevPresentations,
-            selectedDate,
-            { crowned_winner: nextWinnerName },
-          ));
-          markDirty();
-        }
-      };
-
-      window.addEventListener('scoresheet:crown-winner', handleCrownWinner);
-
-      return () => {
-        window.removeEventListener('scoresheet:crown-winner', handleCrownWinner);
-      };
-    }, [crownedWinner, markDirty, players, sortedPlayersForDisplay, tiebreakWinner]);
+      if (nextWinnerName !== crownedWinner) {
+        setCrownedWinner(nextWinnerName);
+        setPresentations(prevPresentations => applyPresentationFieldsForSelectedDate(
+          prevPresentations,
+          selectedDate,
+          { crowned_winner: nextWinnerName },
+        ));
+        markDirty();
+      }
+    }, [crownedWinner, markDirty, players, selectedDate, sortedPlayersForDisplay, tiebreakWinner]);
 
     useEffect(() => {
       return () => {
@@ -3854,7 +3846,7 @@ const PlayerTable = () => {
           <MetadataActionField>
             <MetadataActionRow>
               <MetadataActionButtons>
-                <StyledButton type="button" onClick={() => window.dispatchEvent(new Event('scoresheet:crown-winner'))}>
+                <StyledButton type="button" onClick={handleCrownWinnerClick}>
                   Crown Winner
                 </StyledButton>
                 <StyledButton type="button" onClick={openStylePointDialog}>
