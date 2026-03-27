@@ -1346,6 +1346,18 @@ def _build_smart_template_slide_map(slides):
     return category_slide_map, first_category_index
 
 
+def _find_smart_template_answers_insertion_index(slides, excluded_slide_ids=None):
+    excluded_ids = set(excluded_slide_ids or [])
+    for index, slide in enumerate(slides or []):
+        slide_id = slide.get('objectId')
+        if slide_id in excluded_ids:
+            continue
+        slide_text = re.sub(r'\s+', ' ', _extract_slide_text(slide)).upper()
+        if re.search(r'\bANSWERS\b', slide_text):
+            return index + 1
+    return len(slides or [])
+
+
 def _build_targeted_replace_text_request(slide_id, placeholder_text, replacement_text):
     return {
         'replaceAllText': {
@@ -1403,12 +1415,18 @@ def _duplicate_slide_and_get_new_id(service, presentation_id, source_slide_id, k
 def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, smart_category_plan):
     presentation = service.presentations().get(presentationId=presentation_id).execute()
     slides = presentation.get('slides', []) or []
-    category_slide_map, insertion_index = _build_smart_template_slide_map(slides)
+    category_slide_map, question_insertion_index = _build_smart_template_slide_map(slides)
 
     known_slide_ids = {
         slide.get('objectId')
         for slide in slides
         if slide.get('objectId')
+    }
+    category_source_slide_ids = {
+        slide_id
+        for slide_pair in category_slide_map.values()
+        for slide_id in slide_pair.values()
+        if slide_id
     }
     replace_requests = [
         {
@@ -1426,9 +1444,8 @@ def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, sm
         category_name = str(question_row.get('category') or '').upper().strip()
         slide_pair = category_slide_map.get(category_name) or {}
         question_source_id = slide_pair.get('question')
-        answer_source_id = slide_pair.get('answer')
-        if not question_source_id or not answer_source_id:
-            raise RuntimeError(f"Smart template is missing a slide pair for {category_name}.")
+        if not question_source_id:
+            raise RuntimeError(f"Smart template is missing a question slide for {category_name}.")
 
         duplicated_question_id = _duplicate_slide_and_get_new_id(
             service,
@@ -1436,8 +1453,8 @@ def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, sm
             question_source_id,
             known_slide_ids,
         )
-        _move_slide_to_index(service, presentation_id, duplicated_question_id, insertion_index)
-        insertion_index += 1
+        _move_slide_to_index(service, presentation_id, duplicated_question_id, question_insertion_index)
+        question_insertion_index += 1
         replace_requests.append(
             _build_targeted_replace_text_request(
                 duplicated_question_id,
@@ -1446,14 +1463,34 @@ def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, sm
             )
         )
 
+    refreshed_presentation = service.presentations().get(presentationId=presentation_id).execute()
+    answer_insertion_index = _find_smart_template_answers_insertion_index(
+        refreshed_presentation.get('slides', []) or [],
+        excluded_slide_ids=category_source_slide_ids,
+    )
+
+    for question_row in smart_category_plan or []:
+        category_name = str(question_row.get('category') or '').upper().strip()
+        slide_pair = category_slide_map.get(category_name) or {}
+        answer_source_id = slide_pair.get('answer')
+        if not answer_source_id:
+            raise RuntimeError(f"Smart template is missing a slide pair for {category_name}.")
+
         duplicated_answer_id = _duplicate_slide_and_get_new_id(
             service,
             presentation_id,
             answer_source_id,
             known_slide_ids,
         )
-        _move_slide_to_index(service, presentation_id, duplicated_answer_id, insertion_index)
-        insertion_index += 1
+        _move_slide_to_index(service, presentation_id, duplicated_answer_id, answer_insertion_index)
+        answer_insertion_index += 1
+        replace_requests.append(
+            _build_targeted_replace_text_request(
+                duplicated_answer_id,
+                category_name,
+                str(question_row.get('question_text') or ''),
+            )
+        )
         replace_requests.append(
             _build_targeted_replace_text_request(
                 duplicated_answer_id,

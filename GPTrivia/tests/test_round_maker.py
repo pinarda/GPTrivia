@@ -1,14 +1,32 @@
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from GPTrivia import mail
 from GPTrivia import views
 from GPTrivia.models import SubmittedRound
 
 
 class RoundMakerTests(TestCase):
+    class _FakeSlidesService:
+        def __init__(self, get_payloads):
+            self._get_payloads = list(get_payloads)
+            self.batch_update_calls = []
+
+        def presentations(self):
+            return self
+
+        def get(self, presentationId):
+            payload = self._get_payloads.pop(0)
+            return SimpleNamespace(execute=lambda: payload)
+
+        def batchUpdate(self, presentationId, body):
+            self.batch_update_calls.append({"presentationId": presentationId, "body": body})
+            return SimpleNamespace(execute=lambda: {})
+
     def test_build_responses_input_marks_assistant_messages_as_output_text(self):
         response_input = views._build_responses_input(
             [
@@ -370,3 +388,116 @@ class RoundMakerTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["error"], "This template requires round analysis opt-in.")
         copy_template_mock.assert_not_called()
+
+    @patch("GPTrivia.mail._move_slide_to_index")
+    @patch(
+        "GPTrivia.mail._duplicate_slide_and_get_new_id",
+        side_effect=["dup-question-1", "dup-question-2", "dup-answer-1", "dup-answer-2"],
+    )
+    @patch("GPTrivia.mail._find_smart_template_answers_insertion_index", return_value=8)
+    @patch(
+        "GPTrivia.mail._build_smart_template_slide_map",
+        return_value=(
+            {
+                "GEOGRAPHY": {"question": "source-question-geo", "answer": "source-answer-geo"},
+                "SCIENCE": {"question": "source-question-sci", "answer": "source-answer-sci"},
+            },
+            3,
+        ),
+    )
+    def test_smart_template_places_answers_after_answer_divider_and_fills_question_text(
+        self,
+        _slide_map_mock,
+        _answer_index_mock,
+        duplicate_mock,
+        move_mock,
+    ):
+        service = self._FakeSlidesService(
+            [
+                {
+                    "slides": [
+                        {"objectId": "intro-slide"},
+                        {"objectId": "answers-divider"},
+                    ]
+                },
+                {
+                    "slides": [
+                        {"objectId": "intro-slide"},
+                        {"objectId": "answers-divider"},
+                        {"objectId": "dup-question-1"},
+                        {"objectId": "dup-question-2"},
+                    ]
+                },
+            ]
+        )
+
+        mail._apply_smart_trivial_pursuit_layout(
+            service,
+            "smart-presentation-1",
+            "Mixed Bag",
+            [
+                {
+                    "category": "GEOGRAPHY",
+                    "question_text": "Which city is nicknamed the Big Apple?",
+                    "answer_text": "New York City",
+                },
+                {
+                    "category": "SCIENCE",
+                    "question_text": "Which planet has the most moons?",
+                    "answer_text": "Saturn",
+                },
+            ],
+        )
+
+        self.assertEqual(
+            [(call.args[2], call.args[3]) for call in move_mock.call_args_list],
+            [
+                ("dup-question-1", 3),
+                ("dup-question-2", 4),
+                ("dup-answer-1", 8),
+                ("dup-answer-2", 9),
+            ],
+        )
+        self.assertEqual(
+            [call.args[2] for call in duplicate_mock.call_args_list],
+            [
+                "source-question-geo",
+                "source-question-sci",
+                "source-answer-geo",
+                "source-answer-sci",
+            ],
+        )
+
+        self.assertEqual(len(service.batch_update_calls), 1)
+        request_batch = service.batch_update_calls[0]["body"]["requests"]
+
+        replace_text_requests = [
+            request["replaceAllText"]
+            for request in request_batch
+            if "replaceAllText" in request
+        ]
+        request_index = {
+            (
+                request["pageObjectIds"][0],
+                request["containsText"]["text"],
+            ): request["replaceText"]
+            for request in replace_text_requests
+            if request.get("pageObjectIds")
+        }
+
+        self.assertEqual(
+            request_index[("dup-answer-1", "GEOGRAPHY")],
+            "Which city is nicknamed the Big Apple?",
+        )
+        self.assertEqual(
+            request_index[("dup-answer-1", "GEOGRAPHYANSWER")],
+            "New York City",
+        )
+        self.assertEqual(
+            request_index[("dup-answer-2", "SCIENCE")],
+            "Which planet has the most moons?",
+        )
+        self.assertEqual(
+            request_index[("dup-answer-2", "SCIENCEANSWER")],
+            "Saturn",
+        )
