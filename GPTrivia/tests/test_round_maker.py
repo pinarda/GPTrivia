@@ -529,6 +529,7 @@ class RoundMakerTests(TestCase):
         copy_template_mock.assert_not_called()
 
     @patch("GPTrivia.mail._move_slide_to_index")
+    @patch("GPTrivia.mail._build_smart_template_category_style_requests", return_value=[])
     @patch(
         "GPTrivia.mail._duplicate_slide_and_get_new_id",
         side_effect=["dup-question-1", "dup-question-2", "dup-answer-1", "dup-answer-2"],
@@ -549,6 +550,7 @@ class RoundMakerTests(TestCase):
         _slide_map_mock,
         _answer_index_mock,
         duplicate_mock,
+        _style_mock,
         move_mock,
     ):
         service = self._FakeSlidesService(
@@ -644,3 +646,93 @@ class RoundMakerTests(TestCase):
             request_index[("dup-answer-2", "SCIENCEANSWER")],
             "Saturn",
         )
+
+    def test_build_slide_color_replacement_requests_recolors_matching_geography_accent_elements(self):
+        slide = {
+            "objectId": "slide-geo",
+            "pageProperties": {
+                "pageBackgroundFill": {
+                    "solidFill": {
+                        "color": {
+                            "rgbColor": {
+                                "red": 66 / 255.0,
+                                "green": 149 / 255.0,
+                                "blue": 209 / 255.0,
+                            }
+                        }
+                    }
+                }
+            },
+            "pageElements": [
+                {
+                    "objectId": "shape-1",
+                    "shape": {
+                        "shapeProperties": {
+                            "shapeBackgroundFill": {
+                                "solidFill": {
+                                    "color": {
+                                        "rgbColor": {
+                                            "red": 66 / 255.0,
+                                            "green": 149 / 255.0,
+                                            "blue": 209 / 255.0,
+                                        }
+                                    }
+                                }
+                            },
+                            "outline": {
+                                "outlineFill": {
+                                    "solidFill": {
+                                        "color": {
+                                            "rgbColor": {
+                                                "red": 66 / 255.0,
+                                                "green": 149 / 255.0,
+                                                "blue": 209 / 255.0,
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                        }
+                    },
+                },
+                {
+                    "objectId": "line-1",
+                    "line": {
+                        "lineProperties": {
+                            "lineFill": {
+                                "solidFill": {
+                                    "color": {
+                                        "rgbColor": {
+                                            "red": 66 / 255.0,
+                                            "green": 149 / 255.0,
+                                            "blue": 209 / 255.0,
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                },
+            ],
+        }
+
+        requests = mail._build_slide_color_replacement_requests(
+            slide,
+            mail.SMART_TEMPLATE_GEOGRAPHY_ACCENT_RGB,
+            mail.SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
+        )
+
+        request_kinds = [next(iter(request.keys())) for request in requests]
+        self.assertEqual(
+            request_kinds,
+            [
+                "updatePageProperties",
+                "updateShapeProperties",
+                "updateShapeProperties",
+                "updateLineProperties",
+            ],
+        )
+        self.assertEqual(requests[0]["updatePageProperties"]["objectId"], "slide-geo")
+        self.assertEqual(requests[1]["updateShapeProperties"]["objectId"], "shape-1")
+        self.assertEqual(requests[2]["updateShapeProperties"]["objectId"], "shape-1")
+        self.assertEqual(requests[3]["updateLineProperties"]["objectId"], "line-1")

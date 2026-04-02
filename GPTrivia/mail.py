@@ -164,6 +164,174 @@ def _build_black_text_style_request(element_id, start_index, new_text, font_size
     }
 
 
+SMART_TEMPLATE_GEOGRAPHY_ACCENT_RGB = (66, 149, 209)
+SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB = (138, 99, 63)
+
+
+def _slides_rgb_color_value(rgb_color):
+    if not rgb_color:
+        return None
+    return (
+        float(rgb_color.get("red", 0.0)),
+        float(rgb_color.get("green", 0.0)),
+        float(rgb_color.get("blue", 0.0)),
+    )
+
+
+def _extract_slides_rgb_color(color_value):
+    if not color_value:
+        return None
+    if color_value.get("rgbColor"):
+        return _slides_rgb_color_value(color_value.get("rgbColor"))
+    opaque_color = color_value.get("opaqueColor") or {}
+    if opaque_color.get("rgbColor"):
+        return _slides_rgb_color_value(opaque_color.get("rgbColor"))
+    return None
+
+
+def _slides_rgb_matches(color_value, target_rgb):
+    extracted_rgb = _extract_slides_rgb_color(color_value)
+    if not extracted_rgb:
+        return False
+    expected_rgb = tuple(channel / 255.0 for channel in target_rgb)
+    return all(abs(actual - expected) <= 0.005 for actual, expected in zip(extracted_rgb, expected_rgb))
+
+
+def _build_slides_rgb_color(target_rgb):
+    red, green, blue = target_rgb
+    return {
+        "rgbColor": {
+            "red": red / 255.0,
+            "green": green / 255.0,
+            "blue": blue / 255.0,
+        }
+    }
+
+
+def _build_shape_fill_recolor_request(object_id, fields, shape_properties):
+    return {
+        "updateShapeProperties": {
+            "objectId": object_id,
+            "shapeProperties": shape_properties,
+            "fields": fields,
+        }
+    }
+
+
+def _build_line_fill_recolor_request(object_id, target_rgb):
+    return {
+        "updateLineProperties": {
+            "objectId": object_id,
+            "lineProperties": {
+                "lineFill": {
+                    "solidFill": {
+                        "color": _build_slides_rgb_color(target_rgb),
+                    }
+                }
+            },
+            "fields": "lineFill.solidFill.color",
+        }
+    }
+
+
+def _build_page_background_recolor_request(slide_id, target_rgb):
+    return {
+        "updatePageProperties": {
+            "objectId": slide_id,
+            "pageProperties": {
+                "pageBackgroundFill": {
+                    "solidFill": {
+                        "color": _build_slides_rgb_color(target_rgb),
+                    }
+                }
+            },
+            "fields": "pageBackgroundFill.solidFill.color",
+        }
+    }
+
+
+def _get_slide_by_id(service, presentation_id, slide_id):
+    presentation = service.presentations().get(presentationId=presentation_id).execute()
+    for slide in presentation.get("slides", []) or []:
+        if slide.get("objectId") == slide_id:
+            return slide
+    return None
+
+
+def _build_slide_color_replacement_requests(slide, source_rgb, target_rgb):
+    if not slide:
+        return []
+
+    recolor_requests = []
+    slide_id = slide.get("objectId")
+
+    page_properties = slide.get("pageProperties") or {}
+    page_background_fill = page_properties.get("pageBackgroundFill") or {}
+    page_background_color = ((page_background_fill.get("solidFill") or {}).get("color") or {})
+    if slide_id and _slides_rgb_matches(page_background_color, source_rgb):
+        recolor_requests.append(_build_page_background_recolor_request(slide_id, target_rgb))
+
+    for element in slide.get("pageElements", []) or []:
+        object_id = element.get("objectId")
+        if not object_id:
+            continue
+
+        shape_properties = (element.get("shape") or {}).get("shapeProperties") or {}
+        shape_background_fill = shape_properties.get("shapeBackgroundFill") or {}
+        shape_background_color = ((shape_background_fill.get("solidFill") or {}).get("color") or {})
+        if _slides_rgb_matches(shape_background_color, source_rgb):
+            recolor_requests.append(
+                _build_shape_fill_recolor_request(
+                    object_id,
+                    "shapeBackgroundFill.solidFill.color",
+                    {
+                        "shapeBackgroundFill": {
+                            "solidFill": {
+                                "color": _build_slides_rgb_color(target_rgb),
+                            }
+                        }
+                    },
+                )
+            )
+
+        outline = shape_properties.get("outline") or {}
+        outline_color = ((((outline.get("outlineFill") or {}).get("solidFill") or {}).get("color")) or {})
+        if _slides_rgb_matches(outline_color, source_rgb):
+            recolor_requests.append(
+                _build_shape_fill_recolor_request(
+                    object_id,
+                    "outline.outlineFill.solidFill.color",
+                    {
+                        "outline": {
+                            "outlineFill": {
+                                "solidFill": {
+                                    "color": _build_slides_rgb_color(target_rgb),
+                                }
+                            }
+                        }
+                    },
+                )
+            )
+
+        line_properties = (element.get("line") or {}).get("lineProperties") or {}
+        line_fill_color = (((line_properties.get("lineFill") or {}).get("solidFill") or {}).get("color")) or {}
+        if _slides_rgb_matches(line_fill_color, source_rgb):
+            recolor_requests.append(_build_line_fill_recolor_request(object_id, target_rgb))
+
+    return recolor_requests
+
+
+def _build_smart_template_category_style_requests(service, presentation_id, slide_id, category_name):
+    if category_name != "GEOGRAPHY":
+        return []
+    slide = _get_slide_by_id(service, presentation_id, slide_id)
+    return _build_slide_color_replacement_requests(
+        slide,
+        SMART_TEMPLATE_GEOGRAPHY_ACCENT_RGB,
+        SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
+    )
+
+
 def _extract_presentation_link_parts(presentation_url):
     if not presentation_url:
         return None, None
@@ -1509,6 +1677,14 @@ def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, sm
         )
         _move_slide_to_index(service, presentation_id, duplicated_question_id, question_insertion_index)
         question_insertion_index += 1
+        replace_requests.extend(
+            _build_smart_template_category_style_requests(
+                service,
+                presentation_id,
+                duplicated_question_id,
+                category_name,
+            )
+        )
         replace_requests.append(
             _build_targeted_replace_text_request(
                 duplicated_question_id,
@@ -1545,6 +1721,14 @@ def _apply_smart_trivial_pursuit_layout(service, presentation_id, copy_title, sm
         )
         _move_slide_to_index(service, presentation_id, duplicated_answer_id, answer_insertion_index)
         answer_insertion_index += 1
+        replace_requests.extend(
+            _build_smart_template_category_style_requests(
+                service,
+                presentation_id,
+                duplicated_answer_id,
+                category_name,
+            )
+        )
         replace_requests.append(
             _build_targeted_replace_text_request(
                 duplicated_answer_id,
