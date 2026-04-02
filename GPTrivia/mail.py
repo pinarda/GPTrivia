@@ -305,6 +305,24 @@ def _candidate_recolor_rgbs_from_element(element):
     return candidate_rgbs
 
 
+def _shape_fill_rgb_from_element(element):
+    return _extract_slides_rgb_255(
+        ((((element.get("shape") or {}).get("shapeProperties") or {}).get("shapeBackgroundFill") or {}).get("solidFill") or {}).get("color")
+    )
+
+
+def _outline_rgb_from_element(element):
+    return _extract_slides_rgb_255(
+        ((((((element.get("shape") or {}).get("shapeProperties") or {}).get("outline") or {}).get("outlineFill") or {}).get("solidFill") or {}).get("color"))
+    )
+
+
+def _line_fill_rgb_from_element(element):
+    return _extract_slides_rgb_255(
+        (((((element.get("line") or {}).get("lineProperties") or {}).get("lineFill") or {}).get("solidFill") or {}).get("color"))
+    )
+
+
 def _should_ignore_recolor_candidate_rgb(rgb):
     if not rgb:
         return True
@@ -320,16 +338,7 @@ def _should_ignore_recolor_candidate_rgb(rgb):
 
 
 def _detect_slide_non_text_accent_rgb(slide):
-    candidate_counts = Counter()
-    fallback_counts = Counter()
-
-    for element in slide.get("pageElements", []) or []:
-        if _page_element_has_text_content(element):
-            continue
-        for rgb in _candidate_recolor_rgbs_from_element(element):
-            fallback_counts[rgb] += 1
-            if not _should_ignore_recolor_candidate_rgb(rgb):
-                candidate_counts[rgb] += 1
+    candidate_counts, fallback_counts = _collect_slide_non_text_color_counts(slide)
 
     selected_counts = candidate_counts or fallback_counts
     if not selected_counts:
@@ -342,6 +351,55 @@ def _detect_slide_non_text_accent_rgb(slide):
         return (count, saturation, -abs(brightness - 128.0))
 
     return max(selected_counts.items(), key=_candidate_sort_key)[0]
+
+
+def _collect_slide_non_text_color_counts(slide):
+    candidate_counts = Counter()
+    fallback_counts = Counter()
+
+    for element in slide.get("pageElements", []) or []:
+        if _page_element_has_text_content(element):
+            continue
+        for rgb in _candidate_recolor_rgbs_from_element(element):
+            fallback_counts[rgb] += 1
+            if not _should_ignore_recolor_candidate_rgb(rgb):
+                candidate_counts[rgb] += 1
+
+    return candidate_counts, fallback_counts
+
+
+def _build_slide_color_diagnostics(slide, detected_source_rgb, recolor_requests, target_rgb):
+    page_properties = slide.get("pageProperties") or {}
+    page_background_fill = page_properties.get("pageBackgroundFill") or {}
+    page_background_color = _extract_slides_rgb_255(
+        ((page_background_fill.get("solidFill") or {}).get("color") or {})
+    )
+    candidate_counts, fallback_counts = _collect_slide_non_text_color_counts(slide)
+
+    element_diagnostics = []
+    for element in slide.get("pageElements", []) or []:
+        element_diagnostics.append(
+            {
+                "object_id": element.get("objectId"),
+                "has_text": _page_element_has_text_content(element),
+                "shape_fill_rgb": _shape_fill_rgb_from_element(element),
+                "outline_rgb": _outline_rgb_from_element(element),
+                "line_fill_rgb": _line_fill_rgb_from_element(element),
+            }
+        )
+
+    return {
+        "slide_id": slide.get("objectId"),
+        "page_background_rgb": page_background_color,
+        "detected_source_rgb": detected_source_rgb,
+        "fallback_source_rgbs": list(SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_RGBS),
+        "target_rgb": target_rgb,
+        "candidate_counts": dict(candidate_counts),
+        "fallback_counts": dict(fallback_counts),
+        "recolor_request_count": len(recolor_requests),
+        "recolor_request_types": [next(iter(request.keys())) for request in recolor_requests],
+        "elements": element_diagnostics,
+    }
 
 
 def _build_slide_color_replacement_requests(slide, source_rgbs, target_rgb):
@@ -413,11 +471,26 @@ def _build_smart_template_category_style_requests(service, presentation_id, slid
     slide = _get_slide_by_id(service, presentation_id, slide_id)
     detected_source_rgb = _detect_slide_non_text_accent_rgb(slide) if slide else None
     source_rgbs = (detected_source_rgb,) if detected_source_rgb else SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_RGBS
-    return _build_slide_color_replacement_requests(
+    recolor_requests = _build_slide_color_replacement_requests(
         slide,
         source_rgbs,
         SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
     )
+    if slide:
+        logger.warning(
+            "Smart swoop geography diagnostics: %s",
+            pprint.pformat(
+                _build_slide_color_diagnostics(
+                    slide,
+                    detected_source_rgb,
+                    recolor_requests,
+                    SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
+                ),
+                compact=True,
+                width=140,
+            ),
+        )
+    return recolor_requests
 
 
 def _extract_presentation_link_parts(presentation_url):
