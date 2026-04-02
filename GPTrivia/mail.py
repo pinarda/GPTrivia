@@ -164,7 +164,10 @@ def _build_black_text_style_request(element_id, start_index, new_text, font_size
     }
 
 
-SMART_TEMPLATE_GEOGRAPHY_ACCENT_RGB = (66, 149, 209)
+SMART_TEMPLATE_GEOGRAPHY_ACCENT_RGBS = (
+    (66, 149, 209),
+    (15, 132, 205),
+)
 SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB = (138, 99, 63)
 
 
@@ -195,6 +198,10 @@ def _slides_rgb_matches(color_value, target_rgb):
         return False
     expected_rgb = tuple(channel / 255.0 for channel in target_rgb)
     return all(abs(actual - expected) <= 0.005 for actual, expected in zip(extracted_rgb, expected_rgb))
+
+
+def _slides_rgb_matches_any(color_value, target_rgbs):
+    return any(_slides_rgb_matches(color_value, target_rgb) for target_rgb in (target_rgbs or ()))
 
 
 def _build_slides_rgb_color(target_rgb):
@@ -258,7 +265,7 @@ def _get_slide_by_id(service, presentation_id, slide_id):
     return None
 
 
-def _build_slide_color_replacement_requests(slide, source_rgb, target_rgb):
+def _build_slide_color_replacement_requests(slide, source_rgbs, target_rgb):
     if not slide:
         return []
 
@@ -268,7 +275,7 @@ def _build_slide_color_replacement_requests(slide, source_rgb, target_rgb):
     page_properties = slide.get("pageProperties") or {}
     page_background_fill = page_properties.get("pageBackgroundFill") or {}
     page_background_color = ((page_background_fill.get("solidFill") or {}).get("color") or {})
-    if slide_id and _slides_rgb_matches(page_background_color, source_rgb):
+    if slide_id and _slides_rgb_matches_any(page_background_color, source_rgbs):
         recolor_requests.append(_build_page_background_recolor_request(slide_id, target_rgb))
 
     for element in slide.get("pageElements", []) or []:
@@ -279,7 +286,7 @@ def _build_slide_color_replacement_requests(slide, source_rgb, target_rgb):
         shape_properties = (element.get("shape") or {}).get("shapeProperties") or {}
         shape_background_fill = shape_properties.get("shapeBackgroundFill") or {}
         shape_background_color = ((shape_background_fill.get("solidFill") or {}).get("color") or {})
-        if _slides_rgb_matches(shape_background_color, source_rgb):
+        if _slides_rgb_matches_any(shape_background_color, source_rgbs):
             recolor_requests.append(
                 _build_shape_fill_recolor_request(
                     object_id,
@@ -296,7 +303,7 @@ def _build_slide_color_replacement_requests(slide, source_rgb, target_rgb):
 
         outline = shape_properties.get("outline") or {}
         outline_color = ((((outline.get("outlineFill") or {}).get("solidFill") or {}).get("color")) or {})
-        if _slides_rgb_matches(outline_color, source_rgb):
+        if _slides_rgb_matches_any(outline_color, source_rgbs):
             recolor_requests.append(
                 _build_shape_fill_recolor_request(
                     object_id,
@@ -315,7 +322,7 @@ def _build_slide_color_replacement_requests(slide, source_rgb, target_rgb):
 
         line_properties = (element.get("line") or {}).get("lineProperties") or {}
         line_fill_color = (((line_properties.get("lineFill") or {}).get("solidFill") or {}).get("color")) or {}
-        if _slides_rgb_matches(line_fill_color, source_rgb):
+        if _slides_rgb_matches_any(line_fill_color, source_rgbs):
             recolor_requests.append(_build_line_fill_recolor_request(object_id, target_rgb))
 
     return recolor_requests
@@ -327,7 +334,7 @@ def _build_smart_template_category_style_requests(service, presentation_id, slid
     slide = _get_slide_by_id(service, presentation_id, slide_id)
     return _build_slide_color_replacement_requests(
         slide,
-        SMART_TEMPLATE_GEOGRAPHY_ACCENT_RGB,
+        SMART_TEMPLATE_GEOGRAPHY_ACCENT_RGBS,
         SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
     )
 

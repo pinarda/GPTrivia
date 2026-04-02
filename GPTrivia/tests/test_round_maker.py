@@ -718,7 +718,7 @@ class RoundMakerTests(TestCase):
 
         requests = mail._build_slide_color_replacement_requests(
             slide,
-            mail.SMART_TEMPLATE_GEOGRAPHY_ACCENT_RGB,
+            mail.SMART_TEMPLATE_GEOGRAPHY_ACCENT_RGBS,
             mail.SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
         )
 
@@ -736,3 +736,37 @@ class RoundMakerTests(TestCase):
         self.assertEqual(requests[1]["updateShapeProperties"]["objectId"], "shape-1")
         self.assertEqual(requests[2]["updateShapeProperties"]["objectId"], "shape-1")
         self.assertEqual(requests[3]["updateLineProperties"]["objectId"], "line-1")
+
+    def test_build_slide_color_replacement_requests_accepts_generic_rgb_measurement(self):
+        slide = {
+            "objectId": "slide-geo",
+            "pageElements": [
+                {
+                    "objectId": "shape-1",
+                    "shape": {
+                        "shapeProperties": {
+                            "shapeBackgroundFill": {
+                                "solidFill": {
+                                    "color": {
+                                        "rgbColor": {
+                                            "red": 15 / 255.0,
+                                            "green": 132 / 255.0,
+                                            "blue": 205 / 255.0,
+                                        }
+                                    }
+                                }
+                            },
+                        }
+                    },
+                },
+            ],
+        }
+
+        requests = mail._build_slide_color_replacement_requests(
+            slide,
+            mail.SMART_TEMPLATE_GEOGRAPHY_ACCENT_RGBS,
+            mail.SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
+        )
+
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(requests[0]["updateShapeProperties"]["objectId"], "shape-1")
