@@ -872,3 +872,80 @@ class RoundMakerTests(TestCase):
 
         self.assertEqual(len(requests), 1)
         self.assertEqual(requests[0]["updateShapeProperties"]["objectId"], "shape-1")
+
+    def test_expand_source_color_tokens_with_page_scheme_adds_matching_theme_token(self):
+        page = {
+            "pageProperties": {
+                "colorScheme": {
+                    "colors": [
+                        {
+                            "type": "ACCENT1",
+                            "color": {
+                                "rgbColor": {
+                                    "red": 15 / 255.0,
+                                    "green": 132 / 255.0,
+                                    "blue": 205 / 255.0,
+                                }
+                            },
+                        },
+                        {
+                            "type": "TEXT1",
+                            "color": {
+                                "rgbColor": {
+                                    "red": 0.0,
+                                    "green": 0.0,
+                                    "blue": 0.0,
+                                }
+                            },
+                        },
+                    ]
+                }
+            }
+        }
+
+        expanded_tokens = mail._expand_source_color_tokens_with_page_scheme(
+            page,
+            mail.SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_TOKENS,
+        )
+
+        self.assertIn(("theme", "ACCENT1"), expanded_tokens)
+
+    def test_build_slide_color_replacement_requests_recolors_theme_based_slide_elements(self):
+        slide = {
+            "objectId": "slide-geo",
+            "pageProperties": {
+                "pageBackgroundFill": {
+                    "solidFill": {
+                        "color": {
+                            "themeColor": "ACCENT1",
+                        }
+                    }
+                }
+            },
+            "pageElements": [
+                {
+                    "objectId": "shape-1",
+                    "shape": {
+                        "shapeProperties": {
+                            "shapeBackgroundFill": {
+                                "solidFill": {
+                                    "color": {
+                                        "themeColor": "ACCENT1",
+                                    }
+                                }
+                            },
+                        }
+                    },
+                },
+            ],
+        }
+
+        requests = mail._build_slide_color_replacement_requests(
+            slide,
+            (("theme", "ACCENT1"),),
+            mail.SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
+        )
+
+        self.assertEqual(len(requests), 2)
+        self.assertEqual(requests[0]["updatePageProperties"]["objectId"], "slide-geo")
+        self.assertEqual(requests[1]["updateShapeProperties"]["objectId"], "shape-1")
