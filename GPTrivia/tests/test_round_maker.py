@@ -718,7 +718,7 @@ class RoundMakerTests(TestCase):
 
         requests = mail._build_slide_color_replacement_requests(
             slide,
-            mail.SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_RGBS,
+            mail.SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_TOKENS,
             mail.SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
         )
 
@@ -737,7 +737,7 @@ class RoundMakerTests(TestCase):
         self.assertEqual(requests[2]["updateShapeProperties"]["objectId"], "shape-1")
         self.assertEqual(requests[3]["updateLineProperties"]["objectId"], "line-1")
 
-    def test_detect_slide_non_text_accent_rgb_prefers_non_text_element_color(self):
+    def test_detect_slide_non_text_accent_color_token_prefers_non_text_element_color(self):
         slide = {
             "pageElements": [
                 {
@@ -784,9 +784,60 @@ class RoundMakerTests(TestCase):
             ]
         }
 
-        detected_rgb = mail._detect_slide_non_text_accent_rgb(slide)
+        detected_color_token = mail._detect_slide_non_text_accent_color_token(slide)
 
-        self.assertEqual(detected_rgb, (15, 132, 205))
+        self.assertEqual(detected_color_token, ("rgb", (15, 132, 205)))
+
+    def test_build_slide_color_replacement_requests_recolors_grouped_non_text_elements(self):
+        slide = {
+            "objectId": "slide-geo",
+            "pageElements": [
+                {
+                    "objectId": "group-1",
+                    "elementGroup": {
+                        "children": [
+                            {
+                                "objectId": "group-text",
+                                "shape": {
+                                    "text": {
+                                        "textElements": [
+                                            {"textRun": {"content": "GEOGRAPHYQUESTION"}},
+                                        ]
+                                    }
+                                },
+                            },
+                            {
+                                "objectId": "group-accent",
+                                "shape": {
+                                    "shapeProperties": {
+                                        "shapeBackgroundFill": {
+                                            "solidFill": {
+                                                "color": {
+                                                    "rgbColor": {
+                                                        "red": 15 / 255.0,
+                                                        "green": 132 / 255.0,
+                                                        "blue": 205 / 255.0,
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        ]
+                    },
+                },
+            ],
+        }
+
+        requests = mail._build_slide_color_replacement_requests(
+            slide,
+            mail.SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_TOKENS,
+            mail.SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
+        )
+
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(requests[0]["updateShapeProperties"]["objectId"], "group-accent")
 
     def test_build_slide_color_replacement_requests_accepts_generic_rgb_measurement(self):
         slide = {
@@ -815,7 +866,7 @@ class RoundMakerTests(TestCase):
 
         requests = mail._build_slide_color_replacement_requests(
             slide,
-            mail.SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_RGBS,
+            mail.SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_TOKENS,
             mail.SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
         )
 

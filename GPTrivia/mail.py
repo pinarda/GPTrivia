@@ -169,6 +169,9 @@ SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_RGBS = (
     (66, 149, 209),
     (15, 132, 205),
 )
+SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_TOKENS = tuple(
+    ("rgb", rgb) for rgb in SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_RGBS
+)
 SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB = (138, 99, 63)
 
 
@@ -193,6 +196,17 @@ def _extract_slides_rgb_color(color_value):
     return None
 
 
+def _extract_slides_theme_color(color_value):
+    if not color_value:
+        return None
+    if color_value.get("themeColor"):
+        return str(color_value.get("themeColor"))
+    opaque_color = color_value.get("opaqueColor") or {}
+    if opaque_color.get("themeColor"):
+        return str(opaque_color.get("themeColor"))
+    return None
+
+
 def _slides_rgb_matches(color_value, target_rgb):
     extracted_rgb = _extract_slides_rgb_color(color_value)
     if not extracted_rgb:
@@ -210,6 +224,40 @@ def _extract_slides_rgb_255(color_value):
     if not extracted_rgb:
         return None
     return tuple(int(round(channel * 255)) for channel in extracted_rgb)
+
+
+def _extract_slides_color_token(color_value):
+    theme_color = _extract_slides_theme_color(color_value)
+    if theme_color:
+        return ("theme", theme_color)
+    rgb_color = _extract_slides_rgb_255(color_value)
+    if rgb_color:
+        return ("rgb", rgb_color)
+    return None
+
+
+def _slides_color_matches_token(color_value, color_token):
+    if not color_token:
+        return False
+    token_kind, token_value = color_token
+    if token_kind == "theme":
+        return _extract_slides_theme_color(color_value) == token_value
+    if token_kind == "rgb":
+        return _slides_rgb_matches(color_value, token_value)
+    return False
+
+
+def _slides_color_matches_any_tokens(color_value, color_tokens):
+    return any(_slides_color_matches_token(color_value, color_token) for color_token in (color_tokens or ()))
+
+
+def _format_color_token(color_token):
+    if not color_token:
+        return ""
+    token_kind, token_value = color_token
+    if token_kind == "rgb":
+        return f"rgb:{token_value}"
+    return f"{token_kind}:{token_value}"
 
 
 def _build_slides_rgb_color(target_rgb):
@@ -273,36 +321,68 @@ def _get_presentation_page_by_id(presentation, page_id):
     return None
 
 
+def _walk_page_elements(page_elements, parent_group_id=None, depth=0):
+    for element in page_elements or []:
+        yield element, parent_group_id, depth
+
+        element_group = element.get("elementGroup") or {}
+        if element_group:
+            child_parent_group_id = element.get("objectId") or parent_group_id
+            yield from _walk_page_elements(
+                element_group.get("children", []),
+                child_parent_group_id,
+                depth + 1,
+            )
+
+
+def _page_element_has_direct_text_content(element):
+    shape = element.get("shape") or {}
+    if _extract_text_elements_content((shape.get("text") or {}).get("textElements", [])):
+        return True
+
+    table = element.get("table") or {}
+    if _extract_table_text_chunks(table):
+        return True
+
+    word_art = element.get("wordArt") or {}
+    if str(word_art.get("renderedText") or "").strip():
+        return True
+
+    element_title = str(element.get("title") or "").strip()
+    element_description = str(element.get("description") or "").strip()
+    return bool(element_title or element_description)
+
+
 def _page_element_has_text_content(element):
     return bool(_extract_page_element_text_chunks(element))
 
 
-def _candidate_recolor_rgbs_from_element(element):
-    candidate_rgbs = []
+def _candidate_recolor_tokens_from_element(element):
+    candidate_tokens = []
 
     shape_properties = (element.get("shape") or {}).get("shapeProperties") or {}
     shape_background_fill = shape_properties.get("shapeBackgroundFill") or {}
-    shape_background_color = _extract_slides_rgb_255(
+    shape_background_color = _extract_slides_color_token(
         ((shape_background_fill.get("solidFill") or {}).get("color") or {})
     )
     if shape_background_color:
-        candidate_rgbs.append(shape_background_color)
+        candidate_tokens.append(shape_background_color)
 
     outline = shape_properties.get("outline") or {}
-    outline_color = _extract_slides_rgb_255(
+    outline_color = _extract_slides_color_token(
         ((((outline.get("outlineFill") or {}).get("solidFill") or {}).get("color")) or {})
     )
     if outline_color:
-        candidate_rgbs.append(outline_color)
+        candidate_tokens.append(outline_color)
 
     line_properties = (element.get("line") or {}).get("lineProperties") or {}
-    line_fill_color = _extract_slides_rgb_255(
+    line_fill_color = _extract_slides_color_token(
         (((line_properties.get("lineFill") or {}).get("solidFill") or {}).get("color")) or {}
     )
     if line_fill_color:
-        candidate_rgbs.append(line_fill_color)
+        candidate_tokens.append(line_fill_color)
 
-    return candidate_rgbs
+    return candidate_tokens
 
 
 def _shape_fill_rgb_from_element(element):
@@ -323,6 +403,24 @@ def _line_fill_rgb_from_element(element):
     )
 
 
+def _shape_fill_theme_from_element(element):
+    return _extract_slides_theme_color(
+        ((((element.get("shape") or {}).get("shapeProperties") or {}).get("shapeBackgroundFill") or {}).get("solidFill") or {}).get("color")
+    )
+
+
+def _outline_theme_from_element(element):
+    return _extract_slides_theme_color(
+        ((((((element.get("shape") or {}).get("shapeProperties") or {}).get("outline") or {}).get("outlineFill") or {}).get("solidFill") or {}).get("color"))
+    )
+
+
+def _line_fill_theme_from_element(element):
+    return _extract_slides_theme_color(
+        (((((element.get("line") or {}).get("lineProperties") or {}).get("lineFill") or {}).get("solidFill") or {}).get("color"))
+    )
+
+
 def _should_ignore_recolor_candidate_rgb(rgb):
     if not rgb:
         return True
@@ -337,7 +435,22 @@ def _should_ignore_recolor_candidate_rgb(rgb):
     return False
 
 
-def _detect_slide_non_text_accent_rgb(slide):
+def _should_ignore_recolor_candidate_token(color_token):
+    if not color_token:
+        return True
+    token_kind, token_value = color_token
+    if token_kind == "theme":
+        normalized_value = str(token_value or "").upper()
+        return (
+            "BACKGROUND" in normalized_value
+            or "TEXT" in normalized_value
+            or normalized_value.startswith("DARK")
+            or normalized_value.startswith("LIGHT")
+        )
+    return _should_ignore_recolor_candidate_rgb(token_value)
+
+
+def _detect_slide_non_text_accent_color_token(slide):
     candidate_counts, fallback_counts = _collect_slide_non_text_color_counts(slide)
 
     selected_counts = candidate_counts or fallback_counts
@@ -345,9 +458,13 @@ def _detect_slide_non_text_accent_rgb(slide):
         return None
 
     def _candidate_sort_key(item):
-        rgb, count = item
-        brightness = sum(rgb) / 3.0
-        saturation = max(rgb) - min(rgb)
+        color_token, count = item
+        token_kind, token_value = color_token
+        if token_kind == "theme":
+            accent_bonus = 100 if "ACCENT" in str(token_value).upper() else 10
+            return (count, accent_bonus, 0)
+        brightness = sum(token_value) / 3.0
+        saturation = max(token_value) - min(token_value)
         return (count, saturation, -abs(brightness - 128.0))
 
     return max(selected_counts.items(), key=_candidate_sort_key)[0]
@@ -357,52 +474,64 @@ def _collect_slide_non_text_color_counts(slide):
     candidate_counts = Counter()
     fallback_counts = Counter()
 
-    for element in slide.get("pageElements", []) or []:
-        if _page_element_has_text_content(element):
+    for element, _parent_group_id, _depth in _walk_page_elements(slide.get("pageElements", []) or []):
+        if _page_element_has_direct_text_content(element):
             continue
-        for rgb in _candidate_recolor_rgbs_from_element(element):
-            fallback_counts[rgb] += 1
-            if not _should_ignore_recolor_candidate_rgb(rgb):
-                candidate_counts[rgb] += 1
+        for color_token in _candidate_recolor_tokens_from_element(element):
+            fallback_counts[color_token] += 1
+            if not _should_ignore_recolor_candidate_token(color_token):
+                candidate_counts[color_token] += 1
 
     return candidate_counts, fallback_counts
 
 
-def _build_slide_color_diagnostics(page, detected_source_rgb, recolor_requests, target_rgb):
+def _build_slide_color_diagnostics(page, detected_source_color_token, recolor_requests, target_rgb):
+    if not page:
+        return None
+
     page_properties = page.get("pageProperties") or {}
     page_background_fill = page_properties.get("pageBackgroundFill") or {}
     page_background_color = _extract_slides_rgb_255(
         ((page_background_fill.get("solidFill") or {}).get("color") or {})
     )
+    page_background_theme = _extract_slides_theme_color(
+        ((page_background_fill.get("solidFill") or {}).get("color") or {})
+    )
     candidate_counts, fallback_counts = _collect_slide_non_text_color_counts(page)
 
     element_diagnostics = []
-    for element in page.get("pageElements", []) or []:
+    for element, parent_group_id, depth in _walk_page_elements(page.get("pageElements", []) or []):
         element_diagnostics.append(
             {
                 "object_id": element.get("objectId"),
-                "has_text": _page_element_has_text_content(element),
+                "parent_group_id": parent_group_id,
+                "depth": depth,
+                "has_text": _page_element_has_direct_text_content(element),
                 "shape_fill_rgb": _shape_fill_rgb_from_element(element),
+                "shape_fill_theme": _shape_fill_theme_from_element(element),
                 "outline_rgb": _outline_rgb_from_element(element),
+                "outline_theme": _outline_theme_from_element(element),
                 "line_fill_rgb": _line_fill_rgb_from_element(element),
+                "line_fill_theme": _line_fill_theme_from_element(element),
             }
         )
 
     return {
         "page_id": page.get("objectId"),
         "page_background_rgb": page_background_color,
-        "detected_source_rgb": detected_source_rgb,
-        "fallback_source_rgbs": list(SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_RGBS),
+        "page_background_theme": page_background_theme,
+        "detected_source_color": _format_color_token(detected_source_color_token),
+        "fallback_source_colors": [_format_color_token(token) for token in SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_TOKENS],
         "target_rgb": target_rgb,
-        "candidate_counts": dict(candidate_counts),
-        "fallback_counts": dict(fallback_counts),
+        "candidate_counts": {_format_color_token(token): count for token, count in candidate_counts.items()},
+        "fallback_counts": {_format_color_token(token): count for token, count in fallback_counts.items()},
         "recolor_request_count": len(recolor_requests),
         "recolor_request_types": [next(iter(request.keys())) for request in recolor_requests],
         "elements": element_diagnostics,
     }
 
 
-def _build_slide_color_replacement_requests(slide, source_rgbs, target_rgb):
+def _build_slide_color_replacement_requests(slide, source_color_tokens, target_rgb):
     if not slide:
         return []
 
@@ -412,10 +541,10 @@ def _build_slide_color_replacement_requests(slide, source_rgbs, target_rgb):
     page_properties = slide.get("pageProperties") or {}
     page_background_fill = page_properties.get("pageBackgroundFill") or {}
     page_background_color = ((page_background_fill.get("solidFill") or {}).get("color") or {})
-    if slide_id and _slides_rgb_matches_any(page_background_color, source_rgbs):
+    if slide_id and _slides_color_matches_any_tokens(page_background_color, source_color_tokens):
         recolor_requests.append(_build_page_background_recolor_request(slide_id, target_rgb))
 
-    for element in slide.get("pageElements", []) or []:
+    for element, _parent_group_id, _depth in _walk_page_elements(slide.get("pageElements", []) or []):
         object_id = element.get("objectId")
         if not object_id:
             continue
@@ -423,7 +552,7 @@ def _build_slide_color_replacement_requests(slide, source_rgbs, target_rgb):
         shape_properties = (element.get("shape") or {}).get("shapeProperties") or {}
         shape_background_fill = shape_properties.get("shapeBackgroundFill") or {}
         shape_background_color = ((shape_background_fill.get("solidFill") or {}).get("color") or {})
-        if _slides_rgb_matches_any(shape_background_color, source_rgbs):
+        if _slides_color_matches_any_tokens(shape_background_color, source_color_tokens):
             recolor_requests.append(
                 _build_shape_fill_recolor_request(
                     object_id,
@@ -440,7 +569,7 @@ def _build_slide_color_replacement_requests(slide, source_rgbs, target_rgb):
 
         outline = shape_properties.get("outline") or {}
         outline_color = ((((outline.get("outlineFill") or {}).get("solidFill") or {}).get("color")) or {})
-        if _slides_rgb_matches_any(outline_color, source_rgbs):
+        if _slides_color_matches_any_tokens(outline_color, source_color_tokens):
             recolor_requests.append(
                 _build_shape_fill_recolor_request(
                     object_id,
@@ -459,7 +588,7 @@ def _build_slide_color_replacement_requests(slide, source_rgbs, target_rgb):
 
         line_properties = (element.get("line") or {}).get("lineProperties") or {}
         line_fill_color = (((line_properties.get("lineFill") or {}).get("solidFill") or {}).get("color")) or {}
-        if _slides_rgb_matches_any(line_fill_color, source_rgbs):
+        if _slides_color_matches_any_tokens(line_fill_color, source_color_tokens):
             recolor_requests.append(_build_line_fill_recolor_request(object_id, target_rgb))
 
     return recolor_requests
@@ -470,11 +599,11 @@ def _build_smart_template_category_style_requests(service, presentation_id, slid
         return []
     presentation = service.presentations().get(presentationId=presentation_id).execute()
     slide = _get_presentation_page_by_id(presentation, slide_id)
-    detected_source_rgb = _detect_slide_non_text_accent_rgb(slide) if slide else None
-    source_rgbs = (detected_source_rgb,) if detected_source_rgb else SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_RGBS
+    detected_source_color_token = _detect_slide_non_text_accent_color_token(slide) if slide else None
+    source_color_tokens = (detected_source_color_token,) if detected_source_color_token else SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_TOKENS
     recolor_requests = _build_slide_color_replacement_requests(
         slide,
-        source_rgbs,
+        source_color_tokens,
         SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
     )
     if slide:
@@ -489,7 +618,7 @@ def _build_smart_template_category_style_requests(service, presentation_id, slid
                 {
                     "slide": _build_slide_color_diagnostics(
                         slide,
-                        detected_source_rgb,
+                        detected_source_color_token,
                         recolor_requests,
                         SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
                     ),
@@ -498,7 +627,7 @@ def _build_smart_template_category_style_requests(service, presentation_id, slid
                     "layout": (
                         _build_slide_color_diagnostics(
                             layout_page,
-                            _detect_slide_non_text_accent_rgb(layout_page),
+                            _detect_slide_non_text_accent_color_token(layout_page),
                             [],
                             SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
                         )
@@ -508,7 +637,7 @@ def _build_smart_template_category_style_requests(service, presentation_id, slid
                     "master": (
                         _build_slide_color_diagnostics(
                             master_page,
-                            _detect_slide_non_text_accent_rgb(master_page),
+                            _detect_slide_non_text_accent_color_token(master_page),
                             [],
                             SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
                         )
