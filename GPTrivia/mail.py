@@ -265,11 +265,11 @@ def _build_page_background_recolor_request(slide_id, target_rgb):
     }
 
 
-def _get_slide_by_id(service, presentation_id, slide_id):
-    presentation = service.presentations().get(presentationId=presentation_id).execute()
-    for slide in presentation.get("slides", []) or []:
-        if slide.get("objectId") == slide_id:
-            return slide
+def _get_presentation_page_by_id(presentation, page_id):
+    for page_collection_name in ("slides", "layouts", "masters"):
+        for page in presentation.get(page_collection_name, []) or []:
+            if page.get("objectId") == page_id:
+                return page
     return None
 
 
@@ -368,16 +368,16 @@ def _collect_slide_non_text_color_counts(slide):
     return candidate_counts, fallback_counts
 
 
-def _build_slide_color_diagnostics(slide, detected_source_rgb, recolor_requests, target_rgb):
-    page_properties = slide.get("pageProperties") or {}
+def _build_slide_color_diagnostics(page, detected_source_rgb, recolor_requests, target_rgb):
+    page_properties = page.get("pageProperties") or {}
     page_background_fill = page_properties.get("pageBackgroundFill") or {}
     page_background_color = _extract_slides_rgb_255(
         ((page_background_fill.get("solidFill") or {}).get("color") or {})
     )
-    candidate_counts, fallback_counts = _collect_slide_non_text_color_counts(slide)
+    candidate_counts, fallback_counts = _collect_slide_non_text_color_counts(page)
 
     element_diagnostics = []
-    for element in slide.get("pageElements", []) or []:
+    for element in page.get("pageElements", []) or []:
         element_diagnostics.append(
             {
                 "object_id": element.get("objectId"),
@@ -389,7 +389,7 @@ def _build_slide_color_diagnostics(slide, detected_source_rgb, recolor_requests,
         )
 
     return {
-        "slide_id": slide.get("objectId"),
+        "page_id": page.get("objectId"),
         "page_background_rgb": page_background_color,
         "detected_source_rgb": detected_source_rgb,
         "fallback_source_rgbs": list(SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_RGBS),
@@ -468,7 +468,8 @@ def _build_slide_color_replacement_requests(slide, source_rgbs, target_rgb):
 def _build_smart_template_category_style_requests(service, presentation_id, slide_id, category_name):
     if category_name != "GEOGRAPHY":
         return []
-    slide = _get_slide_by_id(service, presentation_id, slide_id)
+    presentation = service.presentations().get(presentationId=presentation_id).execute()
+    slide = _get_presentation_page_by_id(presentation, slide_id)
     detected_source_rgb = _detect_slide_non_text_accent_rgb(slide) if slide else None
     source_rgbs = (detected_source_rgb,) if detected_source_rgb else SMART_TEMPLATE_GEOGRAPHY_FALLBACK_ACCENT_RGBS
     recolor_requests = _build_slide_color_replacement_requests(
@@ -477,15 +478,44 @@ def _build_smart_template_category_style_requests(service, presentation_id, slid
         SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
     )
     if slide:
+        slide_properties = slide.get("slideProperties") or {}
+        layout_id = slide_properties.get("layoutObjectId")
+        master_id = slide_properties.get("masterObjectId")
+        layout_page = _get_presentation_page_by_id(presentation, layout_id) if layout_id else None
+        master_page = _get_presentation_page_by_id(presentation, master_id) if master_id else None
         logger.warning(
             "Smart swoop geography diagnostics: %s",
             pprint.pformat(
-                _build_slide_color_diagnostics(
-                    slide,
-                    detected_source_rgb,
-                    recolor_requests,
-                    SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
-                ),
+                {
+                    "slide": _build_slide_color_diagnostics(
+                        slide,
+                        detected_source_rgb,
+                        recolor_requests,
+                        SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
+                    ),
+                    "slide_layout_object_id": layout_id,
+                    "slide_master_object_id": master_id,
+                    "layout": (
+                        _build_slide_color_diagnostics(
+                            layout_page,
+                            _detect_slide_non_text_accent_rgb(layout_page),
+                            [],
+                            SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
+                        )
+                        if layout_page
+                        else None
+                    ),
+                    "master": (
+                        _build_slide_color_diagnostics(
+                            master_page,
+                            _detect_slide_non_text_accent_rgb(master_page),
+                            [],
+                            SMART_TEMPLATE_GEOGRAPHY_BROWN_RGB,
+                        )
+                        if master_page
+                        else None
+                    ),
+                },
                 compact=True,
                 width=140,
             ),
