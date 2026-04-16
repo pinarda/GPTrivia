@@ -376,6 +376,15 @@ def _normalize_round_title(title_value):
     return re.sub(r'\s+', ' ', str(title_value or '').strip()).casefold()
 
 
+def _normalize_round_creator(creator_value):
+    return re.sub(r'\s+', ' ', str(creator_value or '').strip()).casefold()
+
+
+def _creator_allows_title_fallback(creator_value):
+    creator_key = _normalize_round_creator(creator_value)
+    return creator_key in {'', 'unknown'}
+
+
 def _build_submitted_round_lookup(submitted_rounds):
     submitted_rounds_by_presentation_id = {
         submitted_round.presentation_id: submitted_round
@@ -411,7 +420,7 @@ def _build_submitted_round_lookup(submitted_rounds):
     )
 
 
-def _find_matching_submitted_round(title, link, old_link, submitted_round_lookup):
+def _find_matching_submitted_round(title, creator, link, old_link, submitted_round_lookup):
     (
         submitted_rounds_by_presentation_id,
         submitted_rounds_by_link,
@@ -428,7 +437,14 @@ def _find_matching_submitted_round(title, link, old_link, submitted_round_lookup
             _normalize_round_link(old_link)
         )
     if not submitted_round and title_key and title_key not in duplicate_title_keys:
-        submitted_round = submitted_rounds_by_title.get(title_key)
+        candidate_round = submitted_rounds_by_title.get(title_key)
+        if candidate_round:
+            creator_key = _normalize_round_creator(creator)
+            candidate_creator_key = _normalize_round_creator(candidate_round.creator)
+            if _creator_allows_title_fallback(creator) or (
+                creator_key and creator_key == candidate_creator_key
+            ):
+                submitted_round = candidate_round
     return submitted_round
 
 
@@ -440,6 +456,7 @@ def _mark_selected_submitted_rounds_consumed(rounds):
     for round_data in rounds or []:
         submitted_round = _find_matching_submitted_round(
             round_data.get("title"),
+            round_data.get("creator"),
             round_data.get("link"),
             round_data.get("old_link"),
             submitted_round_lookup,
@@ -488,7 +505,13 @@ def _save_available_round_metadata(data, *, user=None):
 
     submitted_rounds = list(SubmittedRound.objects.order_by('-updated_at', '-submitted_at'))
     submitted_round_lookup = _build_submitted_round_lookup(submitted_rounds)
-    submitted_round = _find_matching_submitted_round(source_title or title, link, old_link, submitted_round_lookup)
+    submitted_round = _find_matching_submitted_round(
+        source_title or title,
+        creator,
+        link,
+        old_link,
+        submitted_round_lookup,
+    )
 
     persistence_id = (
         submitted_round.presentation_id
@@ -2931,7 +2954,7 @@ def _collect_rounds():
     creator_opt_in_map = _build_round_analysis_opt_in_map(creators)
     new_rounds = []
     for title, creator, link, old_link, shared_date in zip(titles, creators, links, old_links, shared_dates):
-        submitted_round = _find_matching_submitted_round(title, link, old_link, submitted_round_lookup)
+        submitted_round = _find_matching_submitted_round(title, creator, link, old_link, submitted_round_lookup)
         if creator_opt_in_map.get(str(creator or '').strip()) and (
             not submitted_round or not str(submitted_round.source_title or '').strip()
         ):

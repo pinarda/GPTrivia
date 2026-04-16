@@ -236,6 +236,34 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual(payload[0]["creator"], "Alex")
 
     @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_does_not_overlay_title_only_match_when_creator_differs(self, mock_get_round_titles_and_links):
+        mock_get_round_titles_and_links.return_value = (
+            ["https://mail.google.com/new-share-link"],
+            ["Rhyming Picture Round"],
+            ["Megan"],
+            ["https://mail.google.com/new-share-link"],
+            ["2026-03-18"],
+        )
+        SubmittedRound.objects.create(
+            presentation_id="old-rhyming-round",
+            title="Rhyming Picture Round",
+            source_title="Rhyming Picture Round",
+            creator="Alex",
+            cooperative=True,
+            link="https://docs.google.com/presentation/d/old-rhyming-round/edit",
+        )
+
+        response = self.client.get(reverse("collect_rounds_api"))
+
+        self.assertEqual(response.status_code, 200)
+        round_payload = response.json()["rounds"][0]
+        self.assertEqual(round_payload["title"], "Rhyming Picture Round")
+        self.assertEqual(round_payload["source_title"], "Rhyming Picture Round")
+        self.assertEqual(round_payload["creator"], "Megan")
+        self.assertFalse(round_payload["coop"])
+        self.assertEqual(round_payload["presentation_id"], "")
+
+    @patch("GPTrivia.views.get_round_titles_and_links")
     def test_collect_rounds_api_shows_unread_gmail_round_even_if_previously_consumed(self, mock_get_round_titles_and_links):
         mock_get_round_titles_and_links.return_value = (
             ["https://docs.google.com/presentation/d/swoop-123/edit"],
