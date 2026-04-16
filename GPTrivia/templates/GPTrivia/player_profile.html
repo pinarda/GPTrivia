@@ -14,7 +14,7 @@
       --profile-player-color: {{ player_color }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260327c">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260416a">
 {% endblock %}
 
 {% block extra_meta %}
@@ -729,7 +729,7 @@
 
         function buildProfileLoadingPlaceholder(message) {
             return `
-                <div class="profile-deferred-placeholder profile-deferred-placeholder--summary">
+                <div class="profile-deferred-placeholder profile-deferred-placeholder--panel">
                     <span class="profile-loading-message">
                         <span>${message}</span>
                         ${profileLoadingSpinnerSvg}
