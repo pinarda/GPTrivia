@@ -157,6 +157,49 @@ class RoundMakerTests(TestCase):
         )
         self.assertTrue(mail._smart_template_slide_map_is_complete(category_slide_map))
 
+    def test_resolve_smart_template_slide_map_prefers_expected_order_over_misclassified_pairs(self):
+        def _slide_with_text(object_id, text):
+            return {
+                "objectId": object_id,
+                "pageElements": [
+                    {
+                        "shape": {
+                            "text": {
+                                "textElements": [
+                                    {"textRun": {"content": text}},
+                                ]
+                            }
+                        }
+                    }
+                ],
+            }
+
+        slides = [
+            {"objectId": "cover", "pageElements": []},
+            _slide_with_text("q-sports", "SPORTSQUESTION"),
+            _slide_with_text("q-football", "FOOTBALLQUESTION"),
+            _slide_with_text("answers-divider", "Answers"),
+            _slide_with_text("a-sports", "FOOTBALLANSWER"),
+            _slide_with_text("a-football", "SPORTSANSWER"),
+        ]
+
+        original_categories = mail.SMART_TRIVIAL_PURSUIT_CATEGORIES
+        try:
+            mail.SMART_TRIVIAL_PURSUIT_CATEGORIES = ["SPORTS", "FOOTBALL"]
+            category_slide_map, first_category_index = mail._resolve_smart_template_slide_map(slides)
+        finally:
+            mail.SMART_TRIVIAL_PURSUIT_CATEGORIES = original_categories
+
+        self.assertEqual(first_category_index, 1)
+        self.assertEqual(
+            category_slide_map["SPORTS"],
+            {"question": "q-sports", "answer": "a-sports"},
+        )
+        self.assertEqual(
+            category_slide_map["FOOTBALL"],
+            {"question": "q-football", "answer": "a-football"},
+        )
+
     def test_smart_template_categories_match_template_order(self):
         self.assertEqual(
             mail.SMART_TRIVIAL_PURSUIT_CATEGORIES,

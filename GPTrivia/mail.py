@@ -1395,12 +1395,12 @@ def _smart_template_slide_map_is_complete(category_slide_map):
 
 def _resolve_smart_template_slide_map(slides):
     category_slide_map, first_category_index = _build_smart_template_slide_map(slides)
-    if _smart_template_slide_map_is_complete(category_slide_map):
-        return category_slide_map, first_category_index
-
     ordered_slide_map, ordered_first_category_index = _build_smart_template_slide_map_from_expected_order(slides)
     if _smart_template_slide_map_is_complete(ordered_slide_map):
         return ordered_slide_map, ordered_first_category_index
+
+    if _smart_template_slide_map_is_complete(category_slide_map):
+        return category_slide_map, first_category_index
 
     return category_slide_map, first_category_index
 
