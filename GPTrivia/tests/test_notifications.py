@@ -33,7 +33,7 @@ class NotificationSubscriptionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json(),
-            {"success": True, "test_notification_sent": True},
+            {"success": True, "test_notification_sent": True, "subscribed_for_user": True},
         )
 
         subscription = PushSubscription.objects.get(endpoint="https://example.com/push/123")
@@ -41,6 +41,81 @@ class NotificationSubscriptionTests(TestCase):
         self.assertEqual(subscription.p256dh, "test-p256dh")
         self.assertEqual(subscription.auth, "test-auth")
         mock_webpush.assert_called_once()
+
+    @patch("GPTrivia.views.webpush")
+    def test_save_subscription_allows_multiple_endpoints_for_same_user(self, mock_webpush):
+        first_response = self.client.post(
+            reverse("save_subscription"),
+            data=json.dumps(
+                {
+                    "endpoint": "https://example.com/push/123",
+                    "keys": {
+                        "p256dh": "test-p256dh-1",
+                        "auth": "test-auth-1",
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+        second_response = self.client.post(
+            reverse("save_subscription"),
+            data=json.dumps(
+                {
+                    "endpoint": "https://example.com/push/456",
+                    "keys": {
+                        "p256dh": "test-p256dh-2",
+                        "auth": "test-auth-2",
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(
+            PushSubscription.objects.filter(user=self.user).count(),
+            2,
+        )
+
+    def test_get_subscription_status_reports_current_users_device_registration(self):
+        PushSubscription.objects.create(
+            user=self.user,
+            endpoint="https://example.com/push/123",
+            p256dh="test-p256dh",
+            auth="test-auth",
+        )
+
+        response = self.client.get(
+            reverse("save_subscription"),
+            {"endpoint": "https://example.com/push/123"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {"success": True, "subscribed_for_user": True},
+        )
+
+    def test_get_subscription_status_ignores_other_users_devices(self):
+        other_user = User.objects.create_user(username="megan", password="pw")
+        PushSubscription.objects.create(
+            user=other_user,
+            endpoint="https://example.com/push/123",
+            p256dh="test-p256dh",
+            auth="test-auth",
+        )
+
+        response = self.client.get(
+            reverse("save_subscription"),
+            {"endpoint": "https://example.com/push/123"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {"success": True, "subscribed_for_user": False},
+        )
 
     def test_delete_subscription_removes_matching_endpoint(self):
         PushSubscription.objects.create(

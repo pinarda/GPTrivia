@@ -435,6 +435,22 @@
             button.textContent = label || (enabled ? 'Disable Notifications' : 'Enable Notifications');
         }
 
+        async function fetchNotificationRegistrationState(endpoint) {
+            if (!endpoint) {
+                return false;
+            }
+
+            const response = await fetch(`/api/save-subscription/?endpoint=${encodeURIComponent(endpoint)}`, {
+                credentials: 'same-origin',
+            });
+            if (!response.ok) {
+                throw new Error(`Notification status request failed with ${response.status}`);
+            }
+
+            const body = await response.json();
+            return Boolean(body.subscribed_for_user);
+        }
+
         async function initializeNotificationButton(button) {
             if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
                 setNotificationButtonState(button, {
@@ -448,8 +464,12 @@
             try {
                 const registration = await navigator.serviceWorker.ready;
                 const existingSubscription = await registration.pushManager.getSubscription();
+                let enabledForCurrentUser = false;
+                if (existingSubscription && existingSubscription.endpoint) {
+                    enabledForCurrentUser = await fetchNotificationRegistrationState(existingSubscription.endpoint);
+                }
                 setNotificationButtonState(button, {
-                    enabled: Boolean(existingSubscription),
+                    enabled: enabledForCurrentUser,
                     disabled: false,
                 });
             } catch (err) {
@@ -482,10 +502,13 @@
         async function subscribeUser() {
             try {
                 const registration = await navigator.serviceWorker.ready;
-                const subscription = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array('BHoGFkOJ_KwoRtcP_qIR2zzDFOhMrMlIo1fLKL5_ed5PTEee1ky78J7vhugar72ALkAhyblefsrZAlCfOKYWtfM')
-                });
+                let subscription = await registration.pushManager.getSubscription();
+                if (!subscription) {
+                    subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array('BHoGFkOJ_KwoRtcP_qIR2zzDFOhMrMlIo1fLKL5_ed5PTEee1ky78J7vhugar72ALkAhyblefsrZAlCfOKYWtfM')
+                    });
+                }
 
                 const response = await fetch('/api/save-subscription/', {
                     method: 'POST',
@@ -496,8 +519,9 @@
                     }
                 });
 
-                console.log('Subscription saved:', await response.json());
-                return true;
+                const body = await response.json();
+                console.log('Subscription saved:', body);
+                return response.ok && Boolean(body.success);
             } catch (err) {
                 console.error('Error in subscribeUser():', err);
                 return false;
@@ -524,8 +548,9 @@
                     }
                 });
 
-                console.log('Subscription removed:', await response.json());
-                return true;
+                const body = await response.json();
+                console.log('Subscription removed:', body);
+                return response.ok && Boolean(body.success);
             } catch (err) {
                 console.error('Error in unsubscribeUser():', err);
                 return false;

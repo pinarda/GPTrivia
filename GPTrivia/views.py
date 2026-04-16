@@ -764,6 +764,24 @@ def deactivate_j_question(request, question_id):
 
 @csrf_exempt  # Use this only if you're not including CSRF token (better to include it in the JS)
 def save_subscription(request):
+    if request.method == 'GET':
+        endpoint = str(request.GET.get('endpoint') or '').strip()
+        if not endpoint:
+            return JsonResponse({'success': True, 'subscribed_for_user': False})
+
+        if request.user.is_authenticated:
+            subscribed_for_user = PushSubscription.objects.filter(
+                endpoint=endpoint,
+                user=request.user,
+            ).exists()
+        else:
+            subscribed_for_user = PushSubscription.objects.filter(endpoint=endpoint).exists()
+
+        return JsonResponse({
+            'success': True,
+            'subscribed_for_user': subscribed_for_user,
+        })
+
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -789,7 +807,11 @@ def save_subscription(request):
                 "Hail Science notifications are now enabled on this device.",
             )
 
-            return JsonResponse({'success': True, 'test_notification_sent': test_notification_sent})
+            return JsonResponse({
+                'success': True,
+                'test_notification_sent': test_notification_sent,
+                'subscribed_for_user': bool(request.user.is_authenticated and sub.user_id == request.user.id),
+            })
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
