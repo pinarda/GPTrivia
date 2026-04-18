@@ -1288,6 +1288,58 @@ def round_analysis_status(request, round_id):
 
 
 @login_required
+def round_analysis_question(request):
+    if request.method != 'GET':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    round_id_raw = str(request.GET.get('round_id') or '').strip()
+    question_number_raw = str(request.GET.get('question_number') or '').strip()
+
+    try:
+        round_id = int(round_id_raw)
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'round_id must be an integer.'}, status=400)
+
+    try:
+        question_number = int(question_number_raw)
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'question_number must be an integer.'}, status=400)
+
+    latest_completed_run = (
+        RoundQuestionAnalysisRun.objects.filter(
+            round_id=round_id,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+        )
+        .select_related('round')
+        .order_by('-created_at', '-id')
+        .first()
+    )
+    if latest_completed_run is None:
+        raise Http404("No completed round analysis exists for that round.")
+
+    entry = (
+        RoundQuestionAnalysisEntry.objects.filter(
+            run=latest_completed_run,
+            question_number=question_number,
+        )
+        .order_by('id')
+        .first()
+    )
+    if entry is None:
+        raise Http404("No analyzed question exists for that round and question number.")
+
+    return JsonResponse({
+        'round_id': entry.round_id,
+        'analysis_run_id': latest_completed_run.id,
+        'round_name': entry.round_name or latest_completed_run.round.title,
+        'round_date': entry.round_date.isoformat() if entry.round_date else '',
+        'question_number': entry.question_number,
+        'question_text': entry.question_text,
+        'answer_text': entry.answer_text,
+    })
+
+
+@login_required
 def round_analysis_media(request, entry_id):
     from .round_analysis import (
         _is_placeholder_media_url,

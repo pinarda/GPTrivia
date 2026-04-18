@@ -45,6 +45,7 @@ urlpatterns = [
     path('round-analysis/', views.round_analysis_list, name='round_analysis_list'),
     path('round-analysis/<int:round_id>/trigger/', views.trigger_round_analysis, name='trigger_round_analysis'),
     path('round-analysis/<int:round_id>/status/', views.round_analysis_status, name='round_analysis_status'),
+    path('round-analysis/question/', views.round_analysis_question, name='round_analysis_question'),
     path('round-analysis/entry/<int:entry_id>/media/', views.round_analysis_media, name='round_analysis_media'),
     path('player_analysis/', views.player_analysis, name='player_analysis'),
     path('player_analysis_legacy/', views.player_analysis_legacy, name='player_analysis_legacy'),

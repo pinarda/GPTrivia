@@ -313,6 +313,75 @@ class RoundAnalysisTests(TestCase):
         self.assertIn(f"round_id={round_obj.id}", payload["view_url"])
         self.assertTrue(payload["can_trigger"])
 
+    def test_round_analysis_question_returns_latest_completed_entry(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Lookup Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=2,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/lookup-round/edit#slide=id.r1",
+        )
+        old_run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=old_run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="Old question text",
+            answer_text="Old answer text",
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        latest_run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=latest_run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="Latest question text",
+            answer_text="Latest answer text",
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+
+        response = self.client.get(
+            reverse("round_analysis_question"),
+            {"round_id": round_obj.id, "question_number": 1},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["round_id"], round_obj.id)
+        self.assertEqual(payload["analysis_run_id"], latest_run.id)
+        self.assertEqual(payload["question_number"], 1)
+        self.assertEqual(payload["question_text"], "Latest question text")
+        self.assertEqual(payload["answer_text"], "Latest answer text")
+
+    def test_round_analysis_question_rejects_invalid_query_params(self):
+        response = self.client.get(
+            reverse("round_analysis_question"),
+            {"round_id": "not-an-int", "question_number": "1"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["detail"], "round_id must be an integer.")
+
     def test_normalize_analysis_categories_blanks_duplicate_major_and_minor_values(self):
         major, minor1, minor2 = _normalize_analysis_categories({
             "major_category": "Sports",
