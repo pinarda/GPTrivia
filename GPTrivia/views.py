@@ -21,6 +21,7 @@ import random
 from django.shortcuts import redirect
 from django.contrib.auth.models import User
 import subprocess
+import base64
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 import pytz
@@ -1328,7 +1329,7 @@ def round_analysis_question(request):
     if entry is None:
         raise Http404("No analyzed question exists for that round and question number.")
 
-    return JsonResponse({
+    response_payload = {
         'round_id': entry.round_id,
         'analysis_run_id': latest_completed_run.id,
         'round_name': entry.round_name or latest_completed_run.round.title,
@@ -1336,7 +1337,47 @@ def round_analysis_question(request):
         'question_number': entry.question_number,
         'question_text': entry.question_text,
         'answer_text': entry.answer_text,
-    })
+        'media_kind': entry.media_kind or '',
+        'image_url': '',
+        'image_content_type': '',
+        'image_data_url': '',
+    }
+
+    if str(entry.media_kind or '').strip().lower() == 'image':
+        if entry.media_file:
+            image_url = request.build_absolute_uri(reverse('round_analysis_image', args=[entry.id]))
+            image_content_type = mimetypes.guess_type(entry.media_file.name)[0] or 'application/octet-stream'
+            response_payload['image_url'] = image_url
+            response_payload['image_content_type'] = image_content_type
+            if _is_truthy_form_value(request.GET.get('include_image')):
+                try:
+                    entry.media_file.open('rb')
+                    encoded_image = base64.b64encode(entry.media_file.read()).decode('ascii')
+                    response_payload['image_data_url'] = f'data:{image_content_type};base64,{encoded_image}'
+                finally:
+                    try:
+                        entry.media_file.close()
+                    except Exception:
+                        pass
+        elif entry.media_url:
+            response_payload['image_url'] = entry.media_url
+
+    return JsonResponse(response_payload)
+
+
+@login_required
+def round_analysis_image(request, entry_id):
+    entry = get_object_or_404(
+        RoundQuestionAnalysisEntry.objects.select_related('round', 'run'),
+        id=entry_id,
+    )
+    if str(entry.media_kind or '').strip().lower() != 'image':
+        raise Http404("Saved image is only available for image entries.")
+    if entry.media_file:
+        return _serve_profile_media_file(entry.media_file)
+    if entry.media_url:
+        return redirect(entry.media_url)
+    raise Http404("No image is available for this round analysis entry.")
 
 
 @login_required

@@ -373,6 +373,53 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(payload["question_text"], "Latest question text")
         self.assertEqual(payload["answer_text"], "Latest answer text")
 
+    def test_round_analysis_question_can_include_saved_image_payload(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Image Lookup Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=3,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/image-lookup-round/edit#slide=id.r1",
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="picture",
+        )
+        entry = RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=2,
+            question_text="Who is pictured here?",
+            answer_text="Ada Lovelace",
+            round_type="picture",
+            media_kind="image",
+            player_correctness={"Alex": ""},
+        )
+        image_buffer = io.BytesIO()
+        Image.new("RGB", (8, 8), (10, 120, 210)).save(image_buffer, format="PNG")
+        entry.media_file.save("analysis-image.png", ContentFile(image_buffer.getvalue()), save=True)
+
+        response = self.client.get(
+            reverse("round_analysis_question"),
+            {"round_id": round_obj.id, "question_number": 2, "include_image": "1"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["media_kind"], "image")
+        self.assertTrue(payload["image_url"].endswith(f"/round-analysis/entry/{entry.id}/image/"))
+        self.assertEqual(payload["image_content_type"], "image/png")
+        self.assertTrue(payload["image_data_url"].startswith("data:image/png;base64,"))
+
     def test_round_analysis_question_rejects_invalid_query_params(self):
         response = self.client.get(
             reverse("round_analysis_question"),
