@@ -1289,46 +1289,7 @@ def round_analysis_status(request, round_id):
 
 
 @login_required
-def round_analysis_question(request):
-    if request.method != 'GET':
-        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
-
-    round_id_raw = str(request.GET.get('round_id') or '').strip()
-    question_number_raw = str(request.GET.get('question_number') or '').strip()
-
-    try:
-        round_id = int(round_id_raw)
-    except (TypeError, ValueError):
-        return JsonResponse({'detail': 'round_id must be an integer.'}, status=400)
-
-    try:
-        question_number = int(question_number_raw)
-    except (TypeError, ValueError):
-        return JsonResponse({'detail': 'question_number must be an integer.'}, status=400)
-
-    latest_completed_run = (
-        RoundQuestionAnalysisRun.objects.filter(
-            round_id=round_id,
-            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
-        )
-        .select_related('round')
-        .order_by('-created_at', '-id')
-        .first()
-    )
-    if latest_completed_run is None:
-        raise Http404("No completed round analysis exists for that round.")
-
-    entry = (
-        RoundQuestionAnalysisEntry.objects.filter(
-            run=latest_completed_run,
-            question_number=question_number,
-        )
-        .order_by('id')
-        .first()
-    )
-    if entry is None:
-        raise Http404("No analyzed question exists for that round and question number.")
-
+def _build_round_analysis_question_payload(request, latest_completed_run, entry):
     response_payload = {
         'round_id': entry.round_id,
         'analysis_run_id': latest_completed_run.id,
@@ -1362,7 +1323,85 @@ def round_analysis_question(request):
         elif entry.media_url:
             response_payload['image_url'] = entry.media_url
 
-    return JsonResponse(response_payload)
+    return response_payload
+
+
+def _latest_completed_round_analysis_run(round_id):
+    return (
+        RoundQuestionAnalysisRun.objects.filter(
+            round_id=round_id,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+        )
+        .select_related('round')
+        .order_by('-created_at', '-id')
+        .first()
+    )
+
+
+def _run_is_music_round(run):
+    round_major_category = str((run.round.major_category if run and run.round else '') or '').strip().lower()
+    run_round_type = str((run.round_type if run else '') or '').strip().lower()
+    return round_major_category == 'music' or run_round_type == 'music'
+
+
+@login_required
+def round_analysis_question(request):
+    if request.method != 'GET':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    round_id_raw = str(request.GET.get('round_id') or '').strip()
+    question_number_raw = str(request.GET.get('question_number') or '').strip()
+
+    try:
+        round_id = int(round_id_raw)
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'round_id must be an integer.'}, status=400)
+
+    try:
+        question_number = int(question_number_raw)
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'question_number must be an integer.'}, status=400)
+
+    latest_completed_run = _latest_completed_round_analysis_run(round_id)
+    if latest_completed_run is None:
+        raise Http404("No completed round analysis exists for that round.")
+
+    entry = (
+        RoundQuestionAnalysisEntry.objects.filter(
+            run=latest_completed_run,
+            question_number=question_number,
+        )
+        .order_by('id')
+        .first()
+    )
+    if entry is None:
+        raise Http404("No analyzed question exists for that round and question number.")
+
+    return JsonResponse(_build_round_analysis_question_payload(request, latest_completed_run, entry))
+
+
+@login_required
+def round_analysis_random_question(request):
+    if request.method != 'GET':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    from .round_analysis import latest_completed_runs_with_entries
+
+    valid_runs = []
+    for run in latest_completed_runs_with_entries():
+        if _run_is_music_round(run):
+            continue
+        run_entries = list(run.entries.all())
+        if not run_entries:
+            continue
+        valid_runs.append((run, run_entries))
+
+    if not valid_runs:
+        raise Http404("No analyzed non-music rounds are available.")
+
+    selected_run, selected_entries = random.choice(valid_runs)
+    selected_entry = random.choice(selected_entries)
+    return JsonResponse(_build_round_analysis_question_payload(request, selected_run, selected_entry))
 
 
 @login_required

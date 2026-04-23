@@ -420,6 +420,112 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(payload["image_content_type"], "image/png")
         self.assertTrue(payload["image_data_url"].startswith("data:image/png;base64,"))
 
+    def test_round_analysis_random_question_excludes_music_rounds(self):
+        music_round = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Music Round",
+            major_category="Music",
+            minor_category1="Songs",
+            minor_category2="",
+            date=datetime.date(2026, 3, 20),
+            round_number=4,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/music-random-round/edit#slide=id.r1",
+        )
+        music_run = RoundQuestionAnalysisRun.objects.create(
+            round=music_round,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="music",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=music_run,
+            round=music_round,
+            round_name=music_round.title,
+            round_date=music_round.date,
+            question_number=1,
+            question_text="Name this song",
+            answer_text="Song title",
+            round_type="music",
+            player_correctness={"Alex": ""},
+        )
+
+        valid_round = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Science Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=5,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/science-random-round/edit#slide=id.r1",
+        )
+        valid_run = RoundQuestionAnalysisRun.objects.create(
+            round=valid_round,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=valid_run,
+            round=valid_round,
+            round_name=valid_round.title,
+            round_date=valid_round.date,
+            question_number=2,
+            question_text="What particle has a negative charge?",
+            answer_text="Electron",
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+
+        response = self.client.get(reverse("round_analysis_random_question"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["round_id"], valid_round.id)
+        self.assertEqual(payload["analysis_run_id"], valid_run.id)
+        self.assertEqual(payload["question_number"], 2)
+        self.assertEqual(payload["question_text"], "What particle has a negative charge?")
+        self.assertEqual(payload["answer_text"], "Electron")
+
+    def test_round_analysis_random_question_returns_404_when_only_music_rounds_exist(self):
+        music_round = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Only Music Round",
+            major_category="Music",
+            minor_category1="Songs",
+            minor_category2="",
+            date=datetime.date(2026, 3, 20),
+            round_number=6,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/only-music-random-round/edit#slide=id.r1",
+        )
+        music_run = RoundQuestionAnalysisRun.objects.create(
+            round=music_round,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="music",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=music_run,
+            round=music_round,
+            round_name=music_round.title,
+            round_date=music_round.date,
+            question_number=1,
+            question_text="Name this song",
+            answer_text="Song title",
+            round_type="music",
+            player_correctness={"Alex": ""},
+        )
+
+        response = self.client.get(reverse("round_analysis_random_question"))
+
+        self.assertEqual(response.status_code, 404)
+
     def test_round_analysis_question_rejects_invalid_query_params(self):
         response = self.client.get(
             reverse("round_analysis_question"),
