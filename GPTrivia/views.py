@@ -1405,6 +1405,11 @@ def round_analysis_random_question(request):
 
 
 @login_required
+def answer_sheet(request):
+    return render(request, 'GPTrivia/answer_sheet.html')
+
+
+@login_required
 def round_analysis_image(request, entry_id):
     entry = get_object_or_404(
         RoundQuestionAnalysisEntry.objects.select_related('round', 'run'),

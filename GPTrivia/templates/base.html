@@ -427,6 +427,14 @@
             </div>
         </div>
         <div id="mobileMenu" class="hide-on-mobile">
+            {% if user.is_authenticated %}
+                <div class="profilebtn">
+                    <a style="color: white;" href="{% url 'player_profile' player_name=user.username %}">{{ user.username }}'s Profile</a>
+                </div>
+                <div class="scorebtn">
+                    <a style="color: white;" href="{% url 'answer_sheet' %}">Answer Sheet</a>
+                </div>
+            {% endif %}
             <div class="analysisbtn">
                 <a style="color: white;" href={% url 'player_analysis' %}>Analysis</a>
             </div>
@@ -436,11 +444,6 @@
             <div class="btnbtn">
                 <a style="color: white;" href={% url 'button_page' %}>Button</a>
             </div>
-            {% if user.is_authenticated %}
-                <div class="profilebtn">
-                    <a style="color: white;" href="{% url 'player_profile' player_name=user.username %}">{{ user.username }}'s Profile</a>
-                </div>
-            {% endif %}
             <div class="blogbtn">
                 <a style="color: white;" href={% url 'blog_index' %}>Blog</a>
             </div>
