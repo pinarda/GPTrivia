@@ -1,0 +1,133 @@
+import json
+import datetime
+
+from django.contrib.auth.models import User
+from django.test import TestCase
+from django.urls import reverse
+
+from GPTrivia.models import AnswerSheetEntry, GPTriviaRound
+
+
+class AnswerSheetTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="Alex", password="pw")
+        self.client.force_login(self.user)
+
+    def test_answer_sheet_defaults_to_latest_round_date_and_prefills_answers(self):
+        older_round = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Older Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 10),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        latest_round = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Latest Round",
+            major_category="Science",
+            minor_category1="Biology",
+            minor_category2="Life",
+            date=datetime.date(2026, 4, 17),
+            round_number=2,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=latest_round,
+            trivia_date=latest_round.date,
+            answers=["Alpha", "Beta"] + [""] * 8,
+        )
+
+        response = self.client.get(reverse("answer_sheet"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_date"], "2026-04-17")
+        round_pages = response.context["round_pages"]
+        self.assertEqual([page["round_id"] for page in round_pages], [latest_round.id])
+        self.assertEqual(round_pages[0]["answers"][0:2], ["Alpha", "Beta"])
+        self.assertContains(response, "Latest Round")
+        self.assertContains(response, "Alpha\nBeta", html=False)
+        self.assertNotContains(response, "Older Round")
+        self.assertTrue(older_round.id)
+
+    def test_answer_sheet_respects_requested_date(self):
+        older_round = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Older Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 10),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Latest Round",
+            major_category="Science",
+            minor_category1="Biology",
+            minor_category2="Life",
+            date=datetime.date(2026, 4, 17),
+            round_number=2,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+
+        response = self.client.get(reverse("answer_sheet"), {"date": "2026-04-10"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_date"], "2026-04-10")
+        self.assertEqual([page["round_id"] for page in response.context["round_pages"]], [older_round.id])
+
+    def test_save_answer_sheet_entry_creates_and_updates_answers(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Save Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+
+        create_response = self.client.post(
+            reverse("save_answer_sheet_entry"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "One\nTwo\nThree",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(create_response.status_code, 200)
+        entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
+        self.assertEqual(entry.trivia_date, round_obj.date)
+        self.assertEqual(entry.answers[:4], ["One", "Two", "Three", ""])
+        self.assertEqual(len(entry.answers), 10)
+
+        update_response = self.client.post(
+            reverse("save_answer_sheet_entry"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": ["Updated", "Answer"],
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(update_response.status_code, 200)
+        entry.refresh_from_db()
+        self.assertEqual(AnswerSheetEntry.objects.filter(user=self.user, round=round_obj).count(), 1)
+        self.assertEqual(entry.answers[:3], ["Updated", "Answer", ""])

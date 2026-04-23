@@ -219,6 +219,22 @@ class PresentationBuildState(models.Model):
         return f"{self.key}: {'active' if self.is_active else 'idle'}"
 
 
+class AnswerSheetEntry(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='answer_sheet_entries')
+    round = models.ForeignKey('GPTriviaRound', on_delete=models.CASCADE, related_name='answer_sheet_entries')
+    trivia_date = models.DateField(db_index=True)
+    answers = jsonfield.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('user', 'round')]
+        ordering = ['trivia_date', 'round__round_number', 'round_id']
+
+    def __str__(self):
+        return f"{self.user.username} answers for {self.round.title}"
+
+
 class PushSubscription(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     endpoint = models.URLField(unique=True)

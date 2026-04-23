@@ -60,7 +60,7 @@ from datetime import date
 from django.utils import timezone
 from django.http import FileResponse
 from django.core.cache import cache
-from .models import JeopardyQuestion, JeopardyRound, PushSubscription, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun, SubmittedRound
+from .models import AnswerSheetEntry, JeopardyQuestion, JeopardyRound, PushSubscription, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun, SubmittedRound
 from .player_scores import (
     FIXED_SCORE_FIELDS,
     MIN_ANALYSIS_ROUNDS,
@@ -1403,10 +1403,108 @@ def round_analysis_random_question(request):
     selected_entry = random.choice(selected_entries)
     return JsonResponse(_build_round_analysis_question_payload(request, selected_run, selected_entry))
 
+def _normalize_answer_sheet_answers(raw_answers):
+    if isinstance(raw_answers, str):
+        answers = raw_answers.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+    elif isinstance(raw_answers, list):
+        answers = [str(item or '') for item in raw_answers]
+    else:
+        answers = []
+
+    normalized_answers = [str(answer or '').strip() for answer in answers[:10]]
+    if len(normalized_answers) < 10:
+        normalized_answers.extend([''] * (10 - len(normalized_answers)))
+    return normalized_answers
+
+
+def _get_answer_sheet_date_values():
+    return sorted({
+        round_date.isoformat()
+        for round_date in GPTriviaRound.objects.order_by().values_list('date', flat=True).distinct()
+        if round_date
+    }, reverse=True)
+
+
+def _build_answer_sheet_context(user, requested_date=''):
+    date_values = _get_answer_sheet_date_values()
+    parsed_requested_date = _parse_scoresheet_date(requested_date)
+    selected_date = (
+        parsed_requested_date.isoformat()
+        if parsed_requested_date
+        else (date_values[0] if date_values else '')
+    )
+    selected_rounds = list(
+        GPTriviaRound.objects.filter(date=selected_date).order_by('round_number', 'id')
+    ) if selected_date else []
+    saved_entries = {
+        entry.round_id: entry
+        for entry in AnswerSheetEntry.objects.filter(user=user, round_id__in=[round_obj.id for round_obj in selected_rounds])
+    }
+
+    round_pages = []
+    for round_obj in selected_rounds:
+        saved_entry = saved_entries.get(round_obj.id)
+        answers = _normalize_answer_sheet_answers((saved_entry.answers if saved_entry else []))
+        round_pages.append({
+            'round_id': round_obj.id,
+            'round_number': round_obj.round_number,
+            'round_title': round_obj.title,
+            'answers': answers,
+            'answers_text': '\n'.join(answers),
+        })
+
+    return {
+        'date_values': date_values,
+        'selected_date': selected_date,
+        'round_pages': round_pages,
+        'save_url': reverse('save_answer_sheet_entry'),
+    }
+
 
 @login_required
+@ensure_csrf_cookie
 def answer_sheet(request):
-    return render(request, 'GPTrivia/answer_sheet.html')
+    requested_date = (request.GET.get('date') or '').strip()
+    return render(
+        request,
+        'GPTrivia/answer_sheet.html',
+        _build_answer_sheet_context(request.user, requested_date=requested_date),
+    )
+
+
+@login_required
+def save_answer_sheet_entry(request):
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'detail': 'Invalid JSON payload.'}, status=400)
+
+    round_id = payload.get('round_id')
+    try:
+        round_id = int(round_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'round_id must be an integer.'}, status=400)
+
+    round_obj = get_object_or_404(GPTriviaRound, id=round_id)
+    answers = _normalize_answer_sheet_answers(payload.get('answers', []))
+    answer_entry, _ = AnswerSheetEntry.objects.update_or_create(
+        user=request.user,
+        round=round_obj,
+        defaults={
+            'trivia_date': round_obj.date,
+            'answers': answers,
+        },
+    )
+    return JsonResponse({
+        'ok': True,
+        'round_id': round_obj.id,
+        'trivia_date': round_obj.date.isoformat() if round_obj.date else '',
+        'answers': answer_entry.answers,
+        'updated_at': answer_entry.updated_at.isoformat() if answer_entry.updated_at else '',
+    })
 
 
 @login_required
