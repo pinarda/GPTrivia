@@ -558,7 +558,7 @@ body.site-shell .answer-sheet-page input.answer-sheet-score-input[type="text"] {
 }
 
 .answer-sheet-action-button[data-submit-score-for][data-submit-state="graded-dirty"] {
-    border-color: rgba(244, 201, 93, 0.65);
+    border-color: rgba(255, 140, 140, 0.65);
 }
 
 .answer-sheet-action-button[data-submit-score-for][data-submit-state="graded-saved"],
@@ -604,9 +604,12 @@ body.site-shell .answer-sheet-page input.answer-sheet-score-input[type="text"] {
     min-width: 0;
 }
 
-.answer-sheet-status[data-state="saving"],
-.answer-sheet-status[data-state="graded-dirty"] {
+.answer-sheet-status[data-state="saving"] {
     color: #f4c95d;
+}
+
+.answer-sheet-status[data-state="graded-dirty"] {
+    color: #ff8c8c;
 }
 
 .answer-sheet-status[data-state="graded-saved"],
@@ -618,6 +621,10 @@ body.site-shell .answer-sheet-page input.answer-sheet-score-input[type="text"] {
 .answer-sheet-status[data-state="ungraded-dirty"],
 .answer-sheet-status[data-state="error"] {
     color: #ff8c8c;
+}
+
+.answer-sheet-check-label-short {
+    display: none;
 }
 
 .answer-sheet-status[data-state="info"] {
@@ -789,7 +796,7 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-score-input[data-score
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-action-button[data-submit-score-for][data-submit-state="graded-dirty"] {
-    border-color: rgba(184, 116, 18, 0.55);
+    border-color: rgba(191, 63, 63, 0.55);
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-action-button[data-submit-score-for][data-submit-state="graded-saved"],
@@ -801,9 +808,12 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-action-button[data-sub
     border-color: rgba(191, 63, 63, 0.55);
 }
 
-body.site-shell[data-profile-theme="light"] .answer-sheet-status[data-state="saving"],
-body.site-shell[data-profile-theme="light"] .answer-sheet-status[data-state="graded-dirty"] {
+body.site-shell[data-profile-theme="light"] .answer-sheet-status[data-state="saving"] {
     color: #b87412;
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-status[data-state="graded-dirty"] {
+    color: #bf3f3f;
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-status[data-state="graded-saved"],
@@ -944,5 +954,13 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell .mobile-footer-it
 
     .answer-sheet-button-message {
         font-size: 0.74rem;
+    }
+
+    .answer-sheet-check-label-full {
+        display: none;
+    }
+
+    .answer-sheet-check-label-short {
+        display: inline;
     }
 }

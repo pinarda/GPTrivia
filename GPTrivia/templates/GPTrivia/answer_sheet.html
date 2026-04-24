@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260424f">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260424g">
 {% endblock %}
 
 {% block content %}
@@ -81,7 +81,7 @@
                             data-round-id="{{ page.round_id }}"
                             data-grade-disabled-message="{{ page.grade_disabled_message }}"
                             data-check-answers-for="{{ page.round_id }}"
-                        >Check Answers</button>
+                        ><span class="answer-sheet-check-label-full">Check Answers</span><span class="answer-sheet-check-label-short">Check</span></button>
                     </div>
                     {% if page.cooperative %}
                         <button
@@ -796,14 +796,20 @@
             syncLineNumbers(textarea);
             setRoundAnswersDirty(roundId, false);
             if (payload?.grade_payload && scoreInput) {
-                applyGradePayload(roundId, textarea, scoreInput, payload.grade_payload);
+                applyGradePayload(roundId, textarea, scoreInput, payload.grade_payload, {
+                    preserveScoreState: true,
+                });
             } else {
                 clearGradingState(textarea);
+            }
+            if (scoreInput) {
+                setRoundScoreDirty(roundId, false);
             }
             refreshRoundStatus(roundId);
         }
 
-        function applyGradePayload(roundId, textarea, scoreInput, payload) {
+        function applyGradePayload(roundId, textarea, scoreInput, payload, options = {}) {
+            const preserveScoreState = Boolean(options.preserveScoreState);
             const rowCount = Math.max(10, getTextareaLines(textarea).length);
             const nextStates = Array(rowCount).fill('default');
             (payload.row_results || []).forEach((rowResult, index) => {
@@ -815,11 +821,13 @@
             });
             lineStateMap.set(textarea, nextStates);
             renderTextOverlay(textarea);
-            scoreInput.value = payload.score_display || '';
-            setRoundScoreDirty(
-                roundId,
-                scoreValuesDiffer(scoreInput.value, scoreInput.dataset.savedScore || '')
-            );
+            if (!preserveScoreState) {
+                scoreInput.value = payload.score_display || '';
+                setRoundScoreDirty(
+                    roundId,
+                    scoreValuesDiffer(scoreInput.value, scoreInput.dataset.savedScore || '')
+                );
+            }
             refreshRoundStatus(roundId);
         }
 
