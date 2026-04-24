@@ -492,6 +492,19 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("3", matching_answers)
         self.assertIn("third", matching_answers)
 
+    def test_build_possible_answers_with_aliases_accepts_matching_right_side_only(self):
+        matching_answers = _build_possible_answers_with_aliases(
+            "Alex - C. Defender",
+            [],
+            question_text="Alex",
+        )
+        self.assertIn("Defender", matching_answers)
+        self.assertIn("defender", matching_answers)
+        self.assertIn("C", matching_answers)
+        self.assertIn("c", matching_answers)
+        self.assertIn("3", matching_answers)
+        self.assertIn("third", matching_answers)
+
     def test_normalize_analysis_questions_splits_matching_round_into_pairs(self):
         normalized_payload = _normalize_analysis_questions(
             {

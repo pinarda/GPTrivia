@@ -1519,6 +1519,67 @@ def _normalize_analysis_questions(analysis_payload):
     }
 
 
+def _question_suggests_matching_prompt(question_text):
+    normalized_question = str(question_text or '').casefold()
+    if not normalized_question:
+        return False
+    return any(
+        keyword in normalized_question
+        for keyword in ['match', 'matching', 'pair', 'pairs', 'paired', 'connect']
+    )
+
+
+def _extract_matching_right_side_alias_bases(phrase, question_text=''):
+    cleaned_phrase = _normalize_possible_answer_variant(phrase)
+    if not cleaned_phrase:
+        return []
+
+    split_match = re.split(r'\s(?:-|–|—|:|->|=>)\s', cleaned_phrase, maxsplit=1)
+    if len(split_match) != 2:
+        return []
+
+    left_side = _normalize_possible_answer_variant(split_match[0])
+    right_side = _normalize_possible_answer_variant(split_match[1])
+    if not left_side or not right_side:
+        return []
+
+    normalized_question = _normalize_possible_answer_variant(question_text)
+    left_matches_question = bool(
+        normalized_question
+        and (
+            left_side.casefold() == normalized_question.casefold()
+            or normalized_question.casefold() == left_side.casefold()
+        )
+    )
+    if not left_matches_question and not _question_suggests_matching_prompt(question_text):
+        return []
+
+    alias_candidates = [right_side]
+
+    label_number, cleaned_numeric_right = _extract_numeric_prefix(right_side)
+    if cleaned_numeric_right and cleaned_numeric_right.casefold() != right_side.casefold():
+        alias_candidates.append(cleaned_numeric_right)
+    if label_number is not None:
+        alias_candidates.extend(_position_aliases(label_number))
+
+    label_letter, cleaned_alpha_right = _extract_alpha_prefix(right_side)
+    if cleaned_alpha_right and cleaned_alpha_right.casefold() != right_side.casefold():
+        alias_candidates.append(cleaned_alpha_right)
+    if label_letter:
+        alias_candidates.extend(_position_aliases(ord(label_letter) - 64))
+
+    deduped_aliases = []
+    seen_aliases = set()
+    for alias in alias_candidates:
+        normalized_alias = _normalize_possible_answer_variant(alias)
+        alias_key = normalized_alias.casefold()
+        if not normalized_alias or alias_key in seen_aliases:
+            continue
+        seen_aliases.add(alias_key)
+        deduped_aliases.append(normalized_alias)
+    return deduped_aliases
+
+
 def _expand_simple_phrase_forms(phrase, question_text=''):
     cleaned_phrase = _normalize_possible_answer_variant(phrase)
     if not cleaned_phrase:
@@ -1539,6 +1600,7 @@ def _expand_simple_phrase_forms(phrase, question_text=''):
             base_variants.append(f"{remainder}s")
 
     base_variants.extend(_expand_person_name_alias_bases(cleaned_phrase, question_text=question_text))
+    base_variants.extend(_extract_matching_right_side_alias_bases(cleaned_phrase, question_text=question_text))
 
     for base_value in list(base_variants):
         normalized_base_value = _normalize_possible_answer_variant(base_value)
@@ -1657,6 +1719,7 @@ def _generate_additional_possible_answer_aliases(round_obj, question_entries, *,
         "For example, George Washington should accept Washington, and Benjamin Franklin should accept Franklin and Ben Franklin; Franklin should also accept Benjamin Franklin when the clue clearly means that person. "
         "For multiple choice rounds, include option-position aliases when the option order is recoverable, such as A/B/C, 1/2/3, and first/second/third. "
         "For matching rounds, include positional aliases when the option order is recoverable, such as A/B/C, 1/2/3, first/second/third, first/middle/last, and similar equivalents. "
+        "If a matching answer combines the left clue with the right answer, like Alex - Defender, also include right-side-only aliases like Defender in addition to any positional aliases. "
         "For long matching-statement answers, also include a very short one- or two-word gist answer when it would obviously identify the correct option, such as church for a long statement about the Church of England. "
         "Do not include simple capitalization, punctuation, spacing, or hyphen variants; those are already handled elsewhere. "
         "Do not include vague near-misses, broader categories, partial guesses, or anything that changes the meaning. "
