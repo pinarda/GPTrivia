@@ -1428,9 +1428,14 @@ def _get_answer_sheet_date_values():
 def _build_answer_sheet_context(user, requested_date=''):
     date_values = _get_answer_sheet_date_values()
     parsed_requested_date = _parse_scoresheet_date(requested_date)
-    selected_date = (
-        parsed_requested_date.isoformat()
+    selected_date_obj = (
+        parsed_requested_date
         if parsed_requested_date
+        else (_parse_scoresheet_date(date_values[0]) if date_values else None)
+    )
+    selected_date = (
+        selected_date_obj.isoformat()
+        if selected_date_obj
         else (date_values[0] if date_values else '')
     )
     selected_rounds = list(
@@ -1456,6 +1461,7 @@ def _build_answer_sheet_context(user, requested_date=''):
     return {
         'date_values': date_values,
         'selected_date': selected_date,
+        'selected_date_display': selected_date_obj.strftime('%m/%d/%y') if selected_date_obj else '',
         'round_pages': round_pages,
         'save_url': reverse('save_answer_sheet_entry'),
     }

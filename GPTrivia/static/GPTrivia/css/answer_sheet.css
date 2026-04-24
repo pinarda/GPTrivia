@@ -7,20 +7,22 @@
 
 .answer-sheet-header-card,
 .answer-sheet-empty-card,
+.answer-sheet-round-panel,
+.answer-sheet-textarea {
+    border-radius: 0;
+}
+
+.answer-sheet-header-card,
+.answer-sheet-empty-card,
 .answer-sheet-round-panel {
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 20px;
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
 }
 
 .answer-sheet-header-card,
 .answer-sheet-empty-card {
     padding: 20px;
-}
-
-.answer-sheet-header-card h1 {
-    margin: 0 0 8px;
 }
 
 .answer-sheet-header-card p,
@@ -30,37 +32,24 @@
     color: rgba(245, 246, 251, 0.78);
 }
 
-.answer-sheet-toolbar {
+.answer-sheet-header-line {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     justify-content: space-between;
     gap: 12px;
-    margin: 18px 0 14px;
+    font-size: 0.92rem;
+    line-height: 1.2;
 }
 
-.answer-sheet-page-indicator {
-    font-size: 0.95rem;
-    font-weight: 600;
-    letter-spacing: 0.03em;
+.answer-sheet-header-label {
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
-.answer-sheet-nav-button,
-.answer-sheet-dot {
-    border: 0;
-    cursor: pointer;
-}
-
-.answer-sheet-nav-button {
-    padding: 10px 16px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.14);
-    color: #f5f6fb;
-    font: inherit;
-}
-
-.answer-sheet-nav-button:disabled {
-    opacity: 0.45;
-    cursor: default;
+.answer-sheet-header-date {
+    color: rgba(245, 246, 251, 0.78);
+    white-space: nowrap;
 }
 
 .answer-sheet-track {
@@ -102,14 +91,37 @@
     text-transform: uppercase;
 }
 
+.answer-sheet-textarea-shell {
+    display: grid;
+    grid-template-columns: 2.1rem minmax(0, 1fr);
+    align-items: stretch;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(9, 12, 26, 0.52);
+}
+
+.answer-sheet-line-numbers {
+    list-style: none;
+    margin: 0;
+    padding: 14px 0 14px 12px;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(245, 246, 251, 0.38);
+    font: 500 1rem/1.55 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.answer-sheet-line-numbers li {
+    margin: 0;
+    height: 1.55em;
+    display: flex;
+    align-items: center;
+}
+
 .answer-sheet-textarea {
     width: 100%;
     min-height: 18rem;
     box-sizing: border-box;
     resize: vertical;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(9, 12, 26, 0.52);
+    border: 0;
+    background: transparent;
     color: #f5f6fb;
     padding: 14px 16px;
     font: 500 1rem/1.55 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -143,23 +155,15 @@
     color: #ff8c8c;
 }
 
-.answer-sheet-dots {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 16px;
-}
-
-.answer-sheet-dot {
-    width: 10px;
-    height: 10px;
-    padding: 0;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.28);
-}
-
-.answer-sheet-dot.is-active {
-    background: #f5f6fb;
+body.site-shell.answer-sheet-shell footer,
+body.site-shell.answer-sheet-shell .footer-container,
+body.site-shell.answer-sheet-shell .footer-content,
+body.site-shell.answer-sheet-shell .footer-bottom {
+    background: #2d3047 !important;
+    background-image: none !important;
+    opacity: 1 !important;
+    backdrop-filter: none !important;
+    border-radius: 0 !important;
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-page {
@@ -177,18 +181,22 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-round-panel {
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-card p,
 body.site-shell[data-profile-theme="light"] .answer-sheet-round-header p,
 body.site-shell[data-profile-theme="light"] .answer-sheet-round-kicker,
-body.site-shell[data-profile-theme="light"] .answer-sheet-status {
+body.site-shell[data-profile-theme="light"] .answer-sheet-status,
+body.site-shell[data-profile-theme="light"] .answer-sheet-header-date {
     color: rgba(27, 37, 48, 0.72);
 }
 
-body.site-shell[data-profile-theme="light"] .answer-sheet-nav-button {
-    background: rgba(45, 48, 71, 0.1);
-    color: #1b2530;
+body.site-shell[data-profile-theme="light"] .answer-sheet-textarea-shell {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(45, 48, 71, 0.16);
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-line-numbers {
+    border-right-color: rgba(45, 48, 71, 0.12);
+    color: rgba(27, 37, 48, 0.4);
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-textarea {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(45, 48, 71, 0.16);
     color: #1b2530;
 }
 
@@ -196,12 +204,12 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-textarea::placeholder 
     color: rgba(27, 37, 48, 0.32);
 }
 
-body.site-shell[data-profile-theme="light"] .answer-sheet-dot {
-    background: rgba(45, 48, 71, 0.22);
-}
-
-body.site-shell[data-profile-theme="light"] .answer-sheet-dot.is-active {
-    background: #1b2530;
+body.site-shell[data-profile-theme="light"].answer-sheet-shell footer,
+body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-container,
+body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-content,
+body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-bottom {
+    background: #f3eee7 !important;
+    color: #1b2530 !important;
 }
 
 @media (max-width: 700px) {
@@ -209,16 +217,22 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-dot.is-active {
         padding: 18px 12px 36px;
     }
 
-    .answer-sheet-toolbar {
-        margin-top: 14px;
-    }
-
-    .answer-sheet-nav-button {
-        padding: 9px 14px;
+    .answer-sheet-header-line {
+        gap: 8px;
+        font-size: 0.84rem;
     }
 
     .answer-sheet-round-panel {
         padding: 16px;
+    }
+
+    .answer-sheet-textarea-shell {
+        grid-template-columns: 1.9rem minmax(0, 1fr);
+    }
+
+    .answer-sheet-line-numbers {
+        padding-left: 10px;
+        font-size: 0.98rem;
     }
 
     .answer-sheet-textarea {

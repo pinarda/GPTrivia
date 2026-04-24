@@ -2,65 +2,48 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423a">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423b">
 {% endblock %}
 
 {% block content %}
 <div class="answer-sheet-page" data-save-url="{{ save_url }}" data-selected-date="{{ selected_date }}">
     <section class="answer-sheet-header-card">
-        <div>
-            <h1>Answer Sheet</h1>
-            {% if selected_date %}
-                <p>Answers for the most recent trivia night on {{ selected_date }}.</p>
-            {% else %}
-                <p>No trivia rounds are available yet.</p>
+        <div class="answer-sheet-header-line">
+            <span class="answer-sheet-header-label">Answer Sheet</span>
+            {% if selected_date_display %}
+                <span class="answer-sheet-header-date">{{ selected_date_display }}</span>
             {% endif %}
         </div>
     </section>
 
     {% if round_pages %}
-        <div class="answer-sheet-toolbar">
-            <button class="answer-sheet-nav-button" type="button" data-answer-sheet-nav="prev">Previous</button>
-            <div class="answer-sheet-page-indicator">
-                <span data-answer-sheet-current>1</span>
-                <span>/</span>
-                <span>{{ round_pages|length }}</span>
-            </div>
-            <button class="answer-sheet-nav-button" type="button" data-answer-sheet-nav="next">Next</button>
-        </div>
-
         <div class="answer-sheet-track" id="answer-sheet-track">
             {% for page in round_pages %}
                 <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}">
                     <div class="answer-sheet-round-header">
                         <div class="answer-sheet-round-kicker">Round {{ page.round_number }}</div>
                         <h2>{{ page.round_title }}</h2>
-                        <p>Enter one answer per line.</p>
                     </div>
 
-                    <textarea
-                        class="answer-sheet-textarea"
-                        rows="10"
-                        data-round-id="{{ page.round_id }}"
-                        placeholder="1.&#10;2.&#10;3.&#10;4.&#10;5.&#10;6.&#10;7.&#10;8.&#10;9.&#10;10."
-                        spellcheck="false"
-                    >{{ page.answers_text }}</textarea>
+                    <div class="answer-sheet-textarea-shell">
+                        <ol class="answer-sheet-line-numbers" aria-hidden="true">
+                            {% for answer in page.answers %}
+                                <li>{{ forloop.counter }}</li>
+                            {% endfor %}
+                        </ol>
+
+                        <textarea
+                            class="answer-sheet-textarea"
+                            rows="10"
+                            data-round-id="{{ page.round_id }}"
+                            spellcheck="false"
+                        >{{ page.answers_text }}</textarea>
+                    </div>
 
                     <div class="answer-sheet-status-row">
                         <span class="answer-sheet-status" data-status-for="{{ page.round_id }}">Saved</span>
                     </div>
                 </section>
-            {% endfor %}
-        </div>
-
-        <div class="answer-sheet-dots" aria-hidden="true">
-            {% for page in round_pages %}
-                <button
-                    class="answer-sheet-dot{% if forloop.first %} is-active{% endif %}"
-                    type="button"
-                    data-answer-sheet-dot="{{ forloop.counter0 }}"
-                    aria-label="Open round {{ page.round_number }}"
-                ></button>
             {% endfor %}
         </div>
     {% else %}
@@ -84,13 +67,10 @@
             return;
         }
 
-        const currentIndicator = pageRoot.querySelector('[data-answer-sheet-current]');
-        const prevButton = pageRoot.querySelector('[data-answer-sheet-nav="prev"]');
-        const nextButton = pageRoot.querySelector('[data-answer-sheet-nav="next"]');
-        const dotButtons = Array.from(pageRoot.querySelectorAll('[data-answer-sheet-dot]'));
         const textareas = Array.from(pageRoot.querySelectorAll('.answer-sheet-textarea'));
         const saveUrl = pageRoot.dataset.saveUrl || '';
         const saveTimers = new Map();
+        document.body.classList.add('answer-sheet-shell');
 
         function getCsrfToken() {
             const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
@@ -104,35 +84,6 @@
             }
             status.textContent = message;
             status.dataset.state = state || '';
-        }
-
-        function roundIndexFromScroll() {
-            const panelWidth = track.clientWidth || 1;
-            return Math.max(0, Math.min(dotButtons.length - 1, Math.round(track.scrollLeft / panelWidth)));
-        }
-
-        function updateActiveRound(index) {
-            if (currentIndicator) {
-                currentIndicator.textContent = String(index + 1);
-            }
-            dotButtons.forEach((button, buttonIndex) => {
-                button.classList.toggle('is-active', buttonIndex === index);
-            });
-            if (prevButton) {
-                prevButton.disabled = index <= 0;
-            }
-            if (nextButton) {
-                nextButton.disabled = index >= dotButtons.length - 1;
-            }
-        }
-
-        function scrollToRound(index) {
-            const boundedIndex = Math.max(0, Math.min(dotButtons.length - 1, index));
-            track.scrollTo({
-                left: boundedIndex * track.clientWidth,
-                behavior: 'smooth',
-            });
-            updateActiveRound(boundedIndex);
         }
 
         async function saveAnswers(roundId, value) {
@@ -173,24 +124,6 @@
                 }, 500));
             });
         });
-
-        track.addEventListener('scroll', () => {
-            window.requestAnimationFrame(() => updateActiveRound(roundIndexFromScroll()));
-        }, { passive: true });
-
-        if (prevButton) {
-            prevButton.addEventListener('click', () => scrollToRound(roundIndexFromScroll() - 1));
-        }
-        if (nextButton) {
-            nextButton.addEventListener('click', () => scrollToRound(roundIndexFromScroll() + 1));
-        }
-        dotButtons.forEach((button) => {
-            button.addEventListener('click', () => {
-                scrollToRound(Number(button.dataset.answerSheetDot || 0));
-            });
-        });
-
-        updateActiveRound(0);
     }());
 </script>
 {% endblock %}
