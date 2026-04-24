@@ -581,6 +581,39 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("B", normalized_payload["questions"][1]["additional_possible_answers"])
         self.assertIn("2", normalized_payload["questions"][1]["additional_possible_answers"])
 
+    def test_normalize_analysis_questions_adds_position_aliases_for_pre_split_matching_entries(self):
+        normalized_payload = _normalize_analysis_questions(
+            {
+                "round_type": "matching",
+                "notes": "",
+                "questions": [
+                    {
+                        "question_number": 1,
+                        "source_slide_number": 3,
+                        "question_text": "Mercury",
+                        "instruction_text": (
+                            "Match Mercury to the correct description.\n"
+                            "A. first planet from the Sun\n"
+                            "B. second planet from the Sun\n"
+                            "C. third planet from the Sun"
+                        ),
+                        "answer_text": "third planet from the Sun",
+                        "media_kind": "",
+                        "major_category": "Science",
+                        "minor_category1": "",
+                        "minor_category2": "",
+                    },
+                ],
+            }
+        )
+
+        self.assertEqual(len(normalized_payload["questions"]), 1)
+        self.assertEqual(normalized_payload["questions"][0]["answer_text"], "third planet from the Sun")
+        self.assertIn("C", normalized_payload["questions"][0]["additional_possible_answers"])
+        self.assertIn("3", normalized_payload["questions"][0]["additional_possible_answers"])
+        self.assertIn("third", normalized_payload["questions"][0]["additional_possible_answers"])
+        self.assertIn("last", normalized_payload["questions"][0]["additional_possible_answers"])
+
     def test_round_analysis_question_can_include_saved_image_payload(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
@@ -755,6 +788,70 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("c", entry.possible_answers)
         self.assertIn("3", entry.possible_answers)
         self.assertIn("third", entry.possible_answers)
+
+    @patch(
+        "GPTrivia.round_analysis._generate_additional_possible_answer_aliases",
+        return_value={},
+    )
+    @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
+    def test_store_round_analysis_split_matching_question_accepts_position_aliases(self, correctness_mock, aliases_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Split Matching Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=3,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/split-matching-round/edit#slide=id.r1",
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+        )
+
+        _store_round_analysis(
+            run,
+            {
+                "presentation_id": "split-matching-presentation",
+                "slide_range_label": "1-2",
+                "slides": [],
+            },
+            {
+                "round_type": "matching",
+                "notes": "",
+                "questions": [
+                    {
+                        "question_number": 1,
+                        "source_slide_number": 1,
+                        "question_text": "Mercury",
+                        "instruction_text": (
+                            "Match Mercury to the correct description.\n"
+                            "A. first planet from the Sun\n"
+                            "B. second planet from the Sun\n"
+                            "C. third planet from the Sun"
+                        ),
+                        "answer_text": "third planet from the Sun",
+                        "media_kind": "",
+                        "major_category": "Science",
+                        "minor_category1": "",
+                        "minor_category2": "",
+                    },
+                ],
+            },
+        )
+
+        entry = RoundQuestionAnalysisEntry.objects.get(run=run, question_number=1)
+        self.assertEqual(entry.answer_text, "third planet from the Sun")
+        self.assertIn("third planet from the Sun", entry.possible_answers)
+        self.assertIn("C", entry.possible_answers)
+        self.assertIn("c", entry.possible_answers)
+        self.assertIn("3", entry.possible_answers)
+        self.assertIn("third", entry.possible_answers)
+        self.assertIn("last", entry.possible_answers)
 
     def test_round_analysis_random_question_excludes_music_rounds(self):
         music_round = GPTriviaRound.objects.create(

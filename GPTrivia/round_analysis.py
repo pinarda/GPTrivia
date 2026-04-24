@@ -1625,6 +1625,82 @@ def _expand_matching_question_entry(entry):
     return expanded_entries
 
 
+def _derive_matching_position_aliases(entry):
+    combined_question_text = '\n'.join(
+        text
+        for text in [
+            str(entry.get('question_text') or '').strip(),
+            str(entry.get('instruction_text') or '').strip(),
+        ]
+        if text
+    )
+    option_items = []
+    for line in _split_analysis_text_lines(combined_question_text):
+        alpha_match = re.match(r'^\s*([A-Za-z])[\)\].:\-]+\s*(.+?)\s*$', line)
+        if not alpha_match:
+            continue
+        option_items.append(
+            {
+                'index': ord(alpha_match.group(1).upper()) - 64,
+                'text': _normalize_text_content(alpha_match.group(2)),
+            }
+        )
+    if not option_items:
+        for line in _split_analysis_text_lines(combined_question_text):
+            numeric_match = re.match(r'^\s*(\d+)[\)\].:\-]+\s*(.+?)\s*$', line)
+            if not numeric_match:
+                continue
+            option_items.append(
+                {
+                    'index': int(numeric_match.group(1)),
+                    'text': _normalize_text_content(numeric_match.group(2)),
+                }
+            )
+
+    if len(option_items) < 2:
+        return []
+
+    answer_text = str(entry.get('answer_text') or '').strip()
+    if not answer_text:
+        return []
+
+    total_count = len(option_items)
+    matched_index = _position_token_to_index(answer_text, total_count=total_count)
+
+    strict_alpha_match = re.match(r'^\s*([A-Za-z])[\)\].:\-]+\s*(.+?)\s*$', answer_text)
+    cleaned_alpha_answer = _normalize_text_content(strict_alpha_match.group(2)) if strict_alpha_match else ''
+    if not matched_index and strict_alpha_match:
+        matched_index = ord(strict_alpha_match.group(1).upper()) - 64
+
+    strict_numeric_match = re.match(r'^\s*(\d+)[\)\].:\-]+\s*(.+?)\s*$', answer_text)
+    cleaned_numeric_answer = _normalize_text_content(strict_numeric_match.group(2)) if strict_numeric_match else ''
+    if not matched_index and strict_numeric_match:
+        matched_index = int(strict_numeric_match.group(1))
+
+    answer_candidates = [answer_text]
+    if cleaned_alpha_answer and cleaned_alpha_answer.casefold() != answer_text.casefold():
+        answer_candidates.append(cleaned_alpha_answer)
+    if cleaned_numeric_answer and cleaned_numeric_answer.casefold() != answer_text.casefold():
+        answer_candidates.append(cleaned_numeric_answer)
+    answer_candidates.extend(
+        _extract_matching_right_side_alias_bases(
+            answer_text,
+            question_text=str(entry.get('question_text') or '').strip() or combined_question_text,
+        )
+    )
+
+    if not matched_index:
+        for option_item in option_items:
+            option_text = str(option_item.get('text') or '').strip()
+            if any(_choice_text_matches_answer(option_text, candidate) for candidate in answer_candidates):
+                matched_index = int(option_item.get('index') or 0)
+                break
+
+    if not matched_index:
+        return []
+    return _position_aliases(matched_index, total_count=total_count)
+
+
 def _derive_multiple_choice_position_aliases(entry):
     combined_question_text = '\n'.join(
         text
@@ -1671,6 +1747,14 @@ def _normalize_analysis_questions(analysis_payload):
             if expanded_entries:
                 normalized_questions.extend(expanded_entries)
                 continue
+            additional_aliases = _derive_matching_position_aliases(normalized_entry)
+            if additional_aliases:
+                existing_aliases = list(normalized_entry.get('additional_possible_answers') or [])
+                normalized_entry['additional_possible_answers'] = [
+                    alias
+                    for alias in [*existing_aliases, *additional_aliases]
+                    if alias
+                ]
         if normalized_round_type == 'multiple choice':
             additional_aliases = _derive_multiple_choice_position_aliases(normalized_entry)
             if additional_aliases:
