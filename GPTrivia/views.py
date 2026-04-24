@@ -1524,6 +1524,52 @@ def _get_answer_sheet_round_player_fields(round_obj, current_user_player_field='
     return normalized
 
 
+def _get_answer_sheet_shared_users(round_obj, current_user=None):
+    current_user_player_field = player_field_for_name(getattr(current_user, 'username', '')) if current_user else ''
+    candidate_names = [
+        display_name_for_player_field(player_field)
+        for player_field in _get_answer_sheet_round_player_fields(
+            round_obj,
+            current_user_player_field=current_user_player_field,
+        )
+    ]
+    if current_user and getattr(current_user, 'is_authenticated', False):
+        candidate_names.append(str(current_user.username or '').strip())
+
+    normalized_names = []
+    seen_names = set()
+    for candidate_name in candidate_names:
+        normalized_name = str(candidate_name or '').strip()
+        if not normalized_name:
+            continue
+        folded_name = normalized_name.casefold()
+        if folded_name in seen_names:
+            continue
+        seen_names.add(folded_name)
+        normalized_names.append(normalized_name)
+
+    if not normalized_names:
+        return [current_user] if current_user and getattr(current_user, 'is_authenticated', False) else []
+
+    users_by_username = {
+        user.username.casefold(): user
+        for user in User.objects.only('id', 'username')
+        if str(user.username or '').strip()
+    }
+    shared_users = []
+    seen_user_ids = set()
+    for candidate_name in normalized_names:
+        matched_user = users_by_username.get(candidate_name.casefold())
+        if not matched_user or matched_user.id in seen_user_ids:
+            continue
+        seen_user_ids.add(matched_user.id)
+        shared_users.append(matched_user)
+
+    if current_user and getattr(current_user, 'is_authenticated', False) and current_user.id not in seen_user_ids:
+        shared_users.append(current_user)
+    return shared_users
+
+
 def _get_answer_sheet_date_values():
     return sorted({
         round_date.isoformat()
@@ -1591,6 +1637,7 @@ def _build_answer_sheet_context(user, requested_date=''):
             'round_id': round_obj.id,
             'round_number': round_obj.round_number,
             'round_title': round_obj.title,
+            'cooperative': bool(round_obj.cooperative),
             'grade_enabled': grade_enabled,
             'grade_disabled_message': grade_disabled_message,
             'answers': answers,
@@ -1603,6 +1650,7 @@ def _build_answer_sheet_context(user, requested_date=''):
         'selected_date': selected_date,
         'selected_date_display': selected_date_obj.strftime('%m/%d/%y') if selected_date_obj else '',
         'round_pages': round_pages,
+        'has_cooperative_rounds': any(page['cooperative'] for page in round_pages),
         'save_url': reverse('save_answer_sheet_entry'),
         'submit_score_url': reverse('submit_answer_sheet_score'),
         'grade_url': reverse('grade_answer_sheet_round'),
@@ -1638,20 +1686,47 @@ def save_answer_sheet_entry(request):
 
     round_obj = get_object_or_404(GPTriviaRound, id=round_id)
     answers = _normalize_answer_sheet_answers(payload.get('answers', []))
-    answer_entry, _ = AnswerSheetEntry.objects.update_or_create(
-        user=request.user,
-        round=round_obj,
-        defaults={
-            'trivia_date': round_obj.date,
-            'answers': answers,
-        },
-    )
+    client_id = str(payload.get('client_id') or '').strip()
+
+    target_users = [request.user]
+    if round_obj.cooperative:
+        target_users = _get_answer_sheet_shared_users(round_obj, current_user=request.user)
+        if not target_users:
+            target_users = [request.user]
+
+    with transaction.atomic():
+        updated_entries = {}
+        for target_user in target_users:
+            answer_entry, _ = AnswerSheetEntry.objects.update_or_create(
+                user=target_user,
+                round=round_obj,
+                defaults={
+                    'trivia_date': round_obj.date,
+                    'answers': answers,
+                },
+            )
+            updated_entries[target_user.id] = answer_entry
+
+        response_entry = updated_entries.get(request.user.id) or next(iter(updated_entries.values()))
+
+        if round_obj.cooperative:
+            _schedule_scoresheet_broadcast({
+                'action': 'answer_sheet',
+                'event': 'answer_sheet_save',
+                'selected_date': round_obj.date.isoformat() if round_obj.date else '',
+                'round_id': round_obj.id,
+                'client_id': client_id,
+                'answers': answers,
+                'updated_at': response_entry.updated_at.isoformat() if response_entry.updated_at else '',
+            })
+
     return JsonResponse({
         'ok': True,
         'round_id': round_obj.id,
         'trivia_date': round_obj.date.isoformat() if round_obj.date else '',
-        'answers': answer_entry.answers,
-        'updated_at': answer_entry.updated_at.isoformat() if answer_entry.updated_at else '',
+        'answers': response_entry.answers,
+        'updated_at': response_entry.updated_at.isoformat() if response_entry.updated_at else '',
+        'shared': bool(round_obj.cooperative),
     })
 
 

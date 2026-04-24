@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-grade-url="{{ grade_url }}" data-selected-date="{{ selected_date }}">
+<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-grade-url="{{ grade_url }}" data-selected-date="{{ selected_date }}" data-has-cooperative-rounds="{% if has_cooperative_rounds %}true{% else %}false{% endif %}">
     <section class="answer-sheet-header-card">
         <div class="answer-sheet-header-line">
             <span class="answer-sheet-header-label">Answer Sheet</span>
@@ -109,9 +109,18 @@
         const saveUrl = pageRoot.dataset.saveUrl || '';
         const submitScoreUrl = pageRoot.dataset.submitScoreUrl || '';
         const gradeUrl = pageRoot.dataset.gradeUrl || '';
+        const selectedDate = pageRoot.dataset.selectedDate || '';
+        const hasCooperativeRounds = pageRoot.dataset.hasCooperativeRounds === 'true';
         const saveTimers = new Map();
         const buttonMessageTimers = new Map();
         const lineStateMap = new WeakMap();
+        const localClientId = (
+            window.crypto && typeof window.crypto.randomUUID === 'function'
+                ? window.crypto.randomUUID()
+                : `answer-sheet-${Date.now()}-${Math.random().toString(16).slice(2)}`
+        );
+        let wsRef = null;
+        let pingIntervalRef = null;
         document.body.classList.add('answer-sheet-shell');
 
         function getCsrfToken() {
@@ -297,6 +306,19 @@
             }
         }
 
+        function applySharedAnswersUpdate(roundId, answers) {
+            const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
+            if (!textarea) {
+                return;
+            }
+            const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
+            const normalizedAnswers = Array.isArray(answers) ? answers.map((answer) => String(answer || '')) : [];
+            textarea.value = normalizedAnswers.join('\n');
+            clearGradingState(textarea, scoreInput);
+            syncLineNumbers(textarea);
+            setStatus(roundId, 'Saved', 'saved');
+        }
+
         function ensureMinimumTextareaLines(textarea) {
             const minimumRows = 10;
             const normalizedValue = textarea.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -365,6 +387,7 @@
                     body: JSON.stringify({
                         round_id: roundId,
                         answers: value.split(/\r?\n/),
+                        client_id: localClientId,
                     }),
                 });
                 if (!response.ok) {
@@ -564,6 +587,57 @@
                 showButtonMessage(roundId, message);
             });
         });
+
+        if (hasCooperativeRounds && typeof WebSocket !== 'undefined') {
+            const websocketUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/scoresheet/`;
+            wsRef = new WebSocket(websocketUrl);
+            wsRef.onopen = () => {
+                if (pingIntervalRef) {
+                    window.clearInterval(pingIntervalRef);
+                }
+                pingIntervalRef = window.setInterval(() => {
+                    if (wsRef && wsRef.readyState === WebSocket.OPEN) {
+                        wsRef.send(JSON.stringify({ type: 'ping' }));
+                    }
+                }, 30000);
+            };
+            wsRef.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'pong' || !data.message) {
+                        return;
+                    }
+                    const message = data.message || {};
+                    if (
+                        message.action !== 'answer_sheet'
+                        || message.event !== 'answer_sheet_save'
+                        || String(message.selected_date || '') !== String(selectedDate || '')
+                        || String(message.client_id || '') === localClientId
+                    ) {
+                        return;
+                    }
+                    applySharedAnswersUpdate(String(message.round_id || ''), message.answers || []);
+                } catch (error) {
+                    console.error('Error processing answer sheet websocket message:', error);
+                }
+            };
+            wsRef.onclose = () => {
+                if (pingIntervalRef) {
+                    window.clearInterval(pingIntervalRef);
+                    pingIntervalRef = null;
+                }
+            };
+            window.addEventListener('beforeunload', () => {
+                if (pingIntervalRef) {
+                    window.clearInterval(pingIntervalRef);
+                    pingIntervalRef = null;
+                }
+                if (wsRef) {
+                    wsRef.close();
+                    wsRef = null;
+                }
+            });
+        }
 
         updateActiveDot(roundIndexFromScroll());
     }());

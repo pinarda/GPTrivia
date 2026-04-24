@@ -1,5 +1,6 @@
 import json
 import datetime
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -176,6 +177,78 @@ class AnswerSheetTests(TestCase):
         round_pages = response.context["round_pages"]
         self.assertEqual(len(round_pages[0]["answers"]), 12)
         self.assertIn("Answer 11\nAnswer 12", round_pages[0]["answers_text"])
+
+    def test_save_answer_sheet_entry_shares_cooperative_answers_across_players_for_night(self):
+        megan = User.objects.create_user(username="Megan", password="pw")
+        jenny = User.objects.create_user(username="Jenny", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Shared Co-op Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+                "score_jenny": "score_jenny",
+            },
+        )
+
+        with patch("GPTrivia.views._broadcast_scoresheet_message") as broadcast:
+            with self.captureOnCommitCallbacks(execute=False) as callbacks:
+                response = self.client.post(
+                    reverse("save_answer_sheet_entry"),
+                    data=json.dumps({
+                        "round_id": round_obj.id,
+                        "answers": "One\nTwo\nThree",
+                        "client_id": "coop-client-1",
+                    }),
+                    content_type="application/json",
+                )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(AnswerSheetEntry.objects.filter(round=round_obj).count(), 3)
+            self.assertEqual(
+                AnswerSheetEntry.objects.get(user=self.user, round=round_obj).answers[:4],
+                ["One", "Two", "Three", ""],
+            )
+            self.assertEqual(
+                AnswerSheetEntry.objects.get(user=megan, round=round_obj).answers[:4],
+                ["One", "Two", "Three", ""],
+            )
+            self.assertEqual(
+                AnswerSheetEntry.objects.get(user=jenny, round=round_obj).answers[:4],
+                ["One", "Two", "Three", ""],
+            )
+            self.assertTrue(response.json()["shared"])
+            self.assertEqual(len(callbacks), 1)
+            broadcast.assert_not_called()
+
+            callbacks[0]()
+            broadcast.assert_called_once()
+            message = broadcast.call_args.args[0]
+            self.assertEqual(message["action"], "answer_sheet")
+            self.assertEqual(message["event"], "answer_sheet_save")
+            self.assertEqual(message["client_id"], "coop-client-1")
+            self.assertEqual(message["round_id"], round_obj.id)
+            self.assertEqual(message["answers"][:4], ["One", "Two", "Three", ""])
+
+        other_client = self.client_class()
+        other_client.force_login(jenny)
+        shared_response = other_client.get(reverse("answer_sheet"), {"date": trivia_date.isoformat()})
+        self.assertEqual(shared_response.status_code, 200)
+        round_pages = shared_response.context["round_pages"]
+        self.assertEqual(round_pages[0]["answers"][:4], ["One", "Two", "Three", ""])
 
     def test_answer_sheet_prefills_current_user_score(self):
         round_obj = GPTriviaRound.objects.create(
