@@ -721,6 +721,77 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(payload["row_results"][2]["state"], "incorrect")
         self.assertEqual(payload["row_results"][3]["state"], "blank")
 
+    def test_grade_answer_sheet_round_tolerates_punctuation_initialisms_and_one_char_typos(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Flexible Grade Round",
+            major_category="History",
+            minor_category1="People",
+            minor_category2="Film",
+            date=datetime.date(2026, 4, 17),
+            round_number=2,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="Which Best Picture winner stars Colin Firth as King George VI?",
+            answer_text="King's Speech",
+            possible_answers=[],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=2,
+            question_text="Which founding father appears on the $100 bill?",
+            answer_text="Benjamin Franklin",
+            possible_answers=[],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=3,
+            question_text="Name the Star Wars sequel released in 1980.",
+            answer_text="Star Wars: The Empire Strikes Back",
+            possible_answers=[],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+
+        response = self.client.post(
+            reverse("grade_answer_sheet_round"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "The kings speech\nbj\nesb\n",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["score"], 3)
+        self.assertEqual(payload["row_results"][0]["state"], "correct")
+        self.assertEqual(payload["row_results"][1]["state"], "correct")
+        self.assertEqual(payload["row_results"][2]["state"], "correct")
+
     def test_grade_answer_sheet_round_rejects_matching_round(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
@@ -756,7 +827,7 @@ class AnswerSheetTests(TestCase):
         )
 
     def test_grade_answer_sheet_round_broadcasts_for_shared_coop_round(self):
-        User.objects.create_user(username="Megan", password="pw")
+        megan = User.objects.create_user(username="Megan", password="pw")
         trivia_date = datetime.date(2026, 4, 17)
         round_obj = GPTriviaRound.objects.create(
             creator="Megan",
@@ -769,6 +840,14 @@ class AnswerSheetTests(TestCase):
             max_score=10,
             replay=False,
             cooperative=True,
+        )
+        MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+            },
         )
         run = RoundQuestionAnalysisRun.objects.create(
             round=round_obj,
@@ -809,6 +888,15 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(message["event"], "answer_sheet_grade")
         self.assertEqual(message["client_id"], "grade-client-1")
         self.assertEqual(message["score_display"], "1")
+        self.assertEqual(message["answers"][:1], ["Zebra"])
+        self.assertEqual(
+            AnswerSheetEntry.objects.get(user=self.user, round=round_obj).answers[:1],
+            ["Zebra"],
+        )
+        self.assertEqual(
+            AnswerSheetEntry.objects.get(user=megan, round=round_obj).answers[:1],
+            ["Zebra"],
+        )
 
     def test_grade_answer_sheet_round_does_not_broadcast_for_diverged_coop_round(self):
         User.objects.create_user(username="Megan", password="pw")

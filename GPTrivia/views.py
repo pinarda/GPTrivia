@@ -1435,8 +1435,97 @@ def _normalize_answer_sheet_score(raw_score):
 
 
 def _normalize_answer_sheet_grade_value(raw_value):
-    normalized_value = re.sub(r'\s+', ' ', str(raw_value or '').strip())
-    return normalized_value.strip(" \t\r\n.;:!?\"'").casefold()
+    normalized_value = str(raw_value or '').casefold()
+    normalized_value = normalized_value.replace('&', ' and ')
+    normalized_value = re.sub(r"[’']", '', normalized_value)
+    normalized_value = re.sub(r'[^0-9a-z]+', ' ', normalized_value)
+    normalized_value = re.sub(r'\s+', ' ', normalized_value)
+    return normalized_value.strip()
+
+
+def _strip_answer_sheet_leading_article(value):
+    normalized_value = _normalize_answer_sheet_grade_value(value)
+    return re.sub(r'^(?:a|an|the)\s+', '', normalized_value, flags=re.IGNORECASE)
+
+
+def _answer_sheet_initialism(value):
+    normalized_value = _normalize_answer_sheet_grade_value(value)
+    if not normalized_value:
+        return ''
+    tokens = [
+        token for token in normalized_value.split()
+        if token and token not in {'a', 'an', 'the', 'of', 'and'}
+    ]
+    if len(tokens) < 2:
+        return ''
+    initialism = ''.join(token[0] for token in tokens if token)
+    if len(initialism) < 2 or len(initialism) > 5:
+        return ''
+    return initialism
+
+
+def _answer_sheet_grade_forms(raw_value):
+    normalized_value = _normalize_answer_sheet_grade_value(raw_value)
+    if not normalized_value:
+        return set()
+
+    forms = {normalized_value}
+    articleless_value = _strip_answer_sheet_leading_article(normalized_value)
+    if articleless_value:
+        forms.add(articleless_value)
+
+    compact_forms = {form.replace(' ', '') for form in list(forms) if form}
+    forms.update(form for form in compact_forms if form)
+
+    initialism = _answer_sheet_initialism(normalized_value)
+    if initialism:
+        forms.add(initialism)
+
+    return {form for form in forms if form}
+
+
+def _answer_sheet_edit_distance(left_value, right_value):
+    if left_value == right_value:
+        return 0
+    if not left_value:
+        return len(right_value)
+    if not right_value:
+        return len(left_value)
+    if len(left_value) > len(right_value):
+        left_value, right_value = right_value, left_value
+
+    previous_row = list(range(len(left_value) + 1))
+    for right_index, right_char in enumerate(right_value, start=1):
+        current_row = [right_index]
+        for left_index, left_char in enumerate(left_value, start=1):
+            insertion_cost = current_row[left_index - 1] + 1
+            deletion_cost = previous_row[left_index] + 1
+            substitution_cost = previous_row[left_index - 1] + (0 if left_char == right_char else 1)
+            current_row.append(min(insertion_cost, deletion_cost, substitution_cost))
+        previous_row = current_row
+    return previous_row[-1]
+
+
+def _answer_sheet_forms_match(guess_forms, accepted_forms):
+    if not guess_forms or not accepted_forms:
+        return False
+    if guess_forms.intersection(accepted_forms):
+        return True
+
+    for guess_form in guess_forms:
+        if not guess_form:
+            continue
+        for accepted_form in accepted_forms:
+            if not accepted_form:
+                continue
+            if abs(len(guess_form) - len(accepted_form)) > 1:
+                continue
+            if len(guess_form) <= 3 or len(accepted_form) <= 3:
+                if guess_form[0] != accepted_form[0]:
+                    continue
+            if _answer_sheet_edit_distance(guess_form, accepted_form) <= 1:
+                return True
+    return False
 
 
 def _extract_answer_sheet_line_answer(line_text):
@@ -1448,11 +1537,17 @@ def _extract_answer_sheet_line_answer(line_text):
 
 
 def _build_answer_sheet_accepted_answers(entry):
+    from .round_analysis import _build_possible_answers_with_aliases
+
     accepted_answers = []
-    for candidate in [entry.answer_text, *(entry.possible_answers or [])]:
-        normalized_candidate = _normalize_answer_sheet_grade_value(candidate)
-        if normalized_candidate and normalized_candidate not in accepted_answers:
-            accepted_answers.append(normalized_candidate)
+    for candidate in _build_possible_answers_with_aliases(
+        entry.answer_text,
+        entry.possible_answers or [],
+        question_text=entry.question_text,
+    ):
+        for normalized_candidate in _answer_sheet_grade_forms(candidate):
+            if normalized_candidate and normalized_candidate not in accepted_answers:
+                accepted_answers.append(normalized_candidate)
     return accepted_answers
 
 
@@ -1475,13 +1570,13 @@ def _grade_answer_sheet_answers(round_obj, answers):
 
     for index, raw_line in enumerate(normalized_answers, start=1):
         extracted_answer = _extract_answer_sheet_line_answer(raw_line)
-        normalized_guess = _normalize_answer_sheet_grade_value(extracted_answer)
+        normalized_guess_forms = _answer_sheet_grade_forms(extracted_answer)
         entry = entries_by_question.get(index)
         accepted_answers = _build_answer_sheet_accepted_answers(entry) if entry else []
 
-        if not normalized_guess or not entry:
+        if not normalized_guess_forms or not entry:
             state = 'blank'
-        elif normalized_guess in accepted_answers:
+        elif _answer_sheet_forms_match(normalized_guess_forms, set(accepted_answers)):
             state = 'correct'
             correct_count += 1
         else:
@@ -1533,6 +1628,16 @@ def _get_answer_sheet_shared_users(round_obj, current_user=None):
             current_user_player_field=current_user_player_field,
         )
     ]
+    candidate_names.extend([
+        str(getattr(round_obj, 'creator', '') or '').strip(),
+        str(getattr(round_obj, 'secondary_creator', '') or '').strip(),
+    ])
+    candidate_names.extend(
+        str(username or '').strip()
+        for username in AnswerSheetEntry.objects.filter(round=round_obj)
+        .select_related('user')
+        .values_list('user__username', flat=True)
+    )
     if current_user and getattr(current_user, 'is_authenticated', False):
         candidate_names.append(str(current_user.username or '').strip())
 
@@ -1919,26 +2024,50 @@ def grade_answer_sheet_round(request):
     client_id = str(payload.get('client_id') or '').strip()
     current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
     current_user_is_diverged = bool(current_entry.is_diverged) if current_entry else False
+    normalized_answers = _normalize_answer_sheet_answers(answers)
 
     try:
-        grade_payload = _grade_answer_sheet_answers(round_obj, answers)
+        grade_payload = _grade_answer_sheet_answers(round_obj, normalized_answers)
     except ValueError as error:
         return JsonResponse({'detail': str(error)}, status=400)
 
     if round_obj.cooperative and not current_user_is_diverged:
-        _schedule_scoresheet_broadcast({
-            'action': 'answer_sheet',
-            'event': 'answer_sheet_grade',
-            'selected_date': round_obj.date.isoformat() if round_obj.date else '',
-            'round_id': round_obj.id,
-            'client_id': client_id,
-            **grade_payload,
-        })
+        diverged_user_ids = _get_answer_sheet_diverged_user_ids(round_obj)
+        target_users = [
+            target_user
+            for target_user in _get_answer_sheet_shared_users(round_obj, current_user=request.user)
+            if target_user.id not in diverged_user_ids
+        ]
+        if not target_users:
+            target_users = [request.user]
+
+        with transaction.atomic():
+            for target_user in target_users:
+                AnswerSheetEntry.objects.update_or_create(
+                    user=target_user,
+                    round=round_obj,
+                    defaults={
+                        'trivia_date': round_obj.date,
+                        'answers': normalized_answers,
+                        'is_diverged': bool(current_entry.is_diverged) if (current_entry and target_user.id == request.user.id) else False,
+                    },
+                )
+
+            _schedule_scoresheet_broadcast({
+                'action': 'answer_sheet',
+                'event': 'answer_sheet_grade',
+                'selected_date': round_obj.date.isoformat() if round_obj.date else '',
+                'round_id': round_obj.id,
+                'client_id': client_id,
+                'answers': normalized_answers,
+                **grade_payload,
+            })
 
     return JsonResponse({
         'ok': True,
         'round_id': round_obj.id,
         'shared': bool(round_obj.cooperative and not current_user_is_diverged),
+        'answers': normalized_answers,
         **grade_payload,
     })
 

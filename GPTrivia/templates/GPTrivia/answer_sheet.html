@@ -365,6 +365,10 @@
             if (!textarea || !scoreInput) {
                 return;
             }
+            if (Array.isArray(payload.answers)) {
+                textarea.value = payload.answers.map((answer) => String(answer || '')).join('\n');
+                syncLineNumbers(textarea);
+            }
             applyGradePayload(roundId, textarea, scoreInput, payload);
         }
 

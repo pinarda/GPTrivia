@@ -427,6 +427,17 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("esb", empire_answers)
         self.assertIn("Star Wars Episode 5", empire_answers)
         self.assertIn("Star Wars Episode V", empire_answers)
+        self.assertIn("Star Wars", empire_answers)
+        self.assertIn("SW", empire_answers)
+        self.assertIn("sw", empire_answers)
+
+    def test_build_possible_answers_expands_punctuationless_titles_and_initialisms(self):
+        kings_speech_answers = _build_possible_answers("King's Speech")
+        self.assertIn("King's Speech", kings_speech_answers)
+        self.assertIn("Kings Speech", kings_speech_answers)
+        self.assertIn("kings speech", kings_speech_answers)
+        self.assertIn("KS", kings_speech_answers)
+        self.assertIn("ks", kings_speech_answers)
 
     def test_build_possible_answers_expands_person_name_variants_with_question_context(self):
         franklin_answers = _build_possible_answers(

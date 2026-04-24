@@ -1107,6 +1107,10 @@ def _split_possible_answer_segments(answer_text):
         return []
 
     segments = [cleaned_answer]
+    colon_segments = [_normalize_possible_answer_variant(segment) for segment in re.split(r'\s*:\s*', cleaned_answer)]
+    if len([segment for segment in colon_segments if segment]) > 1:
+        segments.extend(segment for segment in colon_segments if segment)
+
     slash_segments = [_normalize_possible_answer_variant(segment) for segment in re.split(r'\s*/\s*', cleaned_answer)]
     if len([segment for segment in slash_segments if segment]) > 1:
         segments.extend(segment for segment in slash_segments if segment)
@@ -1128,6 +1132,40 @@ def _split_possible_answer_segments(answer_text):
         seen_segments.add(normalized_key)
         deduped_segments.append(normalized_segment)
     return deduped_segments
+
+
+def _possible_answer_initialisms(value):
+    normalized_value = _normalize_possible_answer_variant(value)
+    if not normalized_value:
+        return []
+
+    token_groups = [normalized_value.split()]
+    punctuation_stripped_tokens = [
+        token for token in re.sub(r"[^0-9A-Za-z\s-]", '', normalized_value).replace('-', ' ').split()
+        if token
+    ]
+    if punctuation_stripped_tokens:
+        token_groups.append(punctuation_stripped_tokens)
+
+    initialisms = []
+    seen_initialisms = set()
+    for token_group in token_groups:
+        significant_tokens = [
+            token for token in token_group
+            if token and token.casefold() not in {'a', 'an', 'the', 'of', 'and'}
+        ]
+        if len(significant_tokens) < 2:
+            continue
+        initialism = ''.join(token[0] for token in significant_tokens if token)
+        if len(initialism) < 2 or len(initialism) > 5:
+            continue
+        normalized_initialism = _normalize_possible_answer_variant(initialism)
+        initialism_key = normalized_initialism.casefold()
+        if not normalized_initialism or initialism_key in seen_initialisms:
+            continue
+        seen_initialisms.add(initialism_key)
+        initialisms.append(normalized_initialism.upper())
+    return initialisms
 
 
 def _expand_simple_phrase_forms(phrase, question_text=''):
@@ -1157,6 +1195,12 @@ def _expand_simple_phrase_forms(phrase, question_text=''):
             continue
         variants.extend(_possible_answer_case_forms(normalized_base_value))
 
+        punctuationless_value = _normalize_possible_answer_variant(
+            re.sub(r"[^0-9A-Za-z\s-]", '', normalized_base_value)
+        )
+        if punctuationless_value and punctuationless_value != normalized_base_value:
+            variants.extend(_possible_answer_case_forms(punctuationless_value))
+
         words = normalized_base_value.split()
         if len(words) > 1:
             variants.extend(_possible_answer_case_forms('-'.join(words)))
@@ -1171,6 +1215,9 @@ def _expand_simple_phrase_forms(phrase, question_text=''):
                 variants.extend(_possible_answer_case_forms(normalized_base_value[:-5] + ' style'))
             if normalized_base_value.lower().endswith('crawl'):
                 variants.extend(_possible_answer_case_forms(normalized_base_value[:-5] + ' crawl'))
+
+        for initialism in _possible_answer_initialisms(normalized_base_value):
+            variants.extend(_possible_answer_case_forms(initialism))
 
     deduped_variants = []
     seen_variants = set()
