@@ -1,4 +1,5 @@
 .answer-sheet-page {
+    width: 100%;
     max-width: 880px;
     margin: 0 auto;
     padding: 24px 16px 48px;
@@ -7,6 +8,7 @@
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
+    min-width: 0;
     --answer-sheet-line-height: 1.5;
     --answer-sheet-shell-min-height: 18rem;
 }
@@ -67,6 +69,7 @@
     scrollbar-width: none;
     flex: 1 1 auto;
     min-height: 0;
+    min-width: 0;
 }
 
 .answer-sheet-track::-webkit-scrollbar {
@@ -81,6 +84,7 @@
     display: flex;
     flex-direction: column;
     min-height: 100%;
+    min-width: 0;
 }
 
 .answer-sheet-round-header {
@@ -119,6 +123,7 @@
     flex: 1 1 auto;
     min-height: var(--answer-sheet-shell-min-height);
     overflow: hidden;
+    min-width: 0;
     --answer-sheet-line-height-px: 24px;
     --answer-sheet-padding-top-px: 14px;
     --answer-sheet-padding-bottom-px: 14px;
@@ -139,7 +144,7 @@
 
 .answer-sheet-line-numbers li {
     margin: 0;
-    height: var(--answer-sheet-line-height-px);
+    height: calc(var(--answer-sheet-line-height-px) - 0.5px);
     display: flex;
     align-items: center;
     line-height: 1;
@@ -158,6 +163,7 @@
     padding: var(--answer-sheet-padding-top-px) 14px var(--answer-sheet-padding-bottom-px) 14px;
     font: 500 1rem/var(--answer-sheet-line-height) "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     outline: none;
+    min-width: 0;
 }
 
 .answer-sheet-textarea::placeholder {
@@ -170,6 +176,7 @@
     gap: 8px;
     margin-top: 8px;
     flex: 0 0 auto;
+    min-width: 0;
 }
 
 input.answer-sheet-score-input[type="text"],
@@ -328,7 +335,7 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-bottom {
 
 @media (max-width: 700px) {
     .answer-sheet-page {
-        padding: 18px 12px 36px;
+        padding: 16px 8px 32px;
         --answer-sheet-shell-min-height: 16rem;
     }
 
@@ -338,15 +345,15 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-bottom {
     }
 
     .answer-sheet-round-panel {
-        padding: 16px;
+        padding: 14px;
     }
 
     .answer-sheet-textarea-shell {
-        grid-template-columns: 1.8rem minmax(0, 1fr);
+        grid-template-columns: 1.55rem minmax(0, 1fr);
     }
 
     .answer-sheet-line-numbers {
-        padding-left: 8px;
+        padding-left: 6px;
         font-size: 0.98rem;
     }
 
@@ -355,16 +362,16 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-bottom {
     }
 
     .answer-sheet-controls-row {
-        grid-template-columns: minmax(0, 0.8fr) repeat(2, minmax(0, 1fr));
-        gap: 6px;
+        grid-template-columns: minmax(0, 0.72fr) repeat(2, minmax(0, 1fr));
+        gap: 4px;
     }
 
     input.answer-sheet-score-input[type="text"],
     .answer-sheet-action-button {
         height: 38px;
-        padding-left: 10px;
-        padding-right: 10px;
-        font-size: 0.92rem;
+        padding-left: 8px;
+        padding-right: 8px;
+        font-size: 0.88rem;
     }
 
     .answer-sheet-status {
