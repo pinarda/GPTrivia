@@ -52,6 +52,8 @@ ROUND_ANALYSIS_AUTO_DELAY_SECONDS = 300
 ROUND_ANALYSIS_WORKER_IDLE_WAIT_SECONDS = 2
 ROUND_ANALYSIS_WORKER_MAX_SLEEP_SECONDS = 60
 ROUND_ANALYSIS_WORKER_KEY = 'default'
+ROUND_ANALYSIS_RUNNING_HEARTBEAT_SECONDS = 10
+ROUND_ANALYSIS_STALE_RUNNING_SECONDS = 300
 
 _ROUND_ANALYSIS_WORKER_LOCK = threading.Lock()
 _ROUND_ANALYSIS_WORKER_WAKE_EVENT = threading.Event()
@@ -245,6 +247,7 @@ def _claim_next_due_round_analysis_run_id():
         worker_state, _ = RoundAnalysisWorkerState.objects.get_or_create(key=ROUND_ANALYSIS_WORKER_KEY)
         RoundAnalysisWorkerState.objects.select_for_update().get(pk=worker_state.pk)
 
+        _recover_stale_running_round_analysis_runs(now=now)
         if RoundQuestionAnalysisRun.objects.filter(status=RoundQuestionAnalysisRun.STATUS_RUNNING).exists():
             return None
 
@@ -271,6 +274,36 @@ def _claim_next_due_round_analysis_run_id():
         if not updated:
             return None
         return candidate_run.id
+
+
+def _recover_stale_running_round_analysis_runs(*, now=None):
+    current_time = now or timezone.now()
+    stale_cutoff = current_time - timezone.timedelta(seconds=ROUND_ANALYSIS_STALE_RUNNING_SECONDS)
+    stale_runs = list(
+        RoundQuestionAnalysisRun.objects.filter(
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+            updated_at__lt=stale_cutoff,
+        ).order_by('id')
+    )
+    if not stale_runs:
+        return []
+
+    recovered_run_ids = []
+    for stale_run in stale_runs:
+        error_parts = [
+            str(stale_run.error_message or '').strip(),
+            (
+                "Marked failed automatically after the analysis worker stopped heartbeating. "
+                "This usually means the server restarted or the worker crashed."
+            ),
+        ]
+        stale_run.status = RoundQuestionAnalysisRun.STATUS_FAILED
+        stale_run.completed_at = current_time
+        stale_run.error_message = '\n\n'.join(part for part in error_parts if part)
+        stale_run.save(update_fields=['status', 'completed_at', 'error_message', 'updated_at'])
+        recovered_run_ids.append(stale_run.id)
+        logger.warning("Recovered stale round analysis run %s", stale_run.id)
+    return recovered_run_ids
 
 
 def _next_round_analysis_worker_wait_seconds():
@@ -301,6 +334,22 @@ def _run_single_round_analysis(run_id, *, already_running=False):
         run.error_message = ''
         run.save(update_fields=['status', 'started_at', 'completed_at', 'error_message', 'updated_at'])
 
+    heartbeat_stop_event = threading.Event()
+
+    def _heartbeat_round_analysis_run():
+        while not heartbeat_stop_event.wait(timeout=ROUND_ANALYSIS_RUNNING_HEARTBEAT_SECONDS):
+            RoundQuestionAnalysisRun.objects.filter(
+                id=run.id,
+                status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+            ).update(updated_at=timezone.now())
+
+    heartbeat_thread = threading.Thread(
+        target=_heartbeat_round_analysis_run,
+        daemon=True,
+        name=f'round-analysis-heartbeat-{run.id}',
+    )
+    heartbeat_thread.start()
+
     try:
         slide_payload = _build_round_slide_payload(run.round)
         analysis_payload = _analyze_round_slides(run.round, slide_payload)
@@ -311,6 +360,8 @@ def _run_single_round_analysis(run_id, *, already_running=False):
         run.error_message = f"{exc}\n\n{traceback.format_exc(limit=10)}"
         run.save(update_fields=['status', 'completed_at', 'error_message', 'updated_at'])
         raise
+    finally:
+        heartbeat_stop_event.set()
 
 
 def _notify_round_analysis_completion_if_ready(run_id):

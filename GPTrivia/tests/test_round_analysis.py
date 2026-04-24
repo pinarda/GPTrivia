@@ -8,15 +8,18 @@ from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from PIL import Image
 
 from GPTrivia.models import GPTriviaRound, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun
 from GPTrivia.round_analysis import (
     ROUND_ANALYSIS_AUTO_DELAY_SECONDS,
+    ROUND_ANALYSIS_STALE_RUNNING_SECONDS,
     _apply_apps_script_media_links,
     _analyze_round_slides,
     _build_possible_answers,
     _build_possible_answers_with_aliases,
+    _claim_next_due_round_analysis_run_id,
     _classify_round_structure,
     _extract_picture_grid_questions_by_layout,
     _extract_embedded_slide_media_assets,
@@ -122,6 +125,54 @@ class RoundAnalysisTests(TestCase):
         self.assertLessEqual(queued_run.scheduled_for, expected_maximum)
         self.assertEqual(queued_run.batch_label, "new rounds from 03.20.2026")
         self.assertTrue(queued_run.batch_key)
+
+    def test_claim_next_due_round_analysis_run_id_recovers_stale_running_run(self):
+        blocked_round = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Blocked Analysis Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        pending_round = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Pending Analysis Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=2,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        stale_run = RoundQuestionAnalysisRun.objects.create(
+            round=blocked_round,
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+            started_at=timezone.now() - datetime.timedelta(seconds=ROUND_ANALYSIS_STALE_RUNNING_SECONDS + 30),
+        )
+        RoundQuestionAnalysisRun.objects.filter(id=stale_run.id).update(
+            updated_at=timezone.now() - datetime.timedelta(seconds=ROUND_ANALYSIS_STALE_RUNNING_SECONDS + 30)
+        )
+        pending_run = RoundQuestionAnalysisRun.objects.create(
+            round=pending_round,
+            status=RoundQuestionAnalysisRun.STATUS_PENDING,
+            scheduled_for=timezone.now() - datetime.timedelta(seconds=5),
+        )
+
+        claimed_run_id = _claim_next_due_round_analysis_run_id()
+
+        self.assertEqual(claimed_run_id, pending_run.id)
+        stale_run.refresh_from_db()
+        pending_run.refresh_from_db()
+        self.assertEqual(stale_run.status, RoundQuestionAnalysisRun.STATUS_FAILED)
+        self.assertIn("stopped heartbeating", stale_run.error_message)
+        self.assertEqual(pending_run.status, RoundQuestionAnalysisRun.STATUS_RUNNING)
 
     def test_trigger_round_analysis_rejects_replay_round(self):
         round_obj = GPTriviaRound.objects.create(
