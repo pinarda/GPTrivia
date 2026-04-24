@@ -1441,6 +1441,17 @@ def _build_answer_sheet_context(user, requested_date=''):
     selected_rounds = list(
         GPTriviaRound.objects.filter(date=selected_date).order_by('round_number', 'id')
     ) if selected_date else []
+    creator_opt_in_map = _build_round_analysis_opt_in_map([round_obj.creator for round_obj in selected_rounds])
+    latest_completed_run_by_round_id = {}
+    for run in (
+        RoundQuestionAnalysisRun.objects.filter(
+            round_id__in=[round_obj.id for round_obj in selected_rounds],
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+        )
+        .select_related('round')
+        .order_by('round_id', '-created_at', '-id')
+    ):
+        latest_completed_run_by_round_id.setdefault(run.round_id, run)
     saved_entries = {
         entry.round_id: entry
         for entry in AnswerSheetEntry.objects.filter(user=user, round_id__in=[round_obj.id for round_obj in selected_rounds])
@@ -1450,16 +1461,28 @@ def _build_answer_sheet_context(user, requested_date=''):
     for round_obj in selected_rounds:
         saved_entry = saved_entries.get(round_obj.id)
         answers = _normalize_answer_sheet_answers((saved_entry.answers if saved_entry else []))
+        creator_allows_analysis = bool(creator_opt_in_map.get(round_obj.creator, False))
+        latest_completed_run = latest_completed_run_by_round_id.get(round_obj.id)
+        latest_round_type = str((latest_completed_run.round_type if latest_completed_run else '') or '').strip().lower()
+        grade_enabled = bool(
+            creator_allows_analysis
+            and latest_completed_run is not None
+            and latest_round_type != 'matching'
+        )
+        if not creator_allows_analysis:
+            grade_disabled_message = "round analysis is not enabled for this creator"
+        elif latest_completed_run is None:
+            grade_disabled_message = "the round has not yet been analyzed"
+        elif latest_round_type == 'matching':
+            grade_disabled_message = "grading this round type is not currently enabled"
+        else:
+            grade_disabled_message = ''
         round_pages.append({
             'round_id': round_obj.id,
             'round_number': round_obj.round_number,
             'round_title': round_obj.title,
-            'grade_enabled': _creator_allows_round_analysis(round_obj.creator),
-            'grade_disabled_message': (
-                ''
-                if _creator_allows_round_analysis(round_obj.creator)
-                else "round analysis is not enabled for this creator"
-            ),
+            'grade_enabled': grade_enabled,
+            'grade_disabled_message': grade_disabled_message,
             'answers': answers,
             'answers_text': '\n'.join(answers),
         })

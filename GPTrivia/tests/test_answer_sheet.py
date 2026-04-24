@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from GPTrivia.models import AnswerSheetEntry, GPTriviaRound
+from GPTrivia.models import AnswerSheetEntry, GPTriviaRound, Profile, RoundQuestionAnalysisRun
 
 
 class AnswerSheetTests(TestCase):
@@ -167,3 +167,99 @@ class AnswerSheetTests(TestCase):
         round_pages = response.context["round_pages"]
         self.assertEqual(len(round_pages[0]["answers"]), 12)
         self.assertIn("Answer 11\nAnswer 12", round_pages[0]["answers_text"])
+
+    def test_answer_sheet_grade_button_reflects_analysis_availability(self):
+        opted_out_creator = User.objects.create_user(username="Taylor", password="pw")
+        opted_in_without_analysis = User.objects.create_user(username="Jordan", password="pw")
+        matching_creator = User.objects.create_user(username="Casey", password="pw")
+        ready_creator = User.objects.create_user(username="Morgan", password="pw")
+        Profile.objects.filter(user=opted_out_creator).update(round_analysis_opt_in=False)
+        Profile.objects.filter(user=opted_in_without_analysis).update(round_analysis_opt_in=True)
+        Profile.objects.filter(user=matching_creator).update(round_analysis_opt_in=True)
+        Profile.objects.filter(user=ready_creator).update(round_analysis_opt_in=True)
+
+        trivia_date = datetime.date(2026, 4, 17)
+        opted_out_round = GPTriviaRound.objects.create(
+            creator="Taylor",
+            title="Opted Out Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        not_analyzed_round = GPTriviaRound.objects.create(
+            creator="Jordan",
+            title="Needs Analysis",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=2,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        matching_round = GPTriviaRound.objects.create(
+            creator="Casey",
+            title="Matching Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=3,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        enabled_round = GPTriviaRound.objects.create(
+            creator="Morgan",
+            title="Ready Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=4,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+
+        RoundQuestionAnalysisRun.objects.create(
+            round=matching_round,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="matching",
+        )
+        RoundQuestionAnalysisRun.objects.create(
+            round=enabled_round,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="picture",
+        )
+
+        response = self.client.get(reverse("answer_sheet"), {"date": trivia_date.isoformat()})
+
+        self.assertEqual(response.status_code, 200)
+        round_pages = {
+            page["round_id"]: page
+            for page in response.context["round_pages"]
+        }
+        self.assertFalse(round_pages[opted_out_round.id]["grade_enabled"])
+        self.assertEqual(
+            round_pages[opted_out_round.id]["grade_disabled_message"],
+            "round analysis is not enabled for this creator",
+        )
+        self.assertFalse(round_pages[not_analyzed_round.id]["grade_enabled"])
+        self.assertEqual(
+            round_pages[not_analyzed_round.id]["grade_disabled_message"],
+            "the round has not yet been analyzed",
+        )
+        self.assertFalse(round_pages[matching_round.id]["grade_enabled"])
+        self.assertEqual(
+            round_pages[matching_round.id]["grade_disabled_message"],
+            "grading this round type is not currently enabled",
+        )
+        self.assertTrue(round_pages[enabled_round.id]["grade_enabled"])
+        self.assertEqual(round_pages[enabled_round.id]["grade_disabled_message"], "")
