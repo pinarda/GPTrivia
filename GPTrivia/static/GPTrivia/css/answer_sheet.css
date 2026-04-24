@@ -7,7 +7,7 @@
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    --answer-sheet-line-height: 1.55;
+    --answer-sheet-line-height: 1.5;
     --answer-sheet-shell-min-height: 18rem;
 }
 
@@ -86,13 +86,21 @@
 .answer-sheet-round-header {
     display: grid;
     gap: 6px;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
+    flex: 0 0 auto;
 }
 
 .answer-sheet-round-header h2 {
     margin: 0;
     font-size: clamp(1.2rem, 2vw, 1.6rem);
     line-height: 1.2;
+}
+
+.answer-sheet-round-meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
 }
 
 .answer-sheet-round-kicker {
@@ -110,22 +118,31 @@
     background: rgba(9, 12, 26, 0.52);
     flex: 1 1 auto;
     min-height: var(--answer-sheet-shell-min-height);
+    overflow: hidden;
+    --answer-sheet-line-height-px: 24px;
+    --answer-sheet-padding-top-px: 14px;
+    --answer-sheet-padding-bottom-px: 14px;
+    --answer-sheet-font-size-px: 16px;
 }
 
 .answer-sheet-line-numbers {
     list-style: none;
     margin: 0;
-    padding: 14px 0 14px 12px;
+    padding: var(--answer-sheet-padding-top-px) 0 var(--answer-sheet-padding-bottom-px) 10px;
     border-right: 1px solid rgba(255, 255, 255, 0.1);
     color: rgba(245, 246, 251, 0.38);
-    font: 500 1rem/var(--answer-sheet-line-height) "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: var(--answer-sheet-font-size-px);
+    line-height: 1;
+    box-sizing: border-box;
 }
 
 .answer-sheet-line-numbers li {
     margin: 0;
-    height: calc(var(--answer-sheet-line-height) * 1em);
+    height: var(--answer-sheet-line-height-px);
     display: flex;
     align-items: center;
+    line-height: 1;
 }
 
 .answer-sheet-textarea {
@@ -138,21 +155,24 @@
     border: 0;
     background: transparent;
     color: #f5f6fb;
-    padding: 14px 16px;
+    padding: var(--answer-sheet-padding-top-px) 14px var(--answer-sheet-padding-bottom-px) 14px;
     font: 500 1rem/var(--answer-sheet-line-height) "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    outline: none;
 }
 
 .answer-sheet-textarea::placeholder {
     color: rgba(245, 246, 251, 0.28);
 }
 
-.answer-sheet-round-actions {
+.answer-sheet-controls-row {
     display: grid;
-    gap: 10px;
-    margin-top: 12px;
+    grid-template-columns: minmax(0, 0.85fr) repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+    flex: 0 0 auto;
 }
 
-.answer-sheet-score-input,
+input.answer-sheet-score-input[type="text"],
 .answer-sheet-action-button {
     border-radius: 0;
     border: 1px solid rgba(255, 255, 255, 0.14);
@@ -160,38 +180,31 @@
     color: #f5f6fb;
     font: inherit;
     box-sizing: border-box;
+    min-width: 0;
+    height: 42px;
 }
 
-.answer-sheet-score-input {
+input.answer-sheet-score-input[type="text"] {
     width: 100%;
-    padding: 12px 14px;
+    padding: 10px 12px;
     margin: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
 
-.answer-sheet-score-input::placeholder {
+input.answer-sheet-score-input[type="text"]::placeholder {
     color: rgba(245, 246, 251, 0.5);
 }
 
-.answer-sheet-button-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-}
-
 .answer-sheet-action-button {
-    padding: 12px 14px;
+    padding: 10px 12px;
     cursor: pointer;
-}
-
-.answer-sheet-status-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 10px;
 }
 
 .answer-sheet-status {
     font-size: 0.9rem;
     color: rgba(245, 246, 251, 0.72);
+    white-space: nowrap;
+    text-align: right;
 }
 
 .answer-sheet-status[data-state="saving"],
@@ -273,7 +286,7 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-textarea-shell {
     border-color: rgba(45, 48, 71, 0.16);
 }
 
-body.site-shell[data-profile-theme="light"] .answer-sheet-score-input,
+body.site-shell[data-profile-theme="light"] input.answer-sheet-score-input[type="text"],
 body.site-shell[data-profile-theme="light"] .answer-sheet-action-button {
     background: rgba(255, 255, 255, 0.92);
     border-color: rgba(45, 48, 71, 0.16);
@@ -293,7 +306,7 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-textarea::placeholder 
     color: rgba(27, 37, 48, 0.32);
 }
 
-body.site-shell[data-profile-theme="light"] .answer-sheet-score-input::placeholder {
+body.site-shell[data-profile-theme="light"] input.answer-sheet-score-input[type="text"]::placeholder {
     color: rgba(27, 37, 48, 0.46);
 }
 
@@ -329,15 +342,32 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-bottom {
     }
 
     .answer-sheet-textarea-shell {
-        grid-template-columns: 1.9rem minmax(0, 1fr);
+        grid-template-columns: 1.8rem minmax(0, 1fr);
     }
 
     .answer-sheet-line-numbers {
-        padding-left: 10px;
+        padding-left: 8px;
         font-size: 0.98rem;
     }
 
     .answer-sheet-textarea {
         font-size: 0.98rem;
+    }
+
+    .answer-sheet-controls-row {
+        grid-template-columns: minmax(0, 0.8fr) repeat(2, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    input.answer-sheet-score-input[type="text"],
+    .answer-sheet-action-button {
+        height: 38px;
+        padding-left: 10px;
+        padding-right: 10px;
+        font-size: 0.92rem;
+    }
+
+    .answer-sheet-status {
+        font-size: 0.82rem;
     }
 }

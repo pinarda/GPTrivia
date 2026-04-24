@@ -142,17 +142,19 @@
             const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
             const fontSize = computedStyle.fontSize || '16px';
             const shellMinHeight = parseFloat(window.getComputedStyle(shell).minHeight) || 0;
+            textarea.style.height = 'auto';
             const contentHeight = textarea.scrollHeight || 0;
             const targetHeight = Math.max(shellMinHeight, contentHeight);
-            shell.style.minHeight = `${targetHeight}px`;
+            textarea.style.height = `${targetHeight}px`;
+            shell.style.height = `${targetHeight}px`;
             shell.style.setProperty('--answer-sheet-line-height-px', `${lineHeight}px`);
             shell.style.setProperty('--answer-sheet-padding-top-px', `${paddingTop}px`);
             shell.style.setProperty('--answer-sheet-padding-bottom-px', `${paddingBottom}px`);
             shell.style.setProperty('--answer-sheet-font-size-px', fontSize);
 
-            const visibleHeight = textarea.clientHeight || targetHeight || shell.clientHeight || shellMinHeight;
-            const visibleRows = Math.max(1, Math.round((visibleHeight - paddingTop - paddingBottom) / lineHeight));
-            const contentRows = Math.max(1, Math.round((contentHeight - paddingTop - paddingBottom) / lineHeight));
+            const textBoxHeight = Math.max(0, targetHeight - paddingTop - paddingBottom);
+            const visibleRows = Math.max(1, Math.floor((textBoxHeight + 0.5) / lineHeight));
+            const contentRows = Math.max(1, Math.floor((Math.max(0, contentHeight - paddingTop - paddingBottom) + 0.5) / lineHeight));
             const rowCount = Math.max(10, visibleRows, contentRows, textarea.value.split(/\r?\n/).length);
 
             numberList.innerHTML = '';
