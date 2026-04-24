@@ -1299,6 +1299,7 @@ def _build_round_analysis_question_payload(request, latest_completed_run, entry)
         'question_number': entry.question_number,
         'question_text': entry.question_text,
         'answer_text': entry.answer_text,
+        'possible_answers': list(entry.possible_answers or []),
         'media_kind': entry.media_kind or '',
         'image_url': '',
         'image_content_type': '',

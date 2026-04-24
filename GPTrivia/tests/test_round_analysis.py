@@ -13,6 +13,7 @@ from GPTrivia.models import GPTriviaRound, RoundQuestionAnalysisEntry, RoundQues
 from GPTrivia.round_analysis import (
     _apply_apps_script_media_links,
     _analyze_round_slides,
+    _build_possible_answers,
     _classify_round_structure,
     _extract_picture_grid_questions_by_layout,
     _extract_embedded_slide_media_assets,
@@ -372,6 +373,40 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(payload["question_number"], 1)
         self.assertEqual(payload["question_text"], "Latest question text")
         self.assertEqual(payload["answer_text"], "Latest answer text")
+        self.assertEqual(payload["possible_answers"], [])
+
+    def test_build_possible_answers_expands_articles_and_synonyms(self):
+        zebra_answers = _build_possible_answers("A Zebra")
+        self.assertIn("A Zebra", zebra_answers)
+        self.assertIn("a zebra", zebra_answers)
+        self.assertIn("Zebra", zebra_answers)
+        self.assertIn("zebra", zebra_answers)
+        self.assertIn("Zebras", zebra_answers)
+        self.assertIn("zebras", zebra_answers)
+
+        crawl_answers = _build_possible_answers("Front crawl/freestyle.")
+        self.assertIn("Front crawl/freestyle", crawl_answers)
+        self.assertIn("front crawl/freestyle", crawl_answers)
+        self.assertIn("Front crawl", crawl_answers)
+        self.assertIn("front crawl", crawl_answers)
+        self.assertIn("Front-crawl", crawl_answers)
+        self.assertIn("front-crawl", crawl_answers)
+        self.assertIn("Frontcrawl", crawl_answers)
+        self.assertIn("frontcrawl", crawl_answers)
+        self.assertIn("Freestyle", crawl_answers)
+        self.assertIn("freestyle", crawl_answers)
+        self.assertIn("Free style", crawl_answers)
+        self.assertIn("free style", crawl_answers)
+        self.assertIn("Front crawl or freestyle", crawl_answers)
+        self.assertIn("front crawl or freestyle", crawl_answers)
+
+        all_answers = _build_possible_answers("All of those")
+        self.assertIn("All of those", all_answers)
+        self.assertIn("all of those", all_answers)
+        self.assertIn("All", all_answers)
+        self.assertIn("all", all_answers)
+        self.assertIn("All of the above", all_answers)
+        self.assertIn("all of the above", all_answers)
 
     def test_round_analysis_question_can_include_saved_image_payload(self):
         round_obj = GPTriviaRound.objects.create(
@@ -419,6 +454,59 @@ class RoundAnalysisTests(TestCase):
         self.assertTrue(payload["image_url"].endswith(f"/round-analysis/entry/{entry.id}/image/"))
         self.assertEqual(payload["image_content_type"], "image/png")
         self.assertTrue(payload["image_data_url"].startswith("data:image/png;base64,"))
+
+    @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
+    def test_store_round_analysis_saves_possible_answers(self, correctness_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Possible Answers Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=3,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/possible-answers-round/edit#slide=id.r1",
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+        )
+
+        _store_round_analysis(
+            run,
+            {
+                "presentation_id": "possible-answers-presentation",
+                "slide_range_label": "1-2",
+                "slides": [],
+            },
+            {
+                "round_type": "text",
+                "notes": "",
+                "questions": [
+                    {
+                        "question_number": 1,
+                        "source_slide_number": 1,
+                        "question_text": "What animal is white with black stripes?",
+                        "instruction_text": "",
+                        "answer_text": "A Zebra",
+                        "media_kind": "",
+                        "major_category": "Science",
+                        "minor_category1": "",
+                        "minor_category2": "",
+                    },
+                ],
+            },
+        )
+
+        entry = RoundQuestionAnalysisEntry.objects.get(run=run, question_number=1)
+        self.assertEqual(entry.answer_text, "A Zebra")
+        self.assertIn("A Zebra", entry.possible_answers)
+        self.assertIn("a zebra", entry.possible_answers)
+        self.assertIn("Zebra", entry.possible_answers)
+        self.assertIn("zebras", entry.possible_answers)
 
     def test_round_analysis_random_question_excludes_music_rounds(self):
         music_round = GPTriviaRound.objects.create(

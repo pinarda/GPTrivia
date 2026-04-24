@@ -93,7 +93,12 @@
                                             </div>
                                         {% endif %}
                                     </td>
-                                    <td class="round-analysis-answer">{{ entry.answer_text }}</td>
+                                    <td class="round-analysis-answer">
+                                        <div>{{ entry.answer_text }}</div>
+                                        {% if entry.possible_answers %}
+                                            <div class="round-analysis-instruction">Accepted: {{ entry.possible_answers|join:", " }}</div>
+                                        {% endif %}
+                                    </td>
                                     {% for player_name in player_names %}
                                         <td>{{ entry.player_correctness|get_item:player_name }}</td>
                                     {% endfor %}

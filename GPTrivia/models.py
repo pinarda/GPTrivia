@@ -295,6 +295,7 @@ class RoundQuestionAnalysisEntry(models.Model):
     question_text = models.TextField(blank=True, default='')
     instruction_text = models.TextField(blank=True, default='')
     answer_text = models.TextField(blank=True, default='')
+    possible_answers = jsonfield.JSONField(default=list, blank=True)
     round_type = models.CharField(max_length=100, blank=True, default='')
     media_kind = models.CharField(max_length=32, blank=True, default='')
     media_url = models.TextField(blank=True, default='')

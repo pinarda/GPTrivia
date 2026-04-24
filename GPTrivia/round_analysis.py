@@ -938,6 +938,125 @@ def _normalize_analysis_categories(entry):
     return major_category, cleaned_minors[0], cleaned_minors[1]
 
 
+def _normalize_possible_answer_variant(value):
+    normalized = str(value or '').strip()
+    normalized = re.sub(r'\s+', ' ', normalized)
+    return normalized.strip(" \t\r\n.;:!?\"'")
+
+
+def _possible_answer_case_forms(value):
+    cleaned_value = _normalize_possible_answer_variant(value)
+    if not cleaned_value:
+        return []
+
+    variants = [cleaned_value]
+    lowered_value = cleaned_value.casefold()
+    if lowered_value != cleaned_value:
+        variants.append(lowered_value)
+    sentence_value = lowered_value[:1].upper() + lowered_value[1:] if lowered_value else ''
+    if sentence_value and sentence_value not in variants:
+        variants.append(sentence_value)
+    title_value = ' '.join(word[:1].upper() + word[1:] for word in lowered_value.split(' '))
+    if title_value and title_value not in variants:
+        variants.append(title_value)
+    return variants
+
+
+def _split_possible_answer_segments(answer_text):
+    cleaned_answer = _normalize_possible_answer_variant(answer_text)
+    if not cleaned_answer:
+        return []
+
+    segments = [cleaned_answer]
+    slash_segments = [_normalize_possible_answer_variant(segment) for segment in re.split(r'\s*/\s*', cleaned_answer)]
+    if len([segment for segment in slash_segments if segment]) > 1:
+        segments.extend(segment for segment in slash_segments if segment)
+        segments.append(_normalize_possible_answer_variant(' or '.join(segment for segment in slash_segments if segment)))
+
+    normalized_or_answer = re.sub(r'\s+\bor\b\s+', ' or ', cleaned_answer, flags=re.IGNORECASE)
+    or_segments = [_normalize_possible_answer_variant(segment) for segment in re.split(r'\s+\bor\b\s+', normalized_or_answer, flags=re.IGNORECASE)]
+    if len([segment for segment in or_segments if segment]) > 1:
+        segments.extend(segment for segment in or_segments if segment)
+        segments.append(_normalize_possible_answer_variant(' or '.join(segment for segment in or_segments if segment)))
+
+    deduped_segments = []
+    seen_segments = set()
+    for segment in segments:
+        normalized_segment = _normalize_possible_answer_variant(segment)
+        normalized_key = normalized_segment.casefold()
+        if not normalized_segment or normalized_key in seen_segments:
+            continue
+        seen_segments.add(normalized_key)
+        deduped_segments.append(normalized_segment)
+    return deduped_segments
+
+
+def _expand_simple_phrase_forms(phrase):
+    cleaned_phrase = _normalize_possible_answer_variant(phrase)
+    if not cleaned_phrase:
+        return []
+
+    variants = []
+    base_variants = [cleaned_phrase]
+    lowercase_phrase = cleaned_phrase.casefold()
+    if lowercase_phrase in {'all of those', 'all those', 'all of the above'}:
+        base_variants.extend(['all', 'all of those', 'all those', 'all of the above'])
+
+    article_match = re.match(r'^(a|an|the)\s+(.+)$', cleaned_phrase, flags=re.IGNORECASE)
+    if article_match:
+        article = article_match.group(1).lower()
+        remainder = _normalize_possible_answer_variant(article_match.group(2))
+        base_variants.append(remainder)
+        if article in {'a', 'an'} and remainder and ' ' not in remainder and not remainder.endswith('s'):
+            base_variants.append(f"{remainder}s")
+
+    for base_value in list(base_variants):
+        normalized_base_value = _normalize_possible_answer_variant(base_value)
+        if not normalized_base_value:
+            continue
+        variants.extend(_possible_answer_case_forms(normalized_base_value))
+
+        words = normalized_base_value.split()
+        if len(words) > 1:
+            variants.extend(_possible_answer_case_forms('-'.join(words)))
+            variants.extend(_possible_answer_case_forms(''.join(words)))
+        elif '-' in normalized_base_value:
+            hyphenless = normalized_base_value.replace('-', '')
+            spaced = normalized_base_value.replace('-', ' ')
+            variants.extend(_possible_answer_case_forms(hyphenless))
+            variants.extend(_possible_answer_case_forms(spaced))
+        elif len(normalized_base_value) >= 8:
+            if normalized_base_value.lower().endswith('style'):
+                variants.extend(_possible_answer_case_forms(normalized_base_value[:-5] + ' style'))
+            if normalized_base_value.lower().endswith('crawl'):
+                variants.extend(_possible_answer_case_forms(normalized_base_value[:-5] + ' crawl'))
+
+    deduped_variants = []
+    seen_variants = set()
+    for variant in variants:
+        normalized_variant = _normalize_possible_answer_variant(variant)
+        if not normalized_variant or normalized_variant in seen_variants:
+            continue
+        seen_variants.add(normalized_variant)
+        deduped_variants.append(normalized_variant)
+    return deduped_variants
+
+
+def _build_possible_answers(answer_text):
+    segments = _split_possible_answer_segments(answer_text)
+    possible_answers = []
+    seen_variants = set()
+
+    for segment in segments:
+        for variant in _expand_simple_phrase_forms(segment):
+            if variant in seen_variants:
+                continue
+            seen_variants.add(variant)
+            possible_answers.append(variant)
+
+    return possible_answers
+
+
 def _find_slide_by_number(slide_payload, slide_number):
     for slide_data in slide_payload.get('slides', []):
         if slide_data.get('slide_number') == slide_number:
@@ -1452,6 +1571,7 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
             media_url = ''
         source_slide_url = (chosen_slide or {}).get('slide_url') or ''
         major_category, minor_category1, minor_category2 = _normalize_analysis_categories(entry)
+        answer_text = str(entry.get('answer_text') or '').strip()
 
         analysis_entry = RoundQuestionAnalysisEntry.objects.create(
             run=run,
@@ -1461,7 +1581,8 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
             question_number=question_number,
             question_text=str(entry.get('question_text') or '').strip(),
             instruction_text=str(entry.get('instruction_text') or '').strip(),
-            answer_text=str(entry.get('answer_text') or '').strip(),
+            answer_text=answer_text,
+            possible_answers=_build_possible_answers(answer_text),
             round_type=normalized_round_type,
             media_kind=media_kind,
             media_url=media_url,
