@@ -73,14 +73,15 @@
                             data-round-title="{{ page.round_title }}"
                             data-submit-requires-confirmation="{% if page.submit_requires_confirmation %}true{% else %}false{% endif %}"
                             data-submit-state="ungraded-saved"
-                        >Submit</button>
+                        >Save</button>
                         <button
                             class="answer-sheet-action-button{% if not page.grade_enabled %} is-disabled{% endif %}"
                             type="button"
                             {% if not page.grade_enabled %}aria-disabled="true"{% endif %}
                             data-round-id="{{ page.round_id }}"
                             data-grade-disabled-message="{{ page.grade_disabled_message }}"
-                        >Grade</button>
+                            data-check-answers-for="{{ page.round_id }}"
+                        >Check Answers</button>
                     </div>
                     {% if page.cooperative %}
                         <button
@@ -1253,10 +1254,7 @@
             });
         });
 
-        pageRoot.querySelectorAll('.answer-sheet-action-button:not([aria-disabled="true"])').forEach((button) => {
-            if (button.textContent.trim() !== 'Grade') {
-                return;
-            }
+        pageRoot.querySelectorAll('[data-check-answers-for]:not([aria-disabled="true"])').forEach((button) => {
             button.addEventListener('click', () => {
                 const roundId = button.dataset.roundId;
                 const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
