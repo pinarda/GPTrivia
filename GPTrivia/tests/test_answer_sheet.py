@@ -559,6 +559,58 @@ class AnswerSheetTests(TestCase):
         score_map = get_round_score_map(round_obj, include_null_fixed=False)
         self.assertIsNone(score_map.get("score_alex"))
 
+    def test_submit_answer_sheet_score_promotes_manual_override_answer_to_possible_answers(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Override Promotion Round",
+            major_category="History",
+            minor_category1="Presidents",
+            minor_category2="",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        analysis_entry = RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="Which first U.S. president appears on the one-dollar bill?",
+            answer_text="George Washington",
+            possible_answers=[],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=round_obj,
+            trivia_date=round_obj.date,
+            answers=["Washington"] + [""] * 9,
+            grade_overrides=[1],
+        )
+
+        response = self.client.post(
+            reverse("submit_answer_sheet_score"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "score": "1",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        analysis_entry.refresh_from_db()
+        self.assertIn("Washington", analysis_entry.possible_answers)
+        self.assertIn("washington", analysis_entry.possible_answers)
+
     def test_submit_answer_sheet_score_populates_cooperative_teammates(self):
         User.objects.create_user(username="Megan", password="pw")
         User.objects.create_user(username="Zach", password="pw")

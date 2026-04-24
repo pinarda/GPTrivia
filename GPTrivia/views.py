@@ -1582,6 +1582,64 @@ def _build_answer_sheet_accepted_answers(entry):
     return accepted_answers
 
 
+def _promote_answer_sheet_overrides_to_possible_answers(round_obj, answer_entry):
+    from .round_analysis import _build_possible_answers_with_aliases
+
+    if not round_obj or not answer_entry:
+        return 0
+
+    overridden_questions = _normalize_answer_sheet_grade_overrides(answer_entry.grade_overrides)
+    if not overridden_questions:
+        return 0
+
+    latest_completed_run = _latest_completed_round_analysis_run(round_obj.id)
+    if latest_completed_run is None:
+        return 0
+
+    analysis_entries_by_question = {
+        entry.question_number: entry
+        for entry in RoundQuestionAnalysisEntry.objects.filter(run=latest_completed_run).order_by('question_number', 'id')
+    }
+    normalized_answers = _normalize_answer_sheet_answers(answer_entry.answers or [])
+    updated_entry_count = 0
+
+    for question_number in overridden_questions:
+        if question_number <= 0 or question_number > len(normalized_answers):
+            continue
+        analysis_entry = analysis_entries_by_question.get(question_number)
+        if analysis_entry is None:
+            continue
+
+        accepted_answer_text = _extract_answer_sheet_line_answer(normalized_answers[question_number - 1])
+        if not accepted_answer_text:
+            continue
+
+        merged_possible_answers = []
+        seen_possible_answers = set()
+        for candidate in [
+            *(analysis_entry.possible_answers or []),
+            *_build_possible_answers_with_aliases(
+                accepted_answer_text,
+                [],
+                question_text=analysis_entry.question_text,
+            ),
+        ]:
+            normalized_candidate = str(candidate or '').strip()
+            if not normalized_candidate or normalized_candidate in seen_possible_answers:
+                continue
+            seen_possible_answers.add(normalized_candidate)
+            merged_possible_answers.append(normalized_candidate)
+
+        if merged_possible_answers == list(analysis_entry.possible_answers or []):
+            continue
+
+        analysis_entry.possible_answers = merged_possible_answers
+        analysis_entry.save(update_fields=['possible_answers'])
+        updated_entry_count += 1
+
+    return updated_entry_count
+
+
 def _grade_answer_sheet_answers(round_obj, answers, manual_correct_questions=None):
     latest_completed_run = _latest_completed_round_analysis_run(round_obj.id)
     if latest_completed_run is None:
@@ -2105,6 +2163,7 @@ def submit_answer_sheet_score(request):
             score_map[player_field] = normalized_score
         set_round_score_map(round_obj, score_map)
         round_obj.save(update_fields=[*FIXED_SCORE_FIELDS, 'extra_scores'])
+        _promote_answer_sheet_overrides_to_possible_answers(round_obj, current_entry)
 
         _schedule_scoresheet_broadcast({
             'action': 'update',
