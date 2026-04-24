@@ -8,6 +8,7 @@ import pickle
 import re
 import threading
 import traceback
+import uuid
 import zipfile
 from io import BytesIO
 from itertools import chain
@@ -17,7 +18,8 @@ from xml.etree import ElementTree
 
 import requests
 from django.core.files.base import ContentFile
-from django.db import close_old_connections
+from django.db import close_old_connections, transaction
+from django.db.utils import OperationalError, ProgrammingError
 from django.utils import timezone
 import httplib2
 from PIL import Image, ImageOps
@@ -27,7 +29,14 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from google_auth_httplib2 import AuthorizedHttp
 
-from .models import GPTriviaRound, MergedPresentation, PushSubscription, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun
+from .models import (
+    GPTriviaRound,
+    MergedPresentation,
+    PushSubscription,
+    RoundAnalysisWorkerState,
+    RoundQuestionAnalysisEntry,
+    RoundQuestionAnalysisRun,
+)
 from .player_scores import display_name_for_player_field, get_all_player_fields
 
 
@@ -37,6 +46,14 @@ ROUND_ANALYSIS_IMAGE_MAX_DIMENSION = 512
 ROUND_ANALYSIS_IMAGE_JPEG_QUALITY = 72
 ROUND_ANALYSIS_THUMBNAIL_SIZE = 'LARGE'
 PPTX_EXPORT_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+ROUND_ANALYSIS_AUTO_DELAY_SECONDS = 300
+ROUND_ANALYSIS_WORKER_IDLE_WAIT_SECONDS = 2
+ROUND_ANALYSIS_WORKER_MAX_SLEEP_SECONDS = 60
+ROUND_ANALYSIS_WORKER_KEY = 'default'
+
+_ROUND_ANALYSIS_WORKER_LOCK = threading.Lock()
+_ROUND_ANALYSIS_WORKER_WAKE_EVENT = threading.Event()
+_ROUND_ANALYSIS_WORKER_THREAD = None
 
 
 def _google_slide_url(presentation_id, slide_id=''):
@@ -76,7 +93,15 @@ def queue_round_analysis(round_id, *, trigger_type=RoundQuestionAnalysisRun.TRIG
     )
 
 
-def queue_round_analysis_batch(round_ids, *, trigger_type=RoundQuestionAnalysisRun.TRIGGER_AUTO, initiated_by='', batch_label=''):
+def queue_round_analysis_batch(
+    round_ids,
+    *,
+    trigger_type=RoundQuestionAnalysisRun.TRIGGER_AUTO,
+    initiated_by='',
+    batch_label='',
+    scheduled_for=None,
+    delay_seconds=0,
+):
     normalized_ids = []
     seen_ids = set()
     for round_id in round_ids or []:
@@ -92,6 +117,10 @@ def queue_round_analysis_batch(round_ids, *, trigger_type=RoundQuestionAnalysisR
     if not normalized_ids:
         return []
 
+    scheduled_for_value = _resolve_round_analysis_scheduled_for(
+        scheduled_for=scheduled_for,
+        delay_seconds=delay_seconds,
+    )
     queueable_rounds = {
         round_obj.id: round_obj
         for round_obj in GPTriviaRound.objects.filter(id__in=normalized_ids, replay=False)
@@ -106,6 +135,8 @@ def queue_round_analysis_batch(round_ids, *, trigger_type=RoundQuestionAnalysisR
         ).values_list('round_id', flat=True)
     )
 
+    normalized_batch_label = str(batch_label or '').strip()
+    batch_key = uuid.uuid4().hex if normalized_batch_label else ''
     queued_run_ids = []
     for round_id in normalized_ids:
         if round_id not in queueable_rounds or round_id in active_round_ids:
@@ -115,61 +146,158 @@ def queue_round_analysis_batch(round_ids, *, trigger_type=RoundQuestionAnalysisR
             trigger_type=trigger_type,
             initiated_by=initiated_by or '',
             status=RoundQuestionAnalysisRun.STATUS_PENDING,
+            scheduled_for=scheduled_for_value,
+            batch_key=batch_key,
+            batch_label=normalized_batch_label,
         )
         queued_run_ids.append(run.id)
 
     if not queued_run_ids:
         return []
 
-    worker = threading.Thread(
-        target=_run_round_analysis_batch,
-        kwargs={
-            'run_ids': queued_run_ids,
-            'batch_label': batch_label or '',
-        },
-        daemon=True,
-        name=f"round-analysis-{queued_run_ids[0]}",
-    )
-    worker.start()
+    ensure_round_analysis_worker_running()
     return queued_run_ids
 
 
-def _run_round_analysis_batch(*, run_ids, batch_label=''):
+def schedule_auto_round_analysis_batch(round_ids, *, initiated_by='', batch_label=''):
+    return queue_round_analysis_batch(
+        round_ids,
+        trigger_type=RoundQuestionAnalysisRun.TRIGGER_AUTO,
+        initiated_by=initiated_by,
+        batch_label=batch_label,
+        delay_seconds=ROUND_ANALYSIS_AUTO_DELAY_SECONDS,
+    )
+
+
+def _resolve_round_analysis_scheduled_for(*, scheduled_for=None, delay_seconds=0):
+    base_time = scheduled_for or timezone.now()
+    if delay_seconds:
+        return base_time + timezone.timedelta(seconds=max(int(delay_seconds), 0))
+    return base_time
+
+
+def ensure_round_analysis_worker_running():
+    global _ROUND_ANALYSIS_WORKER_THREAD
+
+    with _ROUND_ANALYSIS_WORKER_LOCK:
+        worker_thread = _ROUND_ANALYSIS_WORKER_THREAD
+        if worker_thread and worker_thread.is_alive():
+            _ROUND_ANALYSIS_WORKER_WAKE_EVENT.set()
+            return False
+
+        _ROUND_ANALYSIS_WORKER_WAKE_EVENT.clear()
+        _ROUND_ANALYSIS_WORKER_THREAD = threading.Thread(
+            target=_round_analysis_worker_loop,
+            daemon=True,
+            name='round-analysis-worker',
+        )
+        _ROUND_ANALYSIS_WORKER_THREAD.start()
+        return True
+
+
+def _round_analysis_worker_loop():
     close_old_connections()
     try:
-        runs = list(
-            RoundQuestionAnalysisRun.objects.select_related('round').filter(id__in=run_ids).order_by('id')
-        )
-        if not runs:
-            return
-
-        success_count = 0
-        failed_count = 0
-        for run in runs:
+        while True:
             try:
-                _run_single_round_analysis(run.id)
-                success_count += 1
-            except Exception:
-                failed_count += 1
-                logger.exception("Round analysis failed for run %s", run.id)
+                processed_any = _claim_and_process_next_round_analysis_run()
+                if processed_any:
+                    continue
 
-        _notify_alex_round_analysis_finished(
-            runs,
-            batch_label=batch_label,
-            success_count=success_count,
-            failed_count=failed_count,
-        )
+                wait_seconds = _next_round_analysis_worker_wait_seconds()
+                if wait_seconds is None:
+                    return
+
+                _ROUND_ANALYSIS_WORKER_WAKE_EVENT.wait(
+                    timeout=max(1, min(wait_seconds, ROUND_ANALYSIS_WORKER_MAX_SLEEP_SECONDS))
+                )
+                _ROUND_ANALYSIS_WORKER_WAKE_EVENT.clear()
+            except (OperationalError, ProgrammingError):
+                logger.exception("Round analysis worker could not access its tables yet.")
+                return
     finally:
         close_old_connections()
+        global _ROUND_ANALYSIS_WORKER_THREAD
+        with _ROUND_ANALYSIS_WORKER_LOCK:
+            if _ROUND_ANALYSIS_WORKER_THREAD is threading.current_thread():
+                _ROUND_ANALYSIS_WORKER_THREAD = None
 
 
-def _run_single_round_analysis(run_id):
+def _claim_and_process_next_round_analysis_run():
+    run_id = _claim_next_due_round_analysis_run_id()
+    if run_id is None:
+        return False
+
+    try:
+        _run_single_round_analysis(run_id, already_running=True)
+    except Exception:
+        logger.exception("Round analysis failed for run %s", run_id)
+    finally:
+        _notify_round_analysis_completion_if_ready(run_id)
+    return True
+
+
+def _claim_next_due_round_analysis_run_id():
+    now = timezone.now()
+    with transaction.atomic():
+        worker_state, _ = RoundAnalysisWorkerState.objects.get_or_create(key=ROUND_ANALYSIS_WORKER_KEY)
+        RoundAnalysisWorkerState.objects.select_for_update().get(pk=worker_state.pk)
+
+        if RoundQuestionAnalysisRun.objects.filter(status=RoundQuestionAnalysisRun.STATUS_RUNNING).exists():
+            return None
+
+        candidate_run = (
+            RoundQuestionAnalysisRun.objects.filter(
+                status=RoundQuestionAnalysisRun.STATUS_PENDING,
+                scheduled_for__lte=now,
+            )
+            .order_by('scheduled_for', 'id')
+            .first()
+        )
+        if candidate_run is None:
+            return None
+
+        updated = RoundQuestionAnalysisRun.objects.filter(
+            id=candidate_run.id,
+            status=RoundQuestionAnalysisRun.STATUS_PENDING,
+        ).update(
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+            started_at=now,
+            completed_at=None,
+            error_message='',
+        )
+        if not updated:
+            return None
+        return candidate_run.id
+
+
+def _next_round_analysis_worker_wait_seconds():
+    if RoundQuestionAnalysisRun.objects.filter(status=RoundQuestionAnalysisRun.STATUS_RUNNING).exists():
+        return ROUND_ANALYSIS_WORKER_IDLE_WAIT_SECONDS
+
+    next_pending_run = (
+        RoundQuestionAnalysisRun.objects.filter(status=RoundQuestionAnalysisRun.STATUS_PENDING)
+        .order_by('scheduled_for', 'id')
+        .only('scheduled_for')
+        .first()
+    )
+    if next_pending_run is None:
+        return None
+
+    remaining_seconds = (next_pending_run.scheduled_for - timezone.now()).total_seconds()
+    if remaining_seconds <= 0:
+        return ROUND_ANALYSIS_WORKER_IDLE_WAIT_SECONDS
+    return remaining_seconds
+
+
+def _run_single_round_analysis(run_id, *, already_running=False):
     run = RoundQuestionAnalysisRun.objects.select_related('round').get(id=run_id)
-    run.status = RoundQuestionAnalysisRun.STATUS_RUNNING
-    run.started_at = timezone.now()
-    run.completed_at = None
-    run.error_message = ''
-    run.save(update_fields=['status', 'started_at', 'completed_at', 'error_message', 'updated_at'])
+    if not already_running:
+        run.status = RoundQuestionAnalysisRun.STATUS_RUNNING
+        run.started_at = timezone.now()
+        run.completed_at = None
+        run.error_message = ''
+        run.save(update_fields=['status', 'started_at', 'completed_at', 'error_message', 'updated_at'])
 
     try:
         slide_payload = _build_round_slide_payload(run.round)
@@ -181,6 +309,50 @@ def _run_single_round_analysis(run_id):
         run.error_message = f"{exc}\n\n{traceback.format_exc(limit=10)}"
         run.save(update_fields=['status', 'completed_at', 'error_message', 'updated_at'])
         raise
+
+
+def _notify_round_analysis_completion_if_ready(run_id):
+    run = RoundQuestionAnalysisRun.objects.select_related('round').filter(id=run_id).first()
+    if run is None or run.status not in {
+        RoundQuestionAnalysisRun.STATUS_COMPLETED,
+        RoundQuestionAnalysisRun.STATUS_FAILED,
+    }:
+        return
+
+    if run.batch_key:
+        grouped_runs = list(
+            RoundQuestionAnalysisRun.objects.select_related('round')
+            .filter(batch_key=run.batch_key)
+            .order_by('id')
+        )
+        if any(
+            grouped_run.status in {
+                RoundQuestionAnalysisRun.STATUS_PENDING,
+                RoundQuestionAnalysisRun.STATUS_RUNNING,
+            }
+            for grouped_run in grouped_runs
+        ):
+            return
+        _notify_alex_round_analysis_finished(
+            grouped_runs,
+            batch_label=run.batch_label,
+            success_count=sum(
+                1 for grouped_run in grouped_runs
+                if grouped_run.status == RoundQuestionAnalysisRun.STATUS_COMPLETED
+            ),
+            failed_count=sum(
+                1 for grouped_run in grouped_runs
+                if grouped_run.status == RoundQuestionAnalysisRun.STATUS_FAILED
+            ),
+        )
+        return
+
+    _notify_alex_round_analysis_finished(
+        [run],
+        batch_label=run.batch_label,
+        success_count=1 if run.status == RoundQuestionAnalysisRun.STATUS_COMPLETED else 0,
+        failed_count=1 if run.status == RoundQuestionAnalysisRun.STATUS_FAILED else 0,
+    )
 
 
 def _load_google_credentials():

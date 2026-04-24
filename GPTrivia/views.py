@@ -4901,12 +4901,11 @@ def home(request):
 
             _mark_selected_submitted_rounds_consumed(ordered_rounds)
             if round_ids_for_analysis:
-                from .round_analysis import queue_round_analysis_batch
+                from .round_analysis import schedule_auto_round_analysis_batch
 
                 transaction.on_commit(
-                    lambda queued_ids=list(round_ids_for_analysis), initiated_by=(request.user.username if request.user.is_authenticated else ''), label=f"new rounds from {presentation_name}": queue_round_analysis_batch(
+                    lambda queued_ids=list(round_ids_for_analysis), initiated_by=(request.user.username if request.user.is_authenticated else ''), label=f"new rounds from {presentation_name}": schedule_auto_round_analysis_batch(
                         queued_ids,
-                        trigger_type=RoundQuestionAnalysisRun.TRIGGER_AUTO,
                         initiated_by=initiated_by,
                         batch_label=label,
                     )
@@ -5066,12 +5065,11 @@ def home(request):
 
             _mark_selected_submitted_rounds_consumed(ordered_rounds)
             if round_ids_for_analysis:
-                from .round_analysis import queue_round_analysis_batch
+                from .round_analysis import schedule_auto_round_analysis_batch
 
                 transaction.on_commit(
-                    lambda queued_ids=list(round_ids_for_analysis), initiated_by=(request.user.username if request.user.is_authenticated else ''), label=f"new rounds from {presentation_name}": queue_round_analysis_batch(
+                    lambda queued_ids=list(round_ids_for_analysis), initiated_by=(request.user.username if request.user.is_authenticated else ''), label=f"new rounds from {presentation_name}": schedule_auto_round_analysis_batch(
                         queued_ids,
-                        trigger_type=RoundQuestionAnalysisRun.TRIGGER_AUTO,
                         initiated_by=initiated_by,
                         batch_label=label,
                     )

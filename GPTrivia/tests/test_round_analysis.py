@@ -11,6 +11,7 @@ from PIL import Image
 
 from GPTrivia.models import GPTriviaRound, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun
 from GPTrivia.round_analysis import (
+    ROUND_ANALYSIS_AUTO_DELAY_SECONDS,
     _apply_apps_script_media_links,
     _analyze_round_slides,
     _build_possible_answers,
@@ -25,6 +26,7 @@ from GPTrivia.round_analysis import (
     _normalize_analysis_questions,
     _optimize_analysis_image_content,
     _store_round_analysis,
+    queue_round_analysis_batch,
 )
 
 
@@ -47,7 +49,7 @@ class RoundAnalysisTests(TestCase):
             ],
         ),
     )
-    @patch("GPTrivia.round_analysis.queue_round_analysis_batch")
+    @patch("GPTrivia.round_analysis.schedule_auto_round_analysis_batch")
     def test_home_generate_auto_queues_only_new_rounds(self, queue_mock, create_mock):
         with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 3, 20)):
             with patch("GPTrivia.views._broadcast_home_build_state"):
@@ -81,8 +83,42 @@ class RoundAnalysisTests(TestCase):
         queue_mock.assert_called_once()
         queued_ids = queue_mock.call_args.args[0]
         self.assertEqual(queued_ids, [created_rounds[0].id])
-        self.assertEqual(queue_mock.call_args.kwargs["trigger_type"], RoundQuestionAnalysisRun.TRIGGER_AUTO)
         self.assertEqual(queue_mock.call_args.kwargs["initiated_by"], "Alex")
+
+    @patch("GPTrivia.round_analysis.ensure_round_analysis_worker_running")
+    def test_queue_round_analysis_batch_sets_delayed_schedule_for_auto_runs(self, worker_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Delayed Analysis Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+
+        before_queue = datetime.datetime.now(datetime.timezone.utc)
+        queued_run_ids = queue_round_analysis_batch(
+            [round_obj.id],
+            trigger_type=RoundQuestionAnalysisRun.TRIGGER_AUTO,
+            initiated_by="Alex",
+            batch_label="new rounds from 03.20.2026",
+            delay_seconds=ROUND_ANALYSIS_AUTO_DELAY_SECONDS,
+        )
+        after_queue = datetime.datetime.now(datetime.timezone.utc)
+
+        self.assertEqual(len(queued_run_ids), 1)
+        worker_mock.assert_called_once()
+        queued_run = RoundQuestionAnalysisRun.objects.get(id=queued_run_ids[0])
+        expected_minimum = before_queue + datetime.timedelta(seconds=ROUND_ANALYSIS_AUTO_DELAY_SECONDS)
+        expected_maximum = after_queue + datetime.timedelta(seconds=ROUND_ANALYSIS_AUTO_DELAY_SECONDS)
+        self.assertGreaterEqual(queued_run.scheduled_for, expected_minimum)
+        self.assertLessEqual(queued_run.scheduled_for, expected_maximum)
+        self.assertEqual(queued_run.batch_label, "new rounds from 03.20.2026")
+        self.assertTrue(queued_run.batch_key)
 
     def test_trigger_round_analysis_rejects_replay_round(self):
         round_obj = GPTriviaRound.objects.create(

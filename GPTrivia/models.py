@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.files.base import ContentFile
+from django.utils import timezone
 from pathlib import Path
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageOps
@@ -272,6 +273,9 @@ class RoundQuestionAnalysisRun(models.Model):
     trigger_type = models.CharField(max_length=16, choices=TRIGGER_CHOICES, default=TRIGGER_AUTO)
     initiated_by = models.CharField(max_length=100, blank=True, default='')
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    scheduled_for = models.DateTimeField(default=timezone.now, db_index=True)
+    batch_key = models.CharField(max_length=64, blank=True, default='', db_index=True)
+    batch_label = models.CharField(max_length=255, blank=True, default='')
     round_type = models.CharField(max_length=100, blank=True, default='')
     notes = models.TextField(blank=True, default='')
     source_presentation_id = models.CharField(max_length=255, blank=True, default='')
@@ -287,6 +291,14 @@ class RoundQuestionAnalysisRun(models.Model):
 
     def __str__(self):
         return f"{self.round.title} analysis ({self.status})"
+
+
+class RoundAnalysisWorkerState(models.Model):
+    key = models.CharField(max_length=32, unique=True, default='default')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Round analysis worker ({self.key})"
 
 
 class RoundQuestionAnalysisEntry(models.Model):
