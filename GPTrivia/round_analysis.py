@@ -842,6 +842,10 @@ def _analyze_round_slides_with_gpt(round_obj, slide_payload, *, classification=N
         "For example, infer prompts like identify the person, identify the place, name the song and artist, identify the movie, or explain the matching rule. "
         "Some Google Slides audio clips appear in pageElements as tiny clickable image placeholders rather than true audio objects. "
         "If media metadata marks an item as likely_audio_control or the rendered slide clearly indicates music/audio, do not classify the round as a picture round just because an image placeholder exists. "
+        "For matching rounds, return one question object per left-side clue or numbered row, not one giant object for the entire board. "
+        "question_text should be that single left-side clue, and answer_text should be the matched right-side option text when visible. "
+        "If only the matched option position is recoverable, answer_text may use the option letter/number. "
+        "For multiple choice rounds, answer_text should be the correct option text when visible, not only the stem. "
         "If a single slide contains multiple separate question images or other media items, return one question per item. "
         "Use media_index to point to the matching media item on that slide. media_index is 1-based and follows the media_items order already provided in the slide payload, "
         "which is sorted top-to-bottom and then left-to-right. "
@@ -1177,6 +1181,291 @@ def _possible_answer_initialisms(value):
     return initialisms
 
 
+_POSITION_ORDINAL_WORDS = {
+    1: 'first',
+    2: 'second',
+    3: 'third',
+    4: 'fourth',
+    5: 'fifth',
+    6: 'sixth',
+    7: 'seventh',
+    8: 'eighth',
+    9: 'ninth',
+    10: 'tenth',
+}
+
+_POSITION_WORD_TO_INDEX = {
+    'first': 1,
+    'second': 2,
+    'third': 3,
+    'fourth': 4,
+    'fifth': 5,
+    'sixth': 6,
+    'seventh': 7,
+    'eighth': 8,
+    'ninth': 9,
+    'tenth': 10,
+}
+
+
+def _split_analysis_text_lines(value):
+    return [
+        _normalize_possible_answer_variant(line)
+        for line in re.split(r'[\r\n]+', str(value or ''))
+        if _normalize_possible_answer_variant(line)
+    ]
+
+
+def _extract_alpha_prefix(value):
+    match = re.match(r'^\s*([A-Za-z])[\)\].:\-]*\s*(.+?)\s*$', str(value or ''))
+    if not match:
+        return None, _normalize_text_content(value)
+    return match.group(1).upper(), _normalize_text_content(match.group(2))
+
+
+def _extract_numbered_analysis_items(value):
+    items = []
+    for line in _split_analysis_text_lines(value):
+        label_number, cleaned_text = _extract_numeric_prefix(line)
+        if label_number is None or not cleaned_text:
+            continue
+        items.append({
+            'label': label_number,
+            'text': cleaned_text,
+        })
+    return items
+
+
+def _extract_lettered_analysis_items(value):
+    items = []
+    for line in _split_analysis_text_lines(value):
+        label_letter, cleaned_text = _extract_alpha_prefix(line)
+        if not label_letter or not cleaned_text:
+            continue
+        items.append({
+            'label': label_letter,
+            'index': ord(label_letter) - 64,
+            'text': cleaned_text,
+        })
+    return items
+
+
+def _position_index_to_letter(index):
+    try:
+        parsed_index = int(index)
+    except (TypeError, ValueError):
+        return ''
+    if parsed_index <= 0 or parsed_index > 26:
+        return ''
+    return chr(64 + parsed_index)
+
+
+def _position_token_to_index(token, total_count=0):
+    normalized_token = _normalize_possible_answer_variant(token).casefold()
+    if not normalized_token:
+        return None
+    if re.fullmatch(r'\d+', normalized_token):
+        parsed_index = int(normalized_token)
+        return parsed_index if parsed_index > 0 else None
+    if re.fullmatch(r'[a-z]', normalized_token):
+        return ord(normalized_token.upper()) - 64
+    if normalized_token in _POSITION_WORD_TO_INDEX:
+        return _POSITION_WORD_TO_INDEX[normalized_token]
+    if normalized_token == 'last' and total_count > 0:
+        return total_count
+    if normalized_token == 'middle' and total_count > 0:
+        return (total_count + 1) // 2
+    return None
+
+
+def _position_aliases(index, total_count=0):
+    try:
+        parsed_index = int(index)
+    except (TypeError, ValueError):
+        return []
+    if parsed_index <= 0:
+        return []
+
+    aliases = [str(parsed_index)]
+    letter = _position_index_to_letter(parsed_index)
+    if letter:
+        aliases.extend([letter, letter.casefold()])
+    ordinal = _POSITION_ORDINAL_WORDS.get(parsed_index)
+    if ordinal:
+        aliases.append(ordinal)
+    if total_count > 0 and parsed_index == total_count:
+        aliases.append('last')
+    if total_count > 0 and parsed_index == ((total_count + 1) // 2):
+        aliases.append('middle')
+
+    deduped_aliases = []
+    seen_aliases = set()
+    for alias in aliases:
+        normalized_alias = _normalize_possible_answer_variant(alias)
+        alias_key = normalized_alias.casefold()
+        if not normalized_alias or alias_key in seen_aliases:
+            continue
+        seen_aliases.add(alias_key)
+        deduped_aliases.append(normalized_alias)
+    return deduped_aliases
+
+
+def _normalize_choice_comparison_value(value):
+    normalized_value = _normalize_possible_answer_variant(value).casefold()
+    normalized_value = re.sub(r'^(?:a|an|the)\s+', '', normalized_value)
+    normalized_value = re.sub(r"[^0-9a-z\s]", '', normalized_value)
+    normalized_value = re.sub(r'\s+', ' ', normalized_value).strip()
+    return normalized_value
+
+
+def _choice_text_matches_answer(choice_text, answer_text):
+    normalized_choice = _normalize_choice_comparison_value(choice_text)
+    normalized_answer = _normalize_choice_comparison_value(answer_text)
+    if not normalized_choice or not normalized_answer:
+        return False
+    return normalized_choice == normalized_answer
+
+
+def _extract_matching_answer_map(answer_text, *, option_count=0):
+    mapping = {}
+    normalized_answer_text = str(answer_text or '')
+    mapping_pattern = re.compile(
+        r'(\d+)\s*(?:matches?(?:\s+to)?|->|=>|=|[-:])?\s*'
+        r'([A-Za-z]|\d+|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|middle|last)\b',
+        flags=re.IGNORECASE,
+    )
+    for match in mapping_pattern.finditer(normalized_answer_text):
+        left_index = int(match.group(1))
+        right_index = _position_token_to_index(match.group(2), total_count=option_count)
+        if left_index > 0 and right_index and right_index > 0:
+            mapping[left_index] = right_index
+
+    if mapping:
+        return mapping
+
+    sequential_lines = _split_analysis_text_lines(answer_text)
+    for line_index, line_text in enumerate(sequential_lines, start=1):
+        right_index = _position_token_to_index(line_text, total_count=option_count)
+        if right_index and right_index > 0:
+            mapping[line_index] = right_index
+    return mapping
+
+
+def _expand_matching_question_entry(entry):
+    combined_question_text = '\n'.join(
+        text
+        for text in [
+            str(entry.get('question_text') or '').strip(),
+            str(entry.get('instruction_text') or '').strip(),
+        ]
+        if text
+    )
+    left_items = _extract_numbered_analysis_items(combined_question_text)
+    right_items = _extract_lettered_analysis_items(combined_question_text)
+    answer_map = _extract_matching_answer_map(
+        entry.get('answer_text'),
+        option_count=len(right_items),
+    )
+
+    if len(left_items) < 2 or not answer_map:
+        return []
+
+    right_items_by_index = {
+        item['index']: item
+        for item in right_items
+        if item.get('index')
+    }
+    inferred_option_count = max(
+        len(right_items_by_index),
+        max(answer_map.values(), default=0),
+    )
+
+    expanded_entries = []
+    for left_item in left_items:
+        left_label = int(left_item.get('label') or 0)
+        matched_index = answer_map.get(left_label)
+        if not matched_index:
+            continue
+        matched_option = right_items_by_index.get(matched_index)
+        answer_text = str((matched_option or {}).get('text') or '').strip() or _position_index_to_letter(matched_index) or str(matched_index)
+        expanded_entries.append(
+            {
+                **entry,
+                'question_text': str(left_item.get('text') or '').strip() or f"Match {left_label}",
+                'answer_text': answer_text,
+                'additional_possible_answers': _position_aliases(matched_index, total_count=inferred_option_count),
+            }
+        )
+
+    return expanded_entries
+
+
+def _derive_multiple_choice_position_aliases(entry):
+    combined_question_text = '\n'.join(
+        text
+        for text in [
+            str(entry.get('question_text') or '').strip(),
+            str(entry.get('instruction_text') or '').strip(),
+        ]
+        if text
+    )
+    option_items = _extract_lettered_analysis_items(combined_question_text)
+    if not option_items:
+        option_items = [
+            {
+                'index': item['label'],
+                'text': item['text'],
+            }
+            for item in _extract_numbered_analysis_items(combined_question_text)
+        ]
+
+    if len(option_items) < 2:
+        return []
+
+    answer_text = str(entry.get('answer_text') or '').strip()
+    matched_index = _position_token_to_index(answer_text, total_count=len(option_items))
+    if not matched_index:
+        for option_item in option_items:
+            if _choice_text_matches_answer(option_item.get('text'), answer_text):
+                matched_index = int(option_item.get('index') or 0)
+                break
+    if not matched_index:
+        return []
+    return _position_aliases(matched_index, total_count=len(option_items))
+
+
+def _normalize_analysis_questions(analysis_payload):
+    normalized_round_type = str(analysis_payload.get('round_type') or '').strip().lower()
+    original_questions = list(analysis_payload.get('questions') or [])
+    normalized_questions = []
+
+    for index, question_entry in enumerate(original_questions, start=1):
+        normalized_entry = dict(question_entry or {})
+        if normalized_round_type == 'matching':
+            expanded_entries = _expand_matching_question_entry(normalized_entry)
+            if expanded_entries:
+                normalized_questions.extend(expanded_entries)
+                continue
+        if normalized_round_type == 'multiple choice':
+            additional_aliases = _derive_multiple_choice_position_aliases(normalized_entry)
+            if additional_aliases:
+                existing_aliases = list(normalized_entry.get('additional_possible_answers') or [])
+                normalized_entry['additional_possible_answers'] = [
+                    alias
+                    for alias in [*existing_aliases, *additional_aliases]
+                    if alias
+                ]
+        normalized_questions.append(normalized_entry)
+
+    for question_number, question_entry in enumerate(normalized_questions, start=1):
+        question_entry['question_number'] = question_number
+
+    return {
+        **analysis_payload,
+        'questions': normalized_questions,
+    }
+
+
 def _expand_simple_phrase_forms(phrase, question_text=''):
     cleaned_phrase = _normalize_possible_answer_variant(phrase)
     if not cleaned_phrase:
@@ -1313,6 +1602,7 @@ def _generate_additional_possible_answer_aliases(round_obj, question_entries, *,
         "episode numbering variants, and common alternate phrasings when they are clearly equivalent. "
         "For person-name answers, always include surname-only answers plus short-name/full-name surname variants whenever the clue refers to one specific person. "
         "For example, George Washington should accept Washington, and Benjamin Franklin should accept Franklin and Ben Franklin; Franklin should also accept Benjamin Franklin when the clue clearly means that person. "
+        "For multiple choice rounds, include option-position aliases when the option order is recoverable, such as A/B/C, 1/2/3, and first/second/third. "
         "For matching rounds, include positional aliases when the option order is recoverable, such as A/B/C, 1/2/3, first/second/third, first/middle/last, and similar equivalents. "
         "For long matching-statement answers, also include a very short one- or two-word gist answer when it would obviously identify the correct option, such as church for a long statement about the Church of England. "
         "Do not include simple capitalization, punctuation, spacing, or hyphen variants; those are already handled elsewhere. "
@@ -1858,16 +2148,24 @@ def _download_media_file(round_obj, question_number, media_item):
 
 
 def _store_round_analysis(run, slide_payload, analysis_payload):
-    questions = analysis_payload.get('questions') or []
+    normalized_analysis_payload = _normalize_analysis_questions(analysis_payload)
+    questions = normalized_analysis_payload.get('questions') or []
     empty_correctness = _empty_player_correctness_map()
     RoundQuestionAnalysisEntry.objects.filter(run=run).delete()
     question_contexts = _assign_media_to_question_entries(slide_payload, questions)
 
-    normalized_round_type = str(analysis_payload.get('round_type') or '').strip()
-    normalized_notes = str(analysis_payload.get('notes') or '').strip()
-    additional_possible_answers_by_question = {}
+    normalized_round_type = str(normalized_analysis_payload.get('round_type') or '').strip()
+    normalized_notes = str(normalized_analysis_payload.get('notes') or '').strip()
+    additional_possible_answers_by_question = {
+        int(context['question_number']): [
+            _normalize_possible_answer_variant(alias)
+            for alias in list((context['entry'] or {}).get('additional_possible_answers') or [])
+            if _normalize_possible_answer_variant(alias)
+        ]
+        for context in question_contexts
+    }
     try:
-        additional_possible_answers_by_question = _generate_additional_possible_answer_aliases(
+        generated_alias_map = _generate_additional_possible_answer_aliases(
             run.round,
             [
                 {
@@ -1879,6 +2177,20 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
             ],
             round_type=normalized_round_type,
         )
+        for question_number, aliases in generated_alias_map.items():
+            merged_aliases = []
+            seen_aliases = set()
+            for alias in [
+                *additional_possible_answers_by_question.get(question_number, []),
+                *(aliases or []),
+            ]:
+                normalized_alias = _normalize_possible_answer_variant(alias)
+                alias_key = normalized_alias.casefold()
+                if not normalized_alias or alias_key in seen_aliases:
+                    continue
+                seen_aliases.add(alias_key)
+                merged_aliases.append(normalized_alias)
+            additional_possible_answers_by_question[question_number] = merged_aliases
     except Exception:
         logger.exception("Could not generate additional possible answers for round %s", run.round_id)
 
