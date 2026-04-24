@@ -224,6 +224,21 @@ input.answer-sheet-score-input[type="text"]::placeholder {
     cursor: not-allowed;
 }
 
+.answer-sheet-button-message {
+    min-height: 1rem;
+    margin-top: 4px;
+    font-size: 0.78rem;
+    line-height: 1;
+    color: #9cc8ff;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+}
+
+.answer-sheet-button-message[data-visible="true"] {
+    opacity: 1;
+}
+
 .answer-sheet-status {
     font-size: 0.9rem;
     color: rgba(245, 246, 251, 0.72);
@@ -354,6 +369,10 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-dot.is-active {
     background: #1b2530;
 }
 
+body.site-shell[data-profile-theme="light"] .answer-sheet-button-message {
+    color: #366dba;
+}
+
 body.site-shell[data-profile-theme="light"].answer-sheet-shell footer,
 body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-container,
 body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-content,
@@ -409,5 +428,9 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-bottom {
 
     .answer-sheet-status {
         font-size: 0.82rem;
+    }
+
+    .answer-sheet-button-message {
+        font-size: 0.74rem;
     }
 }

@@ -1458,7 +1458,7 @@ def _build_answer_sheet_context(user, requested_date=''):
             'grade_disabled_message': (
                 ''
                 if _creator_allows_round_analysis(round_obj.creator)
-                else f"Grade is unavailable because {round_obj.creator} has not enabled round analysis."
+                else "round analysis is not enabled for this creator"
             ),
             'answers': answers,
             'answers_text': '\n'.join(answers),

@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423c">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423d">
 {% endblock %}
 
 {% block content %}
@@ -56,11 +56,11 @@
                             class="answer-sheet-action-button{% if not page.grade_enabled %} is-disabled{% endif %}"
                             type="button"
                             {% if not page.grade_enabled %}aria-disabled="true"{% endif %}
-                            title="{{ page.grade_disabled_message }}"
                             data-round-id="{{ page.round_id }}"
                             data-grade-disabled-message="{{ page.grade_disabled_message }}"
                         >Grade</button>
                     </div>
+                    <div class="answer-sheet-button-message" data-button-message-for="{{ page.round_id }}" aria-live="polite"></div>
                 </section>
             {% endfor %}
         </div>
@@ -100,6 +100,7 @@
         const dotButtons = Array.from(pageRoot.querySelectorAll('[data-answer-sheet-dot]'));
         const saveUrl = pageRoot.dataset.saveUrl || '';
         const saveTimers = new Map();
+        const buttonMessageTimers = new Map();
         document.body.classList.add('answer-sheet-shell');
 
         function getCsrfToken() {
@@ -114,6 +115,24 @@
             }
             status.textContent = message;
             status.dataset.state = state || '';
+        }
+
+        function showButtonMessage(roundId, message) {
+            const messageEl = pageRoot.querySelector(`[data-button-message-for="${roundId}"]`);
+            if (!messageEl) {
+                return;
+            }
+
+            window.clearTimeout(buttonMessageTimers.get(roundId));
+            messageEl.textContent = message || '';
+            messageEl.dataset.visible = message ? 'true' : 'false';
+
+            if (message) {
+                buttonMessageTimers.set(roundId, window.setTimeout(() => {
+                    messageEl.textContent = '';
+                    messageEl.dataset.visible = 'false';
+                }, 1000));
+            }
         }
 
         function roundIndexFromScroll() {
@@ -254,12 +273,12 @@
         pageRoot.querySelectorAll('.answer-sheet-action-button[aria-disabled="true"]').forEach((button) => {
             button.addEventListener('click', (event) => {
                 event.preventDefault();
-                const message = button.dataset.gradeDisabledMessage || button.title || '';
+                const message = button.dataset.gradeDisabledMessage || '';
                 if (!message) {
                     return;
                 }
                 const roundId = button.dataset.roundId;
-                setStatus(roundId, message, 'info');
+                showButtonMessage(roundId, message);
             });
         });
 
