@@ -557,6 +557,19 @@ body.site-shell .answer-sheet-page input.answer-sheet-score-input[type="text"] {
     cursor: pointer;
 }
 
+.answer-sheet-action-button[data-submit-score-for][data-submit-state="graded-dirty"] {
+    border-color: rgba(244, 201, 93, 0.65);
+}
+
+.answer-sheet-action-button[data-submit-score-for][data-submit-state="graded-saved"],
+.answer-sheet-action-button[data-submit-score-for][data-submit-state="ungraded-saved"] {
+    border-color: rgba(140, 233, 154, 0.65);
+}
+
+.answer-sheet-action-button[data-submit-score-for][data-submit-state="ungraded-dirty"] {
+    border-color: rgba(255, 140, 140, 0.65);
+}
+
 .answer-sheet-action-button.is-disabled,
 .answer-sheet-action-button[aria-disabled="true"] {
     opacity: 0.6;
@@ -772,6 +785,19 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-score-input[data-score
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-score-input[data-score-state="ungraded-dirty"] {
     color: #bf3f3f;
+    border-color: rgba(191, 63, 63, 0.55);
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-action-button[data-submit-score-for][data-submit-state="graded-dirty"] {
+    border-color: rgba(184, 116, 18, 0.55);
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-action-button[data-submit-score-for][data-submit-state="graded-saved"],
+body.site-shell[data-profile-theme="light"] .answer-sheet-action-button[data-submit-score-for][data-submit-state="ungraded-saved"] {
+    border-color: rgba(42, 143, 69, 0.55);
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-action-button[data-submit-score-for][data-submit-state="ungraded-dirty"] {
     border-color: rgba(191, 63, 63, 0.55);
 }
 

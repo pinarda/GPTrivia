@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260424c">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260424d">
 {% endblock %}
 
 {% block content %}
@@ -72,6 +72,7 @@
                             data-submit-score-for="{{ page.round_id }}"
                             data-round-title="{{ page.round_title }}"
                             data-submit-requires-confirmation="{% if page.submit_requires_confirmation %}true{% else %}false{% endif %}"
+                            data-submit-state="ungraded-saved"
                         >Submit</button>
                         <button
                             class="answer-sheet-action-button{% if not page.grade_enabled %} is-disabled{% endif %}"
@@ -188,6 +189,7 @@
         let reconnectTimeoutRef = null;
         let isUnloading = false;
         let syncRequestRef = null;
+        let skipUnsavedChangesPrompt = false;
         document.body.classList.add('answer-sheet-shell');
 
         function getCsrfToken() {
@@ -214,6 +216,10 @@
 
         function getRoundScoreInput(roundId) {
             return pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
+        }
+
+        function getRoundSubmitButton(roundId) {
+            return pageRoot.querySelector(`[data-submit-score-for="${roundId}"]`);
         }
 
         function setRoundAnswersDirty(roundId, isDirty) {
@@ -247,12 +253,20 @@
             scoreInput.dataset.scoreState = state || '';
         }
 
+        function setSubmitState(submitButton, state) {
+            if (!submitButton) {
+                return;
+            }
+            submitButton.dataset.submitState = state || '';
+        }
+
         function refreshRoundStatus(roundId) {
             const panel = getRoundPanel(roundId);
             const textarea = getRoundTextarea(roundId);
             const scoreInput = getRoundScoreInput(roundId);
+            const submitButton = getRoundSubmitButton(roundId);
             const status = pageRoot.querySelector(`[data-status-for="${roundId}"]`);
-            if (!panel || !textarea || !scoreInput || !status) {
+            if (!panel || !textarea || !scoreInput || !submitButton || !status) {
                 return;
             }
 
@@ -275,6 +289,20 @@
             status.textContent = statusText;
             status.dataset.state = statusState;
             setScoreState(scoreInput, statusState);
+            setSubmitState(submitButton, statusState);
+        }
+
+        function hasUnsavedAnswerSheetChanges() {
+            return Array.from(pageRoot.querySelectorAll('.answer-sheet-round-panel')).some((panel) =>
+                panel.dataset.answersDirty === 'true' || panel.dataset.scoreDirty === 'true'
+            );
+        }
+
+        function confirmDiscardUnsavedChanges() {
+            if (!hasUnsavedAnswerSheetChanges()) {
+                return true;
+            }
+            return window.confirm('You have unsaved changes. Are you sure you want to leave this page?');
         }
 
         function flushPendingAnswerSaves() {
@@ -1203,6 +1231,10 @@
                     dayButton.classList.add('has-presentation');
                     dayButton.title = isoDate;
                     dayButton.addEventListener('click', () => {
+                        if (!confirmDiscardUnsavedChanges()) {
+                            return;
+                        }
+                        skipUnsavedChangesPrompt = true;
                         const nextUrl = new URL(window.location.href);
                         nextUrl.searchParams.set('date', isoDate);
                         window.location.href = nextUrl.toString();
@@ -1422,7 +1454,11 @@
                 ensureAnswerSheetRealtime(true);
             });
 
-            window.addEventListener('beforeunload', () => {
+            window.addEventListener('beforeunload', (event) => {
+                if (!skipUnsavedChangesPrompt && hasUnsavedAnswerSheetChanges()) {
+                    event.preventDefault();
+                    event.returnValue = '';
+                }
                 isUnloading = true;
                 flushPendingAnswerSaves();
                 clearAnswerSheetReconnect();
