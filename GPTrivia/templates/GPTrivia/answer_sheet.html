@@ -179,6 +179,8 @@
         const saveTimers = new Map();
         const buttonMessageTimers = new Map();
         const lineStateMap = new WeakMap();
+        const textareaValueMap = new WeakMap();
+        const textareaBeforeInputMap = new WeakMap();
         const localClientId = (
             window.crypto && typeof window.crypto.randomUUID === 'function'
                 ? window.crypto.randomUUID()
@@ -502,7 +504,11 @@
         };
 
         function countLogicalLines(value) {
-            return Math.max(1, value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').length);
+            return Math.max(1, normalizeTextareaValue(value).split('\n').length);
+        }
+
+        function normalizeTextareaValue(value) {
+            return String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
         }
 
         function normalizeScoreValue(rawValue) {
@@ -534,7 +540,7 @@
         }
 
         function getTextareaLines(textarea) {
-            return textarea.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+            return normalizeTextareaValue(textarea.value).split('\n');
         }
 
         function getLineStates(textarea, rowCount) {
@@ -560,21 +566,135 @@
             const caretPosition = typeof textarea.selectionStart === 'number'
                 ? textarea.selectionStart
                 : textarea.value.length;
-            return textarea.value
+            return normalizeTextareaValue(textarea.value)
                 .slice(0, caretPosition)
-                .replace(/\r\n/g, '\n')
-                .replace(/\r/g, '\n')
+                .split('\n').length - 1;
+        }
+
+        function getLineIndexFromOffset(value, offset) {
+            const normalizedValue = normalizeTextareaValue(value);
+            const boundedOffset = Math.max(0, Math.min(normalizedValue.length, Number(offset) || 0));
+            return normalizedValue
+                .slice(0, boundedOffset)
                 .split('\n').length - 1;
         }
 
         function getLineStartOffset(value, lineIndex) {
-            const normalizedValue = value.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            const normalizedValue = normalizeTextareaValue(value);
             const lines = normalizedValue.split('\n');
             let offset = 0;
             for (let index = 0; index < Math.min(lineIndex, lines.length - 1); index += 1) {
                 offset += lines[index].length + 1;
             }
             return offset;
+        }
+
+        function rememberTextareaValue(textarea) {
+            if (!textarea) {
+                return;
+            }
+            textareaValueMap.set(textarea, normalizeTextareaValue(textarea.value));
+        }
+
+        function inferCollapsedLineInsertionIndex(previousLines, currentLines, lineDelta, preferredIndex) {
+            const candidateIndices = [];
+            if (Number.isInteger(preferredIndex)) {
+                candidateIndices.push(Math.max(0, Math.min(currentLines.length, preferredIndex)));
+            }
+
+            let mismatchIndex = 0;
+            while (
+                mismatchIndex < currentLines.length &&
+                mismatchIndex < previousLines.length &&
+                currentLines[mismatchIndex] === previousLines[mismatchIndex]
+            ) {
+                mismatchIndex += 1;
+            }
+            candidateIndices.push(mismatchIndex, currentLines.length);
+
+            const seenCandidates = new Set();
+            for (const candidateIndex of candidateIndices) {
+                if (
+                    candidateIndex < 0 ||
+                    candidateIndex > currentLines.length ||
+                    seenCandidates.has(candidateIndex)
+                ) {
+                    continue;
+                }
+                seenCandidates.add(candidateIndex);
+
+                let matches = true;
+                for (let index = 0; index < candidateIndex; index += 1) {
+                    if (currentLines[index] !== previousLines[index]) {
+                        matches = false;
+                        break;
+                    }
+                }
+                if (!matches) {
+                    continue;
+                }
+                for (let index = candidateIndex; index < currentLines.length; index += 1) {
+                    if (currentLines[index] !== previousLines[index + lineDelta]) {
+                        matches = false;
+                        break;
+                    }
+                }
+                if (matches) {
+                    return candidateIndex;
+                }
+            }
+            return null;
+        }
+
+        function restoreCollapsedDeletedLines(textarea) {
+            const snapshot = textareaBeforeInputMap.get(textarea);
+            const previousValue = snapshot && typeof snapshot.value === 'string'
+                ? snapshot.value
+                : textareaValueMap.get(textarea);
+            const currentValue = normalizeTextareaValue(textarea.value);
+
+            if (!previousValue) {
+                if (textarea.value !== currentValue) {
+                    textarea.value = currentValue;
+                }
+                return false;
+            }
+
+            const previousLines = previousValue.split('\n');
+            const currentLines = currentValue.split('\n');
+            const lineDelta = previousLines.length - currentLines.length;
+            if (lineDelta <= 0) {
+                if (textarea.value !== currentValue) {
+                    textarea.value = currentValue;
+                }
+                return false;
+            }
+
+            const preferredLineIndex = snapshot && typeof snapshot.selectionStart === 'number'
+                ? getLineIndexFromOffset(previousValue, snapshot.selectionStart)
+                : null;
+            const insertionIndex = inferCollapsedLineInsertionIndex(
+                previousLines,
+                currentLines,
+                lineDelta,
+                preferredLineIndex,
+            );
+            if (insertionIndex === null) {
+                if (textarea.value !== currentValue) {
+                    textarea.value = currentValue;
+                }
+                return false;
+            }
+
+            const restoredLines = currentLines.slice();
+            restoredLines.splice(insertionIndex, 0, ...Array(lineDelta).fill(''));
+            const restoredValue = restoredLines.join('\n');
+            textarea.value = restoredValue;
+            const insertionOffset = getLineStartOffset(restoredValue, insertionIndex);
+            if (typeof textarea.setSelectionRange === 'function') {
+                textarea.setSelectionRange(insertionOffset, insertionOffset);
+            }
+            return true;
         }
 
         function measureTextareaCharacterWidth(textarea) {
@@ -728,7 +848,7 @@
 
         function ensureMinimumTextareaLines(textarea) {
             const minimumRows = 10;
-            const normalizedValue = textarea.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            const normalizedValue = normalizeTextareaValue(textarea.value);
             const lineCount = countLogicalLines(normalizedValue);
             if (lineCount >= minimumRows) {
                 if (normalizedValue !== textarea.value) {
@@ -804,6 +924,7 @@
                 numberList.appendChild(item);
             }
             renderTextOverlay(textarea);
+            rememberTextareaValue(textarea);
         }
 
         async function saveAnswers(roundId, value) {
@@ -1022,7 +1143,15 @@
             syncLineNumbers(textarea);
             syncOverlayScroll(textarea);
             setRoundAnswersDirty(roundId, false);
+            textarea.addEventListener('beforeinput', () => {
+                textareaBeforeInputMap.set(textarea, {
+                    value: normalizeTextareaValue(textarea.value),
+                    selectionStart: typeof textarea.selectionStart === 'number' ? textarea.selectionStart : textarea.value.length,
+                });
+            });
             textarea.addEventListener('input', () => {
+                restoreCollapsedDeletedLines(textarea);
+                textareaBeforeInputMap.delete(textarea);
                 syncLineNumbers(textarea);
                 const nextLines = getTextareaLines(textarea);
                 const nextStates = getLineStates(textarea, Math.max(10, nextLines.length)).slice();
