@@ -678,6 +678,40 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("third", normalized_payload["questions"][0]["additional_possible_answers"])
         self.assertIn("last", normalized_payload["questions"][0]["additional_possible_answers"])
 
+    def test_normalize_analysis_questions_keeps_single_board_matching_question_when_slide_has_overall_number(self):
+        normalized_payload = _normalize_analysis_questions(
+            {
+                "round_type": "matching",
+                "notes": "",
+                "questions": [
+                    {
+                        "question_number": 11,
+                        "source_slide_number": 3,
+                        "question_text": (
+                            "11\n"
+                            "1. Mercury\n"
+                            "2. Venus\n"
+                            "3. Earth\n"
+                            "A. first planet from the Sun\n"
+                            "B. second planet from the Sun\n"
+                            "C. third planet from the Sun"
+                        ),
+                        "instruction_text": "Match each planet to the correct description.",
+                        "answer_text": "1-C\n2-B\n3-A",
+                        "media_kind": "",
+                        "major_category": "Science",
+                        "minor_category1": "",
+                        "minor_category2": "",
+                    },
+                ],
+            }
+        )
+
+        self.assertEqual(len(normalized_payload["questions"]), 1)
+        self.assertEqual(normalized_payload["questions"][0]["answer_text"], "1-C\n2-B\n3-A")
+        self.assertIn("CBA", normalized_payload["questions"][0]["additional_possible_answers"])
+        self.assertIn("321", normalized_payload["questions"][0]["additional_possible_answers"])
+
     def test_round_analysis_question_can_include_saved_image_payload(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
@@ -916,6 +950,70 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("3", entry.possible_answers)
         self.assertIn("third", entry.possible_answers)
         self.assertIn("last", entry.possible_answers)
+
+    @patch(
+        "GPTrivia.round_analysis._generate_additional_possible_answer_aliases",
+        return_value={},
+    )
+    @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
+    def test_store_round_analysis_single_board_matching_round_saves_sequence_aliases(self, correctness_mock, aliases_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Board Matching Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=11,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/board-matching-round/edit#slide=id.r1",
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+        )
+
+        _store_round_analysis(
+            run,
+            {
+                "presentation_id": "board-matching-presentation",
+                "slide_range_label": "1-2",
+                "slides": [],
+            },
+            {
+                "round_type": "matching",
+                "notes": "",
+                "questions": [
+                    {
+                        "question_number": 11,
+                        "source_slide_number": 1,
+                        "question_text": (
+                            "11\n"
+                            "1. Mercury\n"
+                            "2. Venus\n"
+                            "3. Earth\n"
+                            "A. first planet from the Sun\n"
+                            "B. second planet from the Sun\n"
+                            "C. third planet from the Sun"
+                        ),
+                        "instruction_text": "Match each planet to the correct description.",
+                        "answer_text": "1-C\n2-B\n3-A",
+                        "media_kind": "",
+                        "major_category": "Science",
+                        "minor_category1": "",
+                        "minor_category2": "",
+                    },
+                ],
+            },
+        )
+
+        entry = RoundQuestionAnalysisEntry.objects.get(run=run, question_number=1)
+        self.assertEqual(entry.answer_text, "1-C\n2-B\n3-A")
+        self.assertIn("CBA", entry.possible_answers)
+        self.assertIn("cba", entry.possible_answers)
+        self.assertIn("321", entry.possible_answers)
 
     def test_round_analysis_random_question_excludes_music_rounds(self):
         music_round = GPTriviaRound.objects.create(

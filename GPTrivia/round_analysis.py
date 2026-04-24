@@ -1065,8 +1065,10 @@ def _analyze_round_slides_with_gpt(round_obj, slide_payload, *, classification=N
         "For example, infer prompts like identify the person, identify the place, name the song and artist, identify the movie, or explain the matching rule. "
         "Some Google Slides audio clips appear in pageElements as tiny clickable image placeholders rather than true audio objects. "
         "If media metadata marks an item as likely_audio_control or the rendered slide clearly indicates music/audio, do not classify the round as a picture round just because an image placeholder exists. "
-        "For matching rounds, return one question object per left-side clue or numbered row, not one giant object for the entire board. "
-        "question_text should be that single left-side clue, and answer_text should be the matched right-side option text when visible. "
+        "For matching rounds, if the slide clearly shows one overall question number for the entire board, keep it as a single question object instead of splitting it into one object per row. "
+        "If the slide does not show one overall board-level question number and the left-side clues are numbered row-by-row, return one question object per left-side clue or numbered row. "
+        "For split matching entries, question_text should be that single left-side clue, and answer_text should be the matched right-side option text when visible. "
+        "For single-board matching entries, answer_text may be the explicit ordered mapping or ordered option sequence, such as 1-C, 2-A, 3-B or CAB, if that is the clearest recoverable answer form. "
         "If only the matched option position is recoverable, answer_text may use the option letter/number. "
         "If the question slide contains line_items that visibly connect the left side to the right side, use those drawn line connections as the primary matching signal. "
         "Only ignore those line connections if the answer slide clearly reorders the right-side options or explicitly shows a different pairing structure that overrides the question-slide layout. "
@@ -1594,6 +1596,67 @@ def _extract_matching_left_items(question_text):
     return left_items
 
 
+def _extract_matching_standalone_question_number(question_text):
+    for line in _split_analysis_text_lines(question_text):
+        question_match = re.match(r'^\s*(?:question\s*)?(\d+)[\)\].:\-]*\s*$', line, flags=re.IGNORECASE)
+        if question_match:
+            return int(question_match.group(1))
+    return None
+
+
+def _build_matching_sequence_aliases(answer_map, left_items):
+    ordered_indices = []
+    for left_item in left_items or []:
+        left_label = int(left_item.get('label') or 0)
+        matched_index = answer_map.get(left_label)
+        if not matched_index:
+            return []
+        ordered_indices.append(int(matched_index))
+
+    if len(ordered_indices) < 2:
+        return []
+
+    aliases = []
+    letter_tokens = []
+    for index in ordered_indices:
+        letter = _position_index_to_letter(index)
+        if not letter:
+            letter_tokens = []
+            break
+        letter_tokens.append(letter)
+    if letter_tokens:
+        aliases.extend(
+            [
+                ''.join(letter_tokens),
+                ' '.join(letter_tokens),
+                '-'.join(letter_tokens),
+                ','.join(letter_tokens),
+            ]
+        )
+
+    number_tokens = [str(index) for index in ordered_indices]
+    if all(len(token) == 1 for token in number_tokens):
+        aliases.append(''.join(number_tokens))
+    aliases.extend(
+        [
+            ' '.join(number_tokens),
+            '-'.join(number_tokens),
+            ','.join(number_tokens),
+        ]
+    )
+
+    deduped_aliases = []
+    seen_aliases = set()
+    for alias in aliases:
+        normalized_alias = _normalize_possible_answer_variant(alias)
+        alias_key = normalized_alias.casefold()
+        if not normalized_alias or alias_key in seen_aliases:
+            continue
+        seen_aliases.add(alias_key)
+        deduped_aliases.append(normalized_alias)
+    return deduped_aliases
+
+
 def _expand_matching_question_entry(entry):
     combined_question_text = '\n'.join(
         text
@@ -1609,6 +1672,9 @@ def _expand_matching_question_entry(entry):
         entry.get('answer_text'),
         option_count=len(right_items),
     )
+
+    if _extract_matching_standalone_question_number(combined_question_text) is not None:
+        return []
 
     if len(left_items) < 2 or not answer_map:
         return []
@@ -1719,6 +1785,33 @@ def _derive_matching_position_aliases(entry):
     return _position_aliases(matched_index, total_count=total_count)
 
 
+def _derive_matching_board_sequence_aliases(entry):
+    combined_question_text = '\n'.join(
+        text
+        for text in [
+            str(entry.get('question_text') or '').strip(),
+            str(entry.get('instruction_text') or '').strip(),
+        ]
+        if text
+    )
+    if _extract_matching_standalone_question_number(combined_question_text) is None:
+        return []
+
+    left_items = _extract_matching_left_items(combined_question_text)
+    if len(left_items) < 2:
+        return []
+
+    right_items = _extract_lettered_analysis_items(combined_question_text)
+    answer_map = _extract_matching_answer_map(
+        entry.get('answer_text'),
+        option_count=len(right_items),
+    )
+    if not answer_map:
+        return []
+
+    return _build_matching_sequence_aliases(answer_map, left_items)
+
+
 def _derive_multiple_choice_position_aliases(entry):
     combined_question_text = '\n'.join(
         text
@@ -1765,7 +1858,10 @@ def _normalize_analysis_questions(analysis_payload):
             if expanded_entries:
                 normalized_questions.extend(expanded_entries)
                 continue
-            additional_aliases = _derive_matching_position_aliases(normalized_entry)
+            additional_aliases = [
+                *_derive_matching_position_aliases(normalized_entry),
+                *_derive_matching_board_sequence_aliases(normalized_entry),
+            ]
             if additional_aliases:
                 existing_aliases = list(normalized_entry.get('additional_possible_answers') or [])
                 normalized_entry['additional_possible_answers'] = [
