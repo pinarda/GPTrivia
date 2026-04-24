@@ -7,6 +7,7 @@ import posixpath
 import pickle
 import re
 import threading
+import time
 import traceback
 import uuid
 import zipfile
@@ -45,6 +46,7 @@ ANALYSIS_NOTIFICATION_USERNAME = 'Alex'
 ROUND_ANALYSIS_IMAGE_MAX_DIMENSION = 512
 ROUND_ANALYSIS_IMAGE_JPEG_QUALITY = 72
 ROUND_ANALYSIS_THUMBNAIL_SIZE = 'LARGE'
+ROUND_ANALYSIS_FETCH_RETRY_DELAYS_SECONDS = (1, 2)
 PPTX_EXPORT_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
 ROUND_ANALYSIS_AUTO_DELAY_SECONDS = 300
 ROUND_ANALYSIS_WORKER_IDLE_WAIT_SECONDS = 2
@@ -869,11 +871,46 @@ def _fetch_slide_thumbnail_data_url(slides_service, credentials, presentation_id
     except Exception:
         logger.exception("Could not refresh Google credentials for slide thumbnail fetch.")
 
-    response = requests.get(content_url, headers=request_headers, timeout=30)
-    response.raise_for_status()
+    response = _fetch_url_with_retries(
+        content_url,
+        headers=request_headers,
+        timeout=30,
+        log_context=f"slide thumbnail for presentation {presentation_id} slide {slide_id}",
+    )
+    if response is None:
+        return ''
     mime_type = (response.headers.get('Content-Type') or 'image/png').split(';')[0].strip() or 'image/png'
     encoded_bytes = base64.b64encode(response.content).decode('ascii')
     return f"data:{mime_type};base64,{encoded_bytes}"
+
+
+def _fetch_url_with_retries(url, *, headers=None, timeout=30, log_context='asset'):
+    attempt_count = len(ROUND_ANALYSIS_FETCH_RETRY_DELAYS_SECONDS) + 1
+    last_error = None
+    for attempt_index in range(attempt_count):
+        try:
+            response = requests.get(url, headers=headers, timeout=timeout)
+            response.raise_for_status()
+            return response
+        except requests.RequestException as exc:
+            last_error = exc
+            if attempt_index < len(ROUND_ANALYSIS_FETCH_RETRY_DELAYS_SECONDS):
+                logger.warning(
+                    "Retrying fetch for %s after attempt %s/%s failed: %s",
+                    log_context,
+                    attempt_index + 1,
+                    attempt_count,
+                    exc,
+                )
+                time.sleep(ROUND_ANALYSIS_FETCH_RETRY_DELAYS_SECONDS[attempt_index])
+                continue
+    logger.warning(
+        "Skipping %s after %s failed fetch attempts: %s",
+        log_context,
+        attempt_count,
+        last_error,
+    )
+    return None
 
 
 def _build_round_slide_payload(round_obj, *, include_thumbnails=True):
@@ -2475,10 +2512,16 @@ def _choose_media_candidates_for_entry(slide_payload, entry):
         chosen_slide = _find_slide_by_number(slide_payload, source_slide_number)
         if chosen_slide:
             candidate_slides.append(chosen_slide)
-    candidate_slides.extend(
-        slide_data for slide_data in slide_payload.get('slides', [])
-        if slide_data not in candidate_slides
-    )
+            normalized_kind = _normalize_media_kind(entry.get('media_kind'))
+            media_items = chosen_slide.get('media_items') or []
+            if normalized_kind:
+                matching_items = [item for item in media_items if item.get('kind') == normalized_kind]
+                if matching_items:
+                    return chosen_slide, matching_items
+            return chosen_slide, media_items
+        return None, []
+
+    candidate_slides.extend(slide_payload.get('slides', []))
 
     normalized_kind = _normalize_media_kind(entry.get('media_kind'))
     for slide_data in candidate_slides:
@@ -2621,8 +2664,13 @@ def _download_media_file(round_obj, question_number, media_item):
     if not download_url:
         return None
 
-    response = requests.get(download_url, timeout=30)
-    response.raise_for_status()
+    response = _fetch_url_with_retries(
+        download_url,
+        timeout=30,
+        log_context=f"analysis media for round {round_obj.id} question {question_number}",
+    )
+    if response is None:
+        return None
     optimized_content, optimized_extension = _optimize_analysis_image_content(response.content)
     if not optimized_content:
         return None

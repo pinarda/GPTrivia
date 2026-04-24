@@ -3,6 +3,7 @@ import zipfile
 import datetime
 from unittest.mock import patch
 
+import requests
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
 from django.test import TestCase
@@ -21,6 +22,8 @@ from GPTrivia.round_analysis import (
     _extract_embedded_slide_media_assets,
     _extract_slide_line_items,
     _extract_slide_media_items,
+    _fetch_slide_thumbnail_data_url,
+    _fetch_url_with_retries,
     _is_placeholder_media_url,
     _normalize_analysis_categories,
     _normalize_analysis_questions,
@@ -1515,6 +1518,45 @@ class RoundAnalysisTests(TestCase):
         self.assertIn('"speaker_notes": "Reveal all lyrics here."', serialized_payload)
         self.assertIn('"likely_audio_control": true', serialized_payload)
 
+    @patch("GPTrivia.round_analysis.time.sleep")
+    @patch("GPTrivia.round_analysis.requests.get")
+    def test_fetch_url_with_retries_returns_none_after_repeated_failures(self, get_mock, _sleep_mock):
+        get_mock.side_effect = requests.HTTPError("500 Server Error")
+
+        response = _fetch_url_with_retries(
+            "https://lh7-us.googleusercontent.com/example=s1600",
+            log_context="test asset",
+        )
+
+        self.assertIsNone(response)
+        self.assertEqual(get_mock.call_count, 3)
+
+    @patch("GPTrivia.round_analysis.time.sleep")
+    @patch("GPTrivia.round_analysis.requests.get")
+    def test_fetch_slide_thumbnail_data_url_skips_after_retries_fail(self, get_mock, _sleep_mock):
+        slides_service = (
+            type("SlidesService", (), {
+                "presentations": lambda self: type("Presentations", (), {
+                    "pages": lambda self: type("Pages", (), {
+                        "getThumbnail": lambda self, **kwargs: type("ThumbnailRequest", (), {
+                            "execute": lambda self: {"contentUrl": "https://lh7-us.googleusercontent.com/example=s1600"}
+                        })()
+                    })()
+                })()
+            })()
+        )
+        get_mock.side_effect = requests.HTTPError("500 Server Error")
+
+        data_url = _fetch_slide_thumbnail_data_url(
+            slides_service,
+            credentials=None,
+            presentation_id="presentation-1",
+            slide_id="slide-1",
+        )
+
+        self.assertEqual(data_url, "")
+        self.assertEqual(get_mock.call_count, 3)
+
     @patch("GPTrivia.round_analysis._download_media_file", return_value=None)
     @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
     def test_store_round_analysis_assigns_distinct_media_from_same_slide(self, _correctness_mock, _download_mock):
@@ -1597,6 +1639,79 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(len(saved_entries), 2)
         self.assertEqual(saved_entries[0].media_url, "https://example.com/actor-1.png")
         self.assertEqual(saved_entries[1].media_url, "https://example.com/actor-2.png")
+
+    @patch("GPTrivia.round_analysis._download_media_file", return_value=None)
+    @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
+    def test_store_round_analysis_does_not_borrow_media_from_other_slides(self, _correctness_mock, _download_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Mixed Media Round",
+            major_category="Entertainment",
+            minor_category1="Movies",
+            minor_category2="Images",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/mixed-media/edit#slide=id.r1",
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+        )
+
+        slide_payload = {
+            "presentation_id": "mixed-media",
+            "slide_range_label": "1-2",
+            "slides": [
+                {
+                    "slide_number": 1,
+                    "slide_id": "slide-1",
+                    "slide_url": "https://docs.google.com/presentation/d/mixed-media/edit#slide=id.slide-1",
+                    "text": "Question text only.",
+                    "media_items": [],
+                },
+                {
+                    "slide_number": 2,
+                    "slide_id": "slide-2",
+                    "slide_url": "https://docs.google.com/presentation/d/mixed-media/edit#slide=id.slide-2",
+                    "text": "Image on a different slide.",
+                    "media_items": [
+                        {
+                            "kind": "image",
+                            "media_index": 1,
+                            "url": "https://example.com/actor-1.png",
+                            "download_url": "https://example.com/actor-1.png",
+                        },
+                    ],
+                },
+            ],
+        }
+        analysis_payload = {
+            "round_type": "picture",
+            "notes": "",
+            "questions": [
+                {
+                    "question_number": 1,
+                    "source_slide_number": 1,
+                    "question_text": "Question without image on its own slide",
+                    "instruction_text": "Identify the pictured actor.",
+                    "answer_text": "Actor One",
+                    "media_kind": "image",
+                    "major_category": "Entertainment",
+                    "minor_category1": "Movies",
+                    "minor_category2": "",
+                },
+            ],
+        }
+
+        _store_round_analysis(run, slide_payload, analysis_payload)
+
+        saved_entry = RoundQuestionAnalysisEntry.objects.get(run=run, question_number=1)
+        self.assertEqual(saved_entry.media_kind, "image")
+        self.assertEqual(saved_entry.media_url, "")
+        self.assertFalse(saved_entry.media_file)
 
     @patch("GPTrivia.round_analysis._download_media_file", return_value=None)
     @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
