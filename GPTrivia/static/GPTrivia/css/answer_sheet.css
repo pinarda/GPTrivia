@@ -854,6 +854,31 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell .mobile-footer-it
     filter: brightness(0) saturate(100%);
 }
 
+@media (min-width: 701px) and (max-width: 1180px) and (pointer: coarse) {
+    .answer-sheet-textarea-shell {
+        grid-template-columns: 3.2rem minmax(0, 1fr);
+    }
+
+    .answer-sheet-textarea-shell.has-grade-controls {
+        grid-template-columns: 5.25rem minmax(0, 1fr);
+    }
+
+    .answer-sheet-text-overlay,
+    .answer-sheet-textarea {
+        font-size: 1.5rem;
+    }
+
+    .answer-sheet-line-numbers {
+        padding-left: 14px;
+    }
+
+    .answer-sheet-line-adjust {
+        width: 1.3rem;
+        height: 1.3rem;
+        font-size: 0.95rem;
+    }
+}
+
 @media (max-width: 700px) {
     .answer-sheet-page {
         padding: 16px 8px 32px;
