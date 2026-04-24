@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-grade-url="{{ grade_url }}" data-diverge-url="{{ diverge_url }}" data-selected-date="{{ selected_date }}" data-has-cooperative-rounds="{% if has_cooperative_rounds %}true{% else %}false{% endif %}">
+<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-grade-url="{{ grade_url }}" data-diverge-url="{{ diverge_url }}" data-merge-url="{{ merge_url }}" data-selected-date="{{ selected_date }}" data-has-cooperative-rounds="{% if has_cooperative_rounds %}true{% else %}false{% endif %}">
     <section class="answer-sheet-header-card">
         <div class="answer-sheet-header-line">
             <span class="answer-sheet-header-label">Answer Sheet</span>
@@ -74,11 +74,10 @@
                     </div>
                     {% if page.cooperative %}
                         <button
-                            class="answer-sheet-action-button answer-sheet-diverge-button{% if page.is_diverged %} is-disabled{% endif %}"
+                            class="answer-sheet-action-button answer-sheet-diverge-button"
                             type="button"
-                            {% if page.is_diverged %}aria-disabled="true"{% endif %}
                             data-diverge-round-for="{{ page.round_id }}"
-                        >{% if page.is_diverged %}Diverged{% else %}Diverge{% endif %}</button>
+                        >{% if page.is_diverged %}Merge{% else %}Diverge{% endif %}</button>
                     {% endif %}
                     <div class="answer-sheet-button-message" data-button-message-for="{{ page.round_id }}" aria-live="polite"></div>
                 </section>
@@ -123,6 +122,7 @@
         const submitScoreUrl = pageRoot.dataset.submitScoreUrl || '';
         const gradeUrl = pageRoot.dataset.gradeUrl || '';
         const divergeUrl = pageRoot.dataset.divergeUrl || '';
+        const mergeUrl = pageRoot.dataset.mergeUrl || '';
         const selectedDate = pageRoot.dataset.selectedDate || '';
         const hasCooperativeRounds = pageRoot.dataset.hasCooperativeRounds === 'true';
         const saveTimers = new Map();
@@ -548,14 +548,55 @@
                     submitButton.dataset.submitRequiresConfirmation = 'false';
                 }
                 if (divergeButton) {
-                    divergeButton.textContent = 'Diverged';
-                    divergeButton.classList.add('is-disabled');
-                    divergeButton.setAttribute('aria-disabled', 'true');
+                    divergeButton.textContent = 'Merge';
                 }
                 setStatus(roundId, 'Diverged', 'saved');
             } catch (error) {
                 console.error('Error diverging answer sheet round:', error);
                 setStatus(roundId, 'Unable to diverge', 'error');
+            }
+        }
+
+        async function mergeRound(roundId, textarea, scoreInput) {
+            if (!mergeUrl) {
+                return;
+            }
+
+            setStatus(roundId, 'Saving...', 'saving');
+            try {
+                const response = await fetch(mergeUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                    body: JSON.stringify({
+                        round_id: roundId,
+                    }),
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(payload.detail || `Merge failed with status ${response.status}`);
+                }
+                const panel = pageRoot.querySelector(`.answer-sheet-round-panel[data-round-id="${roundId}"]`);
+                const submitButton = pageRoot.querySelector(`[data-submit-score-for="${roundId}"]`);
+                const divergeButton = pageRoot.querySelector(`[data-diverge-round-for="${roundId}"]`);
+                if (panel) {
+                    panel.dataset.diverged = 'false';
+                }
+                textarea.value = (payload.answers || []).map((answer) => String(answer || '')).join('\n');
+                clearGradingState(textarea, scoreInput);
+                syncLineNumbers(textarea);
+                if (submitButton) {
+                    submitButton.dataset.submitRequiresConfirmation = payload.submit_requires_confirmation ? 'true' : 'false';
+                }
+                if (divergeButton) {
+                    divergeButton.textContent = 'Diverge';
+                }
+                setStatus(roundId, 'Merged', 'saved');
+            } catch (error) {
+                console.error('Error merging answer sheet round:', error);
+                setStatus(roundId, 'Unable to merge', 'error');
             }
         }
 
@@ -652,12 +693,15 @@
 
         pageRoot.querySelectorAll('[data-diverge-round-for]').forEach((button) => {
             button.addEventListener('click', () => {
-                if (button.getAttribute('aria-disabled') === 'true') {
-                    return;
-                }
                 const roundId = button.dataset.divergeRoundFor;
                 const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
+                const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
+                const panel = pageRoot.querySelector(`.answer-sheet-round-panel[data-round-id="${roundId}"]`);
                 if (!roundId || !textarea) {
+                    return;
+                }
+                if (panel && panel.dataset.diverged === 'true') {
+                    mergeRound(roundId, textarea, scoreInput);
                     return;
                 }
                 if (!window.confirm('Are you sure you want to diverge this round from the communal round?')) {

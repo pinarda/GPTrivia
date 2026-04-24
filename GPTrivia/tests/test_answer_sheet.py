@@ -324,6 +324,93 @@ class AnswerSheetTests(TestCase):
             ["Updated", "Shared", ""],
         )
 
+    def test_merge_answer_sheet_round_restores_communal_answers_and_future_sync(self):
+        megan = User.objects.create_user(username="Megan", password="pw")
+        jenny = User.objects.create_user(username="Jenny", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Merge Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+                "score_jenny": "score_jenny",
+            },
+        )
+
+        self.client.post(
+            reverse("save_answer_sheet_entry"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "Shared\nAnswers",
+                "client_id": "shared-client",
+            }),
+            content_type="application/json",
+        )
+
+        self.client.post(
+            reverse("diverge_answer_sheet_round"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "Mine\nOnly",
+            }),
+            content_type="application/json",
+        )
+
+        other_client = self.client_class()
+        other_client.force_login(megan)
+        other_client.post(
+            reverse("save_answer_sheet_entry"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "Updated\nShared",
+                "client_id": "shared-client-2",
+            }),
+            content_type="application/json",
+        )
+
+        merge_response = self.client.post(
+            reverse("merge_answer_sheet_round"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(merge_response.status_code, 200)
+        merged_entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
+        self.assertFalse(merged_entry.is_diverged)
+        self.assertEqual(merged_entry.answers[:3], ["Updated", "Shared", ""])
+
+        final_client = self.client_class()
+        final_client.force_login(jenny)
+        final_client.post(
+            reverse("save_answer_sheet_entry"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "Final\nShared",
+                "client_id": "shared-client-3",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(
+            AnswerSheetEntry.objects.get(user=self.user, round=round_obj).answers[:3],
+            ["Final", "Shared", ""],
+        )
+
     def test_answer_sheet_prefills_current_user_score(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",

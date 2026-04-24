@@ -1785,6 +1785,7 @@ def _build_answer_sheet_context(user, requested_date=''):
         'submit_score_url': reverse('submit_answer_sheet_score'),
         'grade_url': reverse('grade_answer_sheet_round'),
         'diverge_url': reverse('diverge_answer_sheet_round'),
+        'merge_url': reverse('merge_answer_sheet_round'),
     }
 
 
@@ -1910,6 +1911,81 @@ def diverge_answer_sheet_round(request):
         'answers': entry.answers,
         'is_diverged': True,
         'shared': False,
+    })
+
+
+def _get_answer_sheet_communal_answers(round_obj, current_user=None):
+    diverged_user_ids = _get_answer_sheet_diverged_user_ids(round_obj)
+    communal_users = [
+        target_user
+        for target_user in _get_answer_sheet_shared_users(round_obj, current_user=current_user)
+        if target_user.id not in diverged_user_ids
+    ]
+    communal_user_ids = [target_user.id for target_user in communal_users]
+    if not communal_user_ids:
+        return _normalize_answer_sheet_answers([])
+
+    communal_entry = (
+        AnswerSheetEntry.objects.filter(
+            round=round_obj,
+            user_id__in=communal_user_ids,
+            is_diverged=False,
+        )
+        .order_by('-updated_at', '-id')
+        .first()
+    )
+    if communal_entry is None:
+        return _normalize_answer_sheet_answers([])
+    return _normalize_answer_sheet_answers(communal_entry.answers)
+
+
+@login_required
+def merge_answer_sheet_round(request):
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'detail': 'Invalid JSON payload.'}, status=400)
+
+    round_id = payload.get('round_id')
+    try:
+        round_id = int(round_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'round_id must be an integer.'}, status=400)
+
+    round_obj = get_object_or_404(GPTriviaRound, id=round_id)
+    if not round_obj.cooperative:
+        return JsonResponse({'detail': 'Only cooperative rounds can merge.'}, status=400)
+
+    current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
+    if not current_entry or not current_entry.is_diverged:
+        return JsonResponse({'detail': 'Only diverged cooperative rounds can merge.'}, status=400)
+
+    communal_answers = _get_answer_sheet_communal_answers(round_obj, current_user=request.user)
+
+    with transaction.atomic():
+        AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).delete()
+        merged_entry = AnswerSheetEntry.objects.create(
+            user=request.user,
+            round=round_obj,
+            trivia_date=round_obj.date,
+            answers=communal_answers,
+            is_diverged=False,
+        )
+
+    return JsonResponse({
+        'ok': True,
+        'round_id': round_obj.id,
+        'answers': merged_entry.answers,
+        'is_diverged': False,
+        'shared': True,
+        'submit_requires_confirmation': bool(
+            round_obj.cooperative
+            and str(getattr(request.user, 'username', '') or '').strip().casefold()
+            != str(getattr(round_obj, 'creator', '') or '').strip().casefold()
+        ),
     })
 
 
