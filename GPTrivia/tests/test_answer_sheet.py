@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from GPTrivia.models import AnswerSheetEntry, GPTriviaRound, Profile, RoundQuestionAnalysisRun
+from GPTrivia.player_scores import get_round_score_map
 
 
 class AnswerSheetTests(TestCase):
@@ -52,6 +53,7 @@ class AnswerSheetTests(TestCase):
         round_pages = response.context["round_pages"]
         self.assertEqual([page["round_id"] for page in round_pages], [latest_round.id])
         self.assertEqual(round_pages[0]["answers"][0:2], ["Alpha", "Beta"])
+        self.assertEqual(round_pages[0]["score_value"], "")
         self.assertContains(response, "Latest Round")
         self.assertContains(response, "Alpha\nBeta", html=False)
         self.assertNotContains(response, "Older Round")
@@ -167,6 +169,70 @@ class AnswerSheetTests(TestCase):
         round_pages = response.context["round_pages"]
         self.assertEqual(len(round_pages[0]["answers"]), 12)
         self.assertIn("Answer 11\nAnswer 12", round_pages[0]["answers_text"])
+
+    def test_answer_sheet_prefills_current_user_score(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Scored Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            score_alex=6.5,
+        )
+
+        response = self.client.get(reverse("answer_sheet"), {"date": round_obj.date.isoformat()})
+
+        self.assertEqual(response.status_code, 200)
+        round_pages = response.context["round_pages"]
+        self.assertEqual(round_pages[0]["score_value"], "6.5")
+
+    def test_submit_answer_sheet_score_updates_scoresheet_score(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Submit Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+
+        response = self.client.post(
+            reverse("submit_answer_sheet_score"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "score": "9.5",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        round_obj.refresh_from_db()
+        score_map = get_round_score_map(round_obj, include_null_fixed=False)
+        self.assertEqual(score_map.get("score_alex"), 9.5)
+        self.assertEqual(response.json()["score_display"], "9.5")
+
+        clear_response = self.client.post(
+            reverse("submit_answer_sheet_score"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "score": "",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(clear_response.status_code, 200)
+        round_obj.refresh_from_db()
+        score_map = get_round_score_map(round_obj, include_null_fixed=False)
+        self.assertIsNone(score_map.get("score_alex"))
 
     def test_answer_sheet_grade_button_reflects_analysis_availability(self):
         opted_out_creator = User.objects.create_user(username="Taylor", password="pw")

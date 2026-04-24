@@ -1417,6 +1417,21 @@ def _normalize_answer_sheet_answers(raw_answers):
     return normalized_answers
 
 
+def _normalize_answer_sheet_score(raw_score):
+    score_text = str(raw_score or '').strip()
+    if score_text == '':
+        return None
+
+    try:
+        parsed_score = float(score_text)
+    except (TypeError, ValueError):
+        raise ValueError('score must be numeric.')
+
+    if parsed_score.is_integer():
+        return int(parsed_score)
+    return parsed_score
+
+
 def _get_answer_sheet_date_values():
     return sorted({
         round_date.isoformat()
@@ -1456,11 +1471,14 @@ def _build_answer_sheet_context(user, requested_date=''):
         entry.round_id: entry
         for entry in AnswerSheetEntry.objects.filter(user=user, round_id__in=[round_obj.id for round_obj in selected_rounds])
     }
+    current_user_player_field = player_field_for_name(getattr(user, 'username', ''))
 
     round_pages = []
     for round_obj in selected_rounds:
         saved_entry = saved_entries.get(round_obj.id)
         answers = _normalize_answer_sheet_answers((saved_entry.answers if saved_entry else []))
+        score_map = get_round_score_map(round_obj, include_null_fixed=False)
+        current_score = score_map.get(current_user_player_field) if current_user_player_field else None
         creator_allows_analysis = bool(creator_opt_in_map.get(round_obj.creator, False))
         latest_completed_run = latest_completed_run_by_round_id.get(round_obj.id)
         latest_round_type = str((latest_completed_run.round_type if latest_completed_run else '') or '').strip().lower()
@@ -1485,6 +1503,7 @@ def _build_answer_sheet_context(user, requested_date=''):
             'grade_disabled_message': grade_disabled_message,
             'answers': answers,
             'answers_text': '\n'.join(answers),
+            'score_value': _format_profile_round_score(current_score),
         })
 
     return {
@@ -1493,6 +1512,7 @@ def _build_answer_sheet_context(user, requested_date=''):
         'selected_date_display': selected_date_obj.strftime('%m/%d/%y') if selected_date_obj else '',
         'round_pages': round_pages,
         'save_url': reverse('save_answer_sheet_entry'),
+        'submit_score_url': reverse('submit_answer_sheet_score'),
     }
 
 
@@ -1539,6 +1559,65 @@ def save_answer_sheet_entry(request):
         'trivia_date': round_obj.date.isoformat() if round_obj.date else '',
         'answers': answer_entry.answers,
         'updated_at': answer_entry.updated_at.isoformat() if answer_entry.updated_at else '',
+    })
+
+
+@login_required
+def submit_answer_sheet_score(request):
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'detail': 'Invalid JSON payload.'}, status=400)
+
+    round_id = payload.get('round_id')
+    try:
+        round_id = int(round_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'round_id must be an integer.'}, status=400)
+
+    try:
+        normalized_score = _normalize_answer_sheet_score(payload.get('score', ''))
+    except ValueError as error:
+        return JsonResponse({'detail': str(error)}, status=400)
+
+    player_field = player_field_for_name(getattr(request.user, 'username', ''))
+    if not player_field:
+        return JsonResponse({'detail': 'This user cannot be mapped to a scoresheet player field.'}, status=400)
+
+    round_obj = get_object_or_404(GPTriviaRound, id=round_id)
+
+    with transaction.atomic():
+        score_map = get_round_score_map(round_obj)
+        score_map[player_field] = normalized_score
+        set_round_score_map(round_obj, score_map)
+        round_obj.save(update_fields=[*FIXED_SCORE_FIELDS, 'extra_scores'])
+
+        _schedule_scoresheet_broadcast({
+            'action': 'update',
+            'event': 'answer_sheet_submit_score',
+            'selected_date': round_obj.date.isoformat() if round_obj.date else '',
+            'round_updates': [
+                {
+                    'id': round_obj.id,
+                    'fields': {
+                        player_field: normalized_score,
+                    },
+                },
+            ],
+            'presentation_updates': {},
+        })
+
+    _bump_site_data_cache_version()
+    return JsonResponse({
+        'ok': True,
+        'round_id': round_obj.id,
+        'trivia_date': round_obj.date.isoformat() if round_obj.date else '',
+        'player_field': player_field,
+        'score': normalized_score,
+        'score_display': _format_profile_round_score(normalized_score),
     })
 
 

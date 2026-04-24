@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-selected-date="{{ selected_date }}">
+<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-selected-date="{{ selected_date }}">
     <section class="answer-sheet-header-card">
         <div class="answer-sheet-header-line">
             <span class="answer-sheet-header-label">Answer Sheet</span>
@@ -51,8 +51,10 @@
                             autocomplete="off"
                             placeholder="Score"
                             aria-label="Score for {{ page.round_title }}"
+                            data-round-id="{{ page.round_id }}"
+                            value="{{ page.score_value }}"
                         >
-                        <button class="answer-sheet-action-button" type="button">Submit</button>
+                        <button class="answer-sheet-action-button" type="button" data-submit-score-for="{{ page.round_id }}">Submit</button>
                         <button
                             class="answer-sheet-action-button{% if not page.grade_enabled %} is-disabled{% endif %}"
                             type="button"
@@ -101,6 +103,7 @@
         const scoreInputs = Array.from(pageRoot.querySelectorAll('.answer-sheet-score-input'));
         const dotButtons = Array.from(pageRoot.querySelectorAll('[data-answer-sheet-dot]'));
         const saveUrl = pageRoot.dataset.saveUrl || '';
+        const submitScoreUrl = pageRoot.dataset.submitScoreUrl || '';
         const saveTimers = new Map();
         const buttonMessageTimers = new Map();
         document.body.classList.add('answer-sheet-shell');
@@ -256,6 +259,36 @@
             }
         }
 
+        async function submitScore(roundId, scoreInput) {
+            if (!submitScoreUrl) {
+                return;
+            }
+
+            setStatus(roundId, 'Saving...', 'saving');
+            try {
+                const response = await fetch(submitScoreUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                    body: JSON.stringify({
+                        round_id: roundId,
+                        score: scoreInput.value,
+                    }),
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(payload.detail || `Save failed with status ${response.status}`);
+                }
+                scoreInput.value = payload.score_display || '';
+                setStatus(roundId, 'Saved', 'saved');
+            } catch (error) {
+                console.error('Error submitting answer sheet score:', error);
+                setStatus(roundId, 'Unable to save', 'error');
+            }
+        }
+
         textareas.forEach((textarea) => {
             const roundId = textarea.dataset.roundId;
             syncLineNumbers(textarea);
@@ -275,6 +308,17 @@
                 if (input.value !== normalizedValue) {
                     input.value = normalizedValue;
                 }
+            });
+        });
+
+        pageRoot.querySelectorAll('[data-submit-score-for]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const roundId = button.dataset.submitScoreFor;
+                const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
+                if (!roundId || !scoreInput) {
+                    return;
+                }
+                submitScore(roundId, scoreInput);
             });
         });
 
