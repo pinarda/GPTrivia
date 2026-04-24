@@ -40,6 +40,20 @@
                         >{{ page.answers_text }}</textarea>
                     </div>
 
+                    <div class="answer-sheet-round-actions">
+                        <input
+                            class="answer-sheet-score-input"
+                            type="text"
+                            inputmode="decimal"
+                            placeholder="Score"
+                            aria-label="Score for {{ page.round_title }}"
+                        >
+                        <div class="answer-sheet-button-row">
+                            <button class="answer-sheet-action-button" type="button">Submit</button>
+                            <button class="answer-sheet-action-button" type="button">Grade</button>
+                        </div>
+                    </div>
+
                     <div class="answer-sheet-status-row">
                         <span class="answer-sheet-status" data-status-for="{{ page.round_id }}">Saved</span>
                     </div>
@@ -86,6 +100,35 @@
             status.dataset.state = state || '';
         }
 
+        function syncLineNumbers(textarea) {
+            const shell = textarea.closest('.answer-sheet-textarea-shell');
+            const numberList = shell ? shell.querySelector('.answer-sheet-line-numbers') : null;
+            if (!shell || !numberList) {
+                return;
+            }
+
+            const computedStyle = window.getComputedStyle(textarea);
+            const lineHeight = parseFloat(computedStyle.lineHeight) || 24;
+            const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+            const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+            const shellMinHeight = parseFloat(window.getComputedStyle(shell).minHeight) || 0;
+            const contentHeight = textarea.scrollHeight || 0;
+            const targetHeight = Math.max(shellMinHeight, contentHeight);
+            shell.style.minHeight = `${targetHeight}px`;
+
+            const visibleHeight = textarea.clientHeight || targetHeight || shell.clientHeight || shellMinHeight;
+            const visibleRows = Math.max(1, Math.round((visibleHeight - paddingTop - paddingBottom) / lineHeight));
+            const contentRows = Math.max(1, Math.round((contentHeight - paddingTop - paddingBottom) / lineHeight));
+            const rowCount = Math.max(10, visibleRows, contentRows, textarea.value.split(/\r?\n/).length);
+
+            numberList.innerHTML = '';
+            for (let index = 1; index <= rowCount; index += 1) {
+                const item = document.createElement('li');
+                item.textContent = String(index);
+                numberList.appendChild(item);
+            }
+        }
+
         async function saveAnswers(roundId, value) {
             if (!saveUrl) {
                 return;
@@ -116,13 +159,19 @@
 
         textareas.forEach((textarea) => {
             const roundId = textarea.dataset.roundId;
+            syncLineNumbers(textarea);
             textarea.addEventListener('input', () => {
+                syncLineNumbers(textarea);
                 setStatus(roundId, 'Unsaved changes', 'dirty');
                 window.clearTimeout(saveTimers.get(roundId));
                 saveTimers.set(roundId, window.setTimeout(() => {
                     saveAnswers(roundId, textarea.value);
                 }, 500));
             });
+        });
+
+        window.addEventListener('resize', () => {
+            textareas.forEach(syncLineNumbers);
         });
     }());
 </script>

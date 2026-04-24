@@ -3,6 +3,12 @@
     margin: 0 auto;
     padding: 24px 16px 48px;
     color: #f5f6fb;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    --answer-sheet-line-height: 1.55;
+    --answer-sheet-shell-min-height: 18rem;
 }
 
 .answer-sheet-header-card,
@@ -59,6 +65,8 @@
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
     scrollbar-width: none;
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .answer-sheet-track::-webkit-scrollbar {
@@ -70,6 +78,9 @@
     scroll-snap-align: start;
     padding: 18px;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
 }
 
 .answer-sheet-round-header {
@@ -97,6 +108,8 @@
     align-items: stretch;
     border: 1px solid rgba(255, 255, 255, 0.14);
     background: rgba(9, 12, 26, 0.52);
+    flex: 1 1 auto;
+    min-height: var(--answer-sheet-shell-min-height);
 }
 
 .answer-sheet-line-numbers {
@@ -105,30 +118,69 @@
     padding: 14px 0 14px 12px;
     border-right: 1px solid rgba(255, 255, 255, 0.1);
     color: rgba(245, 246, 251, 0.38);
-    font: 500 1rem/1.55 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font: 500 1rem/var(--answer-sheet-line-height) "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
 .answer-sheet-line-numbers li {
     margin: 0;
-    height: 1.55em;
+    height: calc(var(--answer-sheet-line-height) * 1em);
     display: flex;
     align-items: center;
 }
 
 .answer-sheet-textarea {
     width: 100%;
-    min-height: 18rem;
+    min-height: 100%;
+    height: 100%;
     box-sizing: border-box;
-    resize: vertical;
+    resize: none;
+    overflow: hidden;
     border: 0;
     background: transparent;
     color: #f5f6fb;
     padding: 14px 16px;
-    font: 500 1rem/1.55 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font: 500 1rem/var(--answer-sheet-line-height) "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
 .answer-sheet-textarea::placeholder {
     color: rgba(245, 246, 251, 0.28);
+}
+
+.answer-sheet-round-actions {
+    display: grid;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.answer-sheet-score-input,
+.answer-sheet-action-button {
+    border-radius: 0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(9, 12, 26, 0.52);
+    color: #f5f6fb;
+    font: inherit;
+    box-sizing: border-box;
+}
+
+.answer-sheet-score-input {
+    width: 100%;
+    padding: 12px 14px;
+    margin: 0;
+}
+
+.answer-sheet-score-input::placeholder {
+    color: rgba(245, 246, 251, 0.5);
+}
+
+.answer-sheet-button-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.answer-sheet-action-button {
+    padding: 12px 14px;
+    cursor: pointer;
 }
 
 .answer-sheet-status-row {
@@ -166,6 +218,14 @@ body.site-shell.answer-sheet-shell .footer-bottom {
     border-radius: 0 !important;
 }
 
+body.site-shell.answer-sheet-shell .content-container,
+body.site-shell.answer-sheet-shell main {
+    min-height: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
 body.site-shell[data-profile-theme="light"] .answer-sheet-page {
     color: #1b2530;
 }
@@ -191,6 +251,13 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-textarea-shell {
     border-color: rgba(45, 48, 71, 0.16);
 }
 
+body.site-shell[data-profile-theme="light"] .answer-sheet-score-input,
+body.site-shell[data-profile-theme="light"] .answer-sheet-action-button {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(45, 48, 71, 0.16);
+    color: #1b2530;
+}
+
 body.site-shell[data-profile-theme="light"] .answer-sheet-line-numbers {
     border-right-color: rgba(45, 48, 71, 0.12);
     color: rgba(27, 37, 48, 0.4);
@@ -204,6 +271,10 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-textarea::placeholder 
     color: rgba(27, 37, 48, 0.32);
 }
 
+body.site-shell[data-profile-theme="light"] .answer-sheet-score-input::placeholder {
+    color: rgba(27, 37, 48, 0.46);
+}
+
 body.site-shell[data-profile-theme="light"].answer-sheet-shell footer,
 body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-container,
 body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-content,
@@ -215,6 +286,7 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-bottom {
 @media (max-width: 700px) {
     .answer-sheet-page {
         padding: 18px 12px 36px;
+        --answer-sheet-shell-min-height: 16rem;
     }
 
     .answer-sheet-header-line {
@@ -236,7 +308,6 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-bottom {
     }
 
     .answer-sheet-textarea {
-        min-height: 16rem;
         font-size: 0.98rem;
     }
 }
