@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from GPTrivia.models import AnswerSheetEntry, GPTriviaRound, Profile, RoundQuestionAnalysisRun
+from GPTrivia.models import AnswerSheetEntry, GPTriviaRound, MergedPresentation, Profile, RoundQuestionAnalysisRun
 from GPTrivia.player_scores import get_round_score_map
 
 
@@ -233,6 +233,51 @@ class AnswerSheetTests(TestCase):
         round_obj.refresh_from_db()
         score_map = get_round_score_map(round_obj, include_null_fixed=False)
         self.assertIsNone(score_map.get("score_alex"))
+
+    def test_submit_answer_sheet_score_populates_cooperative_teammates(self):
+        User.objects.create_user(username="Megan", password="pw")
+        User.objects.create_user(username="Zach", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            secondary_creator="Zach",
+            title="Co-op Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+                "score_zach": "score_zach",
+                "score_jenny": "score_jenny",
+            },
+        )
+
+        response = self.client.post(
+            reverse("submit_answer_sheet_score"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "score": "8.5",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        round_obj.refresh_from_db()
+        score_map = get_round_score_map(round_obj, include_null_fixed=False)
+        self.assertEqual(score_map.get("score_alex"), 8.5)
+        self.assertEqual(score_map.get("score_jenny"), 8.5)
+        self.assertIsNone(score_map.get("score_megan"))
+        self.assertIsNone(score_map.get("score_zach"))
 
     def test_answer_sheet_grade_button_reflects_analysis_availability(self):
         opted_out_creator = User.objects.create_user(username="Taylor", password="pw")

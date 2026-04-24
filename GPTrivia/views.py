@@ -75,6 +75,7 @@ from .player_scores import (
     get_player_color,
     get_round_score_map,
     player_field_for_name,
+    normalize_player_list,
     set_round_score_map,
 )
 from .blog_posts import (
@@ -1432,6 +1433,28 @@ def _normalize_answer_sheet_score(raw_score):
     return parsed_score
 
 
+def _get_answer_sheet_round_player_fields(round_obj, current_user_player_field=''):
+    player_fields = []
+    if getattr(round_obj, 'date', None):
+        presentation = _get_scoresheet_presentation(selected_date=round_obj.date.isoformat())
+        if presentation:
+            player_fields.extend(normalize_player_list(getattr(presentation, 'player_list', None)))
+
+    player_fields.extend(get_round_score_map(round_obj, include_null_fixed=False).keys())
+    if current_user_player_field:
+        player_fields.append(current_user_player_field)
+
+    normalized = []
+    seen = set()
+    for player_field in player_fields:
+        normalized_field = player_field_for_name(player_field)
+        if not normalized_field or normalized_field in seen:
+            continue
+        seen.add(normalized_field)
+        normalized.append(normalized_field)
+    return normalized
+
+
 def _get_answer_sheet_date_values():
     return sorted({
         round_date.isoformat()
@@ -1591,7 +1614,26 @@ def submit_answer_sheet_score(request):
 
     with transaction.atomic():
         score_map = get_round_score_map(round_obj)
-        score_map[player_field] = normalized_score
+        if round_obj.cooperative:
+            creator_fields = {
+                normalized_field
+                for normalized_field in [
+                    player_field_for_name(round_obj.creator),
+                    player_field_for_name(getattr(round_obj, 'secondary_creator', '')),
+                ]
+                if normalized_field
+            }
+            target_player_fields = [
+                candidate_field
+                for candidate_field in _get_answer_sheet_round_player_fields(round_obj, current_user_player_field=player_field)
+                if candidate_field not in creator_fields
+            ]
+            if not target_player_fields and player_field not in creator_fields:
+                target_player_fields = [player_field]
+            for target_field in target_player_fields:
+                score_map[target_field] = normalized_score
+        else:
+            score_map[player_field] = normalized_score
         set_round_score_map(round_obj, score_map)
         round_obj.save(update_fields=[*FIXED_SCORE_FIELDS, 'extra_scores'])
 
@@ -1603,7 +1645,10 @@ def submit_answer_sheet_score(request):
                 {
                     'id': round_obj.id,
                     'fields': {
-                        player_field: normalized_score,
+                        candidate_field: normalized_score
+                        for candidate_field in (
+                            target_player_fields if round_obj.cooperative else [player_field]
+                        )
                     },
                 },
             ],
