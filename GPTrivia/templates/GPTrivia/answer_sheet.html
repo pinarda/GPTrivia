@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-grade-url="{{ grade_url }}" data-override-grade-url="{{ override_grade_url }}" data-diverge-url="{{ diverge_url }}" data-merge-url="{{ merge_url }}" data-selected-date="{{ selected_date }}" data-has-cooperative-rounds="{% if has_cooperative_rounds %}true{% else %}false{% endif %}">
+<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-grade-url="{{ grade_url }}" data-override-grade-url="{{ override_grade_url }}" data-diverge-url="{{ diverge_url }}" data-merge-url="{{ merge_url }}" data-sync-url="{{ sync_url }}" data-selected-date="{{ selected_date }}" data-has-cooperative-rounds="{% if has_cooperative_rounds %}true{% else %}false{% endif %}">
     <section class="answer-sheet-header-card">
         <div class="answer-sheet-header-line">
             <span class="answer-sheet-header-label">Answer Sheet</span>
@@ -161,6 +161,7 @@
         const overrideGradeUrl = pageRoot.dataset.overrideGradeUrl || '';
         const divergeUrl = pageRoot.dataset.divergeUrl || '';
         const mergeUrl = pageRoot.dataset.mergeUrl || '';
+        const syncUrl = pageRoot.dataset.syncUrl || '';
         const selectedDate = pageRoot.dataset.selectedDate || '';
         const hasCooperativeRounds = pageRoot.dataset.hasCooperativeRounds === 'true';
         const dateValuesElement = document.getElementById('answer-sheet-date-values');
@@ -184,6 +185,9 @@
         );
         let wsRef = null;
         let pingIntervalRef = null;
+        let reconnectTimeoutRef = null;
+        let isUnloading = false;
+        let syncRequestRef = null;
         document.body.classList.add('answer-sheet-shell');
 
         function getCsrfToken() {
@@ -273,6 +277,105 @@
             setScoreState(scoreInput, statusState);
         }
 
+        function flushPendingAnswerSaves() {
+            saveTimers.forEach((timerId, roundId) => {
+                window.clearTimeout(timerId);
+                saveTimers.delete(roundId);
+                const panel = getRoundPanel(roundId);
+                const textarea = getRoundTextarea(roundId);
+                if (!panel || !textarea || panel.dataset.answersDirty !== 'true') {
+                    return;
+                }
+                saveAnswers(roundId, textarea.value);
+            });
+        }
+
+        function applySyncedRoundState(roundState) {
+            const roundId = String(roundState.round_id || '');
+            const panel = getRoundPanel(roundId);
+            const textarea = getRoundTextarea(roundId);
+            const scoreInput = getRoundScoreInput(roundId);
+            if (!roundId || !panel || !textarea || !scoreInput) {
+                return;
+            }
+
+            if (String(roundState.is_diverged) === 'true' || roundState.is_diverged === true || panel.dataset.diverged === 'true') {
+                return;
+            }
+
+            const answersDirty = panel.dataset.answersDirty === 'true';
+            const scoreDirty = panel.dataset.scoreDirty === 'true';
+            const normalizedAnswers = Array.isArray(roundState.answers)
+                ? roundState.answers.map((answer) => String(answer || ''))
+                : [];
+            const savedScoreValue = String(roundState.score_value || '');
+
+            if (!answersDirty) {
+                textarea.value = normalizedAnswers.join('\n');
+                syncLineNumbers(textarea);
+                setRoundAnswersDirty(roundId, false);
+            }
+
+            if (!scoreDirty) {
+                scoreInput.dataset.savedScore = savedScoreValue;
+            }
+
+            if (!answersDirty && roundState.grade_payload) {
+                applyGradePayload(roundId, textarea, scoreInput, roundState.grade_payload);
+            } else if (!answersDirty) {
+                clearGradingState(textarea);
+                syncLineNumbers(textarea);
+            }
+
+            if (!scoreDirty) {
+                if (!answersDirty && roundState.grade_payload) {
+                    setRoundScoreDirty(
+                        roundId,
+                        scoreValuesDiffer(scoreInput.value, scoreInput.dataset.savedScore || '')
+                    );
+                } else {
+                    scoreInput.value = savedScoreValue;
+                    setRoundScoreDirty(roundId, false);
+                }
+            }
+
+            refreshRoundStatus(roundId);
+        }
+
+        async function syncSharedAnswerSheetState() {
+            if (!hasCooperativeRounds || !syncUrl || syncRequestRef) {
+                return syncRequestRef;
+            }
+
+            const syncPromise = fetch(`${syncUrl}?date=${encodeURIComponent(selectedDate)}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            })
+                .then(async (response) => {
+                    const payload = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        throw new Error(payload.detail || `Sync failed with status ${response.status}`);
+                    }
+                    return payload;
+                })
+                .then((payload) => {
+                    (payload.rounds || []).forEach((roundState) => {
+                        applySyncedRoundState(roundState);
+                    });
+                })
+                .catch((error) => {
+                    console.error('Error syncing answer sheet state:', error);
+                })
+                .finally(() => {
+                    syncRequestRef = null;
+                });
+
+            syncRequestRef = syncPromise;
+            return syncPromise;
+        }
+
         function showButtonMessage(roundId, message) {
             const messageEl = pageRoot.querySelector(`[data-button-message-for="${roundId}"]`);
             if (!messageEl) {
@@ -288,6 +391,34 @@
                     messageEl.textContent = '';
                     messageEl.dataset.visible = 'false';
                 }, 1000));
+            }
+        }
+
+        function clearAnswerSheetPing() {
+            if (pingIntervalRef) {
+                window.clearInterval(pingIntervalRef);
+                pingIntervalRef = null;
+            }
+        }
+
+        function clearAnswerSheetReconnect() {
+            if (reconnectTimeoutRef) {
+                window.clearTimeout(reconnectTimeoutRef);
+                reconnectTimeoutRef = null;
+            }
+        }
+
+        function closeAnswerSheetSocket() {
+            if (!wsRef) {
+                return;
+            }
+            const socketToClose = wsRef;
+            wsRef = null;
+            clearAnswerSheetPing();
+            try {
+                socketToClose.close();
+            } catch (error) {
+                console.error('Error closing answer sheet websocket:', error);
             }
         }
 
@@ -1190,58 +1321,116 @@
 
         if (hasCooperativeRounds && typeof WebSocket !== 'undefined') {
             const websocketUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/scoresheet/`;
-            wsRef = new WebSocket(websocketUrl);
-            wsRef.onopen = () => {
-                if (pingIntervalRef) {
-                    window.clearInterval(pingIntervalRef);
+
+            function scheduleAnswerSheetReconnect() {
+                if (isUnloading || reconnectTimeoutRef || document.visibilityState === 'hidden') {
+                    return;
                 }
-                pingIntervalRef = window.setInterval(() => {
-                    if (wsRef && wsRef.readyState === WebSocket.OPEN) {
-                        wsRef.send(JSON.stringify({ type: 'ping' }));
-                    }
-                }, 30000);
-            };
-            wsRef.onmessage = (event) => {
+                reconnectTimeoutRef = window.setTimeout(() => {
+                    reconnectTimeoutRef = null;
+                    ensureAnswerSheetRealtime(true);
+                }, 3000);
+            }
+
+            function processAnswerSheetSocketMessage(event) {
                 try {
                     const data = JSON.parse(event.data);
                     if (data.type === 'pong' || !data.message) {
                         return;
                     }
                     const message = data.message || {};
-                    if (
-                        message.action !== 'answer_sheet'
-                        || String(message.selected_date || '') !== String(selectedDate || '')
-                        || String(message.client_id || '') === localClientId
-                    ) {
+                    if (String(message.selected_date || '') !== String(selectedDate || '')) {
                         return;
                     }
-                    if (message.event === 'answer_sheet_save') {
-                        applySharedAnswersUpdate(String(message.round_id || ''), message.answers || []);
-                        return;
-                    }
-                    if (message.event === 'answer_sheet_grade') {
-                        applySharedGradeUpdate(String(message.round_id || ''), message);
+                    if (message.action === 'answer_sheet') {
+                        if (String(message.client_id || '') === localClientId) {
+                            return;
+                        }
+                        if (message.event === 'answer_sheet_save') {
+                            applySharedAnswersUpdate(String(message.round_id || ''), message.answers || []);
+                            return;
+                        }
+                        if (message.event === 'answer_sheet_grade') {
+                            applySharedGradeUpdate(String(message.round_id || ''), message);
+                        }
                     }
                 } catch (error) {
                     console.error('Error processing answer sheet websocket message:', error);
                 }
-            };
-            wsRef.onclose = () => {
-                if (pingIntervalRef) {
-                    window.clearInterval(pingIntervalRef);
-                    pingIntervalRef = null;
+            }
+
+            function connectAnswerSheetWebSocket() {
+                if (
+                    isUnloading
+                    || document.visibilityState === 'hidden'
+                    || (wsRef && (wsRef.readyState === WebSocket.OPEN || wsRef.readyState === WebSocket.CONNECTING))
+                ) {
+                    return;
                 }
-            };
-            window.addEventListener('beforeunload', () => {
-                if (pingIntervalRef) {
-                    window.clearInterval(pingIntervalRef);
-                    pingIntervalRef = null;
-                }
-                if (wsRef) {
-                    wsRef.close();
+                clearAnswerSheetReconnect();
+                closeAnswerSheetSocket();
+                wsRef = new WebSocket(websocketUrl);
+                wsRef.onopen = () => {
+                    clearAnswerSheetReconnect();
+                    clearAnswerSheetPing();
+                    pingIntervalRef = window.setInterval(() => {
+                        if (wsRef && wsRef.readyState === WebSocket.OPEN) {
+                            wsRef.send(JSON.stringify({ type: 'ping' }));
+                        }
+                    }, 30000);
+                    syncSharedAnswerSheetState();
+                };
+                wsRef.onmessage = processAnswerSheetSocketMessage;
+                wsRef.onerror = () => {
+                    if (wsRef && wsRef.readyState !== WebSocket.CLOSED) {
+                        wsRef.close();
+                    }
+                };
+                wsRef.onclose = () => {
+                    clearAnswerSheetPing();
                     wsRef = null;
+                    scheduleAnswerSheetReconnect();
+                };
+            }
+
+            function ensureAnswerSheetRealtime(forceSync) {
+                if (!hasCooperativeRounds) {
+                    return;
                 }
+                if (forceSync) {
+                    syncSharedAnswerSheetState();
+                }
+                if (document.visibilityState === 'hidden') {
+                    return;
+                }
+                connectAnswerSheetWebSocket();
+            }
+
+            window.addEventListener('pageshow', () => {
+                ensureAnswerSheetRealtime(true);
             });
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    flushPendingAnswerSaves();
+                    return;
+                }
+                ensureAnswerSheetRealtime(true);
+            });
+
+            window.addEventListener('online', () => {
+                ensureAnswerSheetRealtime(true);
+            });
+
+            window.addEventListener('beforeunload', () => {
+                isUnloading = true;
+                flushPendingAnswerSaves();
+                clearAnswerSheetReconnect();
+                clearAnswerSheetPing();
+                closeAnswerSheetSocket();
+            });
+
+            ensureAnswerSheetRealtime(true);
         }
 
         if (dotButtons.length > 0) {

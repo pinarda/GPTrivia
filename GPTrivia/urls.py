@@ -48,6 +48,7 @@ urlpatterns = [
     path('round-analysis/question/', views.round_analysis_question, name='round_analysis_question'),
     path('round-analysis/question/random/', views.round_analysis_random_question, name='round_analysis_random_question'),
     path('answer-sheet/', views.answer_sheet, name='answer_sheet'),
+    path('answer-sheet/sync/', views.answer_sheet_sync, name='answer_sheet_sync'),
     path('answer-sheet/save/', views.save_answer_sheet_entry, name='save_answer_sheet_entry'),
     path('answer-sheet/diverge/', views.diverge_answer_sheet_round, name='diverge_answer_sheet_round'),
     path('answer-sheet/merge/', views.merge_answer_sheet_round, name='merge_answer_sheet_round'),

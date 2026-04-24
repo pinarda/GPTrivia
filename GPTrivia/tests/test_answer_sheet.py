@@ -285,6 +285,87 @@ class AnswerSheetTests(TestCase):
         round_pages = shared_response.context["round_pages"]
         self.assertEqual(round_pages[0]["answers"][:4], ["One", "Two", "Three", ""])
 
+    def test_answer_sheet_sync_returns_current_communal_round_state(self):
+        megan = User.objects.create_user(username="Megan", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        cooperative_round = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Sync Co-op Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+            score_alex=6.5,
+        )
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Solo Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=2,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+            },
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=cooperative_round,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=cooperative_round,
+            round_name=cooperative_round.title,
+            round_date=cooperative_round.date,
+            question_number=1,
+            question_text="What animal is white with black stripes?",
+            answer_text="A Zebra",
+            possible_answers=["Zebra", "zebra"],
+            round_type="text",
+            player_correctness={"Alex": "", "Megan": ""},
+        )
+        AnswerSheetEntry.objects.create(
+            user=megan,
+            round=cooperative_round,
+            trivia_date=trivia_date,
+            answers=["Zebra"] + [""] * 9,
+            grade_overrides=[1],
+            grade_rejections=[],
+            is_diverged=False,
+        )
+
+        response = self.client.get(
+            reverse("answer_sheet_sync"),
+            {"date": trivia_date.isoformat()},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["selected_date"], trivia_date.isoformat())
+        self.assertEqual(len(payload["rounds"]), 1)
+        round_payload = payload["rounds"][0]
+        self.assertEqual(round_payload["round_id"], cooperative_round.id)
+        self.assertEqual(round_payload["answers"][0], "Zebra")
+        self.assertEqual(round_payload["score_value"], "6.5")
+        self.assertTrue(round_payload["shared"])
+        self.assertFalse(round_payload["is_diverged"])
+        self.assertEqual(round_payload["grade_payload"]["score"], 1)
+        self.assertEqual(round_payload["grade_payload"]["row_results"][0]["state"], "correct")
+
     def test_diverge_answer_sheet_round_stops_future_shared_answer_updates(self):
         megan = User.objects.create_user(username="Megan", password="pw")
         jenny = User.objects.create_user(username="Jenny", password="pw")

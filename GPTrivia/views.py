@@ -1948,6 +1948,7 @@ def _build_answer_sheet_context(user, requested_date=''):
         'override_grade_url': reverse('override_answer_sheet_grade'),
         'diverge_url': reverse('diverge_answer_sheet_round'),
         'merge_url': reverse('merge_answer_sheet_round'),
+        'sync_url': reverse('answer_sheet_sync'),
     }
 
 
@@ -1960,6 +1961,43 @@ def answer_sheet(request):
         'GPTrivia/answer_sheet.html',
         _build_answer_sheet_context(request.user, requested_date=requested_date),
     )
+
+
+@login_required
+def answer_sheet_sync(request):
+    requested_date = (request.GET.get('date') or '').strip()
+    if requested_date and not _parse_scoresheet_date(requested_date):
+        return JsonResponse({'detail': 'date must be a valid YYYY-MM-DD value.'}, status=400)
+
+    date_values = _get_answer_sheet_date_values()
+    selected_date_obj = (
+        _parse_scoresheet_date(requested_date)
+        if requested_date
+        else (_parse_scoresheet_date(date_values[0]) if date_values else None)
+    )
+    selected_date = selected_date_obj.isoformat() if selected_date_obj else ''
+    selected_rounds = list(
+        GPTriviaRound.objects.filter(date=selected_date, cooperative=True).order_by('round_number', 'id')
+    ) if selected_date else []
+    saved_entries = {
+        entry.round_id: entry
+        for entry in AnswerSheetEntry.objects.filter(user=request.user, round_id__in=[round_obj.id for round_obj in selected_rounds])
+    }
+    current_user_player_field = player_field_for_name(getattr(request.user, 'username', ''))
+
+    return JsonResponse({
+        'ok': True,
+        'selected_date': selected_date,
+        'rounds': [
+            _serialize_answer_sheet_sync_round(
+                round_obj,
+                request.user,
+                current_entry=saved_entries.get(round_obj.id),
+                current_user_player_field=current_user_player_field,
+            )
+            for round_obj in selected_rounds
+        ],
+    })
 
 
 @login_required
@@ -2096,6 +2134,13 @@ def diverge_answer_sheet_round(request):
 
 
 def _get_answer_sheet_communal_answers(round_obj, current_user=None):
+    communal_entry = _get_answer_sheet_communal_entry(round_obj, current_user=current_user)
+    if communal_entry is None:
+        return _normalize_answer_sheet_answers([])
+    return _normalize_answer_sheet_answers(communal_entry.answers)
+
+
+def _get_answer_sheet_communal_entry(round_obj, current_user=None):
     diverged_user_ids = _get_answer_sheet_diverged_user_ids(round_obj)
     communal_users = [
         target_user
@@ -2104,9 +2149,9 @@ def _get_answer_sheet_communal_answers(round_obj, current_user=None):
     ]
     communal_user_ids = [target_user.id for target_user in communal_users]
     if not communal_user_ids:
-        return _normalize_answer_sheet_answers([])
+        return None
 
-    communal_entry = (
+    return (
         AnswerSheetEntry.objects.filter(
             round=round_obj,
             user_id__in=communal_user_ids,
@@ -2115,9 +2160,38 @@ def _get_answer_sheet_communal_answers(round_obj, current_user=None):
         .order_by('-updated_at', '-id')
         .first()
     )
-    if communal_entry is None:
-        return _normalize_answer_sheet_answers([])
-    return _normalize_answer_sheet_answers(communal_entry.answers)
+
+
+def _serialize_answer_sheet_sync_round(round_obj, user, current_entry=None, current_user_player_field=''):
+    communal_entry = _get_answer_sheet_communal_entry(round_obj, current_user=user)
+    normalized_answers = _normalize_answer_sheet_answers(communal_entry.answers if communal_entry else [])
+    grade_overrides = _normalize_answer_sheet_grade_overrides(
+        communal_entry.grade_overrides if communal_entry else []
+    )
+    grade_rejections = _normalize_answer_sheet_grade_overrides(
+        communal_entry.grade_rejections if communal_entry else []
+    )
+    score_map = get_round_score_map(round_obj, include_null_fixed=False)
+    current_score = score_map.get(current_user_player_field) if current_user_player_field else None
+
+    response_payload = {
+        'round_id': round_obj.id,
+        'answers': normalized_answers,
+        'score_value': _format_profile_round_score(current_score),
+        'is_diverged': bool(current_entry.is_diverged) if current_entry else False,
+        'shared': bool(round_obj.cooperative and not (bool(current_entry.is_diverged) if current_entry else False)),
+        'grade_payload': None,
+    }
+
+    if communal_entry and (grade_overrides or grade_rejections):
+        response_payload['grade_payload'] = _grade_answer_sheet_answers(
+            round_obj,
+            normalized_answers,
+            manual_correct_questions=grade_overrides,
+            manual_incorrect_questions=grade_rejections,
+        )
+
+    return response_payload
 
 
 @login_required
