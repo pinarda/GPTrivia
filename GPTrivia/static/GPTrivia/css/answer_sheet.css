@@ -11,15 +11,16 @@
     min-width: 0;
     --answer-sheet-line-height: 1.5;
     --answer-sheet-shell-min-height: 18rem;
-    --answer-sheet-calendar-bg: rgba(21, 25, 43, 0.98);
-    --answer-sheet-calendar-border: rgba(255, 255, 255, 0.14);
-    --answer-sheet-calendar-text-muted: rgba(245, 246, 251, 0.74);
-    --answer-sheet-calendar-cell-bg: rgba(255, 255, 255, 0.06);
+    --answer-sheet-calendar-bg: #3b414a;
+    --answer-sheet-calendar-border: rgba(255, 255, 255, 0.16);
+    --answer-sheet-calendar-text-muted: rgba(245, 246, 251, 0.72);
+    --answer-sheet-calendar-cell-bg: rgba(255, 255, 255, 0.07);
     --answer-sheet-calendar-cell-border: rgba(255, 255, 255, 0.14);
     --answer-sheet-calendar-cell-text: rgba(245, 246, 251, 0.82);
-    --answer-sheet-calendar-overlay: rgba(5, 9, 18, 0.62);
-    --answer-sheet-calendar-accent: #2d8fe0;
+    --answer-sheet-calendar-overlay: #2a2f36;
+    --answer-sheet-calendar-accent: #0073cc;
     --answer-sheet-calendar-accent-strong: #005a99;
+    --answer-sheet-calendar-control-surface: rgba(255, 255, 255, 0.08);
 }
 
 .answer-sheet-page,
@@ -109,7 +110,7 @@
     transform: translate(-50%, -50%);
     width: min(420px, calc(100vw - 32px));
     padding: 18px;
-    border-radius: 0;
+    border-radius: 16px;
     background: var(--answer-sheet-calendar-bg);
     border: 1px solid var(--answer-sheet-calendar-border);
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
@@ -148,9 +149,6 @@
     color: white;
     font-family: YoungSerif;
     cursor: pointer;
-    margin: 0;
-    border-radius: 0;
-    box-shadow: none;
 }
 
 .calendar-close-button,
@@ -161,9 +159,7 @@
     align-items: center;
     justify-content: center;
     font-size: 1rem;
-    border-radius: 0;
-    margin: 0;
-    box-shadow: none;
+    border-radius: 10px;
 }
 
 .calendar-close-button:hover,
@@ -192,12 +188,12 @@
 .calendar-select {
     min-width: 0;
     border: 1px solid var(--answer-sheet-calendar-border);
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--answer-sheet-calendar-control-surface);
     color: #f5f6fb;
     font-family: YoungSerif;
     font-size: 0.96rem;
     padding: 8px 10px;
-    border-radius: 0;
+    border-radius: 10px;
 }
 
 .calendar-month-select {
@@ -231,7 +227,7 @@
 .calendar-day {
     min-height: 46px;
     border: 1px solid var(--answer-sheet-calendar-cell-border);
-    border-radius: 0;
+    border-radius: 10px;
     background: var(--answer-sheet-calendar-cell-bg);
     color: var(--answer-sheet-calendar-cell-text);
     display: flex;
@@ -240,8 +236,6 @@
     position: relative;
     cursor: default;
     font-family: YoungSerif;
-    margin: 0;
-    box-shadow: none;
 }
 
 .calendar-day:disabled {
@@ -667,6 +661,7 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-page {
     --answer-sheet-calendar-cell-border: rgba(127, 169, 207, 0.34);
     --answer-sheet-calendar-cell-text: rgba(27, 37, 48, 0.78);
     --answer-sheet-calendar-overlay: rgba(37, 49, 62, 0.2);
+    --answer-sheet-calendar-control-surface: rgba(255, 255, 255, 0.82);
     --answer-sheet-calendar-accent: #0073cc;
     --answer-sheet-calendar-accent-strong: #005a99;
 }
