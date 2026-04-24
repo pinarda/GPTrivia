@@ -714,6 +714,7 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(normalized_payload["questions"][0]["answer_text"], "1-C\n2-B\n3-A")
         self.assertIn("CBA", normalized_payload["questions"][0]["additional_possible_answers"])
         self.assertIn("321", normalized_payload["questions"][0]["additional_possible_answers"])
+        self.assertIn("last middle first", normalized_payload["questions"][0]["additional_possible_answers"])
 
     def test_round_analysis_question_can_include_saved_image_payload(self):
         round_obj = GPTriviaRound.objects.create(
@@ -1017,6 +1018,7 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("CBA", entry.possible_answers)
         self.assertIn("cba", entry.possible_answers)
         self.assertIn("321", entry.possible_answers)
+        self.assertIn("last middle first", entry.possible_answers)
 
     def test_round_analysis_random_question_excludes_music_rounds(self):
         music_round = GPTriviaRound.objects.create(

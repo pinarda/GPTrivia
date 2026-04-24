@@ -1682,6 +1682,25 @@ def _build_matching_sequence_aliases(answer_map, left_items):
         ]
     )
 
+    word_tokens = []
+    total_count = len(ordered_indices)
+    middle_index = (total_count + 1) // 2 if total_count > 0 else 0
+    for index in ordered_indices:
+        if total_count > 0 and index == total_count:
+            word_tokens.append('last')
+        elif total_count > 0 and index == middle_index:
+            word_tokens.append('middle')
+        else:
+            word_tokens.append(_POSITION_ORDINAL_WORDS.get(index, str(index)))
+    if word_tokens:
+        aliases.extend(
+            [
+                ' '.join(word_tokens),
+                '-'.join(word_tokens),
+                ','.join(word_tokens),
+            ]
+        )
+
     deduped_aliases = []
     seen_aliases = set()
     for alias in aliases:
@@ -1831,8 +1850,6 @@ def _derive_matching_board_sequence_aliases(entry):
         ]
         if text
     )
-    if _extract_matching_standalone_question_number(combined_question_text) is None:
-        return []
 
     left_items = _extract_matching_left_items(combined_question_text)
     if len(left_items) < 2:
