@@ -190,7 +190,7 @@
     min-width: 0;
 }
 
-input.answer-sheet-score-input[type="text"],
+.answer-sheet-score-input,
 .answer-sheet-action-button {
     border-radius: 0;
     border: 1px solid rgba(255, 255, 255, 0.14);
@@ -202,14 +202,14 @@ input.answer-sheet-score-input[type="text"],
     height: 42px;
 }
 
-input.answer-sheet-score-input[type="text"] {
+.answer-sheet-score-input {
     width: 100%;
     padding: 10px 12px;
     margin: 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
 
-input.answer-sheet-score-input[type="text"]::placeholder {
+.answer-sheet-score-input::placeholder {
     color: rgba(245, 246, 251, 0.5);
 }
 
@@ -337,7 +337,7 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-textarea-shell {
     border-color: rgba(45, 48, 71, 0.16);
 }
 
-body.site-shell[data-profile-theme="light"] input.answer-sheet-score-input[type="text"],
+body.site-shell[data-profile-theme="light"] .answer-sheet-score-input,
 body.site-shell[data-profile-theme="light"] .answer-sheet-action-button {
     background: rgba(255, 255, 255, 0.92);
     border-color: rgba(45, 48, 71, 0.16);
@@ -357,7 +357,7 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-textarea::placeholder 
     color: rgba(27, 37, 48, 0.32);
 }
 
-body.site-shell[data-profile-theme="light"] input.answer-sheet-score-input[type="text"]::placeholder {
+body.site-shell[data-profile-theme="light"] .answer-sheet-score-input::placeholder {
     color: rgba(27, 37, 48, 0.46);
 }
 
@@ -418,7 +418,7 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-bottom {
         gap: 4px;
     }
 
-    input.answer-sheet-score-input[type="text"],
+    .answer-sheet-score-input,
     .answer-sheet-action-button {
         height: 38px;
         padding-left: 8px;

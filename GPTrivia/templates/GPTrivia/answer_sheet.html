@@ -48,6 +48,7 @@
                             class="answer-sheet-score-input"
                             type="text"
                             inputmode="decimal"
+                            autocomplete="off"
                             placeholder="Score"
                             aria-label="Score for {{ page.round_title }}"
                         >
@@ -97,6 +98,7 @@
         }
 
         const textareas = Array.from(pageRoot.querySelectorAll('.answer-sheet-textarea'));
+        const scoreInputs = Array.from(pageRoot.querySelectorAll('.answer-sheet-score-input'));
         const dotButtons = Array.from(pageRoot.querySelectorAll('[data-answer-sheet-dot]'));
         const saveUrl = pageRoot.dataset.saveUrl || '';
         const saveTimers = new Map();
@@ -157,6 +159,22 @@
 
         function countLogicalLines(value) {
             return Math.max(1, value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').length);
+        }
+
+        function normalizeScoreValue(rawValue) {
+            let seenDecimal = false;
+            let normalized = '';
+            for (const character of String(rawValue || '')) {
+                if (character >= '0' && character <= '9') {
+                    normalized += character;
+                    continue;
+                }
+                if (character === '.' && !seenDecimal) {
+                    normalized += character;
+                    seenDecimal = true;
+                }
+            }
+            return normalized;
         }
 
         function ensureMinimumTextareaLines(textarea) {
@@ -248,6 +266,15 @@
                 saveTimers.set(roundId, window.setTimeout(() => {
                     saveAnswers(roundId, textarea.value);
                 }, 500));
+            });
+        });
+
+        scoreInputs.forEach((input) => {
+            input.addEventListener('input', () => {
+                const normalizedValue = normalizeScoreValue(input.value);
+                if (input.value !== normalizedValue) {
+                    input.value = normalizedValue;
+                }
             });
         });
 
