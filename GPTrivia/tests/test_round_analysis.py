@@ -14,6 +14,7 @@ from GPTrivia.round_analysis import (
     _apply_apps_script_media_links,
     _analyze_round_slides,
     _build_possible_answers,
+    _build_possible_answers_with_aliases,
     _classify_round_structure,
     _extract_picture_grid_questions_by_layout,
     _extract_embedded_slide_media_assets,
@@ -408,6 +409,25 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("All of the above", all_answers)
         self.assertIn("all of the above", all_answers)
 
+    def test_build_possible_answers_with_aliases_expands_plausible_titles(self):
+        empire_answers = _build_possible_answers_with_aliases(
+            "Star Wars: The Empire Strikes Back",
+            [
+                "The Empire Strikes Back",
+                "Empire Strikes Back",
+                "ESB",
+                "Star Wars Episode 5",
+                "Star Wars Episode V",
+            ],
+        )
+        self.assertIn("Star Wars: The Empire Strikes Back", empire_answers)
+        self.assertIn("The Empire Strikes Back", empire_answers)
+        self.assertIn("Empire Strikes Back", empire_answers)
+        self.assertIn("ESB", empire_answers)
+        self.assertIn("esb", empire_answers)
+        self.assertIn("Star Wars Episode 5", empire_answers)
+        self.assertIn("Star Wars Episode V", empire_answers)
+
     def test_round_analysis_question_can_include_saved_image_payload(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
@@ -455,8 +475,18 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(payload["image_content_type"], "image/png")
         self.assertTrue(payload["image_data_url"].startswith("data:image/png;base64,"))
 
+    @patch(
+        "GPTrivia.round_analysis._generate_additional_possible_answer_aliases",
+        return_value={
+            1: [
+                "Zebra",
+                "Striped zebra",
+                "African zebra",
+            ],
+        },
+    )
     @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
-    def test_store_round_analysis_saves_possible_answers(self, correctness_mock):
+    def test_store_round_analysis_saves_possible_answers(self, correctness_mock, aliases_mock):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
             title="Possible Answers Round",
@@ -507,6 +537,8 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("a zebra", entry.possible_answers)
         self.assertIn("Zebra", entry.possible_answers)
         self.assertIn("zebras", entry.possible_answers)
+        self.assertIn("Striped zebra", entry.possible_answers)
+        self.assertIn("African zebra", entry.possible_answers)
 
     def test_round_analysis_random_question_excludes_music_rounds(self):
         music_round = GPTriviaRound.objects.create(

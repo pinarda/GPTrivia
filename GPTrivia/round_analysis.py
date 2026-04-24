@@ -889,18 +889,10 @@ def _analyze_round_slides_with_gpt(round_obj, slide_payload, *, classification=N
 
 
 def _parse_analysis_response_json(response_text):
-    candidate = (response_text or '').strip()
-    if candidate.startswith('```'):
-        candidate = re.sub(r'^```(?:json)?\s*', '', candidate)
-        candidate = re.sub(r'\s*```$', '', candidate)
-
-    try:
-        return json.loads(candidate)
-    except json.JSONDecodeError:
-        match = re.search(r'(\{.*\})', candidate, re.DOTALL)
-        if not match:
-            raise RuntimeError(f"GPT did not return valid JSON: {response_text}")
-        return json.loads(match.group(1))
+    parsed_payload = _parse_openai_json_response(response_text)
+    if not isinstance(parsed_payload, dict):
+        raise RuntimeError(f"GPT did not return valid JSON: {response_text}")
+    return parsed_payload
 
 
 def _normalize_media_kind(value):
@@ -1043,7 +1035,13 @@ def _expand_simple_phrase_forms(phrase):
 
 
 def _build_possible_answers(answer_text):
+    return _build_possible_answers_with_aliases(answer_text, [])
+
+
+def _build_possible_answers_with_aliases(answer_text, additional_candidates):
     segments = _split_possible_answer_segments(answer_text)
+    for candidate in additional_candidates or []:
+        segments.extend(_split_possible_answer_segments(candidate))
     possible_answers = []
     seen_variants = set()
 
@@ -1055,6 +1053,114 @@ def _build_possible_answers(answer_text):
             possible_answers.append(variant)
 
     return possible_answers
+
+
+def _parse_openai_json_response(response_text):
+    candidate = (response_text or '').strip()
+    if candidate.startswith('```'):
+        candidate = re.sub(r'^```(?:json)?\s*', '', candidate)
+        candidate = re.sub(r'\s*```$', '', candidate)
+
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        for pattern in (r'(\{.*\})', r'(\[.*\])'):
+            match = re.search(pattern, candidate, re.DOTALL)
+            if not match:
+                continue
+            try:
+                return json.loads(match.group(1))
+            except json.JSONDecodeError:
+                continue
+        raise RuntimeError(f"GPT did not return valid JSON: {response_text}")
+
+
+def _generate_additional_possible_answer_aliases(round_obj, question_entries, *, round_type=''):
+    from .views import _create_openai_text_response, _get_openai_client
+
+    api_key = str(os.getenv('OPENAI_API_KEY') or '').strip()
+    if not api_key or api_key == 'sk-test':
+        return {}
+
+    batched_questions = []
+    for question_entry in question_entries or []:
+        answer_text = str((question_entry or {}).get('answer_text') or '').strip()
+        if not answer_text:
+            continue
+        question_number = int((question_entry or {}).get('question_number') or 0)
+        if question_number <= 0:
+            continue
+        batched_questions.append(
+            {
+                'question_number': question_number,
+                'question_text': str((question_entry or {}).get('question_text') or '').strip(),
+                'answer_text': answer_text,
+            }
+        )
+
+    if not batched_questions:
+        return {}
+
+    instructions = (
+        "You generate plausible accepted-answer aliases for trivia grading. "
+        "For each question, return up to 10 additional answers that should count as correct for the same fact. "
+        "Include concise aliases like dropped franchise prefixes, subtitle-only references, well-known abbreviations, "
+        "episode numbering variants, and common alternate phrasings when they are clearly equivalent. "
+        "Do not include simple capitalization, punctuation, spacing, or hyphen variants; those are already handled elsewhere. "
+        "Do not include vague near-misses, broader categories, partial guesses, or anything that changes the meaning. "
+        "Return strict JSON as an array of objects with keys question_number and aliases."
+    )
+    input_payload = {
+        'round_title': str(getattr(round_obj, 'title', '') or '').strip(),
+        'round_type': str(round_type or '').strip(),
+        'questions': batched_questions,
+    }
+    client = _get_openai_client()
+    response_text = _create_openai_text_response(
+        client,
+        instructions=instructions,
+        input_items=[
+            {
+                'role': 'user',
+                'content': [
+                    {
+                        'type': 'input_text',
+                        'text': json.dumps(input_payload, ensure_ascii=True),
+                    }
+                ],
+            }
+        ],
+        max_output_tokens=1200,
+        reasoning_effort="low",
+    )
+    parsed_payload = _parse_openai_json_response(response_text)
+    if not isinstance(parsed_payload, list):
+        raise RuntimeError(f"GPT did not return an alias list: {response_text}")
+
+    alias_map = {}
+    for item in parsed_payload:
+        if not isinstance(item, dict):
+            continue
+        try:
+            question_number = int(item.get('question_number') or 0)
+        except (TypeError, ValueError):
+            continue
+        if question_number <= 0:
+            continue
+        aliases = []
+        seen_aliases = set()
+        for raw_alias in item.get('aliases') or []:
+            normalized_alias = _normalize_possible_answer_variant(raw_alias)
+            alias_key = normalized_alias.casefold()
+            if not normalized_alias or alias_key in seen_aliases:
+                continue
+            seen_aliases.add(alias_key)
+            aliases.append(normalized_alias)
+            if len(aliases) >= 10:
+                break
+        if aliases:
+            alias_map[question_number] = aliases
+    return alias_map
 
 
 def _find_slide_by_number(slide_payload, slide_number):
@@ -1550,6 +1656,23 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
 
     normalized_round_type = str(analysis_payload.get('round_type') or '').strip()
     normalized_notes = str(analysis_payload.get('notes') or '').strip()
+    additional_possible_answers_by_question = {}
+    try:
+        additional_possible_answers_by_question = _generate_additional_possible_answer_aliases(
+            run.round,
+            [
+                {
+                    'question_number': context['question_number'],
+                    'question_text': str((context['entry'] or {}).get('question_text') or '').strip(),
+                    'answer_text': str((context['entry'] or {}).get('answer_text') or '').strip(),
+                }
+                for context in question_contexts
+            ],
+            round_type=normalized_round_type,
+        )
+    except Exception:
+        logger.exception("Could not generate additional possible answers for round %s", run.round_id)
+
     for context in question_contexts:
         entry = context['entry']
         question_number = context['question_number']
@@ -1582,7 +1705,10 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
             question_text=str(entry.get('question_text') or '').strip(),
             instruction_text=str(entry.get('instruction_text') or '').strip(),
             answer_text=answer_text,
-            possible_answers=_build_possible_answers(answer_text),
+            possible_answers=_build_possible_answers_with_aliases(
+                answer_text,
+                additional_possible_answers_by_question.get(question_number, []),
+            ),
             round_type=normalized_round_type,
             media_kind=media_kind,
             media_url=media_url,
