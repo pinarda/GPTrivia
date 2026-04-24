@@ -1454,6 +1454,12 @@ def _build_answer_sheet_context(user, requested_date=''):
             'round_id': round_obj.id,
             'round_number': round_obj.round_number,
             'round_title': round_obj.title,
+            'grade_enabled': _creator_allows_round_analysis(round_obj.creator),
+            'grade_disabled_message': (
+                ''
+                if _creator_allows_round_analysis(round_obj.creator)
+                else f"Grade is unavailable because {round_obj.creator} has not enabled round analysis."
+            ),
             'answers': answers,
             'answers_text': '\n'.join(answers),
         })

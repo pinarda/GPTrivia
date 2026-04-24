@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423b">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423c">
 {% endblock %}
 
 {% block content %}
@@ -52,7 +52,14 @@
                             aria-label="Score for {{ page.round_title }}"
                         >
                         <button class="answer-sheet-action-button" type="button">Submit</button>
-                        <button class="answer-sheet-action-button" type="button">Grade</button>
+                        <button
+                            class="answer-sheet-action-button{% if not page.grade_enabled %} is-disabled{% endif %}"
+                            type="button"
+                            {% if not page.grade_enabled %}aria-disabled="true"{% endif %}
+                            title="{{ page.grade_disabled_message }}"
+                            data-round-id="{{ page.round_id }}"
+                            data-grade-disabled-message="{{ page.grade_disabled_message }}"
+                        >Grade</button>
                     </div>
                 </section>
             {% endfor %}
@@ -144,7 +151,20 @@
             const shellMinHeight = parseFloat(window.getComputedStyle(shell).minHeight) || 0;
             textarea.style.height = 'auto';
             const contentHeight = textarea.scrollHeight || 0;
-            const targetHeight = Math.max(shellMinHeight, contentHeight);
+            const panel = textarea.closest('.answer-sheet-round-panel');
+            const header = panel ? panel.querySelector('.answer-sheet-round-header') : null;
+            const controls = panel ? panel.querySelector('.answer-sheet-controls-row') : null;
+            const panelStyle = panel ? window.getComputedStyle(panel) : null;
+            const panelVerticalPadding = panelStyle
+                ? (parseFloat(panelStyle.paddingTop) || 0) + (parseFloat(panelStyle.paddingBottom) || 0)
+                : 0;
+            const headerHeight = header ? header.offsetHeight : 0;
+            const controlsHeight = controls ? controls.offsetHeight : 0;
+            const controlsMarginTop = controls ? (parseFloat(window.getComputedStyle(controls).marginTop) || 0) : 0;
+            const availableHeight = panel
+                ? Math.max(0, panel.clientHeight - panelVerticalPadding - headerHeight - controlsHeight - controlsMarginTop)
+                : 0;
+            const targetHeight = Math.max(shellMinHeight, contentHeight, availableHeight);
             textarea.style.height = `${targetHeight}px`;
             shell.style.height = `${targetHeight}px`;
             shell.style.setProperty('--answer-sheet-line-height-px', `${lineHeight}px`);
@@ -218,6 +238,18 @@
         dotButtons.forEach((button) => {
             button.addEventListener('click', () => {
                 scrollToRound(Number(button.dataset.answerSheetDot || 0));
+            });
+        });
+
+        pageRoot.querySelectorAll('.answer-sheet-action-button[aria-disabled="true"]').forEach((button) => {
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                const message = button.dataset.gradeDisabledMessage || button.title || '';
+                if (!message) {
+                    return;
+                }
+                const roundId = button.dataset.roundId;
+                setStatus(roundId, message, 'info');
             });
         });
 

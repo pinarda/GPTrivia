@@ -13,6 +13,15 @@
     --answer-sheet-shell-min-height: 18rem;
 }
 
+.answer-sheet-page,
+.answer-sheet-track,
+.answer-sheet-round-panel,
+.answer-sheet-textarea-shell,
+.answer-sheet-controls-row,
+.answer-sheet-textarea {
+    max-width: 100%;
+}
+
 .answer-sheet-header-card,
 .answer-sheet-empty-card,
 .answer-sheet-round-panel,
@@ -70,6 +79,7 @@
     flex: 1 1 auto;
     min-height: 0;
     min-width: 0;
+    align-items: stretch;
 }
 
 .answer-sheet-track::-webkit-scrollbar {
@@ -105,6 +115,7 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
+    min-width: 0;
 }
 
 .answer-sheet-round-kicker {
@@ -207,11 +218,18 @@ input.answer-sheet-score-input[type="text"]::placeholder {
     cursor: pointer;
 }
 
+.answer-sheet-action-button.is-disabled,
+.answer-sheet-action-button[aria-disabled="true"] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .answer-sheet-status {
     font-size: 0.9rem;
     color: rgba(245, 246, 251, 0.72);
     white-space: nowrap;
     text-align: right;
+    min-width: 0;
 }
 
 .answer-sheet-status[data-state="saving"],
@@ -225,6 +243,10 @@ input.answer-sheet-score-input[type="text"]::placeholder {
 
 .answer-sheet-status[data-state="error"] {
     color: #ff8c8c;
+}
+
+.answer-sheet-status[data-state="info"] {
+    color: #9cc8ff;
 }
 
 .answer-sheet-dots {
@@ -261,11 +283,18 @@ body.site-shell.answer-sheet-shell .footer-bottom {
 }
 
 body.site-shell.answer-sheet-shell .content-container,
+body.site-shell.answer-sheet-shell .page-body,
 body.site-shell.answer-sheet-shell main {
     min-height: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+}
+
+body.site-shell.answer-sheet-shell .answer-sheet-page {
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-page {
@@ -346,6 +375,10 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-bottom {
 
     .answer-sheet-round-panel {
         padding: 14px;
+    }
+
+    .answer-sheet-round-meta {
+        gap: 6px;
     }
 
     .answer-sheet-textarea-shell {
