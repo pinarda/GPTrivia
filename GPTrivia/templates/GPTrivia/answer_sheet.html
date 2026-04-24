@@ -58,7 +58,12 @@
                             data-round-id="{{ page.round_id }}"
                             value="{{ page.score_value }}"
                         >
-                        <button class="answer-sheet-action-button" type="button" data-submit-score-for="{{ page.round_id }}">Submit</button>
+                        <button
+                            class="answer-sheet-action-button"
+                            type="button"
+                            data-submit-score-for="{{ page.round_id }}"
+                            data-submit-requires-confirmation="{% if page.submit_requires_confirmation %}true{% else %}false{% endif %}"
+                        >Submit</button>
                         <button
                             class="answer-sheet-action-button{% if not page.grade_enabled %} is-disabled{% endif %}"
                             type="button"
@@ -540,6 +545,12 @@
                 }
                 if (textarea) {
                     clearGradingState(textarea, scoreInput);
+                }
+                if (
+                    button.dataset.submitRequiresConfirmation === 'true'
+                    && !window.confirm('Are you sure you want to submit this score?')
+                ) {
+                    return;
                 }
                 scoreInput.classList.remove('is-dirty');
                 submitScore(roundId, scoreInput);

@@ -271,6 +271,55 @@ class AnswerSheetTests(TestCase):
         round_pages = response.context["round_pages"]
         self.assertEqual(round_pages[0]["score_value"], "6.5")
 
+    def test_answer_sheet_submit_confirmation_only_for_coop_non_creator(self):
+        coop_creator_round = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Creator Co-op Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        coop_other_round = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Other Co-op Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=2,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        solo_other_round = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Other Solo Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=3,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+
+        response = self.client.get(reverse("answer_sheet"), {"date": "2026-04-17"})
+
+        self.assertEqual(response.status_code, 200)
+        round_pages = {
+            page["round_id"]: page
+            for page in response.context["round_pages"]
+        }
+        self.assertFalse(round_pages[coop_creator_round.id]["submit_requires_confirmation"])
+        self.assertTrue(round_pages[coop_other_round.id]["submit_requires_confirmation"])
+        self.assertFalse(round_pages[solo_other_round.id]["submit_requires_confirmation"])
+
     def test_submit_answer_sheet_score_updates_scoresheet_score(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",

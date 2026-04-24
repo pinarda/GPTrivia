@@ -1638,6 +1638,11 @@ def _build_answer_sheet_context(user, requested_date=''):
             'round_number': round_obj.round_number,
             'round_title': round_obj.title,
             'cooperative': bool(round_obj.cooperative),
+            'submit_requires_confirmation': bool(
+                round_obj.cooperative
+                and str(getattr(user, 'username', '') or '').strip().casefold()
+                != str(getattr(round_obj, 'creator', '') or '').strip().casefold()
+            ),
             'grade_enabled': grade_enabled,
             'grade_disabled_message': grade_disabled_message,
             'answers': answers,
