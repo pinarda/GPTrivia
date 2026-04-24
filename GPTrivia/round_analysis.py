@@ -1576,6 +1576,24 @@ def _extract_matching_answer_map(answer_text, *, option_count=0):
     return mapping
 
 
+def _extract_matching_left_items(question_text):
+    left_items = []
+    for line in _split_analysis_text_lines(question_text):
+        numeric_match = re.match(r'^\s*(\d+)[\)\].:\-]+\s*(.+?)\s*$', line)
+        if not numeric_match:
+            continue
+        left_items.append(
+            {
+                'label': int(numeric_match.group(1)),
+                'text': _normalize_text_content(numeric_match.group(2)),
+            }
+        )
+
+    if len(left_items) >= 2 and _question_suggests_matching_prompt(left_items[0].get('text') or ''):
+        return left_items[1:]
+    return left_items
+
+
 def _expand_matching_question_entry(entry):
     combined_question_text = '\n'.join(
         text
@@ -1585,7 +1603,7 @@ def _expand_matching_question_entry(entry):
         ]
         if text
     )
-    left_items = _extract_numbered_analysis_items(combined_question_text)
+    left_items = _extract_matching_left_items(combined_question_text)
     right_items = _extract_lettered_analysis_items(combined_question_text)
     answer_map = _extract_matching_answer_map(
         entry.get('answer_text'),

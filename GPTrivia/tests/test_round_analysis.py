@@ -581,6 +581,39 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("B", normalized_payload["questions"][1]["additional_possible_answers"])
         self.assertIn("2", normalized_payload["questions"][1]["additional_possible_answers"])
 
+    def test_normalize_analysis_questions_ignores_overall_matching_question_number_when_splitting(self):
+        normalized_payload = _normalize_analysis_questions(
+            {
+                "round_type": "matching",
+                "notes": "",
+                "questions": [
+                    {
+                        "question_number": 1,
+                        "source_slide_number": 3,
+                        "question_text": (
+                            "1. Match each planet to the correct description.\n"
+                            "1. Mercury\n"
+                            "2. Venus\n"
+                            "A. first planet from the Sun\n"
+                            "B. second planet from the Sun\n"
+                            "C. third planet from the Sun"
+                        ),
+                        "instruction_text": "",
+                        "answer_text": "1-C\n2-B",
+                        "media_kind": "",
+                        "major_category": "Science",
+                        "minor_category1": "",
+                        "minor_category2": "",
+                    },
+                ],
+            }
+        )
+
+        self.assertEqual(len(normalized_payload["questions"]), 2)
+        self.assertEqual(normalized_payload["questions"][0]["question_text"], "Mercury")
+        self.assertEqual(normalized_payload["questions"][1]["question_text"], "Venus")
+        self.assertNotEqual(normalized_payload["questions"][0]["question_text"], "Match each planet to the correct description.")
+
     def test_normalize_analysis_questions_adds_position_aliases_for_pre_split_matching_entries(self):
         normalized_payload = _normalize_analysis_questions(
             {
