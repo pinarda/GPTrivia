@@ -358,6 +358,36 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(payload["error_summary"], "")
         self.assertEqual(payload["error_message"], "")
 
+    def test_round_analysis_status_running_exposes_restart_button(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Running Status Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/status-round-running/edit#slide=id.r1",
+        )
+        RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+            round_type="picture",
+        )
+
+        response = self.client.get(reverse("round_analysis_status", args=[round_obj.id]))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["status"]
+        self.assertEqual(payload["status"], "running")
+        self.assertTrue(payload["is_active"])
+        self.assertEqual(payload["button_label"], "Restart")
+        self.assertEqual(payload["button_action"], "restart")
+        self.assertFalse(payload["button_disabled"])
+
     def test_round_analysis_status_includes_failure_detail(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
@@ -386,6 +416,61 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(payload["status_label"], "Failed")
         self.assertEqual(payload["error_summary"], "Missing slide notes for slide 3")
         self.assertIn("Traceback line 1", payload["error_message"])
+
+    @patch("GPTrivia.round_analysis.queue_round_analysis")
+    def test_restart_round_analysis_marks_active_run_failed_and_requeues(self, queue_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Restartable Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/restartable-round/edit#slide=id.r1",
+        )
+        active_run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+            round_type="picture",
+        )
+        queued_run = None
+
+        def create_pending_run(*args, **kwargs):
+            nonlocal queued_run
+            queued_run = RoundQuestionAnalysisRun.objects.create(
+                round=round_obj,
+                status=RoundQuestionAnalysisRun.STATUS_PENDING,
+            )
+            return [queued_run.id]
+
+        queue_mock.side_effect = create_pending_run
+
+        response = self.client.post(
+            reverse("restart_round_analysis", args=[round_obj.id]),
+            {"next": reverse("rounds_list")},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["status"]["status"], "pending")
+        self.assertEqual(payload["status"]["button_label"], "Restart")
+        self.assertEqual(payload["status"]["button_action"], "restart")
+        self.assertIsNotNone(queued_run)
+        active_run.refresh_from_db()
+        self.assertEqual(active_run.status, RoundQuestionAnalysisRun.STATUS_FAILED)
+        self.assertIsNotNone(active_run.completed_at)
+        self.assertIn("Restarted manually by Alex", active_run.error_message)
+        queue_mock.assert_called_once_with(
+            round_obj.id,
+            trigger_type=RoundQuestionAnalysisRun.TRIGGER_MANUAL,
+            initiated_by="Alex",
+        )
 
     def test_round_analysis_question_returns_latest_completed_entry(self):
         round_obj = GPTriviaRound.objects.create(
@@ -2195,5 +2280,6 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(
             response,
-            reverse("trigger_round_analysis", args=[round_obj.id]),
+            f'action="{reverse("trigger_round_analysis", args=[round_obj.id])}" class="round-analysis-form"',
+            html=False,
         )

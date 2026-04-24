@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260424e">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260424f">
 {% endblock %}
 
 {% block content %}
@@ -779,20 +779,27 @@
             });
         }
 
-        function applySharedAnswersUpdate(roundId, answers) {
+        function applySharedAnswersUpdate(roundId, payload) {
             const panel = getRoundPanel(roundId);
             if (panel && panel.dataset.diverged === 'true') {
                 return;
             }
             const textarea = getRoundTextarea(roundId);
+            const scoreInput = getRoundScoreInput(roundId);
             if (!textarea) {
                 return;
             }
-            const normalizedAnswers = Array.isArray(answers) ? answers.map((answer) => String(answer || '')) : [];
+            const normalizedAnswers = Array.isArray(payload?.answers)
+                ? payload.answers.map((answer) => String(answer || ''))
+                : [];
             textarea.value = normalizedAnswers.join('\n');
-            clearGradingState(textarea);
             syncLineNumbers(textarea);
             setRoundAnswersDirty(roundId, false);
+            if (payload?.grade_payload && scoreInput) {
+                applyGradePayload(roundId, textarea, scoreInput, payload.grade_payload);
+            } else {
+                clearGradingState(textarea);
+            }
             refreshRoundStatus(roundId);
         }
 
@@ -1503,7 +1510,7 @@
                             return;
                         }
                         if (message.event === 'answer_sheet_save') {
-                            applySharedAnswersUpdate(String(message.round_id || ''), message.answers || []);
+                            applySharedAnswersUpdate(String(message.round_id || ''), message);
                             return;
                         }
                         if (message.event === 'answer_sheet_grade') {

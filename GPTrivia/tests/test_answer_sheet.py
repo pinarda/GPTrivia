@@ -285,6 +285,117 @@ class AnswerSheetTests(TestCase):
         round_pages = shared_response.context["round_pages"]
         self.assertEqual(round_pages[0]["answers"][:4], ["One", "Two", "Three", ""])
 
+    def test_save_answer_sheet_entry_invalidates_only_changed_rows_for_shared_graded_round(self):
+        megan = User.objects.create_user(username="Megan", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Shared Invalidated Grade Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+            },
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="What animal is white with black stripes?",
+            answer_text="A Zebra",
+            possible_answers=["Zebra", "zebra"],
+            round_type="text",
+            player_correctness={"Alex": "", "Megan": ""},
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=2,
+            question_text="What is the fastest land animal?",
+            answer_text="Cheetah",
+            possible_answers=["Cheetah", "cheetah"],
+            round_type="text",
+            player_correctness={"Alex": "", "Megan": ""},
+        )
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=round_obj,
+            trivia_date=trivia_date,
+            answers=["Zebra", "Cheetah"] + [""] * 8,
+            grade_invalidated_questions=[],
+            was_graded=True,
+            is_diverged=False,
+        )
+        AnswerSheetEntry.objects.create(
+            user=megan,
+            round=round_obj,
+            trivia_date=trivia_date,
+            answers=["Zebra", "Cheetah"] + [""] * 8,
+            grade_invalidated_questions=[],
+            was_graded=True,
+            is_diverged=False,
+        )
+
+        with patch("GPTrivia.views._broadcast_scoresheet_message") as broadcast:
+            with self.captureOnCommitCallbacks(execute=False) as callbacks:
+                response = self.client.post(
+                    reverse("save_answer_sheet_entry"),
+                    data=json.dumps({
+                        "round_id": round_obj.id,
+                        "answers": ["Zebra", "Lion"] + [""] * 8,
+                        "client_id": "invalidate-client-1",
+                    }),
+                    content_type="application/json",
+                )
+
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertTrue(payload["shared"])
+            self.assertTrue(payload["was_graded"])
+            self.assertEqual(payload["grade_invalidated_questions"], [2])
+            self.assertEqual(payload["grade_payload"]["score"], 1)
+            self.assertEqual(payload["grade_payload"]["row_results"][0]["state"], "correct")
+            self.assertEqual(payload["grade_payload"]["row_results"][1]["state"], "default")
+            self.assertTrue(payload["grade_payload"]["row_results"][1]["invalidated"])
+            self.assertEqual(len(callbacks), 1)
+            broadcast.assert_not_called()
+
+            alex_entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
+            megan_entry = AnswerSheetEntry.objects.get(user=megan, round=round_obj)
+            self.assertEqual(alex_entry.grade_invalidated_questions, [2])
+            self.assertEqual(megan_entry.grade_invalidated_questions, [2])
+            self.assertTrue(alex_entry.was_graded)
+            self.assertTrue(megan_entry.was_graded)
+
+            callbacks[0]()
+            broadcast.assert_called_once()
+            message = broadcast.call_args.args[0]
+            self.assertEqual(message["event"], "answer_sheet_save")
+            self.assertEqual(message["client_id"], "invalidate-client-1")
+            self.assertEqual(message["grade_payload"]["score"], 1)
+            self.assertEqual(message["grade_payload"]["row_results"][0]["state"], "correct")
+            self.assertEqual(message["grade_payload"]["row_results"][1]["state"], "default")
+
     def test_answer_sheet_sync_returns_current_communal_round_state(self):
         megan = User.objects.create_user(username="Megan", password="pw")
         trivia_date = datetime.date(2026, 4, 17)
@@ -365,6 +476,84 @@ class AnswerSheetTests(TestCase):
         self.assertFalse(round_payload["is_diverged"])
         self.assertEqual(round_payload["grade_payload"]["score"], 1)
         self.assertEqual(round_payload["grade_payload"]["row_results"][0]["state"], "correct")
+
+    def test_answer_sheet_sync_restores_saved_grade_state_without_manual_overrides(self):
+        megan = User.objects.create_user(username="Megan", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        cooperative_round = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Restored Grade State Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+            score_alex=4,
+        )
+        MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+            },
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=cooperative_round,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=cooperative_round,
+            round_name=cooperative_round.title,
+            round_date=cooperative_round.date,
+            question_number=1,
+            question_text="What animal is white with black stripes?",
+            answer_text="A Zebra",
+            possible_answers=["Zebra", "zebra"],
+            round_type="text",
+            player_correctness={"Alex": "", "Megan": ""},
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=cooperative_round,
+            round_name=cooperative_round.title,
+            round_date=cooperative_round.date,
+            question_number=2,
+            question_text="What is the fastest land animal?",
+            answer_text="Cheetah",
+            possible_answers=["Cheetah", "cheetah"],
+            round_type="text",
+            player_correctness={"Alex": "", "Megan": ""},
+        )
+        AnswerSheetEntry.objects.create(
+            user=megan,
+            round=cooperative_round,
+            trivia_date=trivia_date,
+            answers=["Zebra", "Cheetah"] + [""] * 8,
+            grade_overrides=[],
+            grade_rejections=[],
+            grade_invalidated_questions=[2],
+            was_graded=True,
+            is_diverged=False,
+        )
+
+        response = self.client.get(
+            reverse("answer_sheet_sync"),
+            {"date": trivia_date.isoformat()},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        round_payload = response.json()["rounds"][0]
+        self.assertEqual(round_payload["answers"][:2], ["Zebra", "Cheetah"])
+        self.assertEqual(round_payload["grade_payload"]["score"], 1)
+        self.assertEqual(round_payload["grade_payload"]["row_results"][0]["state"], "correct")
+        self.assertEqual(round_payload["grade_payload"]["row_results"][1]["state"], "default")
+        self.assertTrue(round_payload["grade_payload"]["row_results"][1]["invalidated"])
 
     def test_diverge_answer_sheet_round_stops_future_shared_answer_updates(self):
         megan = User.objects.create_user(username="Megan", password="pw")

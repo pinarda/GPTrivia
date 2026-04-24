@@ -104,14 +104,15 @@
             {% for player_field in player_fields %}
             <td>{{ round_row.score_values|get_item:player_field }}</td>
             {% endfor %}
-            <td class="round-analysis-cell" data-round-id="{{ round_row.round.id }}" data-status-url="{% url 'round_analysis_status' round_id=round_row.round.id %}">
+            <td class="round-analysis-cell" data-round-id="{{ round_row.round.id }}" data-status-url="{% url 'round_analysis_status' round_id=round_row.round.id %}" data-trigger-url="{% url 'trigger_round_analysis' round_id=round_row.round.id %}" data-restart-url="{% url 'restart_round_analysis' round_id=round_row.round.id %}">
                 {% if not round_row.round.replay and analysis_status.can_trigger %}
-                    <form method="post" action="{% url 'trigger_round_analysis' round_id=round_row.round.id %}" class="round-analysis-form" data-round-id="{{ round_row.round.id }}">
+                    <form method="post" action="{% if analysis_status.button_action == 'restart' %}{% url 'restart_round_analysis' round_id=round_row.round.id %}{% else %}{% url 'trigger_round_analysis' round_id=round_row.round.id %}{% endif %}" class="round-analysis-form" data-round-id="{{ round_row.round.id }}" data-analysis-action="{{ analysis_status.button_action|default:'trigger' }}">
                         {% csrf_token %}
                         <input type="hidden" name="next" value="{{ request.get_full_path }}">
                         <button
                             type="submit"
                             class="round-analysis-button"
+                            data-analysis-action="{{ analysis_status.button_action|default:'trigger' }}"
                             {% if analysis_status.button_disabled %}disabled aria-disabled="true"{% endif %}
                         >
                             {{ analysis_status.button_label }}
@@ -273,14 +274,26 @@
     }
 
     function renderRoundAnalysisCell(cell, status) {
+        const form = cell.querySelector('.round-analysis-form');
         const button = cell.querySelector('.round-analysis-button');
         if (button && status) {
             button.textContent = status.button_label || 'Analyze';
             button.disabled = Boolean(status.button_disabled);
+            button.dataset.analysisAction = status.button_action || 'trigger';
             if (button.disabled) {
                 button.setAttribute('aria-disabled', 'true');
             } else {
                 button.removeAttribute('aria-disabled');
+            }
+        }
+        if (form && status) {
+            const nextUrlInput = form.querySelector('input[name="next"]');
+            form.dataset.analysisAction = status.button_action || 'trigger';
+            form.action = status.button_action === 'restart'
+                ? cell.dataset.restartUrl
+                : cell.dataset.triggerUrl;
+            if (nextUrlInput && !nextUrlInput.value) {
+                nextUrlInput.value = window.location.pathname + window.location.search;
             }
         }
         renderRoundAnalysisMeta(cell, status);
@@ -351,6 +364,12 @@
                 const submitButton = form.querySelector('.round-analysis-button');
                 if (!cell || !submitButton || submitButton.disabled) {
                     return;
+                }
+                if ((form.dataset.analysisAction || submitButton.dataset.analysisAction || 'trigger') === 'restart') {
+                    const confirmed = window.confirm('Are you sure you want to restart this round analysis?');
+                    if (!confirmed) {
+                        return;
+                    }
                 }
 
                 renderRoundAnalysisCell(cell, buildOptimisticPendingStatus(cell));

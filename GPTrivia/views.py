@@ -1169,8 +1169,9 @@ def _serialize_round_analysis_status(round_id, latest_run=None, has_completed_en
         'status_label': latest_run.get_status_display() if latest_run else '',
         'has_any_run': bool(latest_run),
         'is_active': is_active,
-        'button_label': 'Analyze Again' if was_analyzed_before and not is_active else 'Analyze',
-        'button_disabled': is_active,
+        'button_label': 'Restart' if is_active else ('Analyze Again' if was_analyzed_before else 'Analyze'),
+        'button_action': 'restart' if is_active else 'trigger',
+        'button_disabled': False,
         'show_already_analyzed': bool(was_analyzed_before and not is_active),
         'has_completed_entries': bool(has_completed_entries),
         'view_url': f"{reverse('round_analysis_list')}?round_id={round_id}" if has_completed_entries else '',
@@ -1459,15 +1460,20 @@ def _normalize_answer_sheet_grade_overrides(raw_overrides):
     return normalized_overrides
 
 
-def _clear_answer_sheet_grade_marks_for_changed_answers(previous_answers, next_answers, existing_marks):
+def _get_changed_answer_sheet_questions(previous_answers, next_answers):
     normalized_previous = list(previous_answers or [])
     normalized_next = list(next_answers or [])
-    changed_questions = set()
+    changed_questions = []
     for index in range(max(len(normalized_previous), len(normalized_next))):
         previous_value = normalized_previous[index] if index < len(normalized_previous) else ''
         next_value = normalized_next[index] if index < len(normalized_next) else ''
         if str(previous_value or '') != str(next_value or ''):
-            changed_questions.add(index + 1)
+            changed_questions.append(index + 1)
+    return changed_questions
+
+
+def _clear_answer_sheet_grade_marks_for_changed_answers(previous_answers, next_answers, existing_marks):
+    changed_questions = set(_get_changed_answer_sheet_questions(previous_answers, next_answers))
     return [
         question_number
         for question_number in _normalize_answer_sheet_grade_overrides(existing_marks)
@@ -1490,6 +1496,17 @@ def _normalize_answer_sheet_grade_value(raw_value):
     normalized_value = re.sub(r'[^0-9a-z]+', ' ', normalized_value)
     normalized_value = re.sub(r'\s+', ' ', normalized_value)
     return normalized_value.strip()
+
+
+def _build_answer_sheet_invalidated_questions(previous_answers, next_answers, existing_invalidated_questions, *, was_graded=False):
+    if not was_graded:
+        return []
+
+    merged_questions = [
+        *_normalize_answer_sheet_grade_overrides(existing_invalidated_questions),
+        *_get_changed_answer_sheet_questions(previous_answers, next_answers),
+    ]
+    return _normalize_answer_sheet_grade_overrides(merged_questions)
 
 
 def _strip_answer_sheet_leading_article(value):
@@ -1602,6 +1619,32 @@ def _build_answer_sheet_accepted_answers(entry):
             if normalized_candidate and normalized_candidate not in accepted_answers:
                 accepted_answers.append(normalized_candidate)
     return accepted_answers
+
+
+def _has_answer_sheet_saved_grade_state(answer_entry):
+    if answer_entry is None:
+        return False
+    return bool(
+        getattr(answer_entry, 'was_graded', False)
+        or _normalize_answer_sheet_grade_overrides(getattr(answer_entry, 'grade_overrides', []))
+        or _normalize_answer_sheet_grade_overrides(getattr(answer_entry, 'grade_rejections', []))
+        or _normalize_answer_sheet_grade_overrides(getattr(answer_entry, 'grade_invalidated_questions', []))
+    )
+
+
+def _build_saved_answer_sheet_grade_payload(round_obj, answer_entry):
+    if answer_entry is None or not _has_answer_sheet_saved_grade_state(answer_entry):
+        return None
+    try:
+        return _grade_answer_sheet_answers(
+            round_obj,
+            _normalize_answer_sheet_answers(answer_entry.answers or []),
+            manual_correct_questions=answer_entry.grade_overrides,
+            manual_incorrect_questions=answer_entry.grade_rejections,
+            invalidated_questions=getattr(answer_entry, 'grade_invalidated_questions', []),
+        )
+    except ValueError:
+        return None
 
 
 def _promote_answer_sheet_overrides_to_possible_answers(round_obj, answer_entry):
@@ -1721,7 +1764,13 @@ def _remove_answer_sheet_rejections_from_possible_answers(round_obj, answer_entr
     return updated_entry_count
 
 
-def _grade_answer_sheet_answers(round_obj, answers, manual_correct_questions=None, manual_incorrect_questions=None):
+def _grade_answer_sheet_answers(
+    round_obj,
+    answers,
+    manual_correct_questions=None,
+    manual_incorrect_questions=None,
+    invalidated_questions=None,
+):
     latest_completed_run = _latest_completed_round_analysis_run(round_obj.id)
     if latest_completed_run is None:
         raise ValueError("the round has not yet been analyzed")
@@ -1733,6 +1782,7 @@ def _grade_answer_sheet_answers(round_obj, answers, manual_correct_questions=Non
     normalized_answers = [str(answer or '') for answer in (answers or [])]
     manual_correct_question_set = set(_normalize_answer_sheet_grade_overrides(manual_correct_questions))
     manual_incorrect_question_set = set(_normalize_answer_sheet_grade_overrides(manual_incorrect_questions))
+    invalidated_question_set = set(_normalize_answer_sheet_grade_overrides(invalidated_questions))
     row_results = []
     correct_count = 0
 
@@ -1749,6 +1799,8 @@ def _grade_answer_sheet_answers(round_obj, answers, manual_correct_questions=Non
         elif index in manual_correct_question_set:
             state = 'correct'
             correct_count += 1
+        elif index in invalidated_question_set:
+            state = 'default'
         elif _answer_sheet_forms_match(normalized_guess_forms, set(accepted_answers)):
             state = 'correct'
             correct_count += 1
@@ -1763,6 +1815,7 @@ def _grade_answer_sheet_answers(round_obj, answers, manual_correct_questions=Non
             'possible_answers': list(entry.possible_answers or []) if entry else [],
             'manually_overridden': bool(index in manual_correct_question_set),
             'manually_rejected': bool(index in manual_incorrect_question_set),
+            'invalidated': bool(index in invalidated_question_set),
         })
 
     return {
@@ -1771,6 +1824,7 @@ def _grade_answer_sheet_answers(round_obj, answers, manual_correct_questions=Non
         'score_display': _format_profile_round_score(correct_count),
         'grade_overrides': sorted(manual_correct_question_set),
         'grade_rejections': sorted(manual_incorrect_question_set),
+        'grade_invalidated_questions': sorted(invalidated_question_set),
     }
 
 
@@ -1947,6 +2001,8 @@ def _build_answer_sheet_context(user, requested_date=''):
             'answers_text': '\n'.join(answers),
             'grade_overrides': _normalize_answer_sheet_grade_overrides(saved_entry.grade_overrides if saved_entry else []),
             'grade_rejections': _normalize_answer_sheet_grade_overrides(saved_entry.grade_rejections if saved_entry else []),
+            'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(saved_entry.grade_invalidated_questions if saved_entry else []),
+            'was_graded': bool(saved_entry.was_graded) if saved_entry else False,
             'score_value': _format_profile_round_score(current_score),
         })
 
@@ -2054,15 +2110,23 @@ def save_answer_sheet_entry(request):
         updated_entries = {}
         for target_user in target_users:
             previous_entry = AnswerSheetEntry.objects.filter(user=target_user, round=round_obj).first()
+            previous_answers = previous_entry.answers if previous_entry else []
+            previous_was_graded = bool(previous_entry.was_graded) if previous_entry else False
             next_grade_overrides = _clear_answer_sheet_overrides_for_changed_answers(
-                previous_entry.answers if previous_entry else [],
+                previous_answers,
                 answers,
                 previous_entry.grade_overrides if previous_entry else [],
             )
             next_grade_rejections = _clear_answer_sheet_grade_marks_for_changed_answers(
-                previous_entry.answers if previous_entry else [],
+                previous_answers,
                 answers,
                 previous_entry.grade_rejections if previous_entry else [],
+            )
+            next_grade_invalidated_questions = _build_answer_sheet_invalidated_questions(
+                previous_answers,
+                answers,
+                previous_entry.grade_invalidated_questions if previous_entry else [],
+                was_graded=previous_was_graded,
             )
             answer_entry, _ = AnswerSheetEntry.objects.update_or_create(
                 user=target_user,
@@ -2072,12 +2136,16 @@ def save_answer_sheet_entry(request):
                     'answers': answers,
                     'grade_overrides': next_grade_overrides,
                     'grade_rejections': next_grade_rejections,
+                    'grade_invalidated_questions': next_grade_invalidated_questions,
+                    'was_graded': previous_was_graded,
                     'is_diverged': bool(current_entry.is_diverged) if (current_entry and target_user.id == request.user.id) else False,
                 },
             )
             updated_entries[target_user.id] = answer_entry
 
         response_entry = updated_entries.get(request.user.id) or next(iter(updated_entries.values()))
+        shared_entry = _get_answer_sheet_communal_entry(round_obj, current_user=request.user)
+        shared_grade_payload = _build_saved_answer_sheet_grade_payload(round_obj, shared_entry or response_entry)
 
         if round_obj.cooperative and not current_user_is_diverged:
             _schedule_scoresheet_broadcast({
@@ -2088,6 +2156,7 @@ def save_answer_sheet_entry(request):
                 'client_id': client_id,
                 'answers': answers,
                 'updated_at': response_entry.updated_at.isoformat() if response_entry.updated_at else '',
+                'grade_payload': shared_grade_payload,
             })
 
     return JsonResponse({
@@ -2097,6 +2166,9 @@ def save_answer_sheet_entry(request):
         'answers': response_entry.answers,
         'grade_overrides': _normalize_answer_sheet_grade_overrides(response_entry.grade_overrides),
         'grade_rejections': _normalize_answer_sheet_grade_overrides(response_entry.grade_rejections),
+        'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(response_entry.grade_invalidated_questions),
+        'grade_payload': shared_grade_payload,
+        'was_graded': bool(response_entry.was_graded),
         'updated_at': response_entry.updated_at.isoformat() if response_entry.updated_at else '',
         'shared': bool(round_obj.cooperative and not current_user_is_diverged),
         'is_diverged': bool(response_entry.is_diverged),
@@ -2124,14 +2196,25 @@ def diverge_answer_sheet_round(request):
         return JsonResponse({'detail': 'Only cooperative rounds can diverge.'}, status=400)
 
     answers = _normalize_answer_sheet_answers(payload.get('answers', []))
+    current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
+    communal_entry = _get_answer_sheet_communal_entry(round_obj, current_user=request.user)
+    source_entry = current_entry or communal_entry
     entry, _ = AnswerSheetEntry.objects.update_or_create(
         user=request.user,
         round=round_obj,
         defaults={
             'trivia_date': round_obj.date,
             'answers': answers,
-            'grade_overrides': [],
-            'grade_rejections': [],
+            'grade_overrides': _normalize_answer_sheet_grade_overrides(
+                source_entry.grade_overrides if source_entry else []
+            ),
+            'grade_rejections': _normalize_answer_sheet_grade_overrides(
+                source_entry.grade_rejections if source_entry else []
+            ),
+            'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(
+                source_entry.grade_invalidated_questions if source_entry else []
+            ),
+            'was_graded': bool(source_entry.was_graded) if source_entry else False,
             'is_diverged': True,
         },
     )
@@ -2140,8 +2223,11 @@ def diverge_answer_sheet_round(request):
         'ok': True,
         'round_id': round_obj.id,
         'answers': entry.answers,
-        'grade_overrides': [],
-        'grade_rejections': [],
+        'grade_overrides': _normalize_answer_sheet_grade_overrides(entry.grade_overrides),
+        'grade_rejections': _normalize_answer_sheet_grade_overrides(entry.grade_rejections),
+        'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(entry.grade_invalidated_questions),
+        'grade_payload': _build_saved_answer_sheet_grade_payload(round_obj, entry),
+        'was_graded': bool(entry.was_graded),
         'is_diverged': True,
         'shared': False,
     })
@@ -2179,12 +2265,6 @@ def _get_answer_sheet_communal_entry(round_obj, current_user=None):
 def _serialize_answer_sheet_sync_round(round_obj, user, current_entry=None, current_user_player_field=''):
     communal_entry = _get_answer_sheet_communal_entry(round_obj, current_user=user)
     normalized_answers = _normalize_answer_sheet_answers(communal_entry.answers if communal_entry else [])
-    grade_overrides = _normalize_answer_sheet_grade_overrides(
-        communal_entry.grade_overrides if communal_entry else []
-    )
-    grade_rejections = _normalize_answer_sheet_grade_overrides(
-        communal_entry.grade_rejections if communal_entry else []
-    )
     score_map = get_round_score_map(round_obj, include_null_fixed=False)
     current_score = score_map.get(current_user_player_field) if current_user_player_field else None
 
@@ -2194,16 +2274,8 @@ def _serialize_answer_sheet_sync_round(round_obj, user, current_entry=None, curr
         'score_value': _format_profile_round_score(current_score),
         'is_diverged': bool(current_entry.is_diverged) if current_entry else False,
         'shared': bool(round_obj.cooperative and not (bool(current_entry.is_diverged) if current_entry else False)),
-        'grade_payload': None,
+        'grade_payload': _build_saved_answer_sheet_grade_payload(round_obj, communal_entry),
     }
-
-    if communal_entry and (grade_overrides or grade_rejections):
-        response_payload['grade_payload'] = _grade_answer_sheet_answers(
-            round_obj,
-            normalized_answers,
-            manual_correct_questions=grade_overrides,
-            manual_incorrect_questions=grade_rejections,
-        )
 
     return response_payload
 
@@ -2248,6 +2320,10 @@ def merge_answer_sheet_round(request):
     communal_grade_rejections = _normalize_answer_sheet_grade_overrides(
         communal_entry.grade_rejections if communal_entry else []
     )
+    communal_grade_invalidated_questions = _normalize_answer_sheet_grade_overrides(
+        communal_entry.grade_invalidated_questions if communal_entry else []
+    )
+    communal_was_graded = bool(communal_entry.was_graded) if communal_entry else False
 
     with transaction.atomic():
         AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).delete()
@@ -2258,6 +2334,8 @@ def merge_answer_sheet_round(request):
             answers=communal_answers,
             grade_overrides=communal_grade_overrides,
             grade_rejections=communal_grade_rejections,
+            grade_invalidated_questions=communal_grade_invalidated_questions,
+            was_graded=communal_was_graded,
             is_diverged=False,
         )
 
@@ -2267,6 +2345,9 @@ def merge_answer_sheet_round(request):
         'answers': merged_entry.answers,
         'grade_overrides': _normalize_answer_sheet_grade_overrides(merged_entry.grade_overrides),
         'grade_rejections': _normalize_answer_sheet_grade_overrides(merged_entry.grade_rejections),
+        'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(merged_entry.grade_invalidated_questions),
+        'grade_payload': _build_saved_answer_sheet_grade_payload(round_obj, merged_entry),
+        'was_graded': bool(merged_entry.was_graded),
         'is_diverged': False,
         'shared': True,
         'submit_requires_confirmation': bool(
@@ -2408,6 +2489,7 @@ def grade_answer_sheet_round(request):
     except ValueError as error:
         return JsonResponse({'detail': str(error)}, status=400)
 
+    target_users = [request.user]
     if round_obj.cooperative and not current_user_is_diverged:
         diverged_user_ids = _get_answer_sheet_diverged_user_ids(round_obj)
         target_users = [
@@ -2418,31 +2500,34 @@ def grade_answer_sheet_round(request):
         if not target_users:
             target_users = [request.user]
 
-        with transaction.atomic():
-            for target_user in target_users:
-                previous_entry = AnswerSheetEntry.objects.filter(user=target_user, round=round_obj).first()
-                next_grade_overrides = _clear_answer_sheet_overrides_for_changed_answers(
-                    previous_entry.answers if previous_entry else [],
-                    normalized_answers,
-                    previous_entry.grade_overrides if previous_entry else [],
-                )
-                next_grade_rejections = _clear_answer_sheet_grade_marks_for_changed_answers(
-                    previous_entry.answers if previous_entry else [],
-                    normalized_answers,
-                    previous_entry.grade_rejections if previous_entry else [],
-                )
-                AnswerSheetEntry.objects.update_or_create(
-                    user=target_user,
-                    round=round_obj,
-                    defaults={
-                        'trivia_date': round_obj.date,
-                        'answers': normalized_answers,
-                        'grade_overrides': next_grade_overrides,
-                        'grade_rejections': next_grade_rejections,
-                        'is_diverged': bool(current_entry.is_diverged) if (current_entry and target_user.id == request.user.id) else False,
-                    },
-                )
+    with transaction.atomic():
+        for target_user in target_users:
+            previous_entry = AnswerSheetEntry.objects.filter(user=target_user, round=round_obj).first()
+            next_grade_overrides = _clear_answer_sheet_overrides_for_changed_answers(
+                previous_entry.answers if previous_entry else [],
+                normalized_answers,
+                previous_entry.grade_overrides if previous_entry else [],
+            )
+            next_grade_rejections = _clear_answer_sheet_grade_marks_for_changed_answers(
+                previous_entry.answers if previous_entry else [],
+                normalized_answers,
+                previous_entry.grade_rejections if previous_entry else [],
+            )
+            AnswerSheetEntry.objects.update_or_create(
+                user=target_user,
+                round=round_obj,
+                defaults={
+                    'trivia_date': round_obj.date,
+                    'answers': normalized_answers,
+                    'grade_overrides': next_grade_overrides,
+                    'grade_rejections': next_grade_rejections,
+                    'grade_invalidated_questions': [],
+                    'was_graded': True,
+                    'is_diverged': bool(current_entry.is_diverged) if (current_entry and target_user.id == request.user.id) else False,
+                },
+            )
 
+        if round_obj.cooperative and not current_user_is_diverged:
             _schedule_scoresheet_broadcast({
                 'action': 'answer_sheet',
                 'event': 'answer_sheet_grade',
@@ -2550,6 +2635,8 @@ def override_answer_sheet_grade(request):
                     'answers': normalized_answers,
                     'grade_overrides': next_grade_overrides,
                     'grade_rejections': next_grade_rejections,
+                    'grade_invalidated_questions': [],
+                    'was_graded': True,
                     'is_diverged': bool(current_entry.is_diverged) if (current_entry and target_user.id == request.user.id) else False,
                 },
             )
@@ -2723,6 +2810,84 @@ def trigger_round_analysis(request, round_id):
     else:
         messages.info(request, message_text)
 
+    return redirect(next_url)
+
+
+@login_required
+def restart_round_analysis(request, round_id):
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    round_obj = get_object_or_404(GPTriviaRound, id=round_id)
+    next_url = (request.POST.get('next') or request.META.get('HTTP_REFERER') or reverse('rounds_list')).strip()
+    wants_json = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+    if round_obj.replay:
+        if wants_json:
+            return JsonResponse({
+                'ok': False,
+                'message': f"{round_obj.title} is marked as a replay round and cannot be analyzed.",
+                'status': _build_round_analysis_status_map([round_obj.id])[round_obj.id],
+            }, status=400)
+        messages.error(request, f"{round_obj.title} is marked as a replay round and cannot be analyzed.")
+        return redirect(next_url)
+
+    if not _creator_allows_round_analysis(round_obj.creator):
+        if wants_json:
+            return JsonResponse({
+                'ok': False,
+                'message': f"{round_obj.creator} has not opted in to round analysis.",
+                'status': _build_round_analysis_status_map([round_obj.id])[round_obj.id],
+            }, status=403)
+        messages.error(request, f"{round_obj.creator} has not opted in to round analysis.")
+        return redirect(next_url)
+
+    active_runs = list(
+        RoundQuestionAnalysisRun.objects.filter(
+            round=round_obj,
+            status__in=[RoundQuestionAnalysisRun.STATUS_PENDING, RoundQuestionAnalysisRun.STATUS_RUNNING],
+        ).order_by('id')
+    )
+    if not active_runs:
+        return trigger_round_analysis(request, round_id)
+
+    restart_note = (
+        f"Restarted manually by {request.user.username} on "
+        f"{timezone.now().strftime('%Y-%m-%d %H:%M:%S %Z') or timezone.now().isoformat()}."
+    )
+    with transaction.atomic():
+        completed_at = timezone.now()
+        for active_run in active_runs:
+            error_parts = [str(active_run.error_message or '').strip(), restart_note]
+            active_run.status = RoundQuestionAnalysisRun.STATUS_FAILED
+            active_run.completed_at = completed_at
+            active_run.error_message = '\n\n'.join(part for part in error_parts if part)
+            active_run.save(update_fields=['status', 'completed_at', 'error_message', 'updated_at'])
+
+    from .round_analysis import queue_round_analysis
+
+    queued_run_ids = queue_round_analysis(
+        round_obj.id,
+        trigger_type=RoundQuestionAnalysisRun.TRIGGER_MANUAL,
+        initiated_by=request.user.username if request.user.is_authenticated else '',
+    )
+    status_payload = _build_round_analysis_status_map([round_obj.id])[round_obj.id]
+    message_text = (
+        f"Round analysis restarted for {round_obj.title}."
+        if queued_run_ids
+        else f"Round analysis could not be restarted for {round_obj.title}."
+    )
+    if wants_json:
+        return JsonResponse({
+            'ok': bool(queued_run_ids),
+            'message': message_text,
+            'status': status_payload,
+        })
+
+    if queued_run_ids:
+        messages.success(request, message_text)
+    else:
+        messages.error(request, message_text)
     return redirect(next_url)
 
 

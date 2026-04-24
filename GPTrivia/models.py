@@ -227,6 +227,8 @@ class AnswerSheetEntry(models.Model):
     answers = jsonfield.JSONField(default=list, blank=True)
     grade_overrides = jsonfield.JSONField(default=list, blank=True)
     grade_rejections = jsonfield.JSONField(default=list, blank=True)
+    grade_invalidated_questions = jsonfield.JSONField(default=list, blank=True)
+    was_graded = models.BooleanField(default=False)
     is_diverged = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
