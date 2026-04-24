@@ -19,7 +19,7 @@
     {% if round_pages %}
         <div class="answer-sheet-track" id="answer-sheet-track">
             {% for page in round_pages %}
-                <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}" data-cooperative="{% if page.cooperative %}true{% else %}false{% endif %}" data-diverged="{% if page.is_diverged %}true{% else %}false{% endif %}">
+                <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}" data-round-title="{{ page.round_title }}" data-cooperative="{% if page.cooperative %}true{% else %}false{% endif %}" data-diverged="{% if page.is_diverged %}true{% else %}false{% endif %}">
                     <div class="answer-sheet-round-header">
                         <div class="answer-sheet-round-meta">
                             <div class="answer-sheet-round-kicker">Round {{ page.round_number }}</div>
@@ -56,12 +56,14 @@
                             placeholder="Score"
                             aria-label="Score for {{ page.round_title }}"
                             data-round-id="{{ page.round_id }}"
+                            data-saved-score="{{ page.score_value }}"
                             value="{{ page.score_value }}"
                         >
                         <button
                             class="answer-sheet-action-button"
                             type="button"
                             data-submit-score-for="{{ page.round_id }}"
+                            data-round-title="{{ page.round_title }}"
                             data-submit-requires-confirmation="{% if page.submit_requires_confirmation %}true{% else %}false{% endif %}"
                         >Submit</button>
                         <button
@@ -208,6 +210,18 @@
                 }
             }
             return normalized;
+        }
+
+        function scoreValuesDiffer(nextValue, savedValue) {
+            const normalizedNext = normalizeScoreValue(nextValue);
+            const normalizedSaved = normalizeScoreValue(savedValue);
+            if (!normalizedNext && !normalizedSaved) {
+                return false;
+            }
+            if (!normalizedNext || !normalizedSaved) {
+                return true;
+            }
+            return Number(normalizedNext) !== Number(normalizedSaved);
         }
 
         function getTextareaLines(textarea) {
@@ -534,6 +548,7 @@
                     throw new Error(payload.detail || `Save failed with status ${response.status}`);
                 }
                 scoreInput.value = payload.score_display || '';
+                scoreInput.dataset.savedScore = payload.score_display || '';
                 scoreInput.classList.remove('is-dirty');
                 scoreInput.classList.remove('is-graded');
                 setStatus(roundId, 'Saved', 'saved');
@@ -772,10 +787,19 @@
                 if (textarea) {
                     clearGradingState(textarea, scoreInput);
                 }
-                if (
-                    button.dataset.submitRequiresConfirmation === 'true'
-                    && !window.confirm('Are you sure you want to submit this score?')
-                ) {
+                const roundTitle = button.dataset.roundTitle || 'this round';
+                const savedScore = scoreInput.dataset.savedScore || '';
+                const requiresCooperativeConfirmation = button.dataset.submitRequiresConfirmation === 'true';
+                const requiresOverwriteConfirmation = Boolean(savedScore) && scoreValuesDiffer(scoreInput.value, savedScore);
+                let confirmationMessage = '';
+                if (requiresCooperativeConfirmation && requiresOverwriteConfirmation) {
+                    confirmationMessage = `Are you sure you want to submit this score for the cooperative round and overwrite your score for ${roundTitle}?`;
+                } else if (requiresCooperativeConfirmation) {
+                    confirmationMessage = 'Are you sure you want to submit this score for the cooperative round?';
+                } else if (requiresOverwriteConfirmation) {
+                    confirmationMessage = `Are you sure you want to overwrite your score for ${roundTitle}?`;
+                }
+                if (confirmationMessage && !window.confirm(confirmationMessage)) {
                     return;
                 }
                 scoreInput.classList.remove('is-dirty');
@@ -811,7 +835,7 @@
                     mergeRound(roundId, textarea, scoreInput);
                     return;
                 }
-                if (!window.confirm('Are you sure you want to diverge this round from the communal round?')) {
+                if (!window.confirm('Are you sure you want to diverge this round from the cooperative round?')) {
                     return;
                 }
                 divergeRound(roundId, textarea);
