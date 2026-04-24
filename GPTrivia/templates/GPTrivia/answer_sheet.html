@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423j">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423k">
 {% endblock %}
 
 {% block content %}
@@ -11,7 +11,13 @@
         <div class="answer-sheet-header-line">
             <span class="answer-sheet-header-label">Answer Sheet</span>
             {% if selected_date_display %}
-                <span class="answer-sheet-header-date">{{ selected_date_display }}</span>
+                <button
+                    id="answer-sheet-calendar-button"
+                    class="calendar-trigger-button answer-sheet-header-date answer-sheet-header-date-button{% if not date_values %} disabled-button{% endif %}"
+                    type="button"
+                    {% if not date_values %}disabled{% endif %}
+                    aria-label="Choose answer sheet date"
+                >{{ selected_date_display }}</button>
             {% endif %}
         </div>
     </section>
@@ -102,6 +108,38 @@
         </section>
     {% endif %}
 </div>
+
+<div id="answer-sheet-calendar-overlay" class="calendar-overlay" hidden></div>
+<div id="answer-sheet-calendar-popover" class="presentation-calendar-popover answer-sheet-calendar-popover" hidden>
+    <div class="presentation-calendar-header">
+        <div class="presentation-calendar-title">
+            <strong>Select a trivia night</strong>
+            <span>Highlighted dates have answer sheets you can open.</span>
+        </div>
+        <button id="answer-sheet-calendar-close" class="calendar-close-button" type="button" aria-label="Close calendar">×</button>
+    </div>
+    <div class="calendar-month-nav">
+        <button id="answer-sheet-calendar-prev" class="calendar-nav-button" type="button" aria-label="Previous month">‹</button>
+        <div class="calendar-month-controls">
+            <select id="answer-sheet-calendar-month-select" class="calendar-select calendar-month-select" aria-label="Select month"></select>
+            <select id="answer-sheet-calendar-year-select" class="calendar-select calendar-year-select" aria-label="Select year"></select>
+        </div>
+        <button id="answer-sheet-calendar-next" class="calendar-nav-button" type="button" aria-label="Next month">›</button>
+    </div>
+    <div class="calendar-weekdays">
+        <span>Sun</span>
+        <span>Mon</span>
+        <span>Tue</span>
+        <span>Wed</span>
+        <span>Thu</span>
+        <span>Fri</span>
+        <span>Sat</span>
+    </div>
+    <div id="answer-sheet-calendar-grid" class="calendar-grid"></div>
+    <div class="calendar-legend">Blue dates are available. Selecting one reloads this page for that trivia night.</div>
+</div>
+
+{{ date_values|json_script:"answer-sheet-date-values" }}
 {% endblock %}
 
 {% block extra_js %}
@@ -113,10 +151,6 @@
         }
 
         const track = document.getElementById('answer-sheet-track');
-        if (!track) {
-            return;
-        }
-
         const textareas = Array.from(pageRoot.querySelectorAll('.answer-sheet-textarea'));
         const scoreInputs = Array.from(pageRoot.querySelectorAll('.answer-sheet-score-input'));
         const dotButtons = Array.from(pageRoot.querySelectorAll('[data-answer-sheet-dot]'));
@@ -128,6 +162,17 @@
         const mergeUrl = pageRoot.dataset.mergeUrl || '';
         const selectedDate = pageRoot.dataset.selectedDate || '';
         const hasCooperativeRounds = pageRoot.dataset.hasCooperativeRounds === 'true';
+        const dateValuesElement = document.getElementById('answer-sheet-date-values');
+        const availableAnswerSheetDates = dateValuesElement ? JSON.parse(dateValuesElement.textContent || '[]') : [];
+        const calendarButton = document.getElementById('answer-sheet-calendar-button');
+        const calendarPopover = document.getElementById('answer-sheet-calendar-popover');
+        const calendarOverlay = document.getElementById('answer-sheet-calendar-overlay');
+        const calendarGrid = document.getElementById('answer-sheet-calendar-grid');
+        const calendarMonthSelect = document.getElementById('answer-sheet-calendar-month-select');
+        const calendarYearSelect = document.getElementById('answer-sheet-calendar-year-select');
+        const calendarPrev = document.getElementById('answer-sheet-calendar-prev');
+        const calendarNext = document.getElementById('answer-sheet-calendar-next');
+        const calendarClose = document.getElementById('answer-sheet-calendar-close');
         const saveTimers = new Map();
         const buttonMessageTimers = new Map();
         const lineStateMap = new WeakMap();
@@ -173,6 +218,9 @@
         }
 
         function roundIndexFromScroll() {
+            if (!track || dotButtons.length === 0) {
+                return 0;
+            }
             const panelWidth = track.clientWidth || 1;
             return Math.max(0, Math.min(dotButtons.length - 1, Math.round(track.scrollLeft / panelWidth)));
         }
@@ -184,6 +232,9 @@
         }
 
         function scrollToRound(index) {
+            if (!track) {
+                return;
+            }
             const boundedIndex = Math.max(0, Math.min(dotButtons.length - 1, index));
             track.scrollTo({
                 left: boundedIndex * track.clientWidth,
@@ -191,6 +242,31 @@
             });
             updateActiveDot(boundedIndex);
         }
+
+        function getCalendarBaseDate(isoDate) {
+            const [year, month, day] = String(isoDate || '').split('-').map(Number);
+            return new Date(year, (month || 1) - 1, day || 1);
+        }
+
+        function toIsoDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        const monthLabels = Array.from({ length: 12 }, (_, monthIndex) =>
+            new Date(2000, monthIndex, 1).toLocaleDateString('en-US', { month: 'long' })
+        );
+        const availableYears = Array.from(
+            new Set(availableAnswerSheetDates.map((isoDate) => Number(String(isoDate || '').split('-')[0])).filter(Boolean))
+        ).sort((left, right) => right - left);
+        const answerSheetCalendarState = {
+            selectedDate,
+            visibleMonth: availableAnswerSheetDates.length > 0
+                ? getCalendarBaseDate(selectedDate || availableAnswerSheetDates[0])
+                : new Date(),
+        };
 
         function countLogicalLines(value) {
             return Math.max(1, value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').length);
@@ -842,14 +918,175 @@
             });
         });
 
+        function renderCalendarControls() {
+            if (!calendarMonthSelect || !calendarYearSelect) {
+                return;
+            }
+
+            if (!calendarMonthSelect.dataset.initialized) {
+                monthLabels.forEach((label, monthIndex) => {
+                    const option = document.createElement('option');
+                    option.value = String(monthIndex);
+                    option.textContent = label;
+                    calendarMonthSelect.appendChild(option);
+                });
+                calendarMonthSelect.dataset.initialized = 'true';
+            }
+
+            const visibleYear = answerSheetCalendarState.visibleMonth.getFullYear();
+            const yearsToRender = availableYears.includes(visibleYear)
+                ? availableYears
+                : [visibleYear, ...availableYears].sort((left, right) => right - left);
+
+            calendarYearSelect.innerHTML = '';
+            yearsToRender.forEach((yearValue) => {
+                const option = document.createElement('option');
+                option.value = String(yearValue);
+                option.textContent = String(yearValue);
+                calendarYearSelect.appendChild(option);
+            });
+
+            calendarMonthSelect.value = String(answerSheetCalendarState.visibleMonth.getMonth());
+            calendarYearSelect.value = String(visibleYear);
+        }
+
+        function renderAnswerSheetCalendar() {
+            if (!calendarGrid) {
+                return;
+            }
+
+            const monthStart = new Date(
+                answerSheetCalendarState.visibleMonth.getFullYear(),
+                answerSheetCalendarState.visibleMonth.getMonth(),
+                1
+            );
+            const gridStart = new Date(monthStart);
+            gridStart.setDate(monthStart.getDate() - monthStart.getDay());
+
+            renderCalendarControls();
+            calendarGrid.innerHTML = '';
+
+            for (let index = 0; index < 42; index += 1) {
+                const day = new Date(gridStart);
+                day.setDate(gridStart.getDate() + index);
+
+                const isoDate = toIsoDate(day);
+                const isAvailable = availableAnswerSheetDates.includes(isoDate);
+                const dayButton = document.createElement('button');
+
+                dayButton.type = 'button';
+                dayButton.className = 'calendar-day';
+                dayButton.textContent = day.getDate();
+
+                if (day.getMonth() !== monthStart.getMonth()) {
+                    dayButton.classList.add('outside-month');
+                }
+
+                if (isoDate === answerSheetCalendarState.selectedDate) {
+                    dayButton.classList.add('selected');
+                }
+
+                if (isAvailable) {
+                    dayButton.classList.add('has-presentation');
+                    dayButton.title = isoDate;
+                    dayButton.addEventListener('click', () => {
+                        const nextUrl = new URL(window.location.href);
+                        nextUrl.searchParams.set('date', isoDate);
+                        window.location.href = nextUrl.toString();
+                    });
+                } else {
+                    dayButton.disabled = true;
+                }
+
+                calendarGrid.appendChild(dayButton);
+            }
+        }
+
+        function openAnswerSheetCalendar() {
+            if (!calendarPopover || !calendarOverlay || availableAnswerSheetDates.length === 0) {
+                return;
+            }
+            renderAnswerSheetCalendar();
+            calendarPopover.hidden = false;
+            calendarOverlay.hidden = false;
+            if (calendarButton) {
+                calendarButton.setAttribute('aria-expanded', 'true');
+            }
+        }
+
+        function closeAnswerSheetCalendar() {
+            if (!calendarPopover || !calendarOverlay) {
+                return;
+            }
+            calendarPopover.hidden = true;
+            calendarOverlay.hidden = true;
+            if (calendarButton) {
+                calendarButton.setAttribute('aria-expanded', 'false');
+            }
+        }
+
+        if (calendarButton && calendarPopover && calendarOverlay && calendarPrev && calendarNext && calendarClose) {
+            if (availableAnswerSheetDates.length === 0) {
+                calendarButton.disabled = true;
+                calendarButton.classList.add('disabled-button');
+            } else {
+                calendarButton.addEventListener('click', openAnswerSheetCalendar);
+                calendarClose.addEventListener('click', closeAnswerSheetCalendar);
+                calendarOverlay.addEventListener('click', closeAnswerSheetCalendar);
+                if (calendarMonthSelect) {
+                    calendarMonthSelect.addEventListener('change', () => {
+                        answerSheetCalendarState.visibleMonth = new Date(
+                            answerSheetCalendarState.visibleMonth.getFullYear(),
+                            Number(calendarMonthSelect.value),
+                            1,
+                        );
+                        renderAnswerSheetCalendar();
+                    });
+                }
+                if (calendarYearSelect) {
+                    calendarYearSelect.addEventListener('change', () => {
+                        answerSheetCalendarState.visibleMonth = new Date(
+                            Number(calendarYearSelect.value),
+                            answerSheetCalendarState.visibleMonth.getMonth(),
+                            1,
+                        );
+                        renderAnswerSheetCalendar();
+                    });
+                }
+                calendarPrev.addEventListener('click', () => {
+                    answerSheetCalendarState.visibleMonth = new Date(
+                        answerSheetCalendarState.visibleMonth.getFullYear(),
+                        answerSheetCalendarState.visibleMonth.getMonth() - 1,
+                        1,
+                    );
+                    renderAnswerSheetCalendar();
+                });
+                calendarNext.addEventListener('click', () => {
+                    answerSheetCalendarState.visibleMonth = new Date(
+                        answerSheetCalendarState.visibleMonth.getFullYear(),
+                        answerSheetCalendarState.visibleMonth.getMonth() + 1,
+                        1,
+                    );
+                    renderAnswerSheetCalendar();
+                });
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Escape' && !calendarPopover.hidden) {
+                        closeAnswerSheetCalendar();
+                    }
+                });
+            }
+        }
+
         window.addEventListener('resize', () => {
             textareas.forEach(syncLineNumbers);
             updateActiveDot(roundIndexFromScroll());
         });
 
-        track.addEventListener('scroll', () => {
-            window.requestAnimationFrame(() => updateActiveDot(roundIndexFromScroll()));
-        }, { passive: true });
+        if (track) {
+            track.addEventListener('scroll', () => {
+                window.requestAnimationFrame(() => updateActiveDot(roundIndexFromScroll()));
+            }, { passive: true });
+        }
 
         dotButtons.forEach((button) => {
             button.addEventListener('click', () => {
@@ -925,7 +1162,9 @@
             });
         }
 
-        updateActiveDot(roundIndexFromScroll());
+        if (dotButtons.length > 0) {
+            updateActiveDot(roundIndexFromScroll());
+        }
     }());
 </script>
 {% endblock %}
