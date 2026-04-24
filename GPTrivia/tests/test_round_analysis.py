@@ -428,6 +428,31 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("Star Wars Episode 5", empire_answers)
         self.assertIn("Star Wars Episode V", empire_answers)
 
+    def test_build_possible_answers_expands_person_name_variants_with_question_context(self):
+        franklin_answers = _build_possible_answers(
+            "Benjamin Franklin",
+            question_text="Which founding father appears on the $100 bill?",
+        )
+        self.assertIn("Benjamin Franklin", franklin_answers)
+        self.assertIn("benjamin franklin", franklin_answers)
+        self.assertIn("Franklin", franklin_answers)
+        self.assertIn("franklin", franklin_answers)
+        self.assertIn("Ben Franklin", franklin_answers)
+        self.assertIn("ben franklin", franklin_answers)
+
+    def test_build_possible_answers_with_aliases_can_expand_person_aliases_from_surname(self):
+        franklin_answers = _build_possible_answers_with_aliases(
+            "Franklin",
+            ["Benjamin Franklin"],
+            question_text="Which founding father was known for electricity experiments?",
+        )
+        self.assertIn("Franklin", franklin_answers)
+        self.assertIn("franklin", franklin_answers)
+        self.assertIn("Benjamin Franklin", franklin_answers)
+        self.assertIn("benjamin franklin", franklin_answers)
+        self.assertIn("Ben Franklin", franklin_answers)
+        self.assertIn("ben franklin", franklin_answers)
+
     def test_round_analysis_question_can_include_saved_image_payload(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",

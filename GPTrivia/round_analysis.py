@@ -936,6 +936,153 @@ def _normalize_possible_answer_variant(value):
     return normalized.strip(" \t\r\n.;:!?\"'")
 
 
+_PERSON_NAME_PARTICLES = {
+    'da', 'de', 'del', 'della', 'der', 'di', 'du', 'la', 'le', 'st', 'st.', 'van', 'von',
+}
+
+_GIVEN_NAME_VARIANTS = {
+    'alex': ('alex', 'alexander'),
+    'andy': ('andy', 'andrew'),
+    'ben': ('ben', 'benjamin'),
+    'benjamin': ('benjamin', 'ben'),
+    'bill': ('bill', 'william'),
+    'bob': ('bob', 'robert'),
+    'charlie': ('charlie', 'charles'),
+    'chris': ('chris', 'christopher'),
+    'dan': ('dan', 'daniel'),
+    'dave': ('dave', 'david'),
+    'ed': ('ed', 'edward'),
+    'frank': ('frank', 'francis'),
+    'jim': ('jim', 'james'),
+    'joe': ('joe', 'joseph'),
+    'liz': ('liz', 'elizabeth'),
+    'matt': ('matt', 'matthew'),
+    'mike': ('mike', 'michael'),
+    'rob': ('rob', 'robert'),
+    'sam': ('sam', 'samuel'),
+    'tom': ('tom', 'thomas'),
+    'will': ('will', 'william'),
+    'william': ('william', 'bill', 'will'),
+}
+
+
+def _question_suggests_person_answer(question_text):
+    normalized_question = str(question_text or '').casefold()
+    if not normalized_question:
+        return False
+    return any(
+        keyword in normalized_question
+        for keyword in [
+            'who',
+            'person',
+            'president',
+            'founding father',
+            'founder',
+            'scientist',
+            'inventor',
+            'author',
+            'poet',
+            'philosopher',
+            'actor',
+            'actress',
+            'artist',
+            'celebrity',
+            'politician',
+            'leader',
+            'composer',
+            'singer',
+            'musician',
+            'historian',
+            'general',
+            'king',
+            'queen',
+            'prime minister',
+        ]
+    )
+
+
+def _looks_like_person_name_phrase(phrase):
+    cleaned_phrase = _normalize_possible_answer_variant(phrase)
+    if not cleaned_phrase:
+        return False
+    if any(character.isdigit() for character in cleaned_phrase):
+        return False
+    if any(marker in cleaned_phrase for marker in [':', '/', '&', '(', ')']):
+        return False
+
+    tokens = cleaned_phrase.split()
+    if len(tokens) < 2 or len(tokens) > 5:
+        return False
+
+    name_token_pattern = re.compile(r"^[A-Za-z][A-Za-z'.-]*$")
+    initial_token_pattern = re.compile(r"^[A-Za-z]\.?$")
+    if not name_token_pattern.match(tokens[0]) or not name_token_pattern.match(tokens[-1]):
+        return False
+
+    for token in tokens[1:-1]:
+        normalized_token = token.casefold()
+        if normalized_token in _PERSON_NAME_PARTICLES:
+            continue
+        if name_token_pattern.match(token) or initial_token_pattern.match(token):
+            continue
+        return False
+    return True
+
+
+def _given_name_aliases(first_name):
+    cleaned_first_name = _normalize_possible_answer_variant(first_name)
+    if not cleaned_first_name:
+        return []
+    normalized_first_name = cleaned_first_name.casefold()
+    raw_aliases = _GIVEN_NAME_VARIANTS.get(normalized_first_name, (normalized_first_name,))
+    aliases = []
+    seen_aliases = set()
+    for alias in raw_aliases:
+        normalized_alias = _normalize_possible_answer_variant(alias)
+        if not normalized_alias:
+            continue
+        alias_key = normalized_alias.casefold()
+        if alias_key in seen_aliases:
+            continue
+        seen_aliases.add(alias_key)
+        aliases.append(normalized_alias.title())
+    return aliases
+
+
+def _expand_person_name_alias_bases(phrase, question_text=''):
+    if not _question_suggests_person_answer(question_text):
+        return []
+
+    cleaned_phrase = _normalize_possible_answer_variant(phrase)
+    if not _looks_like_person_name_phrase(cleaned_phrase):
+        return []
+
+    tokens = cleaned_phrase.split()
+    if len(tokens) < 2:
+        return []
+
+    first_name = tokens[0]
+    middle_tokens = tokens[1:-1]
+    last_name = tokens[-1]
+
+    alias_candidates = [cleaned_phrase, last_name]
+    for given_name_alias in _given_name_aliases(first_name):
+        if middle_tokens:
+            alias_candidates.append(' '.join([given_name_alias] + middle_tokens + [last_name]))
+        alias_candidates.append(f"{given_name_alias} {last_name}")
+
+    deduped_alias_candidates = []
+    seen_alias_candidates = set()
+    for candidate in alias_candidates:
+        normalized_candidate = _normalize_possible_answer_variant(candidate)
+        candidate_key = normalized_candidate.casefold()
+        if not normalized_candidate or candidate_key in seen_alias_candidates:
+            continue
+        seen_alias_candidates.add(candidate_key)
+        deduped_alias_candidates.append(normalized_candidate)
+    return deduped_alias_candidates
+
+
 def _possible_answer_case_forms(value):
     cleaned_value = _normalize_possible_answer_variant(value)
     if not cleaned_value:
@@ -983,7 +1130,7 @@ def _split_possible_answer_segments(answer_text):
     return deduped_segments
 
 
-def _expand_simple_phrase_forms(phrase):
+def _expand_simple_phrase_forms(phrase, question_text=''):
     cleaned_phrase = _normalize_possible_answer_variant(phrase)
     if not cleaned_phrase:
         return []
@@ -1001,6 +1148,8 @@ def _expand_simple_phrase_forms(phrase):
         base_variants.append(remainder)
         if article in {'a', 'an'} and remainder and ' ' not in remainder and not remainder.endswith('s'):
             base_variants.append(f"{remainder}s")
+
+    base_variants.extend(_expand_person_name_alias_bases(cleaned_phrase, question_text=question_text))
 
     for base_value in list(base_variants):
         normalized_base_value = _normalize_possible_answer_variant(base_value)
@@ -1034,11 +1183,11 @@ def _expand_simple_phrase_forms(phrase):
     return deduped_variants
 
 
-def _build_possible_answers(answer_text):
-    return _build_possible_answers_with_aliases(answer_text, [])
+def _build_possible_answers(answer_text, *, question_text=''):
+    return _build_possible_answers_with_aliases(answer_text, [], question_text=question_text)
 
 
-def _build_possible_answers_with_aliases(answer_text, additional_candidates):
+def _build_possible_answers_with_aliases(answer_text, additional_candidates, *, question_text=''):
     segments = _split_possible_answer_segments(answer_text)
     for candidate in additional_candidates or []:
         segments.extend(_split_possible_answer_segments(candidate))
@@ -1046,7 +1195,7 @@ def _build_possible_answers_with_aliases(answer_text, additional_candidates):
     seen_variants = set()
 
     for segment in segments:
-        for variant in _expand_simple_phrase_forms(segment):
+        for variant in _expand_simple_phrase_forms(segment, question_text=question_text):
             if variant in seen_variants:
                 continue
             seen_variants.add(variant)
@@ -1106,6 +1255,8 @@ def _generate_additional_possible_answer_aliases(round_obj, question_entries, *,
         "For each question, return up to 10 additional answers that should count as correct for the same fact. "
         "Include concise aliases like dropped franchise prefixes, subtitle-only references, well-known abbreviations, "
         "episode numbering variants, and common alternate phrasings when they are clearly equivalent. "
+        "For person-name answers, include surname-only answers plus short-name/full-name surname variants when the question clearly points to one person. "
+        "For example, Benjamin Franklin can accept Franklin and Ben Franklin, and Franklin can accept Benjamin Franklin when the clue clearly means that person. "
         "Do not include simple capitalization, punctuation, spacing, or hyphen variants; those are already handled elsewhere. "
         "Do not include vague near-misses, broader categories, partial guesses, or anything that changes the meaning. "
         "Return strict JSON as an array of objects with keys question_number and aliases."
@@ -1708,6 +1859,7 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
             possible_answers=_build_possible_answers_with_aliases(
                 answer_text,
                 additional_possible_answers_by_question.get(question_number, []),
+                question_text=str(entry.get('question_text') or '').strip(),
             ),
             round_type=normalized_round_type,
             media_kind=media_kind,

@@ -287,12 +287,20 @@
                 -webkit-tap-highlight-color: transparent;
             }
 
+            body.site-shell[data-profile-theme="light"] .mobile-footer-item {
+                color: #000;
+            }
+
             body.site-shell .mobile-footer-item img,
             body.site-shell .mobile-footer-item svg {
                 width: 27px;
                 height: 27px;
                 display: block;
                 flex-shrink: 0;
+            }
+
+            body.site-shell[data-profile-theme="light"] .mobile-footer-item .mobile-footer-swoop-icon {
+                filter: brightness(0) saturate(100%);
             }
 
             body.site-shell .mobile-footer-item .mobile-footer-swoop-icon {
