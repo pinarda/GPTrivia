@@ -18,6 +18,7 @@ from GPTrivia.round_analysis import (
     _classify_round_structure,
     _extract_picture_grid_questions_by_layout,
     _extract_embedded_slide_media_assets,
+    _extract_slide_line_items,
     _extract_slide_media_items,
     _is_placeholder_media_url,
     _normalize_analysis_categories,
@@ -1069,6 +1070,36 @@ class RoundAnalysisTests(TestCase):
             media_items[0]["placeholder_url"],
             "https://example.com/audio-placeholder.png",
         )
+
+    def test_extract_slide_line_items_includes_drawn_line_geometry(self):
+        line_items = _extract_slide_line_items(
+            {
+                "pageElements": [
+                    {
+                        "objectId": "line-1",
+                        "size": {
+                            "width": {"magnitude": 180, "unit": "PT"},
+                            "height": {"magnitude": 40, "unit": "PT"},
+                        },
+                        "transform": {
+                            "translateX": 24,
+                            "translateY": 120,
+                        },
+                        "line": {
+                            "lineCategory": "STRAIGHT",
+                        },
+                    }
+                ]
+            }
+        )
+
+        self.assertEqual(len(line_items), 1)
+        self.assertEqual(line_items[0]["element_id"], "line-1")
+        self.assertEqual(line_items[0]["line_category"], "STRAIGHT")
+        self.assertEqual(line_items[0]["start_x"], 24.0)
+        self.assertEqual(line_items[0]["start_y"], 120.0)
+        self.assertEqual(line_items[0]["end_x"], 204.0)
+        self.assertEqual(line_items[0]["end_y"], 160.0)
 
     def test_apply_apps_script_media_links_updates_audio_placeholder_to_external_url(self):
         enriched_items = _apply_apps_script_media_links(

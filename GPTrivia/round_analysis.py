@@ -625,6 +625,55 @@ def _extract_slide_media_items(slide):
     return media_items
 
 
+def _extract_slide_line_items(slide):
+    line_items = []
+
+    def walk_page_elements(page_elements):
+        for element in page_elements or []:
+            element_id = element.get('objectId', '')
+            transform = element.get('transform') or {}
+            size = element.get('size') or {}
+            position_x = float(transform.get('translateX') or 0)
+            position_y = float(transform.get('translateY') or 0)
+            width = _dimension_magnitude(size.get('width'))
+            height = _dimension_magnitude(size.get('height'))
+            line = element.get('line') or {}
+            if line:
+                start_x = position_x
+                start_y = position_y
+                end_x = position_x + width
+                end_y = position_y + height
+                line_items.append(
+                    {
+                        'element_id': element_id,
+                        'line_category': str(line.get('lineCategory') or '').strip(),
+                        'position_x': position_x,
+                        'position_y': position_y,
+                        'width': width,
+                        'height': height,
+                        'start_x': start_x,
+                        'start_y': start_y,
+                        'end_x': end_x,
+                        'end_y': end_y,
+                    }
+                )
+
+            element_group = element.get('elementGroup') or {}
+            if element_group:
+                walk_page_elements(element_group.get('children', []))
+
+    walk_page_elements(slide.get('pageElements', []))
+
+    line_items.sort(
+        key=lambda item: (
+            round(min(item.get('start_y') or 0, item.get('end_y') or 0), -4),
+            min(item.get('start_x') or 0, item.get('end_x') or 0),
+            item.get('element_id') or '',
+        )
+    )
+    return line_items
+
+
 def _fetch_slide_thumbnail_data_url(slides_service, credentials, presentation_id, slide_id):
     if not presentation_id or not slide_id:
         return ''
@@ -715,6 +764,7 @@ def _build_round_slide_payload(round_obj, *, include_thumbnails=True):
         slide_text = re.sub(r'\s+', ' ', _extract_slide_text(slide)).strip()
         text_items = _extract_slide_text_items(slide)
         media_items = _extract_slide_media_items(slide)
+        line_items = _extract_slide_line_items(slide)
         slide_id = slide.get('objectId', '')
         if media_items and any(
             (media_item.get('kind') in {'audio', 'video'} or media_item.get('likely_audio_control'))
@@ -725,7 +775,7 @@ def _build_round_slide_payload(round_obj, *, include_thumbnails=True):
                 media_items,
                 _fetch_slide_media_links_via_apps_script(presentation_id, slide_id),
             )
-        if not slide_text and not media_items:
+        if not slide_text and not media_items and not line_items:
             continue
         slide_text_rows.append(
             {
@@ -734,6 +784,7 @@ def _build_round_slide_payload(round_obj, *, include_thumbnails=True):
                 'slide_url': _google_slide_url(presentation_id, slide_id),
                 'text': slide_text,
                 'text_items': text_items,
+                'line_items': line_items,
                 'speaker_notes': re.sub(r'\s+', ' ', _extract_speaker_notes_text(slide)).strip(),
                 'media_items': media_items,
                 'thumbnail_data_url': (
@@ -845,6 +896,8 @@ def _analyze_round_slides_with_gpt(round_obj, slide_payload, *, classification=N
         "For matching rounds, return one question object per left-side clue or numbered row, not one giant object for the entire board. "
         "question_text should be that single left-side clue, and answer_text should be the matched right-side option text when visible. "
         "If only the matched option position is recoverable, answer_text may use the option letter/number. "
+        "If the question slide contains line_items that visibly connect the left side to the right side, use those drawn line connections as the primary matching signal. "
+        "Only ignore those line connections if the answer slide clearly reorders the right-side options or explicitly shows a different pairing structure that overrides the question-slide layout. "
         "For multiple choice rounds, answer_text should be the correct option text when visible, not only the stem. "
         "If a single slide contains multiple separate question images or other media items, return one question per item. "
         "Use media_index to point to the matching media item on that slide. media_index is 1-based and follows the media_items order already provided in the slide payload, "
