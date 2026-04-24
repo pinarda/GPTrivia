@@ -1557,6 +1557,10 @@ def _answer_sheet_forms_match(guess_forms, accepted_forms):
         for accepted_form in accepted_forms:
             if not accepted_form:
                 continue
+            normalized_accepted_length = len(accepted_form.replace(' ', ''))
+            accepted_form_is_numeric = bool(re.fullmatch(r'[0-9 ]+', accepted_form))
+            if accepted_form_is_numeric or normalized_accepted_length < 5:
+                continue
             if abs(len(guess_form) - len(accepted_form)) > 1:
                 continue
             if len(guess_form) <= 3 or len(accepted_form) <= 3:

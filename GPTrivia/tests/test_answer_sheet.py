@@ -1189,7 +1189,7 @@ class AnswerSheetTests(TestCase):
             reverse("grade_answer_sheet_round"),
             data=json.dumps({
                 "round_id": round_obj.id,
-                "answers": "The kings speech\nbj\nesb\n",
+                "answers": "The kings speech\nbf\nesb\n",
             }),
             content_type="application/json",
         )
@@ -1200,6 +1200,77 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(payload["row_results"][0]["state"], "correct")
         self.assertEqual(payload["row_results"][1]["state"], "correct")
         self.assertEqual(payload["row_results"][2]["state"], "correct")
+
+    def test_grade_answer_sheet_round_does_not_allow_one_char_typos_for_short_or_numeric_answers(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Strict Short Answers Round",
+            major_category="History",
+            minor_category1="People",
+            minor_category2="Numbers",
+            date=datetime.date(2026, 4, 17),
+            round_number=3,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="Use the abbreviation for Benjamin Franklin.",
+            answer_text="Benjamin Franklin",
+            possible_answers=["BF"],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=2,
+            question_text="What is the answer to life, the universe, and everything?",
+            answer_text="42",
+            possible_answers=[],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=3,
+            question_text="Name the Swedish band.",
+            answer_text="ABBA",
+            possible_answers=[],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+
+        response = self.client.post(
+            reverse("grade_answer_sheet_round"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "BJ\n43\nABBB\n",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["score"], 0)
+        self.assertEqual(payload["row_results"][0]["state"], "incorrect")
+        self.assertEqual(payload["row_results"][1]["state"], "incorrect")
+        self.assertEqual(payload["row_results"][2]["state"], "incorrect")
 
     def test_grade_answer_sheet_round_accepts_matching_rounds(self):
         round_obj = GPTriviaRound.objects.create(
