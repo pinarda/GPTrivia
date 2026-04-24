@@ -21,7 +21,10 @@
             {% for page in round_pages %}
                 <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}">
                     <div class="answer-sheet-round-header">
-                        <div class="answer-sheet-round-kicker">Round {{ page.round_number }}</div>
+                        <div class="answer-sheet-round-meta">
+                            <div class="answer-sheet-round-kicker">Round {{ page.round_number }}</div>
+                            <span class="answer-sheet-status" data-status-for="{{ page.round_id }}">Saved</span>
+                        </div>
                         <h2>{{ page.round_title }}</h2>
                     </div>
 
@@ -40,7 +43,7 @@
                         >{{ page.answers_text }}</textarea>
                     </div>
 
-                    <div class="answer-sheet-round-actions">
+                    <div class="answer-sheet-controls-row">
                         <input
                             class="answer-sheet-score-input"
                             type="text"
@@ -48,16 +51,21 @@
                             placeholder="Score"
                             aria-label="Score for {{ page.round_title }}"
                         >
-                        <div class="answer-sheet-button-row">
-                            <button class="answer-sheet-action-button" type="button">Submit</button>
-                            <button class="answer-sheet-action-button" type="button">Grade</button>
-                        </div>
-                    </div>
-
-                    <div class="answer-sheet-status-row">
-                        <span class="answer-sheet-status" data-status-for="{{ page.round_id }}">Saved</span>
+                        <button class="answer-sheet-action-button" type="button">Submit</button>
+                        <button class="answer-sheet-action-button" type="button">Grade</button>
                     </div>
                 </section>
+            {% endfor %}
+        </div>
+
+        <div class="answer-sheet-dots" aria-label="Round pages">
+            {% for page in round_pages %}
+                <button
+                    class="answer-sheet-dot{% if forloop.first %} is-active{% endif %}"
+                    type="button"
+                    data-answer-sheet-dot="{{ forloop.counter0 }}"
+                    aria-label="Open round {{ page.round_number }}"
+                ></button>
             {% endfor %}
         </div>
     {% else %}
@@ -82,6 +90,7 @@
         }
 
         const textareas = Array.from(pageRoot.querySelectorAll('.answer-sheet-textarea'));
+        const dotButtons = Array.from(pageRoot.querySelectorAll('[data-answer-sheet-dot]'));
         const saveUrl = pageRoot.dataset.saveUrl || '';
         const saveTimers = new Map();
         document.body.classList.add('answer-sheet-shell');
@@ -100,6 +109,26 @@
             status.dataset.state = state || '';
         }
 
+        function roundIndexFromScroll() {
+            const panelWidth = track.clientWidth || 1;
+            return Math.max(0, Math.min(dotButtons.length - 1, Math.round(track.scrollLeft / panelWidth)));
+        }
+
+        function updateActiveDot(index) {
+            dotButtons.forEach((button, buttonIndex) => {
+                button.classList.toggle('is-active', buttonIndex === index);
+            });
+        }
+
+        function scrollToRound(index) {
+            const boundedIndex = Math.max(0, Math.min(dotButtons.length - 1, index));
+            track.scrollTo({
+                left: boundedIndex * track.clientWidth,
+                behavior: 'smooth',
+            });
+            updateActiveDot(boundedIndex);
+        }
+
         function syncLineNumbers(textarea) {
             const shell = textarea.closest('.answer-sheet-textarea-shell');
             const numberList = shell ? shell.querySelector('.answer-sheet-line-numbers') : null;
@@ -111,10 +140,15 @@
             const lineHeight = parseFloat(computedStyle.lineHeight) || 24;
             const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
             const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+            const fontSize = computedStyle.fontSize || '16px';
             const shellMinHeight = parseFloat(window.getComputedStyle(shell).minHeight) || 0;
             const contentHeight = textarea.scrollHeight || 0;
             const targetHeight = Math.max(shellMinHeight, contentHeight);
             shell.style.minHeight = `${targetHeight}px`;
+            shell.style.setProperty('--answer-sheet-line-height-px', `${lineHeight}px`);
+            shell.style.setProperty('--answer-sheet-padding-top-px', `${paddingTop}px`);
+            shell.style.setProperty('--answer-sheet-padding-bottom-px', `${paddingBottom}px`);
+            shell.style.setProperty('--answer-sheet-font-size-px', fontSize);
 
             const visibleHeight = textarea.clientHeight || targetHeight || shell.clientHeight || shellMinHeight;
             const visibleRows = Math.max(1, Math.round((visibleHeight - paddingTop - paddingBottom) / lineHeight));
@@ -172,7 +206,20 @@
 
         window.addEventListener('resize', () => {
             textareas.forEach(syncLineNumbers);
+            updateActiveDot(roundIndexFromScroll());
         });
+
+        track.addEventListener('scroll', () => {
+            window.requestAnimationFrame(() => updateActiveDot(roundIndexFromScroll()));
+        }, { passive: true });
+
+        dotButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                scrollToRound(Number(button.dataset.answerSheetDot || 0));
+            });
+        });
+
+        updateActiveDot(roundIndexFromScroll());
     }());
 </script>
 {% endblock %}
