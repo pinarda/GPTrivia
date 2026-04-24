@@ -472,6 +472,14 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-bottom {
     color: #1b2530 !important;
 }
 
+body.site-shell[data-profile-theme="light"].answer-sheet-shell .mobile-footer-item {
+    color: #000;
+}
+
+body.site-shell[data-profile-theme="light"].answer-sheet-shell .mobile-footer-item .mobile-footer-swoop-icon {
+    filter: brightness(0) saturate(100%);
+}
+
 @media (max-width: 700px) {
     .answer-sheet-page {
         padding: 16px 8px 32px;
