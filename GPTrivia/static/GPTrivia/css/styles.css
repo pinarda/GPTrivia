@@ -356,6 +356,13 @@ body {
     margin: 0px;
     flex: 0 1 auto;
     font-family: YoungSerif;
+    font-size: 0.92rem;
+    gap: 10px;
+}
+
+.menu-buttons a {
+    white-space: nowrap;
+    line-height: 1.15;
 }
 
 a .logo {
