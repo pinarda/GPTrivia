@@ -451,6 +451,17 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("Ben Franklin", franklin_answers)
         self.assertIn("ben franklin", franklin_answers)
 
+    def test_build_possible_answers_expands_likely_person_name_variants_without_person_question_text(self):
+        washington_answers = _build_possible_answers(
+            "George Washington",
+            question_text="Crossed the Delaware",
+        )
+        self.assertIn("George Washington", washington_answers)
+        self.assertIn("Washington", washington_answers)
+        self.assertIn("washington", washington_answers)
+        self.assertIn("GW", washington_answers)
+        self.assertIn("gw", washington_answers)
+
     def test_build_possible_answers_with_aliases_can_expand_person_aliases_from_surname(self):
         franklin_answers = _build_possible_answers_with_aliases(
             "Franklin",
@@ -463,6 +474,21 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("benjamin franklin", franklin_answers)
         self.assertIn("Ben Franklin", franklin_answers)
         self.assertIn("ben franklin", franklin_answers)
+
+    def test_build_possible_answers_with_aliases_accepts_matching_round_short_forms(self):
+        matching_answers = _build_possible_answers_with_aliases(
+            "The British attempted to strengthen the Church of England's hold on the colonies with the establishment of the College of William and Mary in 1766, in order to reinforce British cultural and moral influence over colonial society.",
+            ["church", "last", "C", "3", "third"],
+            question_text="Match each statement to option A, B, or C.",
+        )
+        self.assertIn("church", matching_answers)
+        self.assertIn("Church", matching_answers)
+        self.assertIn("last", matching_answers)
+        self.assertIn("Last", matching_answers)
+        self.assertIn("C", matching_answers)
+        self.assertIn("c", matching_answers)
+        self.assertIn("3", matching_answers)
+        self.assertIn("third", matching_answers)
 
     def test_round_analysis_question_can_include_saved_image_payload(self):
         round_obj = GPTriviaRound.objects.create(

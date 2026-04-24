@@ -942,6 +942,8 @@ _PERSON_NAME_PARTICLES = {
 
 _GIVEN_NAME_VARIANTS = {
     'alex': ('alex', 'alexander'),
+    'alexander': ('alexander', 'alex'),
+    'abraham': ('abraham', 'abe'),
     'andy': ('andy', 'andrew'),
     'ben': ('ben', 'benjamin'),
     'benjamin': ('benjamin', 'ben'),
@@ -953,13 +955,17 @@ _GIVEN_NAME_VARIANTS = {
     'dave': ('dave', 'david'),
     'ed': ('ed', 'edward'),
     'frank': ('frank', 'francis'),
+    'george': ('george',),
     'jim': ('jim', 'james'),
+    'james': ('james', 'jim'),
     'joe': ('joe', 'joseph'),
+    'john': ('john', 'jack'),
     'liz': ('liz', 'elizabeth'),
     'matt': ('matt', 'matthew'),
     'mike': ('mike', 'michael'),
     'rob': ('rob', 'robert'),
     'sam': ('sam', 'samuel'),
+    'thomas': ('thomas', 'tom'),
     'tom': ('tom', 'thomas'),
     'will': ('will', 'william'),
     'william': ('william', 'bill', 'will'),
@@ -1050,9 +1056,6 @@ def _given_name_aliases(first_name):
 
 
 def _expand_person_name_alias_bases(phrase, question_text=''):
-    if not _question_suggests_person_answer(question_text):
-        return []
-
     cleaned_phrase = _normalize_possible_answer_variant(phrase)
     if not _looks_like_person_name_phrase(cleaned_phrase):
         return []
@@ -1064,6 +1067,12 @@ def _expand_person_name_alias_bases(phrase, question_text=''):
     first_name = tokens[0]
     middle_tokens = tokens[1:-1]
     last_name = tokens[-1]
+    if (
+        not _question_suggests_person_answer(question_text)
+        and first_name.casefold() not in _GIVEN_NAME_VARIANTS
+        and not re.match(r"^[A-Za-z]\.?$", first_name)
+    ):
+        return []
 
     alias_candidates = [cleaned_phrase, last_name]
     for given_name_alias in _given_name_aliases(first_name):
@@ -1302,8 +1311,10 @@ def _generate_additional_possible_answer_aliases(round_obj, question_entries, *,
         "For each question, return up to 10 additional answers that should count as correct for the same fact. "
         "Include concise aliases like dropped franchise prefixes, subtitle-only references, well-known abbreviations, "
         "episode numbering variants, and common alternate phrasings when they are clearly equivalent. "
-        "For person-name answers, include surname-only answers plus short-name/full-name surname variants when the question clearly points to one person. "
-        "For example, Benjamin Franklin can accept Franklin and Ben Franklin, and Franklin can accept Benjamin Franklin when the clue clearly means that person. "
+        "For person-name answers, always include surname-only answers plus short-name/full-name surname variants whenever the clue refers to one specific person. "
+        "For example, George Washington should accept Washington, and Benjamin Franklin should accept Franklin and Ben Franklin; Franklin should also accept Benjamin Franklin when the clue clearly means that person. "
+        "For matching rounds, include positional aliases when the option order is recoverable, such as A/B/C, 1/2/3, first/second/third, first/middle/last, and similar equivalents. "
+        "For long matching-statement answers, also include a very short one- or two-word gist answer when it would obviously identify the correct option, such as church for a long statement about the Church of England. "
         "Do not include simple capitalization, punctuation, spacing, or hyphen variants; those are already handled elsewhere. "
         "Do not include vague near-misses, broader categories, partial guesses, or anything that changes the meaning. "
         "Return strict JSON as an array of objects with keys question_number and aliases."
