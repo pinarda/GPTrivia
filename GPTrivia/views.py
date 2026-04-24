@@ -1411,7 +1411,7 @@ def _normalize_answer_sheet_answers(raw_answers):
     else:
         answers = []
 
-    normalized_answers = [str(answer or '').strip() for answer in answers[:10]]
+    normalized_answers = [str(answer or '').strip() for answer in answers]
     if len(normalized_answers) < 10:
         normalized_answers.extend([''] * (10 - len(normalized_answers)))
     return normalized_answers

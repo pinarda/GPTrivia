@@ -131,3 +131,39 @@ class AnswerSheetTests(TestCase):
         entry.refresh_from_db()
         self.assertEqual(AnswerSheetEntry.objects.filter(user=self.user, round=round_obj).count(), 1)
         self.assertEqual(entry.answers[:3], ["Updated", "Answer", ""])
+
+    def test_save_answer_sheet_entry_preserves_rows_beyond_ten(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Long Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+
+        create_response = self.client.post(
+            reverse("save_answer_sheet_entry"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": [f"Answer {index}" for index in range(1, 13)],
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(create_response.status_code, 200)
+        entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
+        self.assertEqual(len(entry.answers), 12)
+        self.assertEqual(entry.answers[9], "Answer 10")
+        self.assertEqual(entry.answers[10], "Answer 11")
+        self.assertEqual(entry.answers[11], "Answer 12")
+
+        response = self.client.get(reverse("answer_sheet"))
+        self.assertEqual(response.status_code, 200)
+        round_pages = response.context["round_pages"]
+        self.assertEqual(len(round_pages[0]["answers"]), 12)
+        self.assertIn("Answer 11\nAnswer 12", round_pages[0]["answers_text"])

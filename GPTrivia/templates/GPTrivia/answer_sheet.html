@@ -136,21 +136,7 @@
             updateActiveDot(boundedIndex);
         }
 
-        function syncLineNumbers(textarea) {
-            const shell = textarea.closest('.answer-sheet-textarea-shell');
-            const numberList = shell ? shell.querySelector('.answer-sheet-line-numbers') : null;
-            if (!shell || !numberList) {
-                return;
-            }
-
-            const computedStyle = window.getComputedStyle(textarea);
-            const lineHeight = parseFloat(computedStyle.lineHeight) || 24;
-            const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
-            const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
-            const fontSize = computedStyle.fontSize || '16px';
-            const shellMinHeight = parseFloat(window.getComputedStyle(shell).minHeight) || 0;
-            textarea.style.height = 'auto';
-            const contentHeight = textarea.scrollHeight || 0;
+        function measureBaseRows(textarea, lineHeight, paddingTop, paddingBottom) {
             const panel = textarea.closest('.answer-sheet-round-panel');
             const header = panel ? panel.querySelector('.answer-sheet-round-header') : null;
             const controls = panel ? panel.querySelector('.answer-sheet-controls-row') : null;
@@ -164,18 +150,42 @@
             const availableHeight = panel
                 ? Math.max(0, panel.clientHeight - panelVerticalPadding - headerHeight - controlsHeight - controlsMarginTop)
                 : 0;
-            const targetHeight = Math.max(shellMinHeight, contentHeight, availableHeight);
+            const visibleRows = availableHeight
+                ? Math.max(0, Math.round((Math.max(0, availableHeight - paddingTop - paddingBottom)) / lineHeight))
+                : 0;
+
+            return Math.max(10, visibleRows);
+        }
+
+        function syncLineNumbers(textarea, options) {
+            const shouldRecalculateBaseRows = options && options.recalculateBaseRows;
+            const shell = textarea.closest('.answer-sheet-textarea-shell');
+            const numberList = shell ? shell.querySelector('.answer-sheet-line-numbers') : null;
+            if (!shell || !numberList) {
+                return;
+            }
+
+            const computedStyle = window.getComputedStyle(textarea);
+            const lineHeight = parseFloat(computedStyle.lineHeight) || 24;
+            const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+            const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+            const fontSize = computedStyle.fontSize || '16px';
+            if (shouldRecalculateBaseRows || !textarea.dataset.baseRows) {
+                textarea.dataset.baseRows = String(measureBaseRows(textarea, lineHeight, paddingTop, paddingBottom));
+            }
+
+            const baseRows = Math.max(10, parseInt(textarea.dataset.baseRows || '10', 10) || 10);
+            const typedLineCount = Math.max(1, textarea.value.split(/\r?\n/).length);
+            const rowCount = Math.max(baseRows, typedLineCount);
+            const targetHeight = Math.ceil(paddingTop + paddingBottom + (lineHeight * rowCount));
+
+            textarea.rows = rowCount;
             textarea.style.height = `${targetHeight}px`;
             shell.style.height = `${targetHeight}px`;
             shell.style.setProperty('--answer-sheet-line-height-px', `${lineHeight}px`);
             shell.style.setProperty('--answer-sheet-padding-top-px', `${paddingTop}px`);
             shell.style.setProperty('--answer-sheet-padding-bottom-px', `${paddingBottom}px`);
             shell.style.setProperty('--answer-sheet-font-size-px', fontSize);
-
-            const textBoxHeight = Math.max(0, targetHeight - paddingTop - paddingBottom);
-            const visibleRows = Math.max(1, Math.floor((textBoxHeight + 0.5) / lineHeight));
-            const contentRows = Math.max(1, Math.floor((Math.max(0, contentHeight - paddingTop - paddingBottom) + 0.5) / lineHeight));
-            const rowCount = Math.max(10, visibleRows, contentRows, textarea.value.split(/\r?\n/).length);
 
             numberList.innerHTML = '';
             for (let index = 1; index <= rowCount; index += 1) {
@@ -215,7 +225,7 @@
 
         textareas.forEach((textarea) => {
             const roundId = textarea.dataset.roundId;
-            syncLineNumbers(textarea);
+            syncLineNumbers(textarea, { recalculateBaseRows: true });
             textarea.addEventListener('input', () => {
                 syncLineNumbers(textarea);
                 setStatus(roundId, 'Unsaved changes', 'dirty');
@@ -227,7 +237,7 @@
         });
 
         window.addEventListener('resize', () => {
-            textareas.forEach(syncLineNumbers);
+            textareas.forEach((textarea) => syncLineNumbers(textarea, { recalculateBaseRows: true }));
             updateActiveDot(roundIndexFromScroll());
         });
 
