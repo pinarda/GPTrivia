@@ -1434,6 +1434,74 @@ def _normalize_answer_sheet_score(raw_score):
     return parsed_score
 
 
+def _normalize_answer_sheet_grade_value(raw_value):
+    normalized_value = re.sub(r'\s+', ' ', str(raw_value or '').strip())
+    return normalized_value.strip(" \t\r\n.;:!?\"'").casefold()
+
+
+def _extract_answer_sheet_line_answer(line_text):
+    normalized_line = str(line_text or '').replace('\r\n', '\n').replace('\r', '\n')
+    match = re.search(r'\S.*?(?=\s{3,}|$)', normalized_line)
+    if not match:
+        return ''
+    return match.group(0).strip()
+
+
+def _build_answer_sheet_accepted_answers(entry):
+    accepted_answers = []
+    for candidate in [entry.answer_text, *(entry.possible_answers or [])]:
+        normalized_candidate = _normalize_answer_sheet_grade_value(candidate)
+        if normalized_candidate and normalized_candidate not in accepted_answers:
+            accepted_answers.append(normalized_candidate)
+    return accepted_answers
+
+
+def _grade_answer_sheet_answers(round_obj, answers):
+    latest_completed_run = _latest_completed_round_analysis_run(round_obj.id)
+    if latest_completed_run is None:
+        raise ValueError("the round has not yet been analyzed")
+
+    latest_round_type = str((latest_completed_run.round_type if latest_completed_run else '') or '').strip().lower()
+    if latest_round_type == 'matching':
+        raise ValueError("grading this round type is not currently enabled")
+
+    entries_by_question = {
+        entry.question_number: entry
+        for entry in RoundQuestionAnalysisEntry.objects.filter(run=latest_completed_run).order_by('question_number', 'id')
+    }
+    normalized_answers = [str(answer or '') for answer in (answers or [])]
+    row_results = []
+    correct_count = 0
+
+    for index, raw_line in enumerate(normalized_answers, start=1):
+        extracted_answer = _extract_answer_sheet_line_answer(raw_line)
+        normalized_guess = _normalize_answer_sheet_grade_value(extracted_answer)
+        entry = entries_by_question.get(index)
+        accepted_answers = _build_answer_sheet_accepted_answers(entry) if entry else []
+
+        if not normalized_guess or not entry:
+            state = 'blank'
+        elif normalized_guess in accepted_answers:
+            state = 'correct'
+            correct_count += 1
+        else:
+            state = 'incorrect'
+
+        row_results.append({
+            'question_number': index,
+            'submitted_text': extracted_answer,
+            'state': state,
+            'answer_text': entry.answer_text if entry else '',
+            'possible_answers': list(entry.possible_answers or []) if entry else [],
+        })
+
+    return {
+        'row_results': row_results,
+        'score': correct_count,
+        'score_display': _format_profile_round_score(correct_count),
+    }
+
+
 def _get_answer_sheet_round_player_fields(round_obj, current_user_player_field=''):
     player_fields = []
     if getattr(round_obj, 'date', None):
@@ -1537,6 +1605,7 @@ def _build_answer_sheet_context(user, requested_date=''):
         'round_pages': round_pages,
         'save_url': reverse('save_answer_sheet_entry'),
         'submit_score_url': reverse('submit_answer_sheet_score'),
+        'grade_url': reverse('grade_answer_sheet_round'),
     }
 
 
@@ -1664,6 +1733,44 @@ def submit_answer_sheet_score(request):
         'player_field': player_field,
         'score': normalized_score,
         'score_display': _format_profile_round_score(normalized_score),
+    })
+
+
+@login_required
+def grade_answer_sheet_round(request):
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'detail': 'Invalid JSON payload.'}, status=400)
+
+    round_id = payload.get('round_id')
+    try:
+        round_id = int(round_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'round_id must be an integer.'}, status=400)
+
+    raw_answers = payload.get('answers', [])
+    if isinstance(raw_answers, str):
+        answers = raw_answers.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+    elif isinstance(raw_answers, list):
+        answers = [str(answer or '') for answer in raw_answers]
+    else:
+        answers = []
+
+    round_obj = get_object_or_404(GPTriviaRound, id=round_id)
+
+    try:
+        grade_payload = _grade_answer_sheet_answers(round_obj, answers)
+    except ValueError as error:
+        return JsonResponse({'detail': str(error)}, status=400)
+
+    return JsonResponse({
+        'ok': True,
+        'round_id': round_obj.id,
+        **grade_payload,
     })
 
 

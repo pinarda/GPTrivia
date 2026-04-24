@@ -5,7 +5,14 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from GPTrivia.models import AnswerSheetEntry, GPTriviaRound, MergedPresentation, Profile, RoundQuestionAnalysisRun
+from GPTrivia.models import (
+    AnswerSheetEntry,
+    GPTriviaRound,
+    MergedPresentation,
+    Profile,
+    RoundQuestionAnalysisEntry,
+    RoundQuestionAnalysisRun,
+)
 from GPTrivia.player_scores import get_round_score_map
 
 
@@ -374,3 +381,126 @@ class AnswerSheetTests(TestCase):
         )
         self.assertTrue(round_pages[enabled_round.id]["grade_enabled"])
         self.assertEqual(round_pages[enabled_round.id]["grade_disabled_message"], "")
+
+    def test_grade_answer_sheet_round_marks_correct_rows_and_returns_score(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Grade Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="What animal is white with black stripes?",
+            answer_text="A Zebra",
+            possible_answers=["A Zebra", "a zebra", "Zebra", "zebra", "Zebras", "zebras"],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=2,
+            question_text="What swimming stroke was introduced to the British by Native Americans?",
+            answer_text="Front crawl/freestyle",
+            possible_answers=[
+                "Front crawl",
+                "front crawl",
+                "Front-crawl",
+                "front-crawl",
+                "Frontcrawl",
+                "frontcrawl",
+                "Freestyle",
+                "freestyle",
+                "Free style",
+                "free style",
+                "Front crawl or freestyle",
+                "front crawl or freestyle",
+            ],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=3,
+            question_text="Which choice is correct?",
+            answer_text="All of those",
+            possible_answers=["All of those", "all of those", "All", "all", "All of the above", "all of the above"],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+
+        response = self.client.post(
+            reverse("grade_answer_sheet_round"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "   zebra   tentative guess\nFront crawl   alternate wording\nWrong answer\n",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["score"], 2)
+        self.assertEqual(payload["score_display"], "2")
+        self.assertEqual(payload["row_results"][0]["submitted_text"], "zebra")
+        self.assertEqual(payload["row_results"][0]["state"], "correct")
+        self.assertEqual(payload["row_results"][1]["submitted_text"], "Front crawl")
+        self.assertEqual(payload["row_results"][1]["state"], "correct")
+        self.assertEqual(payload["row_results"][2]["submitted_text"], "Wrong answer")
+        self.assertEqual(payload["row_results"][2]["state"], "incorrect")
+        self.assertEqual(payload["row_results"][3]["state"], "blank")
+
+    def test_grade_answer_sheet_round_rejects_matching_round(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Matching Grade Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="matching",
+        )
+
+        response = self.client.post(
+            reverse("grade_answer_sheet_round"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "Anything",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()["detail"],
+            "grading this round type is not currently enabled",
+        )

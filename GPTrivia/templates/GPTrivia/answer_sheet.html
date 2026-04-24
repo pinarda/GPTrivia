@@ -2,11 +2,11 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423e">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423f">
 {% endblock %}
 
 {% block content %}
-<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-selected-date="{{ selected_date }}">
+<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-grade-url="{{ grade_url }}" data-selected-date="{{ selected_date }}">
     <section class="answer-sheet-header-card">
         <div class="answer-sheet-header-line">
             <span class="answer-sheet-header-label">Answer Sheet</span>
@@ -35,12 +35,15 @@
                             {% endfor %}
                         </ol>
 
-                        <textarea
-                            class="answer-sheet-textarea"
-                            rows="10"
-                            data-round-id="{{ page.round_id }}"
-                            spellcheck="false"
-                        >{{ page.answers_text }}</textarea>
+                        <div class="answer-sheet-text-stack">
+                            <div class="answer-sheet-text-overlay" aria-hidden="true" data-overlay-for="{{ page.round_id }}"></div>
+                            <textarea
+                                class="answer-sheet-textarea"
+                                rows="10"
+                                data-round-id="{{ page.round_id }}"
+                                spellcheck="false"
+                            >{{ page.answers_text }}</textarea>
+                        </div>
                     </div>
 
                     <div class="answer-sheet-controls-row">
@@ -104,8 +107,11 @@
         const dotButtons = Array.from(pageRoot.querySelectorAll('[data-answer-sheet-dot]'));
         const saveUrl = pageRoot.dataset.saveUrl || '';
         const submitScoreUrl = pageRoot.dataset.submitScoreUrl || '';
+        const gradeUrl = pageRoot.dataset.gradeUrl || '';
         const saveTimers = new Map();
         const buttonMessageTimers = new Map();
+        const lineStateMap = new WeakMap();
+        const previousLineMap = new WeakMap();
         document.body.classList.add('answer-sheet-shell');
 
         function getCsrfToken() {
@@ -180,6 +186,47 @@
             return normalized;
         }
 
+        function getTextareaLines(textarea) {
+            return textarea.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+        }
+
+        function getLineStates(textarea, rowCount) {
+            const existingStates = lineStateMap.get(textarea) || [];
+            const nextStates = [];
+            for (let index = 0; index < rowCount; index += 1) {
+                nextStates.push(existingStates[index] || 'default');
+            }
+            lineStateMap.set(textarea, nextStates);
+            return nextStates;
+        }
+
+        function renderTextOverlay(textarea) {
+            const overlay = pageRoot.querySelector(`[data-overlay-for="${textarea.dataset.roundId}"]`);
+            if (!overlay) {
+                return;
+            }
+
+            const lines = getTextareaLines(textarea);
+            const rowCount = Math.max(10, lines.length);
+            const states = getLineStates(textarea, rowCount);
+            overlay.innerHTML = '';
+            for (let index = 0; index < rowCount; index += 1) {
+                const line = document.createElement('div');
+                line.className = `answer-sheet-overlay-line is-${states[index] || 'default'}`;
+                line.textContent = lines[index] || '\u00A0';
+                overlay.appendChild(line);
+            }
+        }
+
+        function clearGradingState(textarea, scoreInput) {
+            const rowCount = Math.max(10, getTextareaLines(textarea).length);
+            lineStateMap.set(textarea, Array(rowCount).fill('default'));
+            renderTextOverlay(textarea);
+            if (scoreInput) {
+                scoreInput.classList.remove('is-graded');
+            }
+        }
+
         function ensureMinimumTextareaLines(textarea) {
             const minimumRows = 10;
             const normalizedValue = textarea.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -229,6 +276,7 @@
                 item.textContent = String(index);
                 numberList.appendChild(item);
             }
+            renderTextOverlay(textarea);
         }
 
         async function saveAnswers(roundId, value) {
@@ -289,11 +337,74 @@
             }
         }
 
+        async function gradeRound(roundId, textarea, scoreInput) {
+            if (!gradeUrl) {
+                return;
+            }
+
+            setStatus(roundId, 'Grading...', 'saving');
+            try {
+                const response = await fetch(gradeUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                    body: JSON.stringify({
+                        round_id: roundId,
+                        answers: getTextareaLines(textarea),
+                    }),
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(payload.detail || `Grade failed with status ${response.status}`);
+                }
+
+                const rowCount = Math.max(10, getTextareaLines(textarea).length);
+                const nextStates = Array(rowCount).fill('default');
+                (payload.row_results || []).forEach((rowResult, index) => {
+                    if (rowResult.state === 'correct') {
+                        nextStates[index] = 'correct';
+                    } else if (rowResult.state === 'incorrect') {
+                        nextStates[index] = 'incorrect';
+                    }
+                });
+                lineStateMap.set(textarea, nextStates);
+                renderTextOverlay(textarea);
+                scoreInput.value = payload.score_display || '';
+                scoreInput.classList.add('is-graded');
+                setStatus(roundId, 'Graded', 'saved');
+            } catch (error) {
+                console.error('Error grading answer sheet round:', error);
+                setStatus(roundId, 'Unable to grade', 'error');
+            }
+        }
+
         textareas.forEach((textarea) => {
             const roundId = textarea.dataset.roundId;
             syncLineNumbers(textarea);
+            previousLineMap.set(textarea, getTextareaLines(textarea));
             textarea.addEventListener('input', () => {
+                const previousLines = previousLineMap.get(textarea) || [];
                 syncLineNumbers(textarea);
+                const nextLines = getTextareaLines(textarea);
+                const nextStates = getLineStates(textarea, Math.max(10, nextLines.length)).slice();
+                const maxLength = Math.max(previousLines.length, nextLines.length, nextStates.length);
+                let changedFrom = -1;
+                for (let index = 0; index < maxLength; index += 1) {
+                    if ((previousLines[index] || '') !== (nextLines[index] || '')) {
+                        changedFrom = index;
+                        break;
+                    }
+                }
+                if (changedFrom !== -1) {
+                    for (let index = changedFrom; index < nextStates.length; index += 1) {
+                        nextStates[index] = 'default';
+                    }
+                    lineStateMap.set(textarea, nextStates);
+                    renderTextOverlay(textarea);
+                }
+                previousLineMap.set(textarea, nextLines);
                 setStatus(roundId, 'Unsaved changes', 'dirty');
                 window.clearTimeout(saveTimers.get(roundId));
                 saveTimers.set(roundId, window.setTimeout(() => {
@@ -308,6 +419,11 @@
                 if (input.value !== normalizedValue) {
                     input.value = normalizedValue;
                 }
+                const roundId = input.dataset.roundId;
+                const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
+                if (textarea) {
+                    clearGradingState(textarea, input);
+                }
             });
         });
 
@@ -315,10 +431,29 @@
             button.addEventListener('click', () => {
                 const roundId = button.dataset.submitScoreFor;
                 const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
+                const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
                 if (!roundId || !scoreInput) {
                     return;
                 }
+                if (textarea) {
+                    clearGradingState(textarea, scoreInput);
+                }
                 submitScore(roundId, scoreInput);
+            });
+        });
+
+        pageRoot.querySelectorAll('.answer-sheet-action-button:not([aria-disabled="true"])').forEach((button) => {
+            if (button.textContent.trim() !== 'Grade') {
+                return;
+            }
+            button.addEventListener('click', () => {
+                const roundId = button.dataset.roundId;
+                const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
+                const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
+                if (!roundId || !textarea || !scoreInput) {
+                    return;
+                }
+                gradeRound(roundId, textarea, scoreInput);
             });
         });
 
