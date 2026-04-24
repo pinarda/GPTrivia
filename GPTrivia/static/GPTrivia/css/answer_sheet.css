@@ -146,6 +146,7 @@
     position: relative;
     min-width: 0;
     height: 100%;
+    overflow: hidden;
 }
 
 .answer-sheet-text-overlay {
@@ -155,12 +156,20 @@
     font: 500 1rem/var(--answer-sheet-line-height) "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     pointer-events: none;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.answer-sheet-text-overlay::-webkit-scrollbar {
+    display: none;
 }
 
 .answer-sheet-overlay-line {
     height: calc(var(--answer-sheet-line-height-px) - 0.5px);
     white-space: pre;
+    width: max-content;
+    min-width: 100%;
     color: #f5f6fb;
 }
 
@@ -200,7 +209,7 @@
     height: 100%;
     box-sizing: border-box;
     resize: none;
-    overflow: hidden;
+    overflow: auto;
     border: 0;
     background: transparent;
     color: transparent;
@@ -209,6 +218,15 @@
     font: 500 1rem/var(--answer-sheet-line-height) "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     outline: none;
     min-width: 0;
+    white-space: pre;
+    word-break: normal;
+    overflow-wrap: normal;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.answer-sheet-textarea::-webkit-scrollbar {
+    display: none;
 }
 
 .answer-sheet-textarea::placeholder {
@@ -251,7 +269,8 @@ body.site-shell .answer-sheet-page input.answer-sheet-score-input[type="text"] {
     color: rgba(245, 246, 251, 0.5);
 }
 
-.answer-sheet-score-input.is-graded {
+.answer-sheet-score-input.is-graded,
+.answer-sheet-score-input.is-dirty {
     color: #8ce99a;
     border-color: rgba(140, 233, 154, 0.65);
 }
@@ -421,7 +440,8 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-score-input::placehold
     color: rgba(27, 37, 48, 0.46);
 }
 
-body.site-shell[data-profile-theme="light"] .answer-sheet-score-input.is-graded {
+body.site-shell[data-profile-theme="light"] .answer-sheet-score-input.is-graded,
+body.site-shell[data-profile-theme="light"] .answer-sheet-score-input.is-dirty {
     color: #2a8f45;
     border-color: rgba(42, 143, 69, 0.55);
 }

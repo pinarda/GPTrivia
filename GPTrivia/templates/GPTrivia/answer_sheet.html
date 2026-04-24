@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423f">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423g">
 {% endblock %}
 
 {% block content %}
@@ -40,6 +40,7 @@
                             <textarea
                                 class="answer-sheet-textarea"
                                 rows="10"
+                                wrap="off"
                                 data-round-id="{{ page.round_id }}"
                                 spellcheck="false"
                             >{{ page.answers_text }}</textarea>
@@ -111,7 +112,6 @@
         const saveTimers = new Map();
         const buttonMessageTimers = new Map();
         const lineStateMap = new WeakMap();
-        const previousLineMap = new WeakMap();
         document.body.classList.add('answer-sheet-shell');
 
         function getCsrfToken() {
@@ -200,6 +200,26 @@
             return nextStates;
         }
 
+        function syncOverlayScroll(textarea) {
+            const overlay = pageRoot.querySelector(`[data-overlay-for="${textarea.dataset.roundId}"]`);
+            if (!overlay) {
+                return;
+            }
+            overlay.scrollLeft = textarea.scrollLeft;
+            overlay.scrollTop = textarea.scrollTop;
+        }
+
+        function getCaretLineIndex(textarea) {
+            const caretPosition = typeof textarea.selectionStart === 'number'
+                ? textarea.selectionStart
+                : textarea.value.length;
+            return textarea.value
+                .slice(0, caretPosition)
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n')
+                .split('\n').length - 1;
+        }
+
         function renderTextOverlay(textarea) {
             const overlay = pageRoot.querySelector(`[data-overlay-for="${textarea.dataset.roundId}"]`);
             if (!overlay) {
@@ -216,6 +236,7 @@
                 line.textContent = lines[index] || '\u00A0';
                 overlay.appendChild(line);
             }
+            syncOverlayScroll(textarea);
         }
 
         function clearGradingState(textarea, scoreInput) {
@@ -330,6 +351,8 @@
                     throw new Error(payload.detail || `Save failed with status ${response.status}`);
                 }
                 scoreInput.value = payload.score_display || '';
+                scoreInput.classList.remove('is-dirty');
+                scoreInput.classList.remove('is-graded');
                 setStatus(roundId, 'Saved', 'saved');
             } catch (error) {
                 console.error('Error submitting answer sheet score:', error);
@@ -372,6 +395,7 @@
                 lineStateMap.set(textarea, nextStates);
                 renderTextOverlay(textarea);
                 scoreInput.value = payload.score_display || '';
+                scoreInput.classList.remove('is-dirty');
                 scoreInput.classList.add('is-graded');
                 setStatus(roundId, 'Graded', 'saved');
             } catch (error) {
@@ -383,34 +407,24 @@
         textareas.forEach((textarea) => {
             const roundId = textarea.dataset.roundId;
             syncLineNumbers(textarea);
-            previousLineMap.set(textarea, getTextareaLines(textarea));
+            syncOverlayScroll(textarea);
             textarea.addEventListener('input', () => {
-                const previousLines = previousLineMap.get(textarea) || [];
                 syncLineNumbers(textarea);
                 const nextLines = getTextareaLines(textarea);
                 const nextStates = getLineStates(textarea, Math.max(10, nextLines.length)).slice();
-                const maxLength = Math.max(previousLines.length, nextLines.length, nextStates.length);
-                let changedFrom = -1;
-                for (let index = 0; index < maxLength; index += 1) {
-                    if ((previousLines[index] || '') !== (nextLines[index] || '')) {
-                        changedFrom = index;
-                        break;
-                    }
-                }
-                if (changedFrom !== -1) {
-                    for (let index = changedFrom; index < nextStates.length; index += 1) {
-                        nextStates[index] = 'default';
-                    }
-                    lineStateMap.set(textarea, nextStates);
-                    renderTextOverlay(textarea);
-                }
-                previousLineMap.set(textarea, nextLines);
+                const editedLineIndex = Math.max(0, Math.min(nextStates.length - 1, getCaretLineIndex(textarea)));
+                nextStates[editedLineIndex] = 'default';
+                lineStateMap.set(textarea, nextStates);
+                renderTextOverlay(textarea);
                 setStatus(roundId, 'Unsaved changes', 'dirty');
                 window.clearTimeout(saveTimers.get(roundId));
                 saveTimers.set(roundId, window.setTimeout(() => {
                     saveAnswers(roundId, textarea.value);
                 }, 500));
             });
+            textarea.addEventListener('scroll', () => {
+                syncOverlayScroll(textarea);
+            }, { passive: true });
         });
 
         scoreInputs.forEach((input) => {
@@ -424,6 +438,7 @@
                 if (textarea) {
                     clearGradingState(textarea, input);
                 }
+                input.classList.add('is-dirty');
             });
         });
 
@@ -438,6 +453,7 @@
                 if (textarea) {
                     clearGradingState(textarea, scoreInput);
                 }
+                scoreInput.classList.remove('is-dirty');
                 submitScore(roundId, scoreInput);
             });
         });
