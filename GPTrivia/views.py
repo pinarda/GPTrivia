@@ -1434,6 +1434,37 @@ def _normalize_answer_sheet_score(raw_score):
     return parsed_score
 
 
+def _normalize_answer_sheet_grade_overrides(raw_overrides):
+    normalized_overrides = []
+    seen = set()
+    for raw_override in raw_overrides or []:
+        try:
+            question_number = int(raw_override)
+        except (TypeError, ValueError):
+            continue
+        if question_number <= 0 or question_number in seen:
+            continue
+        seen.add(question_number)
+        normalized_overrides.append(question_number)
+    return normalized_overrides
+
+
+def _clear_answer_sheet_overrides_for_changed_answers(previous_answers, next_answers, existing_overrides):
+    normalized_previous = list(previous_answers or [])
+    normalized_next = list(next_answers or [])
+    changed_questions = set()
+    for index in range(max(len(normalized_previous), len(normalized_next))):
+        previous_value = normalized_previous[index] if index < len(normalized_previous) else ''
+        next_value = normalized_next[index] if index < len(normalized_next) else ''
+        if str(previous_value or '') != str(next_value or ''):
+            changed_questions.add(index + 1)
+    return [
+        question_number
+        for question_number in _normalize_answer_sheet_grade_overrides(existing_overrides)
+        if question_number not in changed_questions
+    ]
+
+
 def _normalize_answer_sheet_grade_value(raw_value):
     normalized_value = str(raw_value or '').casefold()
     normalized_value = normalized_value.replace('&', ' and ')
@@ -1551,7 +1582,7 @@ def _build_answer_sheet_accepted_answers(entry):
     return accepted_answers
 
 
-def _grade_answer_sheet_answers(round_obj, answers):
+def _grade_answer_sheet_answers(round_obj, answers, manual_correct_questions=None):
     latest_completed_run = _latest_completed_round_analysis_run(round_obj.id)
     if latest_completed_run is None:
         raise ValueError("the round has not yet been analyzed")
@@ -1565,6 +1596,7 @@ def _grade_answer_sheet_answers(round_obj, answers):
         for entry in RoundQuestionAnalysisEntry.objects.filter(run=latest_completed_run).order_by('question_number', 'id')
     }
     normalized_answers = [str(answer or '') for answer in (answers or [])]
+    manual_correct_question_set = set(_normalize_answer_sheet_grade_overrides(manual_correct_questions))
     row_results = []
     correct_count = 0
 
@@ -1576,6 +1608,9 @@ def _grade_answer_sheet_answers(round_obj, answers):
 
         if not normalized_guess_forms or not entry:
             state = 'blank'
+        elif index in manual_correct_question_set:
+            state = 'correct'
+            correct_count += 1
         elif _answer_sheet_forms_match(normalized_guess_forms, set(accepted_answers)):
             state = 'correct'
             correct_count += 1
@@ -1588,12 +1623,14 @@ def _grade_answer_sheet_answers(round_obj, answers):
             'state': state,
             'answer_text': entry.answer_text if entry else '',
             'possible_answers': list(entry.possible_answers or []) if entry else [],
+            'manually_overridden': bool(index in manual_correct_question_set),
         })
 
     return {
         'row_results': row_results,
         'score': correct_count,
         'score_display': _format_profile_round_score(correct_count),
+        'grade_overrides': sorted(manual_correct_question_set),
     }
 
 
@@ -1772,6 +1809,7 @@ def _build_answer_sheet_context(user, requested_date=''):
             'grade_disabled_message': grade_disabled_message,
             'answers': answers,
             'answers_text': '\n'.join(answers),
+            'grade_overrides': _normalize_answer_sheet_grade_overrides(saved_entry.grade_overrides if saved_entry else []),
             'score_value': _format_profile_round_score(current_score),
         })
 
@@ -1784,6 +1822,7 @@ def _build_answer_sheet_context(user, requested_date=''):
         'save_url': reverse('save_answer_sheet_entry'),
         'submit_score_url': reverse('submit_answer_sheet_score'),
         'grade_url': reverse('grade_answer_sheet_round'),
+        'override_grade_url': reverse('override_answer_sheet_grade'),
         'diverge_url': reverse('diverge_answer_sheet_round'),
         'merge_url': reverse('merge_answer_sheet_round'),
     }
@@ -1839,12 +1878,19 @@ def save_answer_sheet_entry(request):
     with transaction.atomic():
         updated_entries = {}
         for target_user in target_users:
+            previous_entry = AnswerSheetEntry.objects.filter(user=target_user, round=round_obj).first()
+            next_grade_overrides = _clear_answer_sheet_overrides_for_changed_answers(
+                previous_entry.answers if previous_entry else [],
+                answers,
+                previous_entry.grade_overrides if previous_entry else [],
+            )
             answer_entry, _ = AnswerSheetEntry.objects.update_or_create(
                 user=target_user,
                 round=round_obj,
                 defaults={
                     'trivia_date': round_obj.date,
                     'answers': answers,
+                    'grade_overrides': next_grade_overrides,
                     'is_diverged': bool(current_entry.is_diverged) if (current_entry and target_user.id == request.user.id) else False,
                 },
             )
@@ -1868,6 +1914,7 @@ def save_answer_sheet_entry(request):
         'round_id': round_obj.id,
         'trivia_date': round_obj.date.isoformat() if round_obj.date else '',
         'answers': response_entry.answers,
+        'grade_overrides': _normalize_answer_sheet_grade_overrides(response_entry.grade_overrides),
         'updated_at': response_entry.updated_at.isoformat() if response_entry.updated_at else '',
         'shared': bool(round_obj.cooperative and not current_user_is_diverged),
         'is_diverged': bool(response_entry.is_diverged),
@@ -1901,6 +1948,7 @@ def diverge_answer_sheet_round(request):
         defaults={
             'trivia_date': round_obj.date,
             'answers': answers,
+            'grade_overrides': [],
             'is_diverged': True,
         },
     )
@@ -1909,6 +1957,7 @@ def diverge_answer_sheet_round(request):
         'ok': True,
         'round_id': round_obj.id,
         'answers': entry.answers,
+        'grade_overrides': [],
         'is_diverged': True,
         'shared': False,
     })
@@ -1964,6 +2013,18 @@ def merge_answer_sheet_round(request):
         return JsonResponse({'detail': 'Only diverged cooperative rounds can merge.'}, status=400)
 
     communal_answers = _get_answer_sheet_communal_answers(round_obj, current_user=request.user)
+    communal_entry = (
+        AnswerSheetEntry.objects.filter(
+            round=round_obj,
+            user_id__in=[target_user.id for target_user in _get_answer_sheet_shared_users(round_obj, current_user=request.user)],
+            is_diverged=False,
+        )
+        .order_by('-updated_at', '-id')
+        .first()
+    )
+    communal_grade_overrides = _normalize_answer_sheet_grade_overrides(
+        communal_entry.grade_overrides if communal_entry else []
+    )
 
     with transaction.atomic():
         AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).delete()
@@ -1972,6 +2033,7 @@ def merge_answer_sheet_round(request):
             round=round_obj,
             trivia_date=round_obj.date,
             answers=communal_answers,
+            grade_overrides=communal_grade_overrides,
             is_diverged=False,
         )
 
@@ -1979,6 +2041,7 @@ def merge_answer_sheet_round(request):
         'ok': True,
         'round_id': round_obj.id,
         'answers': merged_entry.answers,
+        'grade_overrides': _normalize_answer_sheet_grade_overrides(merged_entry.grade_overrides),
         'is_diverged': False,
         'shared': True,
         'submit_requires_confirmation': bool(
@@ -2101,9 +2164,16 @@ def grade_answer_sheet_round(request):
     current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
     current_user_is_diverged = bool(current_entry.is_diverged) if current_entry else False
     normalized_answers = _normalize_answer_sheet_answers(answers)
+    current_grade_overrides = _normalize_answer_sheet_grade_overrides(
+        current_entry.grade_overrides if current_entry else []
+    )
 
     try:
-        grade_payload = _grade_answer_sheet_answers(round_obj, normalized_answers)
+        grade_payload = _grade_answer_sheet_answers(
+            round_obj,
+            normalized_answers,
+            manual_correct_questions=current_grade_overrides,
+        )
     except ValueError as error:
         return JsonResponse({'detail': str(error)}, status=400)
 
@@ -2119,12 +2189,19 @@ def grade_answer_sheet_round(request):
 
         with transaction.atomic():
             for target_user in target_users:
+                previous_entry = AnswerSheetEntry.objects.filter(user=target_user, round=round_obj).first()
+                next_grade_overrides = _clear_answer_sheet_overrides_for_changed_answers(
+                    previous_entry.answers if previous_entry else [],
+                    normalized_answers,
+                    previous_entry.grade_overrides if previous_entry else [],
+                )
                 AnswerSheetEntry.objects.update_or_create(
                     user=target_user,
                     round=round_obj,
                     defaults={
                         'trivia_date': round_obj.date,
                         'answers': normalized_answers,
+                        'grade_overrides': next_grade_overrides,
                         'is_diverged': bool(current_entry.is_diverged) if (current_entry and target_user.id == request.user.id) else False,
                     },
                 )
@@ -2138,6 +2215,110 @@ def grade_answer_sheet_round(request):
                 'answers': normalized_answers,
                 **grade_payload,
             })
+
+    return JsonResponse({
+        'ok': True,
+        'round_id': round_obj.id,
+        'shared': bool(round_obj.cooperative and not current_user_is_diverged),
+        'answers': normalized_answers,
+        **grade_payload,
+    })
+
+
+@login_required
+def override_answer_sheet_grade(request):
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'detail': 'Invalid JSON payload.'}, status=400)
+
+    round_id = payload.get('round_id')
+    question_number = payload.get('question_number')
+    try:
+        round_id = int(round_id)
+        question_number = int(question_number)
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'round_id and question_number must be integers.'}, status=400)
+    if question_number <= 0:
+        return JsonResponse({'detail': 'question_number must be positive.'}, status=400)
+
+    raw_answers = payload.get('answers', [])
+    if isinstance(raw_answers, str):
+        answers = raw_answers.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+    elif isinstance(raw_answers, list):
+        answers = [str(answer or '') for answer in raw_answers]
+    else:
+        answers = []
+
+    round_obj = get_object_or_404(GPTriviaRound, id=round_id)
+    client_id = str(payload.get('client_id') or '').strip()
+    current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
+    current_user_is_diverged = bool(current_entry.is_diverged) if current_entry else False
+    normalized_answers = _normalize_answer_sheet_answers(answers)
+
+    target_users = [request.user]
+    if round_obj.cooperative and not current_user_is_diverged:
+        diverged_user_ids = _get_answer_sheet_diverged_user_ids(round_obj)
+        target_users = [
+            target_user
+            for target_user in _get_answer_sheet_shared_users(round_obj, current_user=request.user)
+            if target_user.id not in diverged_user_ids
+        ]
+        if not target_users:
+            target_users = [request.user]
+
+    with transaction.atomic():
+        response_entry = None
+        applied_grade_overrides = []
+        for target_user in target_users:
+            previous_entry = AnswerSheetEntry.objects.filter(user=target_user, round=round_obj).first()
+            next_grade_overrides = _clear_answer_sheet_overrides_for_changed_answers(
+                previous_entry.answers if previous_entry else [],
+                normalized_answers,
+                previous_entry.grade_overrides if previous_entry else [],
+            )
+            if question_number not in next_grade_overrides:
+                next_grade_overrides.append(question_number)
+            next_grade_overrides = _normalize_answer_sheet_grade_overrides(next_grade_overrides)
+            answer_entry, _ = AnswerSheetEntry.objects.update_or_create(
+                user=target_user,
+                round=round_obj,
+                defaults={
+                    'trivia_date': round_obj.date,
+                    'answers': normalized_answers,
+                    'grade_overrides': next_grade_overrides,
+                    'is_diverged': bool(current_entry.is_diverged) if (current_entry and target_user.id == request.user.id) else False,
+                },
+            )
+            if target_user.id == request.user.id:
+                response_entry = answer_entry
+                applied_grade_overrides = next_grade_overrides
+        if response_entry is None:
+            response_entry = AnswerSheetEntry.objects.get(user=request.user, round=round_obj)
+            applied_grade_overrides = _normalize_answer_sheet_grade_overrides(response_entry.grade_overrides)
+
+    try:
+        grade_payload = _grade_answer_sheet_answers(
+            round_obj,
+            normalized_answers,
+            manual_correct_questions=applied_grade_overrides,
+        )
+    except ValueError as error:
+        return JsonResponse({'detail': str(error)}, status=400)
+
+    if round_obj.cooperative and not current_user_is_diverged:
+        _schedule_scoresheet_broadcast({
+            'action': 'answer_sheet',
+            'event': 'answer_sheet_grade',
+            'selected_date': round_obj.date.isoformat() if round_obj.date else '',
+            'round_id': round_obj.id,
+            'client_id': client_id,
+            'answers': normalized_answers,
+            **grade_payload,
+        })
 
     return JsonResponse({
         'ok': True,

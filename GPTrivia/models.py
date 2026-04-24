@@ -224,6 +224,7 @@ class AnswerSheetEntry(models.Model):
     round = models.ForeignKey('GPTriviaRound', on_delete=models.CASCADE, related_name='answer_sheet_entries')
     trivia_date = models.DateField(db_index=True)
     answers = jsonfield.JSONField(default=list, blank=True)
+    grade_overrides = jsonfield.JSONField(default=list, blank=True)
     is_diverged = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

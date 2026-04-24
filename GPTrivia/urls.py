@@ -53,6 +53,7 @@ urlpatterns = [
     path('answer-sheet/merge/', views.merge_answer_sheet_round, name='merge_answer_sheet_round'),
     path('answer-sheet/submit-score/', views.submit_answer_sheet_score, name='submit_answer_sheet_score'),
     path('answer-sheet/grade/', views.grade_answer_sheet_round, name='grade_answer_sheet_round'),
+    path('answer-sheet/override-grade/', views.override_answer_sheet_grade, name='override_answer_sheet_grade'),
     path('round-analysis/entry/<int:entry_id>/image/', views.round_analysis_image, name='round_analysis_image'),
     path('round-analysis/entry/<int:entry_id>/media/', views.round_analysis_media, name='round_analysis_media'),
     path('player_analysis/', views.player_analysis, name='player_analysis'),

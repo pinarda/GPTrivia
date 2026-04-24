@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-grade-url="{{ grade_url }}" data-diverge-url="{{ diverge_url }}" data-merge-url="{{ merge_url }}" data-selected-date="{{ selected_date }}" data-has-cooperative-rounds="{% if has_cooperative_rounds %}true{% else %}false{% endif %}">
+<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-grade-url="{{ grade_url }}" data-override-grade-url="{{ override_grade_url }}" data-diverge-url="{{ diverge_url }}" data-merge-url="{{ merge_url }}" data-selected-date="{{ selected_date }}" data-has-cooperative-rounds="{% if has_cooperative_rounds %}true{% else %}false{% endif %}">
     <section class="answer-sheet-header-card">
         <div class="answer-sheet-header-line">
             <span class="answer-sheet-header-label">Answer Sheet</span>
@@ -121,6 +121,7 @@
         const saveUrl = pageRoot.dataset.saveUrl || '';
         const submitScoreUrl = pageRoot.dataset.submitScoreUrl || '';
         const gradeUrl = pageRoot.dataset.gradeUrl || '';
+        const overrideGradeUrl = pageRoot.dataset.overrideGradeUrl || '';
         const divergeUrl = pageRoot.dataset.divergeUrl || '';
         const mergeUrl = pageRoot.dataset.mergeUrl || '';
         const selectedDate = pageRoot.dataset.selectedDate || '';
@@ -308,6 +309,7 @@
                 line.textContent = lines[index] || '\u00A0';
                 overlay.appendChild(line);
             }
+            updateLineNumberControls(textarea, states);
             syncOverlayScroll(textarea);
         }
 
@@ -318,6 +320,24 @@
             if (scoreInput) {
                 scoreInput.classList.remove('is-graded');
             }
+        }
+
+        function updateLineNumberControls(textarea, states) {
+            const shell = textarea.closest('.answer-sheet-textarea-shell');
+            const numberList = shell ? shell.querySelector('.answer-sheet-line-numbers') : null;
+            if (!numberList) {
+                return;
+            }
+            Array.from(numberList.querySelectorAll('li')).forEach((item, index) => {
+                const plusButton = item.querySelector('.answer-sheet-line-plus');
+                if (!plusButton) {
+                    return;
+                }
+                const shouldShow = (states[index] || 'default') === 'incorrect';
+                plusButton.hidden = !shouldShow;
+                plusButton.disabled = !shouldShow;
+                plusButton.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+            });
         }
 
         function applySharedAnswersUpdate(roundId, answers) {
@@ -418,7 +438,20 @@
             numberList.innerHTML = '';
             for (let index = 1; index <= rowCount; index += 1) {
                 const item = document.createElement('li');
-                item.textContent = String(index);
+                const label = document.createElement('span');
+                label.className = 'answer-sheet-line-number-label';
+                label.textContent = String(index);
+                const plusButton = document.createElement('button');
+                plusButton.type = 'button';
+                plusButton.className = 'answer-sheet-line-plus';
+                plusButton.dataset.questionNumber = String(index);
+                plusButton.textContent = '+';
+                plusButton.hidden = true;
+                plusButton.disabled = true;
+                plusButton.setAttribute('aria-hidden', 'true');
+                plusButton.setAttribute('aria-label', `Mark question ${index} correct`);
+                item.appendChild(label);
+                item.appendChild(plusButton);
                 numberList.appendChild(item);
             }
             renderTextOverlay(textarea);
@@ -513,6 +546,37 @@
             } catch (error) {
                 console.error('Error grading answer sheet round:', error);
                 setStatus(roundId, 'Unable to grade', 'error');
+            }
+        }
+
+        async function overrideGrade(roundId, questionNumber, textarea, scoreInput) {
+            if (!overrideGradeUrl) {
+                return;
+            }
+
+            setStatus(roundId, 'Saving...', 'saving');
+            try {
+                const response = await fetch(overrideGradeUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                    body: JSON.stringify({
+                        round_id: roundId,
+                        question_number: questionNumber,
+                        answers: getTextareaLines(textarea),
+                        client_id: localClientId,
+                    }),
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(payload.detail || `Override failed with status ${response.status}`);
+                }
+                applyGradePayload(roundId, textarea, scoreInput, payload);
+            } catch (error) {
+                console.error('Error overriding answer sheet grade:', error);
+                setStatus(roundId, 'Unable to update grade', 'error');
             }
         }
 
@@ -624,6 +688,9 @@
             }, { passive: true });
             if (shell) {
                 shell.addEventListener('pointerdown', (event) => {
+                    if (event.target.closest('.answer-sheet-line-plus')) {
+                        return;
+                    }
                     const clickedNumbers = Boolean(event.target.closest('.answer-sheet-line-numbers'));
                     if (event.pointerType !== 'pen' && !clickedNumbers) {
                         return;
@@ -635,6 +702,19 @@
                         event.clientY,
                         clickedNumbers
                     );
+                });
+                shell.addEventListener('click', (event) => {
+                    const plusButton = event.target.closest('.answer-sheet-line-plus');
+                    if (!plusButton || plusButton.hidden || plusButton.disabled) {
+                        return;
+                    }
+                    event.preventDefault();
+                    const questionNumber = Number(plusButton.dataset.questionNumber || 0);
+                    const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
+                    if (!questionNumber || !scoreInput) {
+                        return;
+                    }
+                    overrideGrade(roundId, questionNumber, textarea, scoreInput);
                 });
             }
         });
