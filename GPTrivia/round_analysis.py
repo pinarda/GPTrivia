@@ -2672,8 +2672,24 @@ def _notify_alex_round_analysis_finished(runs, *, batch_label='', success_count=
 
     label = batch_label or (runs[0].round.title if len(runs) == 1 else f"{len(runs)} rounds")
     if failed_count:
+        failure_summaries = []
+        for run in runs:
+            if run.status != RoundQuestionAnalysisRun.STATUS_FAILED:
+                continue
+            error_message = str(run.error_message or '').strip()
+            if not error_message:
+                continue
+            for line in error_message.splitlines():
+                normalized_line = str(line or '').strip()
+                if normalized_line:
+                    failure_summaries.append(normalized_line)
+                    break
         title = "Round Analysis Finished"
         body = f"Finished analyzing {label} with {success_count} complete and {failed_count} failed."
+        if len(runs) == 1 and failure_summaries:
+            body = f"Finished analyzing {label}: {failure_summaries[0]}"
+        elif failure_summaries:
+            body = f"{body} First failure: {failure_summaries[0]}"
     else:
         title = "Round Analysis Finished"
         body = f"Finished analyzing {label}."

@@ -1146,6 +1146,14 @@ def rounds_list(request):
 
 
 def _serialize_round_analysis_status(round_id, latest_run=None, has_completed_entries=False):
+    error_message = str((latest_run.error_message if latest_run else '') or '').strip()
+    error_summary = ''
+    if error_message:
+        for line in error_message.splitlines():
+            normalized_line = str(line or '').strip()
+            if normalized_line:
+                error_summary = normalized_line
+                break
     is_active = bool(
         latest_run and latest_run.status in {
             RoundQuestionAnalysisRun.STATUS_PENDING,
@@ -1166,6 +1174,8 @@ def _serialize_round_analysis_status(round_id, latest_run=None, has_completed_en
         'show_already_analyzed': bool(was_analyzed_before and not is_active),
         'has_completed_entries': bool(has_completed_entries),
         'view_url': f"{reverse('round_analysis_list')}?round_id={round_id}" if has_completed_entries else '',
+        'error_summary': error_summary,
+        'error_message': error_message,
     }
 
 

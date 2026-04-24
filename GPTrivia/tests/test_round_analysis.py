@@ -352,6 +352,37 @@ class RoundAnalysisTests(TestCase):
         self.assertTrue(payload["has_completed_entries"])
         self.assertIn(f"round_id={round_obj.id}", payload["view_url"])
         self.assertTrue(payload["can_trigger"])
+        self.assertEqual(payload["error_summary"], "")
+        self.assertEqual(payload["error_message"], "")
+
+    def test_round_analysis_status_includes_failure_detail(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Failed Status Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/status-round-failed/edit#slide=id.r1",
+        )
+        RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_FAILED,
+            error_message="Missing slide notes for slide 3\n\nTraceback line 1\nTraceback line 2",
+        )
+
+        response = self.client.get(reverse("round_analysis_status", args=[round_obj.id]))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["status"]
+        self.assertEqual(payload["status"], "failed")
+        self.assertEqual(payload["status_label"], "Failed")
+        self.assertEqual(payload["error_summary"], "Missing slide notes for slide 3")
+        self.assertIn("Traceback line 1", payload["error_message"])
 
     def test_round_analysis_question_returns_latest_completed_entry(self):
         round_obj = GPTriviaRound.objects.create(

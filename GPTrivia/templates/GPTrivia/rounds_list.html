@@ -129,6 +129,11 @@
                             {{ analysis_status.status_label }}
                         </div>
                     {% endif %}
+                    {% if analysis_status.error_summary %}
+                        <div class="round-analysis-error" title="{{ analysis_status.error_message }}">
+                            {{ analysis_status.error_summary }}
+                        </div>
+                    {% endif %}
                     {% if analysis_status.has_completed_entries %}
                         <a class="round-analysis-view-link" href="{% url 'round_analysis_list' %}?round_id={{ round_row.round.id }}">View</a>
                     {% endif %}
@@ -246,6 +251,16 @@
             statusText.className = `round-analysis-status round-analysis-status-${status.status || ''}`;
             statusText.textContent = status.status_label;
             meta.appendChild(statusText);
+        }
+
+        if (status.error_summary) {
+            const errorText = document.createElement('div');
+            errorText.className = 'round-analysis-error';
+            errorText.textContent = status.error_summary;
+            if (status.error_message) {
+                errorText.title = status.error_message;
+            }
+            meta.appendChild(errorText);
         }
 
         if (status.has_completed_entries && status.view_url) {
@@ -379,6 +394,18 @@
         wireRoundAnalysisForms();
     });
 </script>
+
+<style>
+    .round-analysis-error {
+        margin-top: 0.2rem;
+        max-width: 18rem;
+        font-size: 0.78rem;
+        line-height: 1.3;
+        color: #c8553d;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+</style>
 
 
 {% endblock %}
