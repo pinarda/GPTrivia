@@ -395,6 +395,11 @@
                 <div class="scorebtn">
                     <a style="color: white;" href={% url 'scoresheet_new' %}>Scoresheet</a>
                 </div>
+                {% if user.is_authenticated %}
+                    <div class="scorebtn">
+                        <a style="color: white;" href="{% url 'answer_sheet' %}">Answer Sheet</a>
+                    </div>
+                {% endif %}
                 <div class="analysisbtn">
                     <a style="color: white;" href={% url 'player_analysis' %}>Analysis</a>
                 </div>
