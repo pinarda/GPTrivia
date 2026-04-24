@@ -140,6 +140,7 @@
     --answer-sheet-padding-top-px: 14px;
     --answer-sheet-padding-bottom-px: 14px;
     --answer-sheet-font-size-px: 16px;
+    cursor: text;
 }
 
 .answer-sheet-text-stack {
