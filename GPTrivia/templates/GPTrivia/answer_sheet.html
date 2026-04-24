@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-grade-url="{{ grade_url }}" data-override-grade-url="{{ override_grade_url }}" data-diverge-url="{{ diverge_url }}" data-merge-url="{{ merge_url }}" data-sync-url="{{ sync_url }}" data-selected-date="{{ selected_date }}" data-has-cooperative-rounds="{% if has_cooperative_rounds %}true{% else %}false{% endif %}">
+<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-grade-url="{{ grade_url }}" data-override-grade-url="{{ override_grade_url }}" data-diverge-url="{{ diverge_url }}" data-merge-url="{{ merge_url }}" data-sync-url="{{ sync_url }}" data-selected-date="{{ selected_date }}" data-current-user-player-field="{{ current_user_player_field }}" data-has-cooperative-rounds="{% if has_cooperative_rounds %}true{% else %}false{% endif %}">
     <section class="answer-sheet-header-card">
         <div class="answer-sheet-header-line">
             <span class="answer-sheet-header-label">Answer Sheet</span>
@@ -165,6 +165,7 @@
         const mergeUrl = pageRoot.dataset.mergeUrl || '';
         const syncUrl = pageRoot.dataset.syncUrl || '';
         const selectedDate = pageRoot.dataset.selectedDate || '';
+        const currentUserPlayerField = pageRoot.dataset.currentUserPlayerField || '';
         const hasCooperativeRounds = pageRoot.dataset.hasCooperativeRounds === 'true';
         const dateValuesElement = document.getElementById('answer-sheet-date-values');
         const availableAnswerSheetDates = dateValuesElement ? JSON.parse(dateValuesElement.textContent || '[]') : [];
@@ -541,6 +542,13 @@
             return Number(normalizedNext) !== Number(normalizedSaved);
         }
 
+        function formatScoreDisplay(rawScore) {
+            if (rawScore === null || typeof rawScore === 'undefined' || rawScore === '') {
+                return '';
+            }
+            return String(rawScore);
+        }
+
         function getTextareaLines(textarea) {
             return normalizeTextareaValue(textarea.value).split('\n');
         }
@@ -847,6 +855,19 @@
                 setRoundAnswersDirty(roundId, false);
             }
             applyGradePayload(roundId, textarea, scoreInput, payload);
+        }
+
+        function applySharedScoreUpdate(roundId, rawScore) {
+            const panel = getRoundPanel(roundId);
+            const scoreInput = getRoundScoreInput(roundId);
+            if (!panel || !scoreInput) {
+                return;
+            }
+            const formattedScore = formatScoreDisplay(rawScore);
+            scoreInput.value = formattedScore;
+            scoreInput.dataset.savedScore = formattedScore;
+            setRoundScoreDirty(roundId, false);
+            refreshRoundStatus(roundId);
         }
 
         function ensureMinimumTextareaLines(textarea) {
@@ -1524,6 +1545,17 @@
                         if (message.event === 'answer_sheet_grade') {
                             applySharedGradeUpdate(String(message.round_id || ''), message);
                         }
+                        return;
+                    }
+                    if (message.action === 'update' && message.event === 'answer_sheet_submit_score') {
+                        (message.round_updates || []).forEach((roundUpdate) => {
+                            const roundId = String(roundUpdate.id || '');
+                            const nextScore = roundUpdate?.fields?.[currentUserPlayerField];
+                            if (!roundId || typeof nextScore === 'undefined') {
+                                return;
+                            }
+                            applySharedScoreUpdate(roundId, nextScore);
+                        });
                     }
                 } catch (error) {
                     console.error('Error processing answer sheet websocket message:', error);

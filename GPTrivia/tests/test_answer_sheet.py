@@ -979,6 +979,61 @@ class AnswerSheetTests(TestCase):
         self.assertIsNone(score_map.get("score_megan"))
         self.assertIsNone(score_map.get("score_zach"))
 
+    def test_submit_answer_sheet_score_broadcasts_shared_score_update_for_cooperative_round(self):
+        User.objects.create_user(username="Megan", password="pw")
+        User.objects.create_user(username="Zach", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            secondary_creator="Zach",
+            title="Co-op Round Broadcast",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+                "score_zach": "score_zach",
+                "score_jenny": "score_jenny",
+            },
+        )
+
+        with patch("GPTrivia.views._broadcast_scoresheet_message") as broadcast:
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse("submit_answer_sheet_score"),
+                    data=json.dumps({
+                        "round_id": round_obj.id,
+                        "score": "8.5",
+                    }),
+                    content_type="application/json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        broadcast.assert_called_once()
+        message = broadcast.call_args.args[0]
+        self.assertEqual(message["action"], "update")
+        self.assertEqual(message["event"], "answer_sheet_submit_score")
+        self.assertEqual(message["selected_date"], trivia_date.isoformat())
+        self.assertEqual(len(message["round_updates"]), 1)
+        self.assertEqual(message["round_updates"][0]["id"], round_obj.id)
+        self.assertEqual(
+            message["round_updates"][0]["fields"],
+            {
+                "score_alex": 8.5,
+                "score_jenny": 8.5,
+            },
+        )
+
     def test_submit_answer_sheet_score_skips_diverged_cooperative_players(self):
         User.objects.create_user(username="Megan", password="pw")
         User.objects.create_user(username="Zach", password="pw")

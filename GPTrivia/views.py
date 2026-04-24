@@ -2010,6 +2010,7 @@ def _build_answer_sheet_context(user, requested_date=''):
         'date_values': date_values,
         'selected_date': selected_date,
         'selected_date_display': selected_date_obj.strftime('%m/%d/%y') if selected_date_obj else '',
+        'current_user_player_field': current_user_player_field,
         'round_pages': round_pages,
         'has_cooperative_rounds': any(page['cooperative'] for page in round_pages),
         'save_url': reverse('save_answer_sheet_entry'),
