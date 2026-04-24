@@ -225,6 +225,7 @@ class AnswerSheetEntry(models.Model):
     trivia_date = models.DateField(db_index=True)
     answers = jsonfield.JSONField(default=list, blank=True)
     grade_overrides = jsonfield.JSONField(default=list, blank=True)
+    grade_rejections = jsonfield.JSONField(default=list, blank=True)
     is_diverged = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

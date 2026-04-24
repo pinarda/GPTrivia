@@ -143,6 +143,10 @@
     cursor: text;
 }
 
+.answer-sheet-textarea-shell.has-grade-controls {
+    grid-template-columns: 3.36rem minmax(0, 1fr);
+}
+
 .answer-sheet-text-stack {
     position: relative;
     min-width: 0;
@@ -209,13 +213,17 @@
     flex: 1 1 auto;
 }
 
-.answer-sheet-line-plus {
+.answer-sheet-line-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.12rem;
+    flex: 0 0 auto;
+}
+
+.answer-sheet-line-adjust {
     width: 1rem;
     height: 1rem;
     padding: 0;
-    border: 1px solid rgba(140, 233, 154, 0.55);
-    background: rgba(140, 233, 154, 0.12);
-    color: #8ce99a;
     font: 700 0.72rem/1 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     display: inline-flex;
     align-items: center;
@@ -224,7 +232,19 @@
     flex: 0 0 auto;
 }
 
-.answer-sheet-line-plus[hidden] {
+.answer-sheet-line-plus {
+    border: 1px solid rgba(140, 233, 154, 0.55);
+    background: rgba(140, 233, 154, 0.12);
+    color: #8ce99a;
+}
+
+.answer-sheet-line-minus {
+    border: 1px solid rgba(255, 140, 140, 0.55);
+    background: rgba(255, 140, 140, 0.12);
+    color: #ff8c8c;
+}
+
+.answer-sheet-line-adjust[hidden] {
     display: none;
 }
 
@@ -447,6 +467,18 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-line-numbers {
     color: rgba(27, 37, 48, 0.4);
 }
 
+body.site-shell[data-profile-theme="light"] .answer-sheet-line-plus {
+    border-color: rgba(42, 143, 69, 0.45);
+    background: rgba(42, 143, 69, 0.1);
+    color: #2a8f45;
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-line-minus {
+    border-color: rgba(191, 63, 63, 0.45);
+    background: rgba(191, 63, 63, 0.1);
+    color: #bf3f3f;
+}
+
 body.site-shell[data-profile-theme="light"] .answer-sheet-overlay-line {
     color: #1b2530;
 }
@@ -529,9 +561,23 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell .mobile-footer-it
         grid-template-columns: 1.55rem minmax(0, 1fr);
     }
 
+    .answer-sheet-textarea-shell.has-grade-controls {
+        grid-template-columns: 2.48rem minmax(0, 1fr);
+    }
+
     .answer-sheet-line-numbers {
         padding-left: 6px;
         font-size: 0.98rem;
+    }
+
+    .answer-sheet-line-controls {
+        gap: 0.08rem;
+    }
+
+    .answer-sheet-line-adjust {
+        width: 0.86rem;
+        height: 0.86rem;
+        font-size: 0.64rem;
     }
 
     .answer-sheet-textarea {

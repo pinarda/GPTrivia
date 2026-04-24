@@ -328,15 +328,25 @@
             if (!numberList) {
                 return;
             }
+            const hasGradeControls = states.some((state) => state === 'correct' || state === 'incorrect');
+            if (shell) {
+                shell.classList.toggle('has-grade-controls', hasGradeControls);
+            }
             Array.from(numberList.querySelectorAll('li')).forEach((item, index) => {
                 const plusButton = item.querySelector('.answer-sheet-line-plus');
-                if (!plusButton) {
+                const minusButton = item.querySelector('.answer-sheet-line-minus');
+                if (!plusButton || !minusButton) {
                     return;
                 }
-                const shouldShow = (states[index] || 'default') === 'incorrect';
-                plusButton.hidden = !shouldShow;
-                plusButton.disabled = !shouldShow;
-                plusButton.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+                const currentState = states[index] || 'default';
+                const showPlus = currentState === 'incorrect';
+                const showMinus = currentState === 'correct';
+                plusButton.hidden = !showPlus;
+                plusButton.disabled = !showPlus;
+                plusButton.setAttribute('aria-hidden', showPlus ? 'false' : 'true');
+                minusButton.hidden = !showMinus;
+                minusButton.disabled = !showMinus;
+                minusButton.setAttribute('aria-hidden', showMinus ? 'false' : 'true');
             });
         }
 
@@ -441,17 +451,32 @@
                 const label = document.createElement('span');
                 label.className = 'answer-sheet-line-number-label';
                 label.textContent = String(index);
+                const controls = document.createElement('span');
+                controls.className = 'answer-sheet-line-controls';
                 const plusButton = document.createElement('button');
                 plusButton.type = 'button';
-                plusButton.className = 'answer-sheet-line-plus';
+                plusButton.className = 'answer-sheet-line-adjust answer-sheet-line-plus';
                 plusButton.dataset.questionNumber = String(index);
+                plusButton.dataset.mode = 'correct';
                 plusButton.textContent = '+';
                 plusButton.hidden = true;
                 plusButton.disabled = true;
                 plusButton.setAttribute('aria-hidden', 'true');
                 plusButton.setAttribute('aria-label', `Mark question ${index} correct`);
+                const minusButton = document.createElement('button');
+                minusButton.type = 'button';
+                minusButton.className = 'answer-sheet-line-adjust answer-sheet-line-minus';
+                minusButton.dataset.questionNumber = String(index);
+                minusButton.dataset.mode = 'incorrect';
+                minusButton.textContent = '−';
+                minusButton.hidden = true;
+                minusButton.disabled = true;
+                minusButton.setAttribute('aria-hidden', 'true');
+                minusButton.setAttribute('aria-label', `Mark question ${index} incorrect`);
+                controls.appendChild(plusButton);
+                controls.appendChild(minusButton);
                 item.appendChild(label);
-                item.appendChild(plusButton);
+                item.appendChild(controls);
                 numberList.appendChild(item);
             }
             renderTextOverlay(textarea);
@@ -549,7 +574,7 @@
             }
         }
 
-        async function overrideGrade(roundId, questionNumber, textarea, scoreInput) {
+        async function overrideGrade(roundId, questionNumber, mode, textarea, scoreInput) {
             if (!overrideGradeUrl) {
                 return;
             }
@@ -565,6 +590,7 @@
                     body: JSON.stringify({
                         round_id: roundId,
                         question_number: questionNumber,
+                        mode: mode,
                         answers: getTextareaLines(textarea),
                         client_id: localClientId,
                     }),
@@ -688,7 +714,7 @@
             }, { passive: true });
             if (shell) {
                 shell.addEventListener('pointerdown', (event) => {
-                    if (event.target.closest('.answer-sheet-line-plus')) {
+                    if (event.target.closest('.answer-sheet-line-adjust')) {
                         return;
                     }
                     const clickedNumbers = Boolean(event.target.closest('.answer-sheet-line-numbers'));
@@ -704,17 +730,18 @@
                     );
                 });
                 shell.addEventListener('click', (event) => {
-                    const plusButton = event.target.closest('.answer-sheet-line-plus');
-                    if (!plusButton || plusButton.hidden || plusButton.disabled) {
+                    const adjustButton = event.target.closest('.answer-sheet-line-adjust');
+                    if (!adjustButton || adjustButton.hidden || adjustButton.disabled) {
                         return;
                     }
                     event.preventDefault();
-                    const questionNumber = Number(plusButton.dataset.questionNumber || 0);
+                    const questionNumber = Number(adjustButton.dataset.questionNumber || 0);
+                    const mode = String(adjustButton.dataset.mode || 'correct');
                     const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
                     if (!questionNumber || !scoreInput) {
                         return;
                     }
-                    overrideGrade(roundId, questionNumber, textarea, scoreInput);
+                    overrideGrade(roundId, questionNumber, mode, textarea, scoreInput);
                 });
             }
         });

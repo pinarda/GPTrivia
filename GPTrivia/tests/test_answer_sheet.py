@@ -611,6 +611,59 @@ class AnswerSheetTests(TestCase):
         self.assertIn("Washington", analysis_entry.possible_answers)
         self.assertIn("washington", analysis_entry.possible_answers)
 
+    def test_submit_answer_sheet_score_removes_manual_rejection_answer_from_possible_answers(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Override Rejection Round",
+            major_category="History",
+            minor_category1="Presidents",
+            minor_category2="",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        analysis_entry = RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="Which first U.S. president appears on the one-dollar bill?",
+            answer_text="George Washington",
+            possible_answers=["Washington", "washington", "George Washington"],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=round_obj,
+            trivia_date=round_obj.date,
+            answers=["Washington"] + [""] * 9,
+            grade_rejections=[1],
+        )
+
+        response = self.client.post(
+            reverse("submit_answer_sheet_score"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "score": "0",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        analysis_entry.refresh_from_db()
+        self.assertNotIn("Washington", analysis_entry.possible_answers)
+        self.assertNotIn("washington", analysis_entry.possible_answers)
+        self.assertIn("George Washington", analysis_entry.possible_answers)
+
     def test_submit_answer_sheet_score_populates_cooperative_teammates(self):
         User.objects.create_user(username="Megan", password="pw")
         User.objects.create_user(username="Zach", password="pw")
@@ -943,7 +996,61 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(payload["grade_overrides"], [1])
         entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
         self.assertEqual(entry.grade_overrides, [1])
+        self.assertEqual(entry.grade_rejections, [])
         self.assertEqual(entry.answers[0], "Wrong answer")
+
+    def test_override_answer_sheet_grade_marks_specific_row_incorrect(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Override Reject Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="What animal is white with black stripes?",
+            answer_text="A Zebra",
+            possible_answers=["A Zebra", "Zebra", "zebra"],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+
+        response = self.client.post(
+            reverse("override_answer_sheet_grade"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "question_number": 1,
+                "mode": "incorrect",
+                "answers": ["Zebra"] + [""] * 9,
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["score"], 0)
+        self.assertEqual(payload["row_results"][0]["state"], "incorrect")
+        self.assertEqual(payload["grade_overrides"], [])
+        self.assertEqual(payload["grade_rejections"], [1])
+        entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
+        self.assertEqual(entry.grade_overrides, [])
+        self.assertEqual(entry.grade_rejections, [1])
+        self.assertEqual(entry.answers[0], "Zebra")
 
     def test_grade_answer_sheet_round_tolerates_punctuation_initialisms_and_one_char_typos(self):
         round_obj = GPTriviaRound.objects.create(
@@ -1191,6 +1298,80 @@ class AnswerSheetTests(TestCase):
         )
         self.assertEqual(
             AnswerSheetEntry.objects.get(user=megan, round=round_obj).grade_overrides,
+            [1],
+        )
+
+    def test_override_answer_sheet_grade_rejection_broadcasts_for_shared_coop_round(self):
+        megan = User.objects.create_user(username="Megan", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Shared Reject Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+            },
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="What animal is white with black stripes?",
+            answer_text="A Zebra",
+            possible_answers=["A Zebra", "Zebra", "zebra"],
+            round_type="text",
+            player_correctness={"Alex": "", "Megan": ""},
+        )
+
+        with patch("GPTrivia.views._broadcast_scoresheet_message") as broadcast:
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse("override_answer_sheet_grade"),
+                    data=json.dumps({
+                        "round_id": round_obj.id,
+                        "question_number": 1,
+                        "mode": "incorrect",
+                        "answers": ["Zebra"] + [""] * 9,
+                        "client_id": "override-client-2",
+                    }),
+                    content_type="application/json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["shared"])
+        self.assertEqual(payload["score"], 0)
+        self.assertEqual(payload["grade_rejections"], [1])
+        broadcast.assert_called_once()
+        message = broadcast.call_args.args[0]
+        self.assertEqual(message["event"], "answer_sheet_grade")
+        self.assertEqual(message["client_id"], "override-client-2")
+        self.assertEqual(message["grade_rejections"], [1])
+        self.assertEqual(
+            AnswerSheetEntry.objects.get(user=self.user, round=round_obj).grade_rejections,
+            [1],
+        )
+        self.assertEqual(
+            AnswerSheetEntry.objects.get(user=megan, round=round_obj).grade_rejections,
             [1],
         )
 
