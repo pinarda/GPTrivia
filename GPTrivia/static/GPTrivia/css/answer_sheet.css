@@ -209,6 +209,10 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
 
+body.site-shell .answer-sheet-page input.answer-sheet-score-input[type="text"] {
+    background-color: rgba(9, 12, 26, 0.52) !important;
+}
+
 .answer-sheet-score-input::placeholder {
     color: rgba(245, 246, 251, 0.5);
 }
@@ -342,6 +346,10 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-action-button {
     background: rgba(255, 255, 255, 0.92);
     border-color: rgba(45, 48, 71, 0.16);
     color: #1b2530;
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-page input.answer-sheet-score-input[type="text"] {
+    background-color: rgba(255, 255, 255, 0.92) !important;
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-line-numbers {
