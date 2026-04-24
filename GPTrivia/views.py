@@ -1570,6 +1570,24 @@ def _get_answer_sheet_shared_users(round_obj, current_user=None):
     return shared_users
 
 
+def _get_answer_sheet_diverged_user_ids(round_obj):
+    return set(
+        AnswerSheetEntry.objects.filter(round=round_obj, is_diverged=True)
+        .values_list('user_id', flat=True)
+    )
+
+
+def _get_answer_sheet_diverged_player_fields(round_obj):
+    diverged_fields = set()
+    for username in User.objects.filter(
+        id__in=_get_answer_sheet_diverged_user_ids(round_obj)
+    ).values_list('username', flat=True):
+        normalized_field = player_field_for_name(username)
+        if normalized_field:
+            diverged_fields.add(normalized_field)
+    return diverged_fields
+
+
 def _get_answer_sheet_date_values():
     return sorted({
         round_date.isoformat()
@@ -1638,8 +1656,10 @@ def _build_answer_sheet_context(user, requested_date=''):
             'round_number': round_obj.round_number,
             'round_title': round_obj.title,
             'cooperative': bool(round_obj.cooperative),
+            'is_diverged': bool(saved_entry.is_diverged) if saved_entry else False,
             'submit_requires_confirmation': bool(
                 round_obj.cooperative
+                and not (bool(saved_entry.is_diverged) if saved_entry else False)
                 and str(getattr(user, 'username', '') or '').strip().casefold()
                 != str(getattr(round_obj, 'creator', '') or '').strip().casefold()
             ),
@@ -1659,6 +1679,7 @@ def _build_answer_sheet_context(user, requested_date=''):
         'save_url': reverse('save_answer_sheet_entry'),
         'submit_score_url': reverse('submit_answer_sheet_score'),
         'grade_url': reverse('grade_answer_sheet_round'),
+        'diverge_url': reverse('diverge_answer_sheet_round'),
     }
 
 
@@ -1692,12 +1713,22 @@ def save_answer_sheet_entry(request):
     round_obj = get_object_or_404(GPTriviaRound, id=round_id)
     answers = _normalize_answer_sheet_answers(payload.get('answers', []))
     client_id = str(payload.get('client_id') or '').strip()
+    current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
+    current_user_is_diverged = bool(current_entry.is_diverged) if current_entry else False
 
     target_users = [request.user]
     if round_obj.cooperative:
-        target_users = _get_answer_sheet_shared_users(round_obj, current_user=request.user)
-        if not target_users:
+        if current_user_is_diverged:
             target_users = [request.user]
+        else:
+            diverged_user_ids = _get_answer_sheet_diverged_user_ids(round_obj)
+            target_users = [
+                target_user
+                for target_user in _get_answer_sheet_shared_users(round_obj, current_user=request.user)
+                if target_user.id not in diverged_user_ids
+            ]
+            if not target_users:
+                target_users = [request.user]
 
     with transaction.atomic():
         updated_entries = {}
@@ -1708,13 +1739,14 @@ def save_answer_sheet_entry(request):
                 defaults={
                     'trivia_date': round_obj.date,
                     'answers': answers,
+                    'is_diverged': bool(current_entry.is_diverged) if (current_entry and target_user.id == request.user.id) else False,
                 },
             )
             updated_entries[target_user.id] = answer_entry
 
         response_entry = updated_entries.get(request.user.id) or next(iter(updated_entries.values()))
 
-        if round_obj.cooperative:
+        if round_obj.cooperative and not current_user_is_diverged:
             _schedule_scoresheet_broadcast({
                 'action': 'answer_sheet',
                 'event': 'answer_sheet_save',
@@ -1731,7 +1763,48 @@ def save_answer_sheet_entry(request):
         'trivia_date': round_obj.date.isoformat() if round_obj.date else '',
         'answers': response_entry.answers,
         'updated_at': response_entry.updated_at.isoformat() if response_entry.updated_at else '',
-        'shared': bool(round_obj.cooperative),
+        'shared': bool(round_obj.cooperative and not current_user_is_diverged),
+        'is_diverged': bool(response_entry.is_diverged),
+    })
+
+
+@login_required
+def diverge_answer_sheet_round(request):
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'detail': 'Invalid JSON payload.'}, status=400)
+
+    round_id = payload.get('round_id')
+    try:
+        round_id = int(round_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'round_id must be an integer.'}, status=400)
+
+    round_obj = get_object_or_404(GPTriviaRound, id=round_id)
+    if not round_obj.cooperative:
+        return JsonResponse({'detail': 'Only cooperative rounds can diverge.'}, status=400)
+
+    answers = _normalize_answer_sheet_answers(payload.get('answers', []))
+    entry, _ = AnswerSheetEntry.objects.update_or_create(
+        user=request.user,
+        round=round_obj,
+        defaults={
+            'trivia_date': round_obj.date,
+            'answers': answers,
+            'is_diverged': True,
+        },
+    )
+
+    return JsonResponse({
+        'ok': True,
+        'round_id': round_obj.id,
+        'answers': entry.answers,
+        'is_diverged': True,
+        'shared': False,
     })
 
 
@@ -1761,10 +1834,12 @@ def submit_answer_sheet_score(request):
         return JsonResponse({'detail': 'This user cannot be mapped to a scoresheet player field.'}, status=400)
 
     round_obj = get_object_or_404(GPTriviaRound, id=round_id)
+    current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
+    current_user_is_diverged = bool(current_entry.is_diverged) if current_entry else False
 
     with transaction.atomic():
         score_map = get_round_score_map(round_obj)
-        if round_obj.cooperative:
+        if round_obj.cooperative and not current_user_is_diverged:
             creator_fields = {
                 normalized_field
                 for normalized_field in [
@@ -1776,7 +1851,7 @@ def submit_answer_sheet_score(request):
             target_player_fields = [
                 candidate_field
                 for candidate_field in _get_answer_sheet_round_player_fields(round_obj, current_user_player_field=player_field)
-                if candidate_field not in creator_fields
+                if candidate_field not in creator_fields and candidate_field not in _get_answer_sheet_diverged_player_fields(round_obj)
             ]
             if not target_player_fields and player_field not in creator_fields:
                 target_player_fields = [player_field]
@@ -1841,15 +1916,29 @@ def grade_answer_sheet_round(request):
         answers = []
 
     round_obj = get_object_or_404(GPTriviaRound, id=round_id)
+    client_id = str(payload.get('client_id') or '').strip()
+    current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
+    current_user_is_diverged = bool(current_entry.is_diverged) if current_entry else False
 
     try:
         grade_payload = _grade_answer_sheet_answers(round_obj, answers)
     except ValueError as error:
         return JsonResponse({'detail': str(error)}, status=400)
 
+    if round_obj.cooperative and not current_user_is_diverged:
+        _schedule_scoresheet_broadcast({
+            'action': 'answer_sheet',
+            'event': 'answer_sheet_grade',
+            'selected_date': round_obj.date.isoformat() if round_obj.date else '',
+            'round_id': round_obj.id,
+            'client_id': client_id,
+            **grade_payload,
+        })
+
     return JsonResponse({
         'ok': True,
         'round_id': round_obj.id,
+        'shared': bool(round_obj.cooperative and not current_user_is_diverged),
         **grade_payload,
     })
 

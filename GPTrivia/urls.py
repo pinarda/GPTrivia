@@ -49,6 +49,7 @@ urlpatterns = [
     path('round-analysis/question/random/', views.round_analysis_random_question, name='round_analysis_random_question'),
     path('answer-sheet/', views.answer_sheet, name='answer_sheet'),
     path('answer-sheet/save/', views.save_answer_sheet_entry, name='save_answer_sheet_entry'),
+    path('answer-sheet/diverge/', views.diverge_answer_sheet_round, name='diverge_answer_sheet_round'),
     path('answer-sheet/submit-score/', views.submit_answer_sheet_score, name='submit_answer_sheet_score'),
     path('answer-sheet/grade/', views.grade_answer_sheet_round, name='grade_answer_sheet_round'),
     path('round-analysis/entry/<int:entry_id>/image/', views.round_analysis_image, name='round_analysis_image'),

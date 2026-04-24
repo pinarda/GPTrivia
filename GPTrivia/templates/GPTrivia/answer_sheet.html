@@ -2,11 +2,11 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423h">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423i">
 {% endblock %}
 
 {% block content %}
-<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-grade-url="{{ grade_url }}" data-selected-date="{{ selected_date }}" data-has-cooperative-rounds="{% if has_cooperative_rounds %}true{% else %}false{% endif %}">
+<div class="answer-sheet-page" data-save-url="{{ save_url }}" data-submit-score-url="{{ submit_score_url }}" data-grade-url="{{ grade_url }}" data-diverge-url="{{ diverge_url }}" data-selected-date="{{ selected_date }}" data-has-cooperative-rounds="{% if has_cooperative_rounds %}true{% else %}false{% endif %}">
     <section class="answer-sheet-header-card">
         <div class="answer-sheet-header-line">
             <span class="answer-sheet-header-label">Answer Sheet</span>
@@ -19,7 +19,7 @@
     {% if round_pages %}
         <div class="answer-sheet-track" id="answer-sheet-track">
             {% for page in round_pages %}
-                <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}">
+                <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}" data-cooperative="{% if page.cooperative %}true{% else %}false{% endif %}" data-diverged="{% if page.is_diverged %}true{% else %}false{% endif %}">
                     <div class="answer-sheet-round-header">
                         <div class="answer-sheet-round-meta">
                             <div class="answer-sheet-round-kicker">Round {{ page.round_number }}</div>
@@ -72,6 +72,14 @@
                             data-grade-disabled-message="{{ page.grade_disabled_message }}"
                         >Grade</button>
                     </div>
+                    {% if page.cooperative %}
+                        <button
+                            class="answer-sheet-action-button answer-sheet-diverge-button{% if page.is_diverged %} is-disabled{% endif %}"
+                            type="button"
+                            {% if page.is_diverged %}aria-disabled="true"{% endif %}
+                            data-diverge-round-for="{{ page.round_id }}"
+                        >{% if page.is_diverged %}Diverged{% else %}Diverge{% endif %}</button>
+                    {% endif %}
                     <div class="answer-sheet-button-message" data-button-message-for="{{ page.round_id }}" aria-live="polite"></div>
                 </section>
             {% endfor %}
@@ -114,6 +122,7 @@
         const saveUrl = pageRoot.dataset.saveUrl || '';
         const submitScoreUrl = pageRoot.dataset.submitScoreUrl || '';
         const gradeUrl = pageRoot.dataset.gradeUrl || '';
+        const divergeUrl = pageRoot.dataset.divergeUrl || '';
         const selectedDate = pageRoot.dataset.selectedDate || '';
         const hasCooperativeRounds = pageRoot.dataset.hasCooperativeRounds === 'true';
         const saveTimers = new Map();
@@ -312,6 +321,10 @@
         }
 
         function applySharedAnswersUpdate(roundId, answers) {
+            const panel = pageRoot.querySelector(`.answer-sheet-round-panel[data-round-id="${roundId}"]`);
+            if (panel && panel.dataset.diverged === 'true') {
+                return;
+            }
             const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
             if (!textarea) {
                 return;
@@ -322,6 +335,37 @@
             clearGradingState(textarea, scoreInput);
             syncLineNumbers(textarea);
             setStatus(roundId, 'Saved', 'saved');
+        }
+
+        function applyGradePayload(roundId, textarea, scoreInput, payload) {
+            const rowCount = Math.max(10, getTextareaLines(textarea).length);
+            const nextStates = Array(rowCount).fill('default');
+            (payload.row_results || []).forEach((rowResult, index) => {
+                if (rowResult.state === 'correct') {
+                    nextStates[index] = 'correct';
+                } else if (rowResult.state === 'incorrect') {
+                    nextStates[index] = 'incorrect';
+                }
+            });
+            lineStateMap.set(textarea, nextStates);
+            renderTextOverlay(textarea);
+            scoreInput.value = payload.score_display || '';
+            scoreInput.classList.remove('is-dirty');
+            scoreInput.classList.add('is-graded');
+            setStatus(roundId, 'Graded', 'saved');
+        }
+
+        function applySharedGradeUpdate(roundId, payload) {
+            const panel = pageRoot.querySelector(`.answer-sheet-round-panel[data-round-id="${roundId}"]`);
+            if (panel && panel.dataset.diverged === 'true') {
+                return;
+            }
+            const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
+            const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
+            if (!textarea || !scoreInput) {
+                return;
+            }
+            applyGradePayload(roundId, textarea, scoreInput, payload);
         }
 
         function ensureMinimumTextareaLines(textarea) {
@@ -453,6 +497,7 @@
                     body: JSON.stringify({
                         round_id: roundId,
                         answers: getTextareaLines(textarea),
+                        client_id: localClientId,
                     }),
                 });
                 const payload = await response.json().catch(() => ({}));
@@ -460,24 +505,53 @@
                     throw new Error(payload.detail || `Grade failed with status ${response.status}`);
                 }
 
-                const rowCount = Math.max(10, getTextareaLines(textarea).length);
-                const nextStates = Array(rowCount).fill('default');
-                (payload.row_results || []).forEach((rowResult, index) => {
-                    if (rowResult.state === 'correct') {
-                        nextStates[index] = 'correct';
-                    } else if (rowResult.state === 'incorrect') {
-                        nextStates[index] = 'incorrect';
-                    }
-                });
-                lineStateMap.set(textarea, nextStates);
-                renderTextOverlay(textarea);
-                scoreInput.value = payload.score_display || '';
-                scoreInput.classList.remove('is-dirty');
-                scoreInput.classList.add('is-graded');
-                setStatus(roundId, 'Graded', 'saved');
+                applyGradePayload(roundId, textarea, scoreInput, payload);
             } catch (error) {
                 console.error('Error grading answer sheet round:', error);
                 setStatus(roundId, 'Unable to grade', 'error');
+            }
+        }
+
+        async function divergeRound(roundId, textarea) {
+            if (!divergeUrl) {
+                return;
+            }
+
+            setStatus(roundId, 'Saving...', 'saving');
+            try {
+                const response = await fetch(divergeUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                    body: JSON.stringify({
+                        round_id: roundId,
+                        answers: getTextareaLines(textarea),
+                    }),
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(payload.detail || `Diverge failed with status ${response.status}`);
+                }
+                const panel = pageRoot.querySelector(`.answer-sheet-round-panel[data-round-id="${roundId}"]`);
+                const submitButton = pageRoot.querySelector(`[data-submit-score-for="${roundId}"]`);
+                const divergeButton = pageRoot.querySelector(`[data-diverge-round-for="${roundId}"]`);
+                if (panel) {
+                    panel.dataset.diverged = 'true';
+                }
+                if (submitButton) {
+                    submitButton.dataset.submitRequiresConfirmation = 'false';
+                }
+                if (divergeButton) {
+                    divergeButton.textContent = 'Diverged';
+                    divergeButton.classList.add('is-disabled');
+                    divergeButton.setAttribute('aria-disabled', 'true');
+                }
+                setStatus(roundId, 'Diverged', 'saved');
+            } catch (error) {
+                console.error('Error diverging answer sheet round:', error);
+                setStatus(roundId, 'Unable to diverge', 'error');
             }
         }
 
@@ -572,6 +646,23 @@
             });
         });
 
+        pageRoot.querySelectorAll('[data-diverge-round-for]').forEach((button) => {
+            button.addEventListener('click', () => {
+                if (button.getAttribute('aria-disabled') === 'true') {
+                    return;
+                }
+                const roundId = button.dataset.divergeRoundFor;
+                const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
+                if (!roundId || !textarea) {
+                    return;
+                }
+                if (!window.confirm('Are you sure you want to diverge this round from the communal round?')) {
+                    return;
+                }
+                divergeRound(roundId, textarea);
+            });
+        });
+
         window.addEventListener('resize', () => {
             textareas.forEach(syncLineNumbers);
             updateActiveDot(roundIndexFromScroll());
@@ -621,13 +712,18 @@
                     const message = data.message || {};
                     if (
                         message.action !== 'answer_sheet'
-                        || message.event !== 'answer_sheet_save'
                         || String(message.selected_date || '') !== String(selectedDate || '')
                         || String(message.client_id || '') === localClientId
                     ) {
                         return;
                     }
-                    applySharedAnswersUpdate(String(message.round_id || ''), message.answers || []);
+                    if (message.event === 'answer_sheet_save') {
+                        applySharedAnswersUpdate(String(message.round_id || ''), message.answers || []);
+                        return;
+                    }
+                    if (message.event === 'answer_sheet_grade') {
+                        applySharedGradeUpdate(String(message.round_id || ''), message);
+                    }
                 } catch (error) {
                     console.error('Error processing answer sheet websocket message:', error);
                 }

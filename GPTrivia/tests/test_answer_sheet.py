@@ -250,6 +250,80 @@ class AnswerSheetTests(TestCase):
         round_pages = shared_response.context["round_pages"]
         self.assertEqual(round_pages[0]["answers"][:4], ["One", "Two", "Three", ""])
 
+    def test_diverge_answer_sheet_round_stops_future_shared_answer_updates(self):
+        megan = User.objects.create_user(username="Megan", password="pw")
+        jenny = User.objects.create_user(username="Jenny", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Diverge Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+                "score_jenny": "score_jenny",
+            },
+        )
+
+        self.client.post(
+            reverse("save_answer_sheet_entry"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "Shared\nAnswers",
+                "client_id": "shared-client",
+            }),
+            content_type="application/json",
+        )
+
+        diverge_response = self.client.post(
+            reverse("diverge_answer_sheet_round"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "Mine\nOnly",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(diverge_response.status_code, 200)
+        self.assertTrue(AnswerSheetEntry.objects.get(user=self.user, round=round_obj).is_diverged)
+
+        other_client = self.client_class()
+        other_client.force_login(megan)
+        with patch("GPTrivia.views._broadcast_scoresheet_message"):
+            other_client.post(
+                reverse("save_answer_sheet_entry"),
+                data=json.dumps({
+                    "round_id": round_obj.id,
+                    "answers": "Updated\nShared",
+                    "client_id": "shared-client-2",
+                }),
+                content_type="application/json",
+            )
+
+        self.assertEqual(
+            AnswerSheetEntry.objects.get(user=self.user, round=round_obj).answers[:3],
+            ["Mine", "Only", ""],
+        )
+        self.assertEqual(
+            AnswerSheetEntry.objects.get(user=megan, round=round_obj).answers[:3],
+            ["Updated", "Shared", ""],
+        )
+        self.assertEqual(
+            AnswerSheetEntry.objects.get(user=jenny, round=round_obj).answers[:3],
+            ["Updated", "Shared", ""],
+        )
+
     def test_answer_sheet_prefills_current_user_score(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
@@ -407,6 +481,60 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(score_map.get("score_jenny"), 8.5)
         self.assertIsNone(score_map.get("score_megan"))
         self.assertIsNone(score_map.get("score_zach"))
+
+    def test_submit_answer_sheet_score_skips_diverged_cooperative_players(self):
+        User.objects.create_user(username="Megan", password="pw")
+        User.objects.create_user(username="Zach", password="pw")
+        User.objects.create_user(username="Jenny", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            secondary_creator="Zach",
+            title="Co-op Round With Divergence",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+                "score_zach": "score_zach",
+                "score_jenny": "score_jenny",
+            },
+        )
+        diverged_user = User.objects.get(username="Jenny")
+        AnswerSheetEntry.objects.create(
+            user=diverged_user,
+            round=round_obj,
+            trivia_date=trivia_date,
+            answers=["Solo"] + [""] * 9,
+            is_diverged=True,
+        )
+
+        response = self.client.post(
+            reverse("submit_answer_sheet_score"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "score": "8.5",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        round_obj.refresh_from_db()
+        score_map = get_round_score_map(round_obj, include_null_fixed=False)
+        self.assertEqual(score_map.get("score_alex"), 8.5)
+        self.assertIsNone(score_map.get("score_megan"))
+        self.assertIsNone(score_map.get("score_zach"))
+        self.assertIsNone(score_map.get("score_jenny"))
 
     def test_answer_sheet_grade_button_reflects_analysis_availability(self):
         opted_out_creator = User.objects.create_user(username="Taylor", password="pw")
@@ -626,3 +754,113 @@ class AnswerSheetTests(TestCase):
             response.json()["detail"],
             "grading this round type is not currently enabled",
         )
+
+    def test_grade_answer_sheet_round_broadcasts_for_shared_coop_round(self):
+        User.objects.create_user(username="Megan", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Shared Grade Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="What animal is white with black stripes?",
+            answer_text="A Zebra",
+            possible_answers=["A Zebra", "Zebra", "zebra"],
+            round_type="text",
+            player_correctness={"Alex": "", "Megan": ""},
+        )
+
+        with patch("GPTrivia.views._broadcast_scoresheet_message") as broadcast:
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse("grade_answer_sheet_round"),
+                    data=json.dumps({
+                        "round_id": round_obj.id,
+                        "answers": "Zebra",
+                        "client_id": "grade-client-1",
+                    }),
+                    content_type="application/json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["shared"])
+        broadcast.assert_called_once()
+        message = broadcast.call_args.args[0]
+        self.assertEqual(message["action"], "answer_sheet")
+        self.assertEqual(message["event"], "answer_sheet_grade")
+        self.assertEqual(message["client_id"], "grade-client-1")
+        self.assertEqual(message["score_display"], "1")
+
+    def test_grade_answer_sheet_round_does_not_broadcast_for_diverged_coop_round(self):
+        User.objects.create_user(username="Megan", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Diverged Grade Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="What animal is white with black stripes?",
+            answer_text="A Zebra",
+            possible_answers=["A Zebra", "Zebra", "zebra"],
+            round_type="text",
+            player_correctness={"Alex": "", "Megan": ""},
+        )
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=round_obj,
+            trivia_date=trivia_date,
+            answers=["Zebra"] + [""] * 9,
+            is_diverged=True,
+        )
+
+        with patch("GPTrivia.views._broadcast_scoresheet_message") as broadcast:
+            response = self.client.post(
+                reverse("grade_answer_sheet_round"),
+                data=json.dumps({
+                    "round_id": round_obj.id,
+                    "answers": "Zebra",
+                    "client_id": "grade-client-2",
+                }),
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["shared"])
+        broadcast.assert_not_called()
