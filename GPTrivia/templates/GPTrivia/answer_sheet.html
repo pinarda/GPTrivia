@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260423k">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260424a">
 {% endblock %}
 
 {% block content %}
@@ -25,11 +25,11 @@
     {% if round_pages %}
         <div class="answer-sheet-track" id="answer-sheet-track">
             {% for page in round_pages %}
-                <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}" data-round-title="{{ page.round_title }}" data-cooperative="{% if page.cooperative %}true{% else %}false{% endif %}" data-diverged="{% if page.is_diverged %}true{% else %}false{% endif %}">
+                <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}" data-round-title="{{ page.round_title }}" data-cooperative="{% if page.cooperative %}true{% else %}false{% endif %}" data-diverged="{% if page.is_diverged %}true{% else %}false{% endif %}" data-answers-dirty="false" data-score-dirty="false">
                     <div class="answer-sheet-round-header">
                         <div class="answer-sheet-round-meta">
                             <div class="answer-sheet-round-kicker">Round {{ page.round_number }}</div>
-                            <span class="answer-sheet-status" data-status-for="{{ page.round_id }}">Saved</span>
+                            <span class="answer-sheet-status" data-status-for="{{ page.round_id }}" data-state="ungraded-saved">Ungraded, Saved</span>
                         </div>
                         <h2>{{ page.round_title }}</h2>
                     </div>
@@ -63,6 +63,7 @@
                             aria-label="Score for {{ page.round_title }}"
                             data-round-id="{{ page.round_id }}"
                             data-saved-score="{{ page.score_value }}"
+                            data-score-state="ungraded-saved"
                             value="{{ page.score_value }}"
                         >
                         <button
@@ -197,6 +198,79 @@
             }
             status.textContent = message;
             status.dataset.state = state || '';
+        }
+
+        function getRoundPanel(roundId) {
+            return pageRoot.querySelector(`.answer-sheet-round-panel[data-round-id="${roundId}"]`);
+        }
+
+        function getRoundTextarea(roundId) {
+            return pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
+        }
+
+        function getRoundScoreInput(roundId) {
+            return pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
+        }
+
+        function setRoundAnswersDirty(roundId, isDirty) {
+            const panel = getRoundPanel(roundId);
+            if (!panel) {
+                return;
+            }
+            panel.dataset.answersDirty = isDirty ? 'true' : 'false';
+        }
+
+        function setRoundScoreDirty(roundId, isDirty) {
+            const panel = getRoundPanel(roundId);
+            if (!panel) {
+                return;
+            }
+            panel.dataset.scoreDirty = isDirty ? 'true' : 'false';
+        }
+
+        function roundHasGradedRows(textarea) {
+            if (!textarea) {
+                return false;
+            }
+            const rowCount = Math.max(10, getTextareaLines(textarea).length);
+            return getLineStates(textarea, rowCount).some((state) => state === 'correct' || state === 'incorrect');
+        }
+
+        function setScoreState(scoreInput, state) {
+            if (!scoreInput) {
+                return;
+            }
+            scoreInput.dataset.scoreState = state || '';
+        }
+
+        function refreshRoundStatus(roundId) {
+            const panel = getRoundPanel(roundId);
+            const textarea = getRoundTextarea(roundId);
+            const scoreInput = getRoundScoreInput(roundId);
+            const status = pageRoot.querySelector(`[data-status-for="${roundId}"]`);
+            if (!panel || !textarea || !scoreInput || !status) {
+                return;
+            }
+
+            const hasUnsavedChanges = panel.dataset.answersDirty === 'true' || panel.dataset.scoreDirty === 'true';
+            const hasGrading = roundHasGradedRows(textarea);
+            let statusState = 'ungraded-saved';
+            let statusText = 'Ungraded, Saved';
+
+            if (hasUnsavedChanges && hasGrading) {
+                statusState = 'graded-dirty';
+                statusText = 'Graded, Unsaved';
+            } else if (hasUnsavedChanges) {
+                statusState = 'ungraded-dirty';
+                statusText = 'Ungraded, Unsaved';
+            } else if (hasGrading) {
+                statusState = 'graded-saved';
+                statusText = 'Graded, Saved';
+            }
+
+            status.textContent = statusText;
+            status.dataset.state = statusState;
+            setScoreState(scoreInput, statusState);
         }
 
         function showButtonMessage(roundId, message) {
@@ -403,13 +477,11 @@
             syncOverlayScroll(textarea);
         }
 
-        function clearGradingState(textarea, scoreInput) {
+        function clearGradingState(textarea) {
             const rowCount = Math.max(10, getTextareaLines(textarea).length);
             lineStateMap.set(textarea, Array(rowCount).fill('default'));
             renderTextOverlay(textarea);
-            if (scoreInput) {
-                scoreInput.classList.remove('is-graded');
-            }
+            refreshRoundStatus(textarea.dataset.roundId);
         }
 
         function updateLineNumberControls(textarea, states) {
@@ -441,20 +513,20 @@
         }
 
         function applySharedAnswersUpdate(roundId, answers) {
-            const panel = pageRoot.querySelector(`.answer-sheet-round-panel[data-round-id="${roundId}"]`);
+            const panel = getRoundPanel(roundId);
             if (panel && panel.dataset.diverged === 'true') {
                 return;
             }
-            const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
+            const textarea = getRoundTextarea(roundId);
             if (!textarea) {
                 return;
             }
-            const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
             const normalizedAnswers = Array.isArray(answers) ? answers.map((answer) => String(answer || '')) : [];
             textarea.value = normalizedAnswers.join('\n');
-            clearGradingState(textarea, scoreInput);
+            clearGradingState(textarea);
             syncLineNumbers(textarea);
-            setStatus(roundId, 'Saved', 'saved');
+            setRoundAnswersDirty(roundId, false);
+            refreshRoundStatus(roundId);
         }
 
         function applyGradePayload(roundId, textarea, scoreInput, payload) {
@@ -470,24 +542,27 @@
             lineStateMap.set(textarea, nextStates);
             renderTextOverlay(textarea);
             scoreInput.value = payload.score_display || '';
-            scoreInput.classList.remove('is-dirty');
-            scoreInput.classList.add('is-graded');
-            setStatus(roundId, 'Graded', 'saved');
+            setRoundScoreDirty(
+                roundId,
+                scoreValuesDiffer(scoreInput.value, scoreInput.dataset.savedScore || '')
+            );
+            refreshRoundStatus(roundId);
         }
 
         function applySharedGradeUpdate(roundId, payload) {
-            const panel = pageRoot.querySelector(`.answer-sheet-round-panel[data-round-id="${roundId}"]`);
+            const panel = getRoundPanel(roundId);
             if (panel && panel.dataset.diverged === 'true') {
                 return;
             }
-            const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
-            const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
+            const textarea = getRoundTextarea(roundId);
+            const scoreInput = getRoundScoreInput(roundId);
             if (!textarea || !scoreInput) {
                 return;
             }
             if (Array.isArray(payload.answers)) {
                 textarea.value = payload.answers.map((answer) => String(answer || '')).join('\n');
                 syncLineNumbers(textarea);
+                setRoundAnswersDirty(roundId, false);
             }
             applyGradePayload(roundId, textarea, scoreInput, payload);
         }
@@ -594,7 +669,8 @@
                 if (!response.ok) {
                     throw new Error(`Save failed with status ${response.status}`);
                 }
-                setStatus(roundId, 'Saved', 'saved');
+                setRoundAnswersDirty(roundId, false);
+                refreshRoundStatus(roundId);
             } catch (error) {
                 console.error('Error saving answer sheet entry:', error);
                 setStatus(roundId, 'Unable to save', 'error');
@@ -625,9 +701,8 @@
                 }
                 scoreInput.value = payload.score_display || '';
                 scoreInput.dataset.savedScore = payload.score_display || '';
-                scoreInput.classList.remove('is-dirty');
-                scoreInput.classList.remove('is-graded');
-                setStatus(roundId, 'Saved', 'saved');
+                setRoundScoreDirty(roundId, false);
+                refreshRoundStatus(roundId);
             } catch (error) {
                 console.error('Error submitting answer sheet score:', error);
                 setStatus(roundId, 'Unable to save', 'error');
@@ -719,7 +794,7 @@
                 if (!response.ok) {
                     throw new Error(payload.detail || `Diverge failed with status ${response.status}`);
                 }
-                const panel = pageRoot.querySelector(`.answer-sheet-round-panel[data-round-id="${roundId}"]`);
+                const panel = getRoundPanel(roundId);
                 const submitButton = pageRoot.querySelector(`[data-submit-score-for="${roundId}"]`);
                 const divergeButton = pageRoot.querySelector(`[data-diverge-round-for="${roundId}"]`);
                 if (panel) {
@@ -759,15 +834,16 @@
                 if (!response.ok) {
                     throw new Error(payload.detail || `Merge failed with status ${response.status}`);
                 }
-                const panel = pageRoot.querySelector(`.answer-sheet-round-panel[data-round-id="${roundId}"]`);
+                const panel = getRoundPanel(roundId);
                 const submitButton = pageRoot.querySelector(`[data-submit-score-for="${roundId}"]`);
                 const divergeButton = pageRoot.querySelector(`[data-diverge-round-for="${roundId}"]`);
                 if (panel) {
                     panel.dataset.diverged = 'false';
                 }
                 textarea.value = (payload.answers || []).map((answer) => String(answer || '')).join('\n');
-                clearGradingState(textarea, scoreInput);
+                clearGradingState(textarea);
                 syncLineNumbers(textarea);
+                setRoundAnswersDirty(roundId, false);
                 if (submitButton) {
                     submitButton.dataset.submitRequiresConfirmation = payload.submit_requires_confirmation ? 'true' : 'false';
                 }
@@ -786,6 +862,7 @@
             const shell = textarea.closest('.answer-sheet-textarea-shell');
             syncLineNumbers(textarea);
             syncOverlayScroll(textarea);
+            setRoundAnswersDirty(roundId, false);
             textarea.addEventListener('input', () => {
                 syncLineNumbers(textarea);
                 const nextLines = getTextareaLines(textarea);
@@ -794,7 +871,8 @@
                 nextStates[editedLineIndex] = 'default';
                 lineStateMap.set(textarea, nextStates);
                 renderTextOverlay(textarea);
-                setStatus(roundId, 'Unsaved changes', 'dirty');
+                setRoundAnswersDirty(roundId, true);
+                refreshRoundStatus(roundId);
                 window.clearTimeout(saveTimers.get(roundId));
                 saveTimers.set(roundId, window.setTimeout(() => {
                     saveAnswers(roundId, textarea.value);
@@ -838,30 +916,35 @@
         });
 
         scoreInputs.forEach((input) => {
+            setRoundScoreDirty(input.dataset.roundId, false);
             input.addEventListener('input', () => {
                 const normalizedValue = normalizeScoreValue(input.value);
                 if (input.value !== normalizedValue) {
                     input.value = normalizedValue;
                 }
                 const roundId = input.dataset.roundId;
-                const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
-                if (textarea) {
-                    clearGradingState(textarea, input);
-                }
-                input.classList.add('is-dirty');
+                setRoundScoreDirty(
+                    roundId,
+                    scoreValuesDiffer(input.value, input.dataset.savedScore || '')
+                );
+                refreshRoundStatus(roundId);
             });
+        });
+
+        pageRoot.querySelectorAll('.answer-sheet-round-panel').forEach((panel) => {
+            const roundId = panel.dataset.roundId;
+            if (!roundId) {
+                return;
+            }
+            refreshRoundStatus(roundId);
         });
 
         pageRoot.querySelectorAll('[data-submit-score-for]').forEach((button) => {
             button.addEventListener('click', () => {
                 const roundId = button.dataset.submitScoreFor;
                 const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
-                const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
                 if (!roundId || !scoreInput) {
                     return;
-                }
-                if (textarea) {
-                    clearGradingState(textarea, scoreInput);
                 }
                 const roundTitle = button.dataset.roundTitle || 'this round';
                 const savedScore = scoreInput.dataset.savedScore || '';
@@ -878,7 +961,6 @@
                 if (confirmationMessage && !window.confirm(confirmationMessage)) {
                     return;
                 }
-                scoreInput.classList.remove('is-dirty');
                 submitScore(roundId, scoreInput);
             });
         });

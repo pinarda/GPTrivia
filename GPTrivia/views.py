@@ -1712,10 +1712,6 @@ def _grade_answer_sheet_answers(round_obj, answers, manual_correct_questions=Non
     if latest_completed_run is None:
         raise ValueError("the round has not yet been analyzed")
 
-    latest_round_type = str((latest_completed_run.round_type if latest_completed_run else '') or '').strip().lower()
-    if latest_round_type == 'matching':
-        raise ValueError("grading this round type is not currently enabled")
-
     entries_by_question = {
         entry.question_number: entry
         for entry in RoundQuestionAnalysisEntry.objects.filter(run=latest_completed_run).order_by('question_number', 'id')
@@ -1909,18 +1905,14 @@ def _build_answer_sheet_context(user, requested_date=''):
         current_score = score_map.get(current_user_player_field) if current_user_player_field else None
         creator_allows_analysis = bool(creator_opt_in_map.get(round_obj.creator, False))
         latest_completed_run = latest_completed_run_by_round_id.get(round_obj.id)
-        latest_round_type = str((latest_completed_run.round_type if latest_completed_run else '') or '').strip().lower()
         grade_enabled = bool(
             creator_allows_analysis
             and latest_completed_run is not None
-            and latest_round_type != 'matching'
         )
         if not creator_allows_analysis:
             grade_disabled_message = "round analysis is not enabled for this creator"
         elif latest_completed_run is None:
             grade_disabled_message = "the round has not yet been analyzed"
-        elif latest_round_type == 'matching':
-            grade_disabled_message = "grading this round type is not currently enabled"
         else:
             grade_disabled_message = ''
         round_pages.append({

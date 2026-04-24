@@ -851,11 +851,8 @@ class AnswerSheetTests(TestCase):
             round_pages[not_analyzed_round.id]["grade_disabled_message"],
             "the round has not yet been analyzed",
         )
-        self.assertFalse(round_pages[matching_round.id]["grade_enabled"])
-        self.assertEqual(
-            round_pages[matching_round.id]["grade_disabled_message"],
-            "grading this round type is not currently enabled",
-        )
+        self.assertTrue(round_pages[matching_round.id]["grade_enabled"])
+        self.assertEqual(round_pages[matching_round.id]["grade_disabled_message"], "")
         self.assertTrue(round_pages[enabled_round.id]["grade_enabled"])
         self.assertEqual(round_pages[enabled_round.id]["grade_disabled_message"], "")
 
@@ -1123,7 +1120,7 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(payload["row_results"][1]["state"], "correct")
         self.assertEqual(payload["row_results"][2]["state"], "correct")
 
-    def test_grade_answer_sheet_round_rejects_matching_round(self):
+    def test_grade_answer_sheet_round_accepts_matching_rounds(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
             title="Matching Grade Round",
@@ -1136,26 +1133,37 @@ class AnswerSheetTests(TestCase):
             replay=False,
             cooperative=False,
         )
-        RoundQuestionAnalysisRun.objects.create(
+        run = RoundQuestionAnalysisRun.objects.create(
             round=round_obj,
             status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
             round_type="matching",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="Match Alex to the right position.",
+            answer_text="Alex - Defender",
+            possible_answers=["Defender", "defender", "C", "c", "3", "third"],
+            round_type="matching",
+            player_correctness={"Alex": ""},
         )
 
         response = self.client.post(
             reverse("grade_answer_sheet_round"),
             data=json.dumps({
                 "round_id": round_obj.id,
-                "answers": "Anything",
+                "answers": "Defender",
             }),
             content_type="application/json",
         )
 
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.json()["detail"],
-            "grading this round type is not currently enabled",
-        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["score"], 1)
+        self.assertEqual(payload["row_results"][0]["state"], "correct")
 
     def test_grade_answer_sheet_round_broadcasts_for_shared_coop_round(self):
         megan = User.objects.create_user(username="Megan", password="pw")

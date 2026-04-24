@@ -535,10 +535,20 @@ body.site-shell .answer-sheet-page input.answer-sheet-score-input[type="text"] {
     color: rgba(245, 246, 251, 0.5);
 }
 
-.answer-sheet-score-input.is-graded,
-.answer-sheet-score-input.is-dirty {
+.answer-sheet-score-input[data-score-state="graded-dirty"] {
+    color: #f4c95d;
+    border-color: rgba(244, 201, 93, 0.65);
+}
+
+.answer-sheet-score-input[data-score-state="graded-saved"],
+.answer-sheet-score-input[data-score-state="ungraded-saved"] {
     color: #8ce99a;
     border-color: rgba(140, 233, 154, 0.65);
+}
+
+.answer-sheet-score-input[data-score-state="ungraded-dirty"] {
+    color: #ff8c8c;
+    border-color: rgba(255, 140, 140, 0.65);
 }
 
 .answer-sheet-action-button {
@@ -581,14 +591,17 @@ body.site-shell .answer-sheet-page input.answer-sheet-score-input[type="text"] {
 }
 
 .answer-sheet-status[data-state="saving"],
-.answer-sheet-status[data-state="dirty"] {
-    color: #ffd166;
+.answer-sheet-status[data-state="graded-dirty"] {
+    color: #f4c95d;
 }
 
+.answer-sheet-status[data-state="graded-saved"],
+.answer-sheet-status[data-state="ungraded-saved"],
 .answer-sheet-status[data-state="saved"] {
     color: #8ce99a;
 }
 
+.answer-sheet-status[data-state="ungraded-dirty"],
 .answer-sheet-status[data-state="error"] {
     color: #ff8c8c;
 }
@@ -744,10 +757,36 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-score-input::placehold
     color: rgba(27, 37, 48, 0.46);
 }
 
-body.site-shell[data-profile-theme="light"] .answer-sheet-score-input.is-graded,
-body.site-shell[data-profile-theme="light"] .answer-sheet-score-input.is-dirty {
+body.site-shell[data-profile-theme="light"] .answer-sheet-score-input[data-score-state="graded-dirty"] {
+    color: #b87412;
+    border-color: rgba(184, 116, 18, 0.55);
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-score-input[data-score-state="graded-saved"],
+body.site-shell[data-profile-theme="light"] .answer-sheet-score-input[data-score-state="ungraded-saved"] {
     color: #2a8f45;
     border-color: rgba(42, 143, 69, 0.55);
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-score-input[data-score-state="ungraded-dirty"] {
+    color: #bf3f3f;
+    border-color: rgba(191, 63, 63, 0.55);
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-status[data-state="saving"],
+body.site-shell[data-profile-theme="light"] .answer-sheet-status[data-state="graded-dirty"] {
+    color: #b87412;
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-status[data-state="graded-saved"],
+body.site-shell[data-profile-theme="light"] .answer-sheet-status[data-state="ungraded-saved"],
+body.site-shell[data-profile-theme="light"] .answer-sheet-status[data-state="saved"] {
+    color: #2a8f45;
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-status[data-state="ungraded-dirty"],
+body.site-shell[data-profile-theme="light"] .answer-sheet-status[data-state="error"] {
+    color: #bf3f3f;
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-dot {
