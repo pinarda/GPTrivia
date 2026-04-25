@@ -1607,12 +1607,30 @@ def _extract_answer_sheet_line_answer(line_text):
 
 
 def _build_answer_sheet_accepted_answers(entry):
-    from .round_analysis import _build_possible_answers_with_aliases
+    from .round_analysis import (
+        _build_possible_answers_with_aliases,
+        _derive_matching_position_aliases,
+        _derive_multiple_choice_position_aliases,
+    )
 
     accepted_answers = []
+    additional_candidates = list(entry.possible_answers or [])
+    normalized_round_type = str(getattr(entry, 'round_type', '') or '').strip().lower()
+    if normalized_round_type == 'multiple choice':
+        additional_candidates.extend(_derive_multiple_choice_position_aliases({
+            'question_text': entry.question_text,
+            'instruction_text': '',
+            'answer_text': entry.answer_text,
+        }))
+    elif normalized_round_type == 'matching':
+        additional_candidates.extend(_derive_matching_position_aliases({
+            'question_text': entry.question_text,
+            'instruction_text': '',
+            'answer_text': entry.answer_text,
+        }))
     for candidate in _build_possible_answers_with_aliases(
         entry.answer_text,
-        entry.possible_answers or [],
+        additional_candidates,
         question_text=entry.question_text,
     ):
         for normalized_candidate in _answer_sheet_grade_forms(candidate):
