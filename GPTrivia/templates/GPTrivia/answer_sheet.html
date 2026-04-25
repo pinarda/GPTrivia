@@ -195,6 +195,7 @@
         let isUnloading = false;
         let syncRequestRef = null;
         let skipUnsavedChangesPrompt = false;
+        const forcedSharedSaveRoundIds = new Set();
         document.body.classList.add('answer-sheet-shell');
 
         function getCsrfToken() {
@@ -233,6 +234,17 @@
 
         function getRoundSubmitButton(roundId) {
             return pageRoot.querySelector(`[data-submit-score-for="${roundId}"]`);
+        }
+
+        function getSharedSavedScoreValue(roundState) {
+            const explicitScoreValue = String(roundState.score_value || '');
+            if (explicitScoreValue) {
+                return explicitScoreValue;
+            }
+            if (roundState.shared && roundState.grade_payload && roundState.grade_payload.score_display) {
+                return String(roundState.grade_payload.score_display);
+            }
+            return '';
         }
 
         function setRoundAnswersDirty(roundId, isDirty) {
@@ -331,7 +343,7 @@
             });
         }
 
-        function applySyncedRoundState(roundState) {
+        function applySyncedRoundState(roundState, options = {}) {
             const roundId = String(roundState.round_id || '');
             const panel = getRoundPanel(roundId);
             const textarea = getRoundTextarea(roundId);
@@ -346,10 +358,11 @@
 
             const answersDirty = panel.dataset.answersDirty === 'true';
             const scoreDirty = panel.dataset.scoreDirty === 'true';
+            const forceSharedSaveState = Boolean(options.forceSharedSaveState);
             const normalizedAnswers = Array.isArray(roundState.answers)
                 ? roundState.answers.map((answer) => String(answer || ''))
                 : [];
-            const savedScoreValue = String(roundState.score_value || '');
+            const savedScoreValue = getSharedSavedScoreValue(roundState);
 
             if (!answersDirty) {
                 textarea.value = normalizedAnswers.join('\n');
@@ -357,7 +370,7 @@
                 setRoundAnswersDirty(roundId, false);
             }
 
-            if (!scoreDirty) {
+            if (!scoreDirty || forceSharedSaveState) {
                 scoreInput.dataset.savedScore = savedScoreValue;
             }
 
@@ -370,7 +383,7 @@
                 syncLineNumbers(textarea);
             }
 
-            if (!scoreDirty) {
+            if (!scoreDirty || forceSharedSaveState) {
                 scoreInput.value = savedScoreValue;
                 setRoundScoreDirty(roundId, false);
             }
@@ -398,7 +411,11 @@
                 })
                 .then((payload) => {
                     (payload.rounds || []).forEach((roundState) => {
-                        applySyncedRoundState(roundState);
+                        const roundId = String(roundState.round_id || '');
+                        applySyncedRoundState(roundState, {
+                            forceSharedSaveState: forcedSharedSaveRoundIds.has(roundId),
+                        });
+                        forcedSharedSaveRoundIds.delete(roundId);
                     });
                 })
                 .catch((error) => {
@@ -406,6 +423,7 @@
                 })
                 .finally(() => {
                     syncRequestRef = null;
+                    forcedSharedSaveRoundIds.clear();
                 });
 
             syncRequestRef = syncPromise;
@@ -1617,6 +1635,9 @@
                         (message.round_updates || []).forEach((roundUpdate) => {
                             const roundId = String(roundUpdate.id || '');
                             const nextScore = roundUpdate?.fields?.[currentUserPlayerField];
+                            if (roundId) {
+                                forcedSharedSaveRoundIds.add(roundId);
+                            }
                             if (!roundId || typeof nextScore === 'undefined') {
                                 return;
                             }
