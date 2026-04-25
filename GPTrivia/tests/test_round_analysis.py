@@ -1163,6 +1163,139 @@ class RoundAnalysisTests(TestCase):
         return_value={},
     )
     @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
+    def test_store_round_analysis_multiple_choice_normalizes_hyphenated_round_type(self, correctness_mock, aliases_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Multiple Choice Hyphen Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=3,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/multiple-choice-hyphen-round/edit#slide=id.r1",
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+        )
+
+        _store_round_analysis(
+            run,
+            {
+                "presentation_id": "multiple-choice-hyphen-presentation",
+                "slide_range_label": "1-2",
+                "slides": [],
+            },
+            {
+                "round_type": "multiple-choice",
+                "notes": "",
+                "questions": [
+                    {
+                        "question_number": 1,
+                        "source_slide_number": 1,
+                        "question_text": (
+                            "Which answer is correct?\n"
+                            "A. Alpha wave\n"
+                            "B. Beta decay\n"
+                            "C. Gamma ray"
+                        ),
+                        "instruction_text": "",
+                        "answer_text": "Gamma ray",
+                        "media_kind": "",
+                        "major_category": "Science",
+                        "minor_category1": "",
+                        "minor_category2": "",
+                    },
+                ],
+            },
+        )
+
+        entry = RoundQuestionAnalysisEntry.objects.get(run=run, question_number=1)
+        self.assertEqual(entry.round_type, "multiple choice")
+        self.assertIn("C", entry.possible_answers)
+        self.assertIn("3", entry.possible_answers)
+
+    @patch(
+        "GPTrivia.round_analysis._generate_additional_possible_answer_aliases",
+        return_value={},
+    )
+    @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
+    def test_store_round_analysis_multiple_choice_uses_source_slide_options_when_question_text_omits_them(self, correctness_mock, aliases_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Multiple Choice Slide Fallback Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=3,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/multiple-choice-slide-fallback-round/edit#slide=id.r1",
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+        )
+
+        _store_round_analysis(
+            run,
+            {
+                "presentation_id": "multiple-choice-slide-fallback-presentation",
+                "slide_range_label": "1-2",
+                "slides": [
+                    {
+                        "slide_number": 1,
+                        "slide_id": "slide-1",
+                        "slide_url": "https://docs.google.com/presentation/d/fallback/edit#slide=id.slide-1",
+                        "text": "",
+                        "text_items": [
+                            {"text": "Which answer is correct?", "position_x": 0, "position_y": 0, "width": 100, "height": 20},
+                            {"text": "A. Alpha wave", "position_x": 0, "position_y": 40, "width": 100, "height": 20},
+                            {"text": "B. Beta decay", "position_x": 0, "position_y": 60, "width": 100, "height": 20},
+                            {"text": "C. Gamma ray", "position_x": 0, "position_y": 80, "width": 100, "height": 20},
+                        ],
+                        "media_items": [],
+                        "line_items": [],
+                        "speaker_notes": "",
+                        "thumbnail_data_url": "",
+                    },
+                ],
+            },
+            {
+                "round_type": "multiple choice",
+                "notes": "",
+                "questions": [
+                    {
+                        "question_number": 1,
+                        "source_slide_number": 1,
+                        "question_text": "Which answer is correct?",
+                        "instruction_text": "",
+                        "answer_text": "Gamma ray",
+                        "media_kind": "",
+                        "major_category": "Science",
+                        "minor_category1": "",
+                        "minor_category2": "",
+                    },
+                ],
+            },
+        )
+
+        entry = RoundQuestionAnalysisEntry.objects.get(run=run, question_number=1)
+        self.assertIn("C", entry.possible_answers)
+        self.assertIn("c", entry.possible_answers)
+        self.assertIn("3", entry.possible_answers)
+        self.assertIn("third", entry.possible_answers)
+
+    @patch(
+        "GPTrivia.round_analysis._generate_additional_possible_answer_aliases",
+        return_value={},
+    )
+    @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
     def test_store_round_analysis_split_matching_question_accepts_position_aliases(self, correctness_mock, aliases_mock):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",

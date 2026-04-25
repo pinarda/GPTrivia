@@ -1611,11 +1611,12 @@ def _build_answer_sheet_accepted_answers(entry):
         _build_possible_answers_with_aliases,
         _derive_matching_position_aliases,
         _derive_multiple_choice_position_aliases,
+        _normalize_round_type_label,
     )
 
     accepted_answers = []
     additional_candidates = list(entry.possible_answers or [])
-    normalized_round_type = str(getattr(entry, 'round_type', '') or '').strip().lower()
+    normalized_round_type = _normalize_round_type_label(getattr(entry, 'round_type', '') or '')
     if normalized_round_type == 'multiple choice':
         additional_candidates.extend(_derive_multiple_choice_position_aliases({
             'question_text': entry.question_text,

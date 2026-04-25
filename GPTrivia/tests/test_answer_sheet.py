@@ -1614,6 +1614,57 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(payload["score"], 1)
         self.assertEqual(payload["row_results"][0]["state"], "correct")
 
+    def test_grade_answer_sheet_round_accepts_multiple_choice_letters_for_hyphenated_round_type(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Multiple Choice Hyphen Grade Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="multiple-choice",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text=(
+                "Which answer is correct?\n"
+                "A. Alpha wave\n"
+                "B. Beta decay\n"
+                "C. Gamma ray\n"
+                "D. Delta blues"
+            ),
+            answer_text="Gamma ray",
+            possible_answers=[],
+            round_type="multiple-choice",
+            player_correctness={"Alex": ""},
+        )
+
+        response = self.client.post(
+            reverse("grade_answer_sheet_round"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "C",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["score"], 1)
+        self.assertEqual(payload["row_results"][0]["state"], "correct")
+
     def test_grade_answer_sheet_round_broadcasts_for_shared_coop_round(self):
         megan = User.objects.create_user(username="Megan", password="pw")
         trivia_date = datetime.date(2026, 4, 17)

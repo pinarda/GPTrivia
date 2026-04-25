@@ -1227,6 +1227,18 @@ def _normalize_media_kind(value):
     return media_kind
 
 
+def _normalize_round_type_label(value):
+    normalized_round_type = str(value or '').strip().casefold().replace('_', ' ').replace('-', ' ')
+    normalized_round_type = re.sub(r'\s+', ' ', normalized_round_type).strip()
+    if normalized_round_type in {'multiple choice', 'multiple choice round', 'mcq'}:
+        return 'multiple choice'
+    if normalized_round_type in {'short answer', 'short answer round'}:
+        return 'short answer'
+    if normalized_round_type in {'matching', 'matching round'}:
+        return 'matching'
+    return normalized_round_type
+
+
 def _normalize_analysis_categories(entry):
     major_category = str(entry.get('major_category') or '').strip()
     minor_category1 = str(entry.get('minor_category1') or '').strip()
@@ -2011,8 +2023,36 @@ def _derive_multiple_choice_position_aliases(entry):
     return _position_aliases(matched_index, total_count=len(option_items))
 
 
+def _derive_multiple_choice_position_aliases_from_slide(entry, slide):
+    if not slide:
+        return []
+
+    ordered_text_items = sorted(
+        list(slide.get('text_items') or []),
+        key=lambda item: (
+            float(item.get('position_y') or 0),
+            float(item.get('position_x') or 0),
+        ),
+    )
+    slide_question_text = '\n'.join(
+        str(text_item.get('text') or '').strip()
+        for text_item in ordered_text_items
+        if str(text_item.get('text') or '').strip()
+    )
+    if not slide_question_text:
+        return []
+
+    return _derive_multiple_choice_position_aliases(
+        {
+            'question_text': slide_question_text,
+            'instruction_text': str(entry.get('instruction_text') or '').strip(),
+            'answer_text': str(entry.get('answer_text') or '').strip(),
+        }
+    )
+
+
 def _normalize_analysis_questions(analysis_payload):
-    normalized_round_type = str(analysis_payload.get('round_type') or '').strip().lower()
+    normalized_round_type = _normalize_round_type_label(analysis_payload.get('round_type'))
     original_questions = list(analysis_payload.get('questions') or [])
     normalized_questions = []
 
@@ -2816,7 +2856,7 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
     RoundQuestionAnalysisEntry.objects.filter(run=run).delete()
     question_contexts = _assign_media_to_question_entries(slide_payload, questions)
 
-    normalized_round_type = str(normalized_analysis_payload.get('round_type') or '').strip()
+    normalized_round_type = _normalize_round_type_label(normalized_analysis_payload.get('round_type'))
     normalized_notes = str(normalized_analysis_payload.get('notes') or '').strip()
     additional_possible_answers_by_question = {
         int(context['question_number']): [
@@ -2826,6 +2866,28 @@ def _store_round_analysis(run, slide_payload, analysis_payload):
         ]
         for context in question_contexts
     }
+    if normalized_round_type == 'multiple choice':
+        for context in question_contexts:
+            question_number = int(context['question_number'])
+            fallback_aliases = _derive_multiple_choice_position_aliases_from_slide(
+                context.get('entry') or {},
+                context.get('chosen_slide') or {},
+            )
+            if not fallback_aliases:
+                continue
+            merged_aliases = []
+            seen_aliases = set()
+            for alias in [
+                *additional_possible_answers_by_question.get(question_number, []),
+                *fallback_aliases,
+            ]:
+                normalized_alias = _normalize_possible_answer_variant(alias)
+                alias_key = normalized_alias.casefold()
+                if not normalized_alias or alias_key in seen_aliases:
+                    continue
+                seen_aliases.add(alias_key)
+                merged_aliases.append(normalized_alias)
+            additional_possible_answers_by_question[question_number] = merged_aliases
     try:
         generated_alias_map = _generate_additional_possible_answer_aliases(
             run.round,
