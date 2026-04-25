@@ -354,22 +354,17 @@
             }
 
             if (!answersDirty && roundState.grade_payload) {
-                applyGradePayload(roundId, textarea, scoreInput, roundState.grade_payload);
+                applyGradePayload(roundId, textarea, scoreInput, roundState.grade_payload, {
+                    preserveScoreState: true,
+                });
             } else if (!answersDirty) {
                 clearGradingState(textarea);
                 syncLineNumbers(textarea);
             }
 
             if (!scoreDirty) {
-                if (!answersDirty && roundState.grade_payload) {
-                    setRoundScoreDirty(
-                        roundId,
-                        scoreValuesDiffer(scoreInput.value, scoreInput.dataset.savedScore || '')
-                    );
-                } else {
-                    scoreInput.value = savedScoreValue;
-                    setRoundScoreDirty(roundId, false);
-                }
+                scoreInput.value = savedScoreValue;
+                setRoundScoreDirty(roundId, false);
             }
 
             refreshRoundStatus(roundId);
@@ -1603,14 +1598,19 @@
                         return;
                     }
                     if (message.action === 'update' && message.event === 'answer_sheet_submit_score') {
+                        let sawImmediateRoundUpdate = false;
                         (message.round_updates || []).forEach((roundUpdate) => {
                             const roundId = String(roundUpdate.id || '');
                             const nextScore = roundUpdate?.fields?.[currentUserPlayerField];
                             if (!roundId || typeof nextScore === 'undefined') {
                                 return;
                             }
+                            sawImmediateRoundUpdate = true;
                             applySharedScoreUpdate(roundId, nextScore);
                         });
+                        if (!syncRequestRef || sawImmediateRoundUpdate || (message.round_updates || []).length > 0) {
+                            syncSharedAnswerSheetState();
+                        }
                     }
                 } catch (error) {
                     console.error('Error processing answer sheet websocket message:', error);
