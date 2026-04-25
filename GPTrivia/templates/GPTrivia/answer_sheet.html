@@ -640,6 +640,49 @@
             return indices;
         }
 
+        function inferProtectedCollapsedLineIndices(previousLines, currentLines, restoreLimit) {
+            const inferredIndices = [];
+            const protectedLineCount = Math.min(PROTECTED_BASELINE_ROWS, previousLines.length);
+            if (restoreLimit <= 0 || protectedLineCount <= 1) {
+                return inferredIndices;
+            }
+
+            let previousIndex = 0;
+            let currentIndex = 0;
+            while (
+                previousIndex < protectedLineCount
+                && currentIndex < currentLines.length
+                && inferredIndices.length < restoreLimit
+            ) {
+                const previousLine = previousLines[previousIndex] ?? '';
+                const currentLine = currentLines[currentIndex] ?? '';
+                if (previousLine === currentLine) {
+                    previousIndex += 1;
+                    currentIndex += 1;
+                    continue;
+                }
+
+                const nextPreviousLine = previousLines[previousIndex + 1] ?? null;
+                if (previousIndex + 1 < protectedLineCount && nextPreviousLine === currentLine) {
+                    inferredIndices.push(previousIndex);
+                    previousIndex += 1;
+                    continue;
+                }
+
+                previousIndex += 1;
+                currentIndex += 1;
+            }
+
+            while (
+                inferredIndices.length < restoreLimit
+                && currentLines.length + inferredIndices.length < protectedLineCount
+            ) {
+                inferredIndices.push(Math.max(0, Math.min(protectedLineCount - 1, currentLines.length + inferredIndices.length)));
+            }
+
+            return inferredIndices;
+        }
+
         function restoreProtectedNewlines(textarea) {
             const snapshot = textareaBeforeInputMap.get(textarea);
             const currentValue = normalizeTextareaValue(textarea.value);
@@ -660,14 +703,29 @@
                 ? snapshot.protectedInsertionIndices
                 : [];
             const lineDelta = previousLines.length - currentLines.length;
-            if (lineDelta <= 0 || protectedInsertionIndices.length === 0) {
+            if (lineDelta <= 0) {
                 if (textarea.value !== currentValue) {
                     textarea.value = currentValue;
                 }
                 return false;
             }
 
-            const restoreCount = Math.min(protectedInsertionIndices.length, lineDelta);
+            const inferredInsertionIndices = inferProtectedCollapsedLineIndices(previousLines, currentLines, lineDelta);
+            const indicesToRestore = [];
+            [...protectedInsertionIndices, ...inferredInsertionIndices]
+                .sort((left, right) => left - right)
+                .forEach((insertionIndex) => {
+                    if (!Number.isFinite(insertionIndex)) {
+                        return;
+                    }
+                    const boundedIndex = Math.max(0, Math.min(previousLines.length - 1, insertionIndex));
+                    if (indicesToRestore.includes(boundedIndex)) {
+                        return;
+                    }
+                    indicesToRestore.push(boundedIndex);
+                });
+
+            const restoreCount = Math.min(indicesToRestore.length, lineDelta);
             if (restoreCount <= 0) {
                 if (textarea.value !== currentValue) {
                     textarea.value = currentValue;
@@ -676,10 +734,7 @@
             }
 
             const restoredLines = currentLines.slice();
-            const indicesToRestore = protectedInsertionIndices
-                .slice(0, restoreCount)
-                .sort((left, right) => left - right);
-            indicesToRestore.forEach((insertionIndex, restoredCount) => {
+            indicesToRestore.slice(0, restoreCount).forEach((insertionIndex, restoredCount) => {
                 const boundedIndex = Math.max(0, Math.min(restoredLines.length, insertionIndex + restoredCount));
                 restoredLines.splice(boundedIndex, 0, '');
             });
