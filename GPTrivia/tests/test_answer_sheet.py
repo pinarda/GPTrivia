@@ -1014,6 +1014,7 @@ class AnswerSheetTests(TestCase):
                     data=json.dumps({
                         "round_id": round_obj.id,
                         "score": "8.5",
+                        "client_id": "alex-device-1",
                     }),
                     content_type="application/json",
                 )
@@ -1023,6 +1024,7 @@ class AnswerSheetTests(TestCase):
         message = broadcast.call_args.args[0]
         self.assertEqual(message["action"], "update")
         self.assertEqual(message["event"], "answer_sheet_submit_score")
+        self.assertEqual(message["client_id"], "alex-device-1")
         self.assertEqual(message["selected_date"], trivia_date.isoformat())
         self.assertEqual(len(message["round_updates"]), 1)
         self.assertEqual(message["round_updates"][0]["id"], round_obj.id)

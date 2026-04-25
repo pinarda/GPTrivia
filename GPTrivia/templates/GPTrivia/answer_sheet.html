@@ -202,6 +202,14 @@
             return match ? decodeURIComponent(match[1]) : '';
         }
 
+        function logRemoteAnswerSheetUpdate(eventName, details) {
+            console.info('[Answer Sheet] Received update from another device', {
+                event: eventName,
+                selectedDate,
+                details,
+            });
+        }
+
         function setStatus(roundId, message, state) {
             const status = pageRoot.querySelector(`[data-status-for="${roundId}"]`);
             if (!status) {
@@ -1047,6 +1055,7 @@
                     body: JSON.stringify({
                         round_id: roundId,
                         score: scoreInput.value,
+                        client_id: localClientId,
                     }),
                 });
                 const payload = await response.json().catch(() => ({}));
@@ -1589,15 +1598,21 @@
                             return;
                         }
                         if (message.event === 'answer_sheet_save') {
+                            logRemoteAnswerSheetUpdate('answer_sheet_save', message);
                             applySharedAnswersUpdate(String(message.round_id || ''), message);
                             return;
                         }
                         if (message.event === 'answer_sheet_grade') {
+                            logRemoteAnswerSheetUpdate('answer_sheet_grade', message);
                             applySharedGradeUpdate(String(message.round_id || ''), message);
                         }
                         return;
                     }
                     if (message.action === 'update' && message.event === 'answer_sheet_submit_score') {
+                        if (String(message.client_id || '') === localClientId) {
+                            return;
+                        }
+                        logRemoteAnswerSheetUpdate('answer_sheet_submit_score', message);
                         let sawImmediateRoundUpdate = false;
                         (message.round_updates || []).forEach((roundUpdate) => {
                             const roundId = String(roundUpdate.id || '');

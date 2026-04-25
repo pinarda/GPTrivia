@@ -2397,6 +2397,7 @@ def submit_answer_sheet_score(request):
         normalized_score = _normalize_answer_sheet_score(payload.get('score', ''))
     except ValueError as error:
         return JsonResponse({'detail': str(error)}, status=400)
+    client_id = str(payload.get('client_id') or '').strip()
 
     player_field = player_field_for_name(getattr(request.user, 'username', ''))
     if not player_field:
@@ -2436,6 +2437,7 @@ def submit_answer_sheet_score(request):
         _schedule_scoresheet_broadcast({
             'action': 'update',
             'event': 'answer_sheet_submit_score',
+            'client_id': client_id,
             'selected_date': round_obj.date.isoformat() if round_obj.date else '',
             'round_updates': [
                 {
