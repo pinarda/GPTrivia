@@ -1663,6 +1663,31 @@ def _extract_matching_answer_map(answer_text, *, option_count=0):
         right_index = _position_token_to_index(line_text, total_count=option_count)
         if right_index and right_index > 0:
             mapping[line_index] = right_index
+
+    if mapping:
+        return mapping
+
+    sequence_tokens = []
+    compact_answer = _normalize_possible_answer_variant(answer_text)
+    if compact_answer:
+        separator_splits = [
+            _normalize_possible_answer_variant(token)
+            for token in re.split(r'[\s,;/]+', compact_answer.replace('-', ' '))
+        ]
+        separator_splits = [token for token in separator_splits if token]
+        if len(separator_splits) >= 2 and all(
+            _position_token_to_index(token, total_count=option_count) for token in separator_splits
+        ):
+            sequence_tokens = separator_splits
+        elif re.fullmatch(r'[A-Za-z]{2,}', compact_answer):
+            sequence_tokens = list(compact_answer)
+        elif re.fullmatch(r'\d{2,}', compact_answer):
+            sequence_tokens = list(compact_answer)
+
+    for sequence_index, sequence_token in enumerate(sequence_tokens, start=1):
+        right_index = _position_token_to_index(sequence_token, total_count=option_count)
+        if right_index and right_index > 0:
+            mapping[sequence_index] = right_index
     return mapping
 
 
@@ -1689,6 +1714,21 @@ def _extract_matching_standalone_question_number(question_text):
         question_match = re.match(r'^\s*(?:question\s*)?(\d+)[\)\].:\-]*\s*$', line, flags=re.IGNORECASE)
         if question_match:
             return int(question_match.group(1))
+    return None
+
+
+def _extract_matching_prompt_question_number(question_text):
+    for line in _split_analysis_text_lines(question_text):
+        prompt_match = re.match(
+            r'^\s*(?:question\s*)?(\d+)[\)\].:\-]+\s*(.+?)\s*$',
+            line,
+            flags=re.IGNORECASE,
+        )
+        if not prompt_match:
+            continue
+        prompt_text = _normalize_text_content(prompt_match.group(2))
+        if _question_suggests_matching_prompt(prompt_text):
+            return int(prompt_match.group(1))
     return None
 
 
@@ -1780,7 +1820,12 @@ def _expand_matching_question_entry(entry):
         option_count=len(right_items),
     )
 
-    if _extract_matching_standalone_question_number(combined_question_text) is not None:
+    standalone_question_number = _extract_matching_standalone_question_number(combined_question_text)
+    prompt_question_number = _extract_matching_prompt_question_number(combined_question_text)
+    if (
+        (standalone_question_number is not None and standalone_question_number > 1)
+        or (prompt_question_number is not None and prompt_question_number > 1)
+    ):
         return []
 
     if len(left_items) < 2 or not answer_map:
@@ -1941,9 +1986,24 @@ def _derive_multiple_choice_position_aliases(entry):
 
     answer_text = str(entry.get('answer_text') or '').strip()
     matched_index = _position_token_to_index(answer_text, total_count=len(option_items))
+    strict_alpha_match = re.match(r'^\s*([A-Za-z])[\)\].:\-]+\s*(.+?)\s*$', answer_text)
+    cleaned_alpha_answer = _normalize_text_content(strict_alpha_match.group(2)) if strict_alpha_match else ''
+    if not matched_index and strict_alpha_match:
+        matched_index = ord(strict_alpha_match.group(1).upper()) - 64
+
+    strict_numeric_match = re.match(r'^\s*(\d+)[\)\].:\-]+\s*(.+?)\s*$', answer_text)
+    cleaned_numeric_answer = _normalize_text_content(strict_numeric_match.group(2)) if strict_numeric_match else ''
+    if not matched_index and strict_numeric_match:
+        matched_index = int(strict_numeric_match.group(1))
+
+    answer_candidates = [answer_text]
+    if cleaned_alpha_answer and cleaned_alpha_answer.casefold() != answer_text.casefold():
+        answer_candidates.append(cleaned_alpha_answer)
+    if cleaned_numeric_answer and cleaned_numeric_answer.casefold() != answer_text.casefold():
+        answer_candidates.append(cleaned_numeric_answer)
     if not matched_index:
         for option_item in option_items:
-            if _choice_text_matches_answer(option_item.get('text'), answer_text):
+            if any(_choice_text_matches_answer(option_item.get('text'), candidate) for candidate in answer_candidates):
                 matched_index = int(option_item.get('index') or 0)
                 break
     if not matched_index:

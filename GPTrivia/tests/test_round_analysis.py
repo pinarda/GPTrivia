@@ -852,6 +852,76 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("321", normalized_payload["questions"][0]["additional_possible_answers"])
         self.assertIn("last middle first", normalized_payload["questions"][0]["additional_possible_answers"])
 
+    def test_normalize_analysis_questions_keeps_inline_numbered_matching_prompt_as_single_board(self):
+        normalized_payload = _normalize_analysis_questions(
+            {
+                "round_type": "matching",
+                "notes": "",
+                "questions": [
+                    {
+                        "question_number": 11,
+                        "source_slide_number": 3,
+                        "question_text": (
+                            "11. Match each planet to the correct description.\n"
+                            "1. Mercury\n"
+                            "2. Venus\n"
+                            "3. Earth\n"
+                            "A. first planet from the Sun\n"
+                            "B. second planet from the Sun\n"
+                            "C. third planet from the Sun"
+                        ),
+                        "instruction_text": "",
+                        "answer_text": "CBA",
+                        "media_kind": "",
+                        "major_category": "Science",
+                        "minor_category1": "",
+                        "minor_category2": "",
+                    },
+                ],
+            }
+        )
+
+        self.assertEqual(len(normalized_payload["questions"]), 1)
+        self.assertEqual(normalized_payload["questions"][0]["answer_text"], "CBA")
+        self.assertIn("CBA", normalized_payload["questions"][0]["additional_possible_answers"])
+        self.assertIn("321", normalized_payload["questions"][0]["additional_possible_answers"])
+        self.assertIn("last middle first", normalized_payload["questions"][0]["additional_possible_answers"])
+
+    def test_normalize_analysis_questions_splits_matching_round_from_compact_sequence_answer(self):
+        normalized_payload = _normalize_analysis_questions(
+            {
+                "round_type": "matching",
+                "notes": "",
+                "questions": [
+                    {
+                        "question_number": 1,
+                        "source_slide_number": 3,
+                        "question_text": (
+                            "1. Mercury\n"
+                            "2. Venus\n"
+                            "A. first planet from the Sun\n"
+                            "B. second planet from the Sun\n"
+                            "C. third planet from the Sun"
+                        ),
+                        "instruction_text": "Match each planet to the correct description.",
+                        "answer_text": "CB",
+                        "media_kind": "",
+                        "major_category": "Science",
+                        "minor_category1": "",
+                        "minor_category2": "",
+                    },
+                ],
+            }
+        )
+
+        self.assertEqual(len(normalized_payload["questions"]), 2)
+        self.assertEqual(normalized_payload["questions"][0]["question_text"], "Mercury")
+        self.assertEqual(normalized_payload["questions"][0]["answer_text"], "third planet from the Sun")
+        self.assertIn("C", normalized_payload["questions"][0]["additional_possible_answers"])
+        self.assertEqual(normalized_payload["questions"][1]["question_text"], "Venus")
+        self.assertEqual(normalized_payload["questions"][1]["answer_text"], "second planet from the Sun")
+        self.assertIn("B", normalized_payload["questions"][1]["additional_possible_answers"])
+
     def test_round_analysis_question_can_include_saved_image_payload(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
@@ -1022,6 +1092,67 @@ class RoundAnalysisTests(TestCase):
         entry = RoundQuestionAnalysisEntry.objects.get(run=run, question_number=1)
         self.assertEqual(entry.answer_text, "Gamma ray")
         self.assertIn("Gamma ray", entry.possible_answers)
+        self.assertIn("C", entry.possible_answers)
+        self.assertIn("c", entry.possible_answers)
+        self.assertIn("3", entry.possible_answers)
+        self.assertIn("third", entry.possible_answers)
+
+    @patch(
+        "GPTrivia.round_analysis._generate_additional_possible_answer_aliases",
+        return_value={},
+    )
+    @patch("GPTrivia.round_analysis._empty_player_correctness_map", return_value={"Alex": ""})
+    def test_store_round_analysis_multiple_choice_accepts_prefixed_answer_text(self, correctness_mock, aliases_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Multiple Choice Prefix Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=3,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/multiple-choice-prefix-round/edit#slide=id.r1",
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_RUNNING,
+        )
+
+        _store_round_analysis(
+            run,
+            {
+                "presentation_id": "multiple-choice-prefix-presentation",
+                "slide_range_label": "1-2",
+                "slides": [],
+            },
+            {
+                "round_type": "multiple choice",
+                "notes": "",
+                "questions": [
+                    {
+                        "question_number": 1,
+                        "source_slide_number": 1,
+                        "question_text": (
+                            "Which answer is correct?\n"
+                            "A. Alpha wave\n"
+                            "B. Beta decay\n"
+                            "C. Gamma ray"
+                        ),
+                        "instruction_text": "",
+                        "answer_text": "C. Gamma ray",
+                        "media_kind": "",
+                        "major_category": "Science",
+                        "minor_category1": "",
+                        "minor_category2": "",
+                    },
+                ],
+            },
+        )
+
+        entry = RoundQuestionAnalysisEntry.objects.get(run=run, question_number=1)
         self.assertIn("C", entry.possible_answers)
         self.assertIn("c", entry.possible_answers)
         self.assertIn("3", entry.possible_answers)
