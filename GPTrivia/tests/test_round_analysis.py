@@ -1,6 +1,7 @@
 import io
 import zipfile
 import datetime
+import os
 from unittest.mock import patch
 
 import requests
@@ -27,6 +28,7 @@ from GPTrivia.round_analysis import (
     _extract_slide_media_items,
     _fetch_slide_thumbnail_data_url,
     _fetch_url_with_retries,
+    _generate_additional_possible_answer_aliases,
     _is_placeholder_media_url,
     _normalize_analysis_categories,
     _normalize_analysis_questions,
@@ -682,6 +684,51 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("benjamin franklin", franklin_answers)
         self.assertIn("Ben Franklin", franklin_answers)
         self.assertIn("ben franklin", franklin_answers)
+
+    @patch("GPTrivia.views._get_openai_client", return_value=object())
+    @patch(
+        "GPTrivia.views._create_openai_text_response",
+        return_value='[{"question_number": 1, "aliases": ["Seven Years War", "Seven Years\' War"]}]',
+    )
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-live-test"}, clear=False)
+    def test_generate_additional_possible_answer_aliases_supports_semantic_alternate_names(
+        self,
+        response_mock,
+        client_mock,
+    ):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="History Round",
+            major_category="History",
+            minor_category1="Wars",
+            minor_category2="Colonial",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+
+        alias_map = _generate_additional_possible_answer_aliases(
+            round_obj,
+            [
+                {
+                    "question_number": 1,
+                    "question_text": "What war was fought between Britain and France in North America from 1754 to 1763?",
+                    "instruction_text": "",
+                    "answer_text": "French and Indian War",
+                },
+            ],
+            round_type="short answer",
+        )
+
+        self.assertEqual(
+            alias_map,
+            {1: ["Seven Years War", "Seven Years' War"]},
+        )
+        request_payload = response_mock.call_args.kwargs["input_items"][0]["content"][0]["text"]
+        self.assertIn("instruction_text", request_payload)
+        self.assertIn("French and Indian War", request_payload)
 
     def test_build_possible_answers_with_aliases_accepts_matching_round_short_forms(self):
         matching_answers = _build_possible_answers_with_aliases(

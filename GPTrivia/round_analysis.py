@@ -2278,6 +2278,7 @@ def _generate_additional_possible_answer_aliases(round_obj, question_entries, *,
             {
                 'question_number': question_number,
                 'question_text': str((question_entry or {}).get('question_text') or '').strip(),
+                'instruction_text': str((question_entry or {}).get('instruction_text') or '').strip(),
                 'answer_text': answer_text,
             }
         )
@@ -2289,7 +2290,10 @@ def _generate_additional_possible_answer_aliases(round_obj, question_entries, *,
         "You generate plausible accepted-answer aliases for trivia grading. "
         "For each question, return up to 10 additional answers that should count as correct for the same fact. "
         "Include concise aliases like dropped franchise prefixes, subtitle-only references, well-known abbreviations, "
-        "episode numbering variants, and common alternate phrasings when they are clearly equivalent. "
+        "episode numbering variants, common alternate phrasings, and genuinely equivalent alternate names when they are clearly the same answer. "
+        "This includes alternate historical or common names for the same war, event, law, treaty, artwork, book, or concept. "
+        "For example, French and Indian War should accept Seven Years War / Seven Years' War when the clue clearly refers to that conflict; "
+        "World War I should accept First World War; and The Empire Strikes Back should accept Star Wars Episode V when appropriate. "
         "For person-name answers, always include surname-only answers plus short-name/full-name surname variants whenever the clue refers to one specific person. "
         "For example, George Washington should accept Washington, and Benjamin Franklin should accept Franklin and Ben Franklin; Franklin should also accept Benjamin Franklin when the clue clearly means that person. "
         "For multiple choice rounds, include option-position aliases when the option order is recoverable, such as A/B/C, 1/2/3, and first/second/third. "
@@ -2320,7 +2324,7 @@ def _generate_additional_possible_answer_aliases(round_obj, question_entries, *,
                 ],
             }
         ],
-        max_output_tokens=1200,
+        max_output_tokens=1800,
         reasoning_effort="low",
     )
     parsed_payload = _parse_openai_json_response(response_text)
