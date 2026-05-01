@@ -852,8 +852,8 @@
                     return;
                 }
                 const currentState = states[index] || 'default';
-                const showPlus = currentState === 'incorrect';
-                const showMinus = currentState === 'correct';
+                const showPlus = currentState === 'correct';
+                const showMinus = currentState === 'incorrect';
                 plusButton.hidden = !showPlus;
                 plusButton.disabled = !showPlus;
                 plusButton.setAttribute('aria-hidden', showPlus ? 'false' : 'true');
@@ -1001,22 +1001,22 @@
                 plusButton.type = 'button';
                 plusButton.className = 'answer-sheet-line-adjust answer-sheet-line-plus';
                 plusButton.dataset.questionNumber = String(index);
-                plusButton.dataset.mode = 'correct';
+                plusButton.dataset.mode = 'incorrect';
                 plusButton.textContent = '+';
                 plusButton.hidden = true;
                 plusButton.disabled = true;
                 plusButton.setAttribute('aria-hidden', 'true');
-                plusButton.setAttribute('aria-label', `Mark question ${index} correct`);
+                plusButton.setAttribute('aria-label', `Mark question ${index} incorrect`);
                 const minusButton = document.createElement('button');
                 minusButton.type = 'button';
                 minusButton.className = 'answer-sheet-line-adjust answer-sheet-line-minus';
                 minusButton.dataset.questionNumber = String(index);
-                minusButton.dataset.mode = 'incorrect';
+                minusButton.dataset.mode = 'correct';
                 minusButton.textContent = '−';
                 minusButton.hidden = true;
                 minusButton.disabled = true;
                 minusButton.setAttribute('aria-hidden', 'true');
-                minusButton.setAttribute('aria-label', `Mark question ${index} incorrect`);
+                minusButton.setAttribute('aria-label', `Mark question ${index} correct`);
                 controls.appendChild(plusButton);
                 controls.appendChild(minusButton);
                 item.appendChild(label);
