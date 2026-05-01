@@ -1192,6 +1192,9 @@ class ShareView(View):
 
 @login_required
 def rounds_list(request):
+    from .round_analysis import ensure_round_analysis_worker_for_pending_runs
+
+    ensure_round_analysis_worker_for_pending_runs()
     rounds = GPTriviaRound.objects.all()
     # can we reverse the order of the rounds
     rounds = rounds[::-1]
@@ -1245,6 +1248,25 @@ def _serialize_round_analysis_status(round_id, latest_run=None, has_completed_en
         has_completed_entries
         or (latest_run and latest_run.status == RoundQuestionAnalysisRun.STATUS_COMPLETED)
     )
+    scheduled_for_iso = ''
+    scheduled_summary = ''
+    if latest_run and latest_run.scheduled_for:
+        scheduled_for_iso = latest_run.scheduled_for.isoformat()
+        localized_scheduled_for = timezone.localtime(latest_run.scheduled_for)
+        formatted_scheduled_for = (
+            f"{localized_scheduled_for.month}/{localized_scheduled_for.day}/"
+            f"{localized_scheduled_for.strftime('%y')} "
+            f"{localized_scheduled_for.strftime('%I').lstrip('0') or '0'}:"
+            f"{localized_scheduled_for.strftime('%M')} "
+            f"{localized_scheduled_for.strftime('%p')}"
+        )
+        if latest_run.status == RoundQuestionAnalysisRun.STATUS_PENDING:
+            summary_prefix = (
+                'Auto queued for'
+                if latest_run.trigger_type == RoundQuestionAnalysisRun.TRIGGER_AUTO
+                else 'Queued for'
+            )
+            scheduled_summary = f"{summary_prefix} {formatted_scheduled_for}"
     return {
         'status': latest_run.status if latest_run else '',
         'status_label': latest_run.get_status_display() if latest_run else '',
@@ -1258,6 +1280,8 @@ def _serialize_round_analysis_status(round_id, latest_run=None, has_completed_en
         'view_url': f"{reverse('round_analysis_list')}?round_id={round_id}" if has_completed_entries else '',
         'error_summary': error_summary,
         'error_message': error_message,
+        'scheduled_for_iso': scheduled_for_iso,
+        'scheduled_summary': scheduled_summary,
     }
 
 
@@ -1293,6 +1317,39 @@ def _creator_allows_round_analysis(creator_name):
     return bool(_build_round_analysis_opt_in_map([creator_name]).get(str(creator_name or '').strip(), False))
 
 
+def _should_auto_queue_round_analysis_for_round(round_obj, source_round_data, *, presentation_name, action_name):
+    is_new_round = bool((source_round_data or {}).get('is_new'))
+    creator_opted_in = _creator_allows_round_analysis(round_obj.creator)
+    queue_reason = 'queued'
+    should_queue = True
+
+    if not is_new_round:
+        queue_reason = 'not_new'
+        should_queue = False
+    elif round_obj.replay:
+        queue_reason = 'replay'
+        should_queue = False
+    elif not creator_opted_in:
+        queue_reason = 'creator_not_opted_in'
+        should_queue = False
+
+    logger.info(
+        "Auto round analysis %s during %s for presentation %s: round_id=%s title=%r creator=%r date=%s reason=%s is_new=%s replay=%s creator_opted_in=%s",
+        'queued' if should_queue else 'skipped',
+        action_name,
+        presentation_name,
+        round_obj.id,
+        round_obj.title,
+        round_obj.creator,
+        round_obj.date,
+        queue_reason,
+        is_new_round,
+        bool(round_obj.replay),
+        creator_opted_in,
+    )
+    return should_queue
+
+
 def _build_round_analysis_status_map(round_ids):
     normalized_round_ids = []
     seen_round_ids = set()
@@ -1306,7 +1363,9 @@ def _build_round_analysis_status_map(round_ids):
         seen_round_ids.add(parsed_round_id)
         normalized_round_ids.append(parsed_round_id)
 
-    from .round_analysis import latest_analysis_run_map
+    from .round_analysis import ensure_round_analysis_worker_for_pending_runs, latest_analysis_run_map
+
+    ensure_round_analysis_worker_for_pending_runs()
 
     round_rows = list(GPTriviaRound.objects.filter(id__in=normalized_round_ids).values('id', 'creator'))
     creator_opt_in_map = _build_round_analysis_opt_in_map([row['creator'] for row in round_rows])
@@ -1346,7 +1405,9 @@ def _build_round_analysis_status_map(round_ids):
 
 @login_required
 def round_analysis_list(request):
-    from .round_analysis import latest_completed_runs_with_entries
+    from .round_analysis import ensure_round_analysis_worker_for_pending_runs, latest_completed_runs_with_entries
+
+    ensure_round_analysis_worker_for_pending_runs()
 
     requested_round_id = (request.GET.get('round_id') or '').strip()
     selected_round_id = None
@@ -5181,6 +5242,9 @@ def _upsert_failed_presentation(
 @login_required
 @ensure_csrf_cookie
 def home(request):
+    from .round_analysis import ensure_round_analysis_worker_for_pending_runs
+
+    ensure_round_analysis_worker_for_pending_runs()
     ajax_request = _is_ajax_home_request(request)
     selected_presentation_id = (
         request.GET.get("presentation_id") or request.POST.get("selected_presentation_id")
@@ -5359,10 +5423,11 @@ def home(request):
                 new_round.link = round_links[round_index]
                 new_round.source_link = ordered_old_links[round_index] or ordered_links[round_index]
                 new_round.save()
-                if (
-                    ordered_rounds[round_index].get('is_new')
-                    and not new_round.replay
-                    and _creator_allows_round_analysis(new_round.creator)
+                if _should_auto_queue_round_analysis_for_round(
+                    new_round,
+                    ordered_rounds[round_index],
+                    presentation_name=presentation_name,
+                    action_name='generate',
                 ):
                     round_ids_for_analysis.append(new_round.id)
 
@@ -5523,10 +5588,11 @@ def home(request):
                 new_round.link = new_links[round_index]
                 new_round.source_link = ordered_old_links[round_index] or ordered_links[round_index]
                 new_round.save()
-                if (
-                    ordered_rounds[round_index].get('is_new')
-                    and not new_round.replay
-                    and _creator_allows_round_analysis(new_round.creator)
+                if _should_auto_queue_round_analysis_for_round(
+                    new_round,
+                    ordered_rounds[round_index],
+                    presentation_name=presentation_name,
+                    action_name='update',
                 ):
                     round_ids_for_analysis.append(new_round.id)
 

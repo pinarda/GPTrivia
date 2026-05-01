@@ -143,7 +143,17 @@ def queue_round_analysis_batch(
     batch_key = uuid.uuid4().hex if normalized_batch_label else ''
     queued_run_ids = []
     for round_id in normalized_ids:
-        if round_id not in queueable_rounds or round_id in active_round_ids:
+        if round_id not in queueable_rounds:
+            logger.info(
+                "Skipped queuing round analysis for round %s because the round is missing or marked replay.",
+                round_id,
+            )
+            continue
+        if round_id in active_round_ids:
+            logger.info(
+                "Skipped queuing round analysis for round %s because an active analysis already exists.",
+                round_id,
+            )
             continue
         run = RoundQuestionAnalysisRun.objects.create(
             round_id=round_id,
@@ -159,6 +169,15 @@ def queue_round_analysis_batch(
     if not queued_run_ids:
         return []
 
+    logger.info(
+        "Queued %s round analysis run(s) trigger=%s scheduled_for=%s batch_label=%r run_ids=%s round_ids=%s",
+        len(queued_run_ids),
+        trigger_type,
+        scheduled_for_value.isoformat() if scheduled_for_value else '',
+        normalized_batch_label,
+        queued_run_ids,
+        normalized_ids,
+    )
     ensure_round_analysis_worker_running()
     return queued_run_ids
 
@@ -197,6 +216,16 @@ def ensure_round_analysis_worker_running():
         )
         _ROUND_ANALYSIS_WORKER_THREAD.start()
         return True
+
+
+def ensure_round_analysis_worker_for_pending_runs():
+    has_pending_runs = RoundQuestionAnalysisRun.objects.filter(
+        status=RoundQuestionAnalysisRun.STATUS_PENDING,
+    ).exists()
+    if not has_pending_runs:
+        return False
+    ensure_round_analysis_worker_running()
+    return True
 
 
 def _round_analysis_worker_loop():

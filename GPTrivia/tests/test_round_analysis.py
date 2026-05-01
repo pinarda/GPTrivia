@@ -93,6 +93,45 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(queued_ids, [created_rounds[0].id])
         self.assertEqual(queue_mock.call_args.kwargs["initiated_by"], "Alex")
 
+    @patch(
+        "GPTrivia.views.create_presentation",
+        return_value=(
+            "presentation-generated",
+            ["Alex Smith"],
+            ["Fresh Round"],
+            [
+                "https://docs.google.com/presentation/d/presentation-generated/edit#slide=id.fresh",
+            ],
+        ),
+    )
+    @patch("GPTrivia.round_analysis.schedule_auto_round_analysis_batch")
+    def test_home_generate_logs_creator_opt_in_skip_reason_for_auto_analysis(self, queue_mock, create_mock):
+        with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 3, 20)):
+            with patch("GPTrivia.views._broadcast_home_build_state"):
+                with patch("GPTrivia.views._broadcast_home_presentation_refresh"):
+                    with self.captureOnCommitCallbacks(execute=True):
+                        with self.assertLogs("GPTrivia.views", level="INFO") as captured_logs:
+                            response = self.client.post(
+                                reverse("home"),
+                                data={
+                                    "action": "generate",
+                                    "round_order_0": "1",
+                                    "round_title_0": "Fresh Round",
+                                    "round_creator_0": "Alex Smith",
+                                    "round_link_0": "https://docs.google.com/presentation/d/source-fresh/edit",
+                                    "round_old_link_0": "https://docs.google.com/presentation/d/source-fresh/edit",
+                                    "round_shared_date_0": "2026-03-19",
+                                    "round_is_new_0": "1",
+                                },
+                            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(create_mock.call_count, 1)
+        queue_mock.assert_not_called()
+        joined_logs = "\n".join(captured_logs.output)
+        self.assertIn("Auto round analysis skipped", joined_logs)
+        self.assertIn("reason=creator_not_opted_in", joined_logs)
+
     @patch("GPTrivia.round_analysis.ensure_round_analysis_worker_running")
     def test_queue_round_analysis_batch_sets_delayed_schedule_for_auto_runs(self, worker_mock):
         round_obj = GPTriviaRound.objects.create(
@@ -440,6 +479,39 @@ class RoundAnalysisTests(TestCase):
         self.assertEqual(payload["button_label"], "Restart")
         self.assertEqual(payload["button_action"], "restart")
         self.assertFalse(payload["button_disabled"])
+
+    @patch("GPTrivia.round_analysis.ensure_round_analysis_worker_running")
+    def test_round_analysis_status_pending_auto_exposes_scheduled_summary_and_nudges_worker(self, worker_mock):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Scheduled Status Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 20),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/status-round-pending/edit#slide=id.r1",
+        )
+        scheduled_for = timezone.now() + datetime.timedelta(minutes=5)
+        RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_PENDING,
+            trigger_type=RoundQuestionAnalysisRun.TRIGGER_AUTO,
+            scheduled_for=scheduled_for,
+            round_type="picture",
+        )
+
+        response = self.client.get(reverse("round_analysis_status", args=[round_obj.id]))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["status"]
+        self.assertEqual(payload["status"], "pending")
+        self.assertTrue(payload["scheduled_summary"].startswith("Auto queued for "))
+        self.assertEqual(payload["scheduled_for_iso"], scheduled_for.isoformat())
+        worker_mock.assert_called()
 
     def test_round_analysis_status_includes_failure_detail(self):
         round_obj = GPTriviaRound.objects.create(
