@@ -391,7 +391,7 @@
                     <img src="/static/GPTrivia/css/menubars.png" class="dropbtn" alt="Menu" onclick="toggleMenu()" scale="20%">
                 </button>
             </div>
-            <div class="menu-buttons" id="menu-buttons" style="display: flex; flex-direction:row; justify-content: space-between; max-width: 700px">
+            <div class="menu-buttons" id="menu-buttons" style="display: flex; flex-direction:row; justify-content: space-between;">
                 <div class="scorebtn">
                     <a style="color: white;" href={% url 'scoresheet_new' %}>Scoresheet</a>
                 </div>
@@ -437,7 +437,7 @@
                     <a style="color: white;" href="{% url 'player_profile' player_name=user.username %}">{{ user.username }}'s Profile</a>
                 </div>
                 <div class="scorebtn">
-                    <a style="color: white;" href="{% url 'answer_sheet' %}">Answer Sheet</a>
+                    <a style="color: white;" href="{% url 'home' %}">Home</a>
                 </div>
             {% endif %}
             <div class="analysisbtn">
@@ -496,11 +496,14 @@
                 <div class="footer-bottom">
                     <p id="footer-text">Hail Science Trivia © 2026</p>
                     <nav class="mobile-footer-nav" aria-label="Mobile quick actions">
-                        <a class="mobile-footer-item" href="{% url 'home' %}">
+                        <a class="mobile-footer-item" href="{% url 'answer_sheet' %}">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path fill="currentColor" d="M12 3.2 3 10.4V21h6.2v-5.6h5.6V21H21V10.4z"/>
+                                <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16.9V20h3.1L18.8 8.3a1.9 1.9 0 0 0 0-2.7l-.4-.4a1.9 1.9 0 0 0-2.7 0L4 16.9Z"/>
+                                <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.6" d="m13.9 6.9 3.2 3.2"/>
+                                <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.6" d="M5.1 7.2c1.3-1 2.7-1 4.1 0 1.4 1 2.8 1 4.2 0"/>
+                                <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.6" d="M4.5 10.3c1.5-.8 3-.8 4.5 0"/>
                             </svg>
-                            <span class="mobile-footer-label">Home</span>
+                            <span class="mobile-footer-label">Answers</span>
                         </a>
                         <a class="mobile-footer-item" href="{% url 'scoresheet_new' %}">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
