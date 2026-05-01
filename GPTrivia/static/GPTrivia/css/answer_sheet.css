@@ -346,6 +346,19 @@ body.site-shell.answer-sheet-shell {
     text-transform: uppercase;
 }
 
+.answer-sheet-round-coop {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.45rem;
+    padding: 0.08rem 0.38rem;
+    border: 1px solid rgba(255, 186, 73, 0.55);
+    background: rgba(255, 186, 73, 0.14);
+    color: #ffba49;
+    font-size: 0.72rem;
+    line-height: 1.1;
+    letter-spacing: 0.06em;
+}
+
 .answer-sheet-textarea-shell {
     display: grid;
     grid-template-columns: 2.1rem minmax(0, 1fr);

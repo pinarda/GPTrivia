@@ -28,7 +28,12 @@
                 <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}" data-round-title="{{ page.round_title }}" data-cooperative="{% if page.cooperative %}true{% else %}false{% endif %}" data-diverged="{% if page.is_diverged %}true{% else %}false{% endif %}" data-answers-dirty="false" data-score-dirty="false">
                     <div class="answer-sheet-round-header">
                         <div class="answer-sheet-round-meta">
-                            <div class="answer-sheet-round-kicker">Round {{ page.round_number }}</div>
+                            <div class="answer-sheet-round-kicker">
+                                Round {{ page.round_number }}
+                                {% if page.cooperative %}
+                                    <span class="answer-sheet-round-coop">CO-OP</span>
+                                {% endif %}
+                            </div>
                             <span class="answer-sheet-status" data-status-for="{{ page.round_id }}" data-state="ungraded-saved">Ungraded, Saved</span>
                         </div>
                         <h2>{{ page.round_title }}</h2>
