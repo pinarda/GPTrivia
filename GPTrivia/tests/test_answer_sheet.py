@@ -1518,6 +1518,103 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(payload["row_results"][1]["state"], "incorrect")
         self.assertEqual(payload["row_results"][2]["state"], "incorrect")
 
+    def test_grade_answer_sheet_round_allows_long_word_typos_but_not_short_words_and_plain_numbers(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Word Level Typo Round",
+            major_category="History",
+            minor_category1="People",
+            minor_category2="Numbers",
+            date=datetime.date(2026, 4, 18),
+            round_number=4,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="Which founding father appears on the $100 bill?",
+            answer_text="Benjamin Franklin",
+            possible_answers=[],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=2,
+            question_text="Name the Tolstoy novel.",
+            answer_text="War and Peace",
+            possible_answers=[],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=3,
+            question_text="What is the answer to life, the universe, and everything?",
+            answer_text="42",
+            possible_answers=[],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=4,
+            question_text="Within the accepted numeric tolerance, what measurement was recorded?",
+            answer_text="100 +/- 5",
+            possible_answers=[],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=5,
+            question_text="Outside the accepted numeric tolerance, what measurement was recorded?",
+            answer_text="100 +/- 5",
+            possible_answers=[],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+
+        response = self.client.post(
+            reverse("grade_answer_sheet_round"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "Benjomin Franklon\nBar and Peace\n43\n103\n106\n",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["score"], 2)
+        self.assertEqual(payload["row_results"][0]["state"], "correct")
+        self.assertEqual(payload["row_results"][1]["state"], "incorrect")
+        self.assertEqual(payload["row_results"][2]["state"], "incorrect")
+        self.assertEqual(payload["row_results"][3]["state"], "correct")
+        self.assertEqual(payload["row_results"][4]["state"], "incorrect")
+
     def test_grade_answer_sheet_round_accepts_matching_rounds(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",

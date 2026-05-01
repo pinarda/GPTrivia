@@ -42,6 +42,7 @@ import requests
 from urllib.parse import urlencode
 import hashlib
 from io import BytesIO
+from decimal import Decimal, InvalidOperation
 
 ## API Libs
 from rest_framework import generics
@@ -1652,29 +1653,120 @@ def _answer_sheet_edit_distance(left_value, right_value):
     return previous_row[-1]
 
 
-def _answer_sheet_forms_match(guess_forms, accepted_forms):
+def _parse_answer_sheet_numeric_value(raw_value):
+    numeric_text = str(raw_value or '').strip()
+    if not numeric_text:
+        return None
+    numeric_text = numeric_text.replace(',', '').replace('−', '-')
+    if not re.fullmatch(r'[+-]?(?:\d+(?:\.\d+)?|\.\d+)', numeric_text):
+        return None
+    try:
+        return Decimal(numeric_text)
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _extract_answer_sheet_numeric_tolerance(raw_value):
+    tolerance_text = str(raw_value or '').strip()
+    if not tolerance_text:
+        return None
+    tolerance_text = (
+        tolerance_text
+        .replace(',', '')
+        .replace('−', '-')
+        .replace('±', '+/-')
+        .replace('+/−', '+/-')
+    )
+    tolerance_match = re.fullmatch(
+        r'\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*\+/-\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*',
+        tolerance_text,
+    )
+    if not tolerance_match:
+        return None
+    center_value = _parse_answer_sheet_numeric_value(tolerance_match.group(1))
+    tolerance_value = _parse_answer_sheet_numeric_value(tolerance_match.group(2))
+    if center_value is None or tolerance_value is None:
+        return None
+    return center_value, abs(tolerance_value)
+
+
+def _answer_sheet_numeric_forms_match(raw_guess, raw_accepted_candidates):
+    guess_numeric_value = _parse_answer_sheet_numeric_value(raw_guess)
+    if guess_numeric_value is None:
+        return False
+
+    for raw_candidate in raw_accepted_candidates or []:
+        parsed_tolerance = _extract_answer_sheet_numeric_tolerance(raw_candidate)
+        if not parsed_tolerance:
+            continue
+        center_value, tolerance_value = parsed_tolerance
+        if center_value - tolerance_value <= guess_numeric_value <= center_value + tolerance_value:
+            return True
+
+    return False
+
+
+def _answer_sheet_word_level_typo_match(guess_form, accepted_form):
+    if not guess_form or not accepted_form:
+        return False
+
+    guess_tokens = [token for token in guess_form.split() if token]
+    accepted_tokens = [token for token in accepted_form.split() if token]
+    if not guess_tokens or len(guess_tokens) != len(accepted_tokens):
+        return False
+
+    has_typo_match = False
+    for guess_token, accepted_token in zip(guess_tokens, accepted_tokens):
+        if guess_token == accepted_token:
+            continue
+        if (
+            _parse_answer_sheet_numeric_value(guess_token) is not None
+            or _parse_answer_sheet_numeric_value(accepted_token) is not None
+        ):
+            return False
+        if len(guess_token) < 5 or len(accepted_token) < 5:
+            return False
+        if abs(len(guess_token) - len(accepted_token)) > 1:
+            return False
+        if _answer_sheet_edit_distance(guess_token, accepted_token) > 1:
+            return False
+        has_typo_match = True
+
+    return has_typo_match
+
+
+def _answer_sheet_fuzzy_forms(raw_value):
+    normalized_value = _normalize_answer_sheet_grade_value(raw_value)
+    if not normalized_value:
+        return []
+
+    fuzzy_forms = [normalized_value]
+    articleless_value = _strip_answer_sheet_leading_article(raw_value)
+    if articleless_value and articleless_value not in fuzzy_forms:
+        fuzzy_forms.append(articleless_value)
+    return fuzzy_forms
+
+
+def _answer_sheet_forms_match(guess_forms, accepted_forms, *, raw_guess='', raw_accepted_candidates=None):
     if not guess_forms or not accepted_forms:
         return False
     if guess_forms.intersection(accepted_forms):
         return True
+    if raw_guess and raw_accepted_candidates and _answer_sheet_numeric_forms_match(raw_guess, raw_accepted_candidates):
+        return True
 
-    for guess_form in guess_forms:
+    if not raw_guess or not raw_accepted_candidates:
+        return False
+
+    for guess_form in _answer_sheet_fuzzy_forms(raw_guess):
         if not guess_form:
             continue
-        for accepted_form in accepted_forms:
-            if not accepted_form:
-                continue
-            normalized_accepted_length = len(accepted_form.replace(' ', ''))
-            accepted_form_is_numeric = bool(re.fullmatch(r'[0-9 ]+', accepted_form))
-            if accepted_form_is_numeric or normalized_accepted_length < 5:
-                continue
-            if abs(len(guess_form) - len(accepted_form)) > 1:
-                continue
-            if len(guess_form) <= 3 or len(accepted_form) <= 3:
-                if guess_form[0] != accepted_form[0]:
+        for raw_candidate in raw_accepted_candidates:
+            for accepted_form in _answer_sheet_fuzzy_forms(raw_candidate):
+                if not accepted_form:
                     continue
-            if _answer_sheet_edit_distance(guess_form, accepted_form) <= 1:
-                return True
+                if _answer_sheet_word_level_typo_match(guess_form, accepted_form):
+                    return True
     return False
 
 
@@ -1718,6 +1810,15 @@ def _build_answer_sheet_accepted_answers(entry):
             if normalized_candidate and normalized_candidate not in accepted_answers:
                 accepted_answers.append(normalized_candidate)
     return accepted_answers
+
+
+def _build_answer_sheet_raw_answer_candidates(entry):
+    raw_candidates = []
+    for candidate in [getattr(entry, 'answer_text', ''), *(list(getattr(entry, 'possible_answers', []) or []))]:
+        normalized_candidate = str(candidate or '').strip()
+        if normalized_candidate and normalized_candidate not in raw_candidates:
+            raw_candidates.append(normalized_candidate)
+    return raw_candidates
 
 
 def _has_answer_sheet_saved_grade_state(answer_entry):
@@ -1890,6 +1991,7 @@ def _grade_answer_sheet_answers(
         normalized_guess_forms = _answer_sheet_grade_forms(extracted_answer)
         entry = entries_by_question.get(index)
         accepted_answers = _build_answer_sheet_accepted_answers(entry) if entry else []
+        raw_accepted_candidates = _build_answer_sheet_raw_answer_candidates(entry) if entry else []
 
         if not normalized_guess_forms or not entry:
             state = 'blank'
@@ -1900,7 +2002,12 @@ def _grade_answer_sheet_answers(
             correct_count += 1
         elif index in invalidated_question_set:
             state = 'default'
-        elif _answer_sheet_forms_match(normalized_guess_forms, set(accepted_answers)):
+        elif _answer_sheet_forms_match(
+            normalized_guess_forms,
+            set(accepted_answers),
+            raw_guess=extracted_answer,
+            raw_accepted_candidates=raw_accepted_candidates,
+        ):
             state = 'correct'
             correct_count += 1
         else:
