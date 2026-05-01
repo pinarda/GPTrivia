@@ -316,7 +316,9 @@ body {
 
 .header-content {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
+    align-items: center;
+    width: 100%;
 }
 
 
@@ -352,12 +354,14 @@ body {
 .menu-buttons {
     display: flex;
     justify-content: space-between;
-    width: 90%;
+    width: min(96%, 770px);
+    max-width: 770px;
     margin: 0px;
     flex: 0 1 auto;
+    align-self: center;
     font-family: YoungSerif;
     font-size: 0.92rem;
-    gap: 10px;
+    gap: 16px;
 }
 
 .menu-buttons a {
