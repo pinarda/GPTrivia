@@ -264,6 +264,64 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual(round_payload["presentation_id"], "")
 
     @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_does_not_overlay_coop_from_same_title_creator_on_different_date(self, mock_get_round_titles_and_links):
+        mock_get_round_titles_and_links.return_value = (
+            ["https://mail.google.com/new-share-link"],
+            ["Rhyming Picture Round"],
+            ["Alex"],
+            ["https://mail.google.com/new-share-link"],
+            ["2026-03-18"],
+        )
+        SubmittedRound.objects.create(
+            presentation_id="old-rhyming-round",
+            title="Rhyming Picture Round",
+            source_title="Rhyming Picture Round",
+            creator="Alex",
+            shared_date=datetime.date(2026, 3, 11),
+            cooperative=True,
+            link="https://mail.google.com/older-share-link",
+        )
+
+        response = self.client.get(reverse("collect_rounds_api"))
+
+        self.assertEqual(response.status_code, 200)
+        round_payload = response.json()["rounds"][0]
+        self.assertEqual(round_payload["title"], "Rhyming Picture Round")
+        self.assertEqual(round_payload["creator"], "Alex")
+        self.assertEqual(round_payload["shared_date"], "2026-03-18")
+        self.assertFalse(round_payload["coop"])
+        self.assertEqual(round_payload["presentation_id"], "")
+
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_overlays_coop_for_exact_title_creator_date_match(self, mock_get_round_titles_and_links):
+        mock_get_round_titles_and_links.return_value = (
+            ["https://mail.google.com/new-share-link"],
+            ["Rhyming Picture Round"],
+            ["Alex"],
+            ["https://mail.google.com/new-share-link"],
+            ["2026-03-18"],
+        )
+        SubmittedRound.objects.create(
+            presentation_id="dated-rhyming-round",
+            title="Rhyming Picture Round",
+            source_title="Rhyming Picture Round",
+            creator="Alex",
+            shared_date=datetime.date(2026, 3, 18),
+            cooperative=True,
+            link="https://mail.google.com/older-share-link",
+        )
+
+        response = self.client.get(reverse("collect_rounds_api"))
+
+        self.assertEqual(response.status_code, 200)
+        round_payload = response.json()["rounds"][0]
+        self.assertEqual(round_payload["title"], "Rhyming Picture Round")
+        self.assertEqual(round_payload["creator"], "Alex")
+        self.assertEqual(round_payload["shared_date"], "2026-03-18")
+        self.assertTrue(round_payload["coop"])
+        self.assertEqual(round_payload["presentation_id"], "dated-rhyming-round")
+
+    @patch("GPTrivia.views.get_round_titles_and_links")
     def test_collect_rounds_api_shows_unread_gmail_round_even_if_previously_consumed(self, mock_get_round_titles_and_links):
         mock_get_round_titles_and_links.return_value = (
             ["https://docs.google.com/presentation/d/swoop-123/edit"],
@@ -323,6 +381,46 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual(first_response.status_code, 200)
         self.assertEqual(refresh_response.status_code, 200)
         self.assertEqual(mock_get_round_titles_and_links.call_count, 2)
+
+    def test_save_available_round_metadata_uses_shared_date_in_persistence_for_linkless_rounds(self):
+        first_response = self.client.post(
+            reverse("save_available_round_metadata"),
+            data={
+                "title": "Winged Science",
+                "source_title": "Winged Science",
+                "creator": "Alex",
+                "link": "",
+                "old_link": "",
+                "shared_date": "2026-03-15",
+                "coop": True,
+            },
+            content_type="application/json",
+        )
+        second_response = self.client.post(
+            reverse("save_available_round_metadata"),
+            data={
+                "title": "Winged Science",
+                "source_title": "Winged Science",
+                "creator": "Alex",
+                "link": "",
+                "old_link": "",
+                "shared_date": "2026-03-22",
+                "coop": False,
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        saved_rounds = list(SubmittedRound.objects.filter(title="Winged Science", creator="Alex").order_by("shared_date"))
+        self.assertEqual(len(saved_rounds), 2)
+        self.assertEqual(
+            [round_obj.shared_date.isoformat() if round_obj.shared_date else "" for round_obj in saved_rounds],
+            ["2026-03-15", "2026-03-22"],
+        )
+        self.assertTrue(saved_rounds[0].cooperative)
+        self.assertFalse(saved_rounds[1].cooperative)
+        self.assertNotEqual(saved_rounds[0].presentation_id, saved_rounds[1].presentation_id)
 
     @patch(
         "GPTrivia.views.create_presentation",

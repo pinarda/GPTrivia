@@ -1522,7 +1522,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 || round.link
                 || round.old_link
                 || round.client_save_key
-                || `${round.source_title || round.title || ''}`;
+                || `${round.source_title || round.title || ''}|${round.creator || ''}|${round.shared_date || ''}`;
         }
 
         function clearPendingAvailableRoundSave(round) {
@@ -1548,6 +1548,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 creator: (round.creator || '').trim(),
                 link: round.link || '',
                 old_link: round.old_link || '',
+                shared_date: round.shared_date || '',
                 coop: Boolean(round.coop),
             };
 
@@ -1584,6 +1585,9 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 .then((body) => {
                     if (body.presentation_id) {
                         round.presentation_id = body.presentation_id;
+                    }
+                    if (body.shared_date) {
+                        round.shared_date = body.shared_date;
                     }
                     round.source_title = body.source_title || payload.source_title || payload.title;
                 })

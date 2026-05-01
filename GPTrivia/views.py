@@ -382,6 +382,19 @@ def _normalize_round_creator(creator_value):
     return re.sub(r'\s+', ' ', str(creator_value or '').strip()).casefold()
 
 
+def _parse_available_round_shared_date(shared_date_value):
+    if isinstance(shared_date_value, datetime.datetime):
+        return shared_date_value.date()
+    if isinstance(shared_date_value, datetime.date):
+        return shared_date_value
+    return _parse_scoresheet_date(str(shared_date_value or '').strip())
+
+
+def _normalize_round_shared_date(shared_date_value):
+    parsed_date = _parse_available_round_shared_date(shared_date_value)
+    return parsed_date.isoformat() if parsed_date else ''
+
+
 def _creator_allows_title_fallback(creator_value):
     creator_key = _normalize_round_creator(creator_value)
     return creator_key in {'', 'unknown'}
@@ -394,7 +407,9 @@ def _build_submitted_round_lookup(submitted_rounds):
     }
     submitted_rounds_by_link = {}
     submitted_rounds_by_title = {}
+    submitted_rounds_by_title_creator_date = {}
     duplicate_title_keys = set()
+    duplicate_title_creator_date_keys = set()
 
     def add_title_key(candidate_title, submitted_round):
         title_key = _normalize_round_title(candidate_title)
@@ -406,6 +421,19 @@ def _build_submitted_round_lookup(submitted_rounds):
             return
         submitted_rounds_by_title[title_key] = submitted_round
 
+    def add_title_creator_date_key(candidate_title, submitted_round):
+        title_key = _normalize_round_title(candidate_title)
+        creator_key = _normalize_round_creator(submitted_round.creator)
+        shared_date_key = _normalize_round_shared_date(submitted_round.shared_date)
+        if not title_key or not creator_key or not shared_date_key:
+            return
+        identity_key = (title_key, creator_key, shared_date_key)
+        existing_round = submitted_rounds_by_title_creator_date.get(identity_key)
+        if existing_round and existing_round.id != submitted_round.id:
+            duplicate_title_creator_date_keys.add(identity_key)
+            return
+        submitted_rounds_by_title_creator_date[identity_key] = submitted_round
+
     for submitted_round in submitted_rounds:
         normalized_link = _normalize_round_link(submitted_round.link)
         if normalized_link:
@@ -413,40 +441,72 @@ def _build_submitted_round_lookup(submitted_rounds):
 
         add_title_key(submitted_round.title, submitted_round)
         add_title_key(submitted_round.source_title, submitted_round)
+        add_title_creator_date_key(submitted_round.title, submitted_round)
+        add_title_creator_date_key(submitted_round.source_title, submitted_round)
 
     return (
         submitted_rounds_by_presentation_id,
         submitted_rounds_by_link,
         submitted_rounds_by_title,
+        submitted_rounds_by_title_creator_date,
         duplicate_title_keys,
+        duplicate_title_creator_date_keys,
     )
 
 
-def _find_matching_submitted_round(title, creator, link, old_link, submitted_round_lookup):
+def _find_matching_submitted_round(title, creator, link, old_link, submitted_round_lookup, shared_date=''):
     (
         submitted_rounds_by_presentation_id,
         submitted_rounds_by_link,
         submitted_rounds_by_title,
+        submitted_rounds_by_title_creator_date,
         duplicate_title_keys,
+        duplicate_title_creator_date_keys,
     ) = submitted_round_lookup
 
     title_key = _normalize_round_title(title)
+    creator_key = _normalize_round_creator(creator)
+    shared_date_key = _normalize_round_shared_date(shared_date)
+
+    def shared_date_matches(candidate_round, *, require_date=False):
+        if not candidate_round:
+            return False
+        candidate_date_key = _normalize_round_shared_date(candidate_round.shared_date)
+        if not shared_date_key:
+            return True
+        if not candidate_date_key:
+            return not require_date
+        return candidate_date_key == shared_date_key
+
     submitted_round = submitted_rounds_by_presentation_id.get(
         _extract_google_presentation_id(link) or _extract_google_presentation_id(old_link)
     )
+    if submitted_round and not shared_date_matches(submitted_round):
+        submitted_round = None
     if not submitted_round:
         submitted_round = submitted_rounds_by_link.get(_normalize_round_link(link)) or submitted_rounds_by_link.get(
             _normalize_round_link(old_link)
         )
+    if submitted_round and not shared_date_matches(submitted_round):
+        submitted_round = None
+    if (
+        not submitted_round
+        and title_key
+        and creator_key
+        and shared_date_key
+        and (title_key, creator_key, shared_date_key) not in duplicate_title_creator_date_keys
+    ):
+        submitted_round = submitted_rounds_by_title_creator_date.get((title_key, creator_key, shared_date_key))
     if not submitted_round and title_key and title_key not in duplicate_title_keys:
         candidate_round = submitted_rounds_by_title.get(title_key)
         if candidate_round:
-            creator_key = _normalize_round_creator(creator)
             candidate_creator_key = _normalize_round_creator(candidate_round.creator)
             if _creator_allows_title_fallback(creator) or (
                 creator_key and creator_key == candidate_creator_key
             ):
-                submitted_round = candidate_round
+                requires_exact_date = bool(shared_date_key and not _creator_allows_title_fallback(creator))
+                if shared_date_matches(candidate_round, require_date=requires_exact_date):
+                    submitted_round = candidate_round
     return submitted_round
 
 
@@ -462,6 +522,7 @@ def _mark_selected_submitted_rounds_consumed(rounds):
             round_data.get("link"),
             round_data.get("old_link"),
             submitted_round_lookup,
+            shared_date=round_data.get("shared_date"),
         )
         if submitted_round:
             matched_ids.append(submitted_round.id)
@@ -476,7 +537,7 @@ def _build_submitted_round_link(presentation_id):
     return f"https://docs.google.com/presentation/d/{presentation_id}/edit"
 
 
-def _build_available_round_persistence_id(link='', old_link='', title=''):
+def _build_available_round_persistence_id(link='', old_link='', title='', creator='', shared_date=''):
     presentation_id = _extract_google_presentation_id(link) or _extract_google_presentation_id(old_link)
     if presentation_id:
         return presentation_id
@@ -484,6 +545,15 @@ def _build_available_round_persistence_id(link='', old_link='', title=''):
     normalized_link = _normalize_round_link(link) or _normalize_round_link(old_link)
     if normalized_link:
         return f"link-{hashlib.sha1(normalized_link.encode('utf-8')).hexdigest()[:24]}"
+
+    persistence_parts = [
+        _normalize_round_title(title),
+        _normalize_round_creator(creator),
+        _normalize_round_shared_date(shared_date),
+    ]
+    normalized_identity = '|'.join(persistence_parts).strip('|')
+    if normalized_identity:
+        return f"title-{hashlib.sha1(normalized_identity.encode('utf-8')).hexdigest()[:24]}"
 
     normalized_title = _normalize_round_title(title)
     if normalized_title:
@@ -498,6 +568,7 @@ def _save_available_round_metadata(data, *, user=None):
     link = _normalize_round_link(data.get('link'))
     old_link = _normalize_round_link(data.get('old_link'))
     source_title = str(data.get('source_title') or title).strip()
+    shared_date = _parse_available_round_shared_date(data.get('shared_date'))
     cooperative = bool(data.get('coop'))
 
     if not title:
@@ -513,12 +584,19 @@ def _save_available_round_metadata(data, *, user=None):
         link,
         old_link,
         submitted_round_lookup,
+        shared_date=shared_date,
     )
 
     persistence_id = (
         submitted_round.presentation_id
         if submitted_round
-        else _build_available_round_persistence_id(link, old_link, source_title or title)
+        else _build_available_round_persistence_id(
+            link,
+            old_link,
+            source_title or title,
+            creator,
+            shared_date,
+        )
     )
     if not persistence_id:
         return None, 'Could not identify this round.'
@@ -528,6 +606,7 @@ def _save_available_round_metadata(data, *, user=None):
         'title': title,
         'source_title': source_title or title,
         'creator': creator,
+        'shared_date': shared_date or (submitted_round.shared_date if submitted_round else None),
         'cooperative': cooperative,
         'link': link_to_store,
         'is_consumed': submitted_round.is_consumed if submitted_round else False,
@@ -634,7 +713,7 @@ def _infer_available_round_title_from_first_slide(link='', old_link='', fallback
     return _sanitize_inferred_available_round_title(inferred_title) or str(fallback_title or '').strip()
 
 
-def _ensure_available_round_identified_title(title, creator, link, old_link, submitted_round=None):
+def _ensure_available_round_identified_title(title, creator, link, old_link, shared_date='', submitted_round=None):
     if not _creator_allows_round_analysis(creator):
         return submitted_round, False
     if submitted_round and submitted_round.source_title:
@@ -673,6 +752,7 @@ def _ensure_available_round_identified_title(title, creator, link, old_link, sub
             'creator': creator_to_store,
             'link': link,
             'old_link': old_link,
+            'shared_date': shared_date,
             'coop': coop_to_store,
         }
     )
@@ -4483,7 +4563,14 @@ def _collect_rounds():
     creator_opt_in_map = _build_round_analysis_opt_in_map(creators)
     new_rounds = []
     for title, creator, link, old_link, shared_date in zip(titles, creators, links, old_links, shared_dates):
-        submitted_round = _find_matching_submitted_round(title, creator, link, old_link, submitted_round_lookup)
+        submitted_round = _find_matching_submitted_round(
+            title,
+            creator,
+            link,
+            old_link,
+            submitted_round_lookup,
+            shared_date=shared_date,
+        )
         if creator_opt_in_map.get(str(creator or '').strip()) and (
             not submitted_round or not str(submitted_round.source_title or '').strip()
         ):
@@ -4492,6 +4579,7 @@ def _collect_rounds():
                 creator,
                 link,
                 old_link,
+                shared_date,
                 submitted_round=submitted_round,
             )
         display_title = submitted_round.title if submitted_round and submitted_round.title else title
@@ -4514,9 +4602,13 @@ def _collect_rounds():
                 ),
                 "shared_date": shared_date
                 or (
-                    submitted_round.submitted_at.date().isoformat()
-                    if submitted_round and submitted_round.submitted_at
-                    else ""
+                    submitted_round.shared_date.isoformat()
+                    if submitted_round and submitted_round.shared_date
+                    else (
+                        submitted_round.submitted_at.date().isoformat()
+                        if submitted_round and submitted_round.submitted_at
+                        else ""
+                    )
                 ),
                 "coop": bool(submitted_round.cooperative) if submitted_round else False,
                 "is_new": True,
@@ -4570,6 +4662,7 @@ def save_available_round_metadata(request):
         "title": saved_round.title,
         "source_title": saved_round.source_title or saved_round.title,
         "creator": saved_round.creator,
+        "shared_date": saved_round.shared_date.isoformat() if saved_round.shared_date else '',
         "coop": bool(saved_round.cooperative),
     })
 

@@ -196,6 +196,7 @@ class SubmittedRound(models.Model):
     title = models.CharField(max_length=255)
     source_title = models.CharField(max_length=255, blank=True, default='')
     creator = models.CharField(max_length=100)
+    shared_date = models.DateField(null=True, blank=True, db_index=True)
     cooperative = models.BooleanField(default=False)
     link = models.CharField(max_length=255, blank=True, default='')
     is_consumed = models.BooleanField(default=False)
