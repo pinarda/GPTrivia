@@ -298,15 +298,12 @@
                 return;
             }
 
-            const hasUnsavedChanges = panel.dataset.answersDirty === 'true' || panel.dataset.scoreDirty === 'true';
+            const hasUnsavedScore = panel.dataset.scoreDirty === 'true';
             const hasGrading = roundHasGradedRows(textarea);
             let statusState = 'ungraded-saved';
             let statusText = 'Ungraded, Saved';
 
-            if (hasUnsavedChanges && hasGrading) {
-                statusState = 'graded-dirty';
-                statusText = 'Graded, Unsaved';
-            } else if (hasUnsavedChanges) {
+            if (hasUnsavedScore) {
                 statusState = 'ungraded-dirty';
                 statusText = 'Ungraded, Unsaved';
             } else if (hasGrading) {
@@ -322,7 +319,7 @@
 
         function hasUnsavedAnswerSheetChanges() {
             return Array.from(pageRoot.querySelectorAll('.answer-sheet-round-panel')).some((panel) =>
-                panel.dataset.answersDirty === 'true' || panel.dataset.scoreDirty === 'true'
+                panel.dataset.scoreDirty === 'true'
             );
         }
 
@@ -864,7 +861,6 @@
                 return;
             }
 
-            setStatus(roundId, 'Saving...', 'saving');
             try {
                 const response = await fetch(saveUrl, {
                     method: 'POST',
@@ -885,7 +881,6 @@
                 refreshRoundStatus(roundId);
             } catch (error) {
                 console.error('Error saving answer sheet entry:', error);
-                setStatus(roundId, 'Unable to save', 'error');
             }
         }
 
