@@ -706,6 +706,10 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell {
     --answer-sheet-calendar-accent-strong: #005a99;
 }
 
+body.site-shell[data-profile-theme="light"] .answer-sheet-page {
+    color: #1b2530;
+}
+
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-card,
 body.site-shell[data-profile-theme="light"] .answer-sheet-empty-card,
 body.site-shell[data-profile-theme="light"] .answer-sheet-round-panel {
@@ -753,6 +757,12 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-page input.answer-shee
 body.site-shell[data-profile-theme="light"] .answer-sheet-line-numbers {
     border-right-color: rgba(45, 48, 71, 0.12);
     color: rgba(27, 37, 48, 0.4);
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-round-coop {
+    border-color: rgba(127, 78, 12, 0.48);
+    background: rgba(161, 102, 18, 0.12);
+    color: #7f4e0c;
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-line-plus {

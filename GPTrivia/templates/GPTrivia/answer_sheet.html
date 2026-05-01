@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260424g">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260501a">
 {% endblock %}
 
 {% block content %}
@@ -34,7 +34,7 @@
                                     <span class="answer-sheet-round-coop">CO-OP</span>
                                 {% endif %}
                             </div>
-                            <span class="answer-sheet-status" data-status-for="{{ page.round_id }}" data-state="ungraded-saved">Ungraded, Saved</span>
+                            <span class="answer-sheet-status" data-status-for="{{ page.round_id }}" data-state="ungraded-saved">Ungraded, Submitted</span>
                         </div>
                         <h2>{{ page.round_title }}</h2>
                     </div>
@@ -78,7 +78,7 @@
                             data-round-title="{{ page.round_title }}"
                             data-submit-requires-confirmation="{% if page.submit_requires_confirmation %}true{% else %}false{% endif %}"
                             data-submit-state="ungraded-saved"
-                        >Save</button>
+                        >Submit</button>
                         <button
                             class="answer-sheet-action-button{% if not page.grade_enabled %} is-disabled{% endif %}"
                             type="button"
@@ -301,14 +301,14 @@
             const hasUnsavedScore = panel.dataset.scoreDirty === 'true';
             const hasGrading = roundHasGradedRows(textarea);
             let statusState = 'ungraded-saved';
-            let statusText = 'Ungraded, Saved';
+            let statusText = 'Ungraded, Submitted';
 
             if (hasUnsavedScore) {
                 statusState = 'ungraded-dirty';
-                statusText = 'Ungraded, Unsaved';
+                statusText = 'Ungraded, Unsubmitted';
             } else if (hasGrading) {
                 statusState = 'graded-saved';
-                statusText = 'Graded, Saved';
+                statusText = 'Graded, Submitted';
             }
 
             status.textContent = statusText;
@@ -327,7 +327,7 @@
             if (!hasUnsavedAnswerSheetChanges()) {
                 return true;
             }
-            return window.confirm('You have unsaved changes. Are you sure you want to leave this page?');
+            return window.confirm('You have an unsubmitted score. Are you sure you want to leave this page?');
         }
 
         function flushPendingAnswerSaves() {
