@@ -744,6 +744,30 @@ describe('scoresheet total helpers', () => {
     })).toBeLessThan(0);
   });
 
+  test('tiebreak winner does not jump above a player with a higher total', () => {
+    const rounds = [
+      { title: 'Round 1', creator: 'Alex', score_alex: 8, score_megan: 10 },
+      { title: 'Round 2', creator: 'Jenny', score_alex: 2, score_megan: 2 },
+    ];
+    const scores = {
+      score_alex: { 'Round 1': 8, 'Round 2': 2 },
+      score_megan: { 'Round 1': 10, 'Round 2': 2 },
+    };
+    const players = ['score_alex', 'score_megan'];
+
+    expect(comparePlayersForDisplay({
+      playerA: 'score_alex',
+      playerB: 'score_megan',
+      players,
+      rounds,
+      scores,
+      selectedRounds: {},
+      medianScores: [],
+      tiebreakWinner: 'Alex',
+      isSortAscending: false,
+    })).toBeGreaterThan(0);
+  });
+
   test('blank nights stay blank in creator bonus and total cells', () => {
     const rounds = [
       { title: 'Round 1', creator: 'Megan', score_alex: null },

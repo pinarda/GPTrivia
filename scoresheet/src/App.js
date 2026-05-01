@@ -1282,7 +1282,7 @@ const PlayerTable = () => {
     const [secondaryRoundCreators, setSecondaryRoundCreators] = useState({});
     const [scores, setScores] = useState({});
     const [medianScores, setMedianScores] = useState([]);
-    const [isSortAscending, setIsSortAscending] = useState(true);
+    const [isSortAscending, setIsSortAscending] = useState(false);
     const [dates, setDates] = useState([]);
     const sortedDates = useMemo(() => {
                                 return [...dates].sort().reverse(); // or any other sorting logic you have
@@ -2399,15 +2399,16 @@ const PlayerTable = () => {
       });
 
       const finalTitle = roundTitles[finalIndex];
+      const finalHoldBeforeFlashMs = 1000;
       const finalFlashStates = [null, finalTitle, null, finalTitle];
-      const finalFlashStepMs = 180;
+      const finalFlashStepMs = 250;
       finalFlashStates.forEach((title, flashIndex) => {
         timeoutIds.push(window.setTimeout(() => {
           setJokerRouletteHighlights(prevState => ({
             ...prevState,
             [player]: title,
           }));
-        }, elapsedDelay + (finalFlashStepMs * (flashIndex + 1))));
+        }, elapsedDelay + finalHoldBeforeFlashMs + (finalFlashStepMs * (flashIndex + 1))));
       });
 
       timeoutIds.push(window.setTimeout(() => {
@@ -2417,7 +2418,7 @@ const PlayerTable = () => {
         }));
         clearJokerRouletteForPlayer(player);
         markDirty();
-      }, elapsedDelay + 1000));
+      }, elapsedDelay + finalHoldBeforeFlashMs + (finalFlashStepMs * finalFlashStates.length)));
 
       jokerRouletteTimeoutsRef.current[player] = timeoutIds;
     }, [buildStoredJokerSelection, clearJokerRouletteForPlayer, markDirty, rounds, scores]);
