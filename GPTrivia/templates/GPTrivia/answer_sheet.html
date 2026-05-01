@@ -186,9 +186,7 @@
         const saveTimers = new Map();
         const buttonMessageTimers = new Map();
         const lineStateMap = new WeakMap();
-        const textareaValueMap = new WeakMap();
-        const textareaBeforeInputMap = new WeakMap();
-        const PROTECTED_BASELINE_ROWS = 10;
+        const MINIMUM_VISIBLE_ROWS = 10;
         const localClientId = (
             window.crypto && typeof window.crypto.randomUUID === 'function'
                 ? window.crypto.randomUUID()
@@ -272,7 +270,7 @@
             if (!textarea) {
                 return false;
             }
-            const rowCount = Math.max(10, getTextareaLines(textarea).length);
+            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, getTextareaLines(textarea).length);
             return getLineStates(textarea, rowCount).some((state) => state === 'correct' || state === 'incorrect');
         }
 
@@ -617,163 +615,6 @@
             return offset;
         }
 
-        function rememberTextareaValue(textarea) {
-            if (!textarea) {
-                return;
-            }
-            textareaValueMap.set(textarea, normalizeTextareaValue(textarea.value));
-        }
-
-        function getProtectedNewlineInsertionIndices(value, selectionStart, selectionEnd, inputType) {
-            const normalizedValue = normalizeTextareaValue(value);
-            const lines = normalizedValue.split('\n');
-            if (lines.length < 2) {
-                return [];
-            }
-
-            const boundedStart = Math.max(0, Math.min(normalizedValue.length, Number(selectionStart) || 0));
-            const boundedEnd = Math.max(boundedStart, Math.min(normalizedValue.length, Number(selectionEnd) || boundedStart));
-            let rangeStart = boundedStart;
-            let rangeEnd = boundedEnd;
-
-            if (rangeStart === rangeEnd) {
-                if (inputType === 'deleteContentBackward' || inputType === 'deleteWordBackward' || inputType === 'deleteSoftLineBackward') {
-                    if (rangeStart <= 0) {
-                        return [];
-                    }
-                    rangeStart -= 1;
-                } else if (inputType === 'deleteContentForward' || inputType === 'deleteWordForward' || inputType === 'deleteSoftLineForward') {
-                    if (rangeEnd >= normalizedValue.length) {
-                        return [];
-                    }
-                    rangeEnd += 1;
-                } else {
-                    return [];
-                }
-            }
-
-            const indices = [];
-            let offset = 0;
-            const protectedBoundaryCount = Math.min(PROTECTED_BASELINE_ROWS - 1, lines.length - 1);
-            for (let boundaryIndex = 0; boundaryIndex < protectedBoundaryCount; boundaryIndex += 1) {
-                offset += lines[boundaryIndex].length;
-                const newlineOffset = offset;
-                if (newlineOffset >= rangeStart && newlineOffset < rangeEnd) {
-                    indices.push(boundaryIndex + 1);
-                }
-                offset += 1;
-            }
-            return indices;
-        }
-
-        function inferProtectedCollapsedLineIndices(previousLines, currentLines, restoreLimit) {
-            const inferredIndices = [];
-            const protectedLineCount = Math.min(PROTECTED_BASELINE_ROWS, previousLines.length);
-            if (restoreLimit <= 0 || protectedLineCount <= 1) {
-                return inferredIndices;
-            }
-
-            let previousIndex = 0;
-            let currentIndex = 0;
-            while (
-                previousIndex < protectedLineCount
-                && currentIndex < currentLines.length
-                && inferredIndices.length < restoreLimit
-            ) {
-                const previousLine = previousLines[previousIndex] ?? '';
-                const currentLine = currentLines[currentIndex] ?? '';
-                if (previousLine === currentLine) {
-                    previousIndex += 1;
-                    currentIndex += 1;
-                    continue;
-                }
-
-                const nextPreviousLine = previousLines[previousIndex + 1] ?? null;
-                if (previousIndex + 1 < protectedLineCount && nextPreviousLine === currentLine) {
-                    inferredIndices.push(previousIndex);
-                    previousIndex += 1;
-                    continue;
-                }
-
-                previousIndex += 1;
-                currentIndex += 1;
-            }
-
-            while (
-                inferredIndices.length < restoreLimit
-                && currentLines.length + inferredIndices.length < protectedLineCount
-            ) {
-                inferredIndices.push(Math.max(0, Math.min(protectedLineCount - 1, currentLines.length + inferredIndices.length)));
-            }
-
-            return inferredIndices;
-        }
-
-        function restoreProtectedNewlines(textarea) {
-            const snapshot = textareaBeforeInputMap.get(textarea);
-            const currentValue = normalizeTextareaValue(textarea.value);
-            const previousValue = snapshot && typeof snapshot.value === 'string'
-                ? snapshot.value
-                : textareaValueMap.get(textarea);
-
-            if (!previousValue) {
-                if (textarea.value !== currentValue) {
-                    textarea.value = currentValue;
-                }
-                return false;
-            }
-
-            const currentLines = currentValue.split('\n');
-            const previousLines = previousValue.split('\n');
-            const protectedInsertionIndices = Array.isArray(snapshot?.protectedInsertionIndices)
-                ? snapshot.protectedInsertionIndices
-                : [];
-            const lineDelta = previousLines.length - currentLines.length;
-            if (lineDelta <= 0) {
-                if (textarea.value !== currentValue) {
-                    textarea.value = currentValue;
-                }
-                return false;
-            }
-
-            const inferredInsertionIndices = inferProtectedCollapsedLineIndices(previousLines, currentLines, lineDelta);
-            const indicesToRestore = [];
-            [...protectedInsertionIndices, ...inferredInsertionIndices]
-                .sort((left, right) => left - right)
-                .forEach((insertionIndex) => {
-                    if (!Number.isFinite(insertionIndex)) {
-                        return;
-                    }
-                    const boundedIndex = Math.max(0, Math.min(previousLines.length - 1, insertionIndex));
-                    if (indicesToRestore.includes(boundedIndex)) {
-                        return;
-                    }
-                    indicesToRestore.push(boundedIndex);
-                });
-
-            const restoreCount = Math.min(indicesToRestore.length, lineDelta);
-            if (restoreCount <= 0) {
-                if (textarea.value !== currentValue) {
-                    textarea.value = currentValue;
-                }
-                return false;
-            }
-
-            const restoredLines = currentLines.slice();
-            indicesToRestore.slice(0, restoreCount).forEach((insertionIndex, restoredCount) => {
-                const boundedIndex = Math.max(0, Math.min(restoredLines.length, insertionIndex + restoredCount));
-                restoredLines.splice(boundedIndex, 0, '');
-            });
-            const restoredValue = restoredLines.join('\n');
-            textarea.value = restoredValue;
-            const firstInsertionIndex = indicesToRestore[0];
-            const insertionOffset = getLineStartOffset(restoredValue, firstInsertionIndex);
-            if (typeof textarea.setSelectionRange === 'function') {
-                textarea.setSelectionRange(insertionOffset, insertionOffset);
-            }
-            return true;
-        }
-
         function measureTextareaCharacterWidth(textarea) {
             const sample = document.createElement('span');
             const computedStyle = window.getComputedStyle(textarea);
@@ -791,14 +632,13 @@
         }
 
         function placeCaretFromPointer(textarea, clientX, clientY, forceLineStart) {
-            ensureMinimumTextareaLines(textarea);
             const computedStyle = window.getComputedStyle(textarea);
             const lineHeight = parseFloat(computedStyle.lineHeight) || 24;
             const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
             const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
             const rect = textarea.getBoundingClientRect();
             const lines = getTextareaLines(textarea);
-            const rowCount = Math.max(10, lines.length);
+            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, lines.length);
             const relativeY = clientY - rect.top - paddingTop + textarea.scrollTop;
             const lineIndex = Math.max(0, Math.min(rowCount - 1, Math.floor(relativeY / lineHeight)));
             const charWidth = measureTextareaCharacterWidth(textarea);
@@ -820,7 +660,7 @@
             }
 
             const lines = getTextareaLines(textarea);
-            const rowCount = Math.max(10, lines.length);
+            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, lines.length);
             const states = getLineStates(textarea, rowCount);
             overlay.innerHTML = '';
             for (let index = 0; index < rowCount; index += 1) {
@@ -834,7 +674,7 @@
         }
 
         function clearGradingState(textarea) {
-            const rowCount = Math.max(10, getTextareaLines(textarea).length);
+            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, getTextareaLines(textarea).length);
             lineStateMap.set(textarea, Array(rowCount).fill('default'));
             renderTextOverlay(textarea);
             refreshRoundStatus(textarea.dataset.roundId);
@@ -899,7 +739,7 @@
 
         function applyGradePayload(roundId, textarea, scoreInput, payload, options = {}) {
             const preserveScoreState = Boolean(options.preserveScoreState);
-            const rowCount = Math.max(10, getTextareaLines(textarea).length);
+            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, getTextareaLines(textarea).length);
             const nextStates = Array(rowCount).fill('default');
             (payload.row_results || []).forEach((rowResult, index) => {
                 if (rowResult.state === 'correct') {
@@ -951,22 +791,10 @@
             refreshRoundStatus(roundId);
         }
 
-        function ensureMinimumTextareaLines(textarea) {
-            const minimumRows = PROTECTED_BASELINE_ROWS;
+        function normalizeTextareaValueInPlace(textarea) {
             const normalizedValue = normalizeTextareaValue(textarea.value);
-            const lineCount = countLogicalLines(normalizedValue);
-            if (lineCount >= minimumRows) {
-                if (normalizedValue !== textarea.value) {
-                    textarea.value = normalizedValue;
-                }
-                return;
-            }
-
-            const selectionStart = textarea.selectionStart;
-            const selectionEnd = textarea.selectionEnd;
-            textarea.value = normalizedValue + '\n'.repeat(minimumRows - lineCount);
-            if (typeof selectionStart === 'number' && typeof selectionEnd === 'number') {
-                textarea.setSelectionRange(selectionStart, selectionEnd);
+            if (textarea.value !== normalizedValue) {
+                textarea.value = normalizedValue;
             }
         }
 
@@ -982,8 +810,8 @@
             const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
             const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
             const fontSize = computedStyle.fontSize || '16px';
-            ensureMinimumTextareaLines(textarea);
-            const rowCount = Math.max(10, countLogicalLines(textarea.value));
+            normalizeTextareaValueInPlace(textarea);
+            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, countLogicalLines(textarea.value));
             const targetHeight = Math.ceil(paddingTop + paddingBottom + (lineHeight * rowCount));
 
             textarea.rows = rowCount;
@@ -1029,7 +857,6 @@
                 numberList.appendChild(item);
             }
             renderTextOverlay(textarea);
-            rememberTextareaValue(textarea);
         }
 
         async function saveAnswers(roundId, value) {
@@ -1249,28 +1076,10 @@
             syncLineNumbers(textarea);
             syncOverlayScroll(textarea);
             setRoundAnswersDirty(roundId, false);
-            textarea.addEventListener('beforeinput', (event) => {
-                const normalizedValue = normalizeTextareaValue(textarea.value);
-                const selectionStart = typeof textarea.selectionStart === 'number' ? textarea.selectionStart : textarea.value.length;
-                const selectionEnd = typeof textarea.selectionEnd === 'number' ? textarea.selectionEnd : textarea.value.length;
-                textareaBeforeInputMap.set(textarea, {
-                    value: normalizedValue,
-                    selectionStart,
-                    selectionEnd,
-                    protectedInsertionIndices: getProtectedNewlineInsertionIndices(
-                        normalizedValue,
-                        selectionStart,
-                        selectionEnd,
-                        event.inputType || '',
-                    ),
-                });
-            });
             textarea.addEventListener('input', () => {
-                restoreProtectedNewlines(textarea);
-                textareaBeforeInputMap.delete(textarea);
                 syncLineNumbers(textarea);
                 const nextLines = getTextareaLines(textarea);
-                const nextStates = getLineStates(textarea, Math.max(10, nextLines.length)).slice();
+                const nextStates = getLineStates(textarea, Math.max(MINIMUM_VISIBLE_ROWS, nextLines.length)).slice();
                 const editedLineIndex = Math.max(0, Math.min(nextStates.length - 1, getCaretLineIndex(textarea)));
                 nextStates[editedLineIndex] = 'default';
                 lineStateMap.set(textarea, nextStates);
