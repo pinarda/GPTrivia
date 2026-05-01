@@ -18,6 +18,9 @@ export function buildJokerRouletteSequence(
     easingPower = 1.75,
     fastDurationMs = 500,
     slowdownCycles = 3,
+    holdLongerForTitles = [],
+    latePhaseThresholdMs = 3000,
+    latePhaseHoldMultiplier = 1.1,
   } = {},
 ) {
   if (!Array.isArray(roundTitles) || roundTitles.length === 0 || finalIndex == null) {
@@ -37,7 +40,7 @@ export function buildJokerRouletteSequence(
   const totalSteps = baseSteps + remainderNeeded;
   const slowdownStepCount = Math.max(1, totalSteps - fastSteps);
 
-  return Array.from({ length: totalSteps }, (_, stepIndex) => {
+  const baseSequence = Array.from({ length: totalSteps }, (_, stepIndex) => {
     const isFastPhase = stepIndex < fastSteps;
     const slowdownIndex = Math.max(0, stepIndex - fastSteps);
     const progress = slowdownStepCount <= 1 ? 1 : slowdownIndex / (slowdownStepCount - 1);
@@ -48,6 +51,28 @@ export function buildJokerRouletteSequence(
       delay: isFastPhase
         ? minDelay
         : Math.round(minDelay + easedProgress * (maxDelay - minDelay)),
+    };
+  });
+
+  const highlightedHoldTitles = new Set(
+    (Array.isArray(holdLongerForTitles) ? holdLongerForTitles : []).filter(Boolean),
+  );
+  const totalBaseDuration = baseSequence.reduce((sum, step) => sum + step.delay, 0);
+  let elapsedBaseDuration = 0;
+
+  return baseSequence.map(step => {
+    const isLatePhase = (totalBaseDuration - elapsedBaseDuration) <= latePhaseThresholdMs;
+    const shouldHoldLonger = (
+      highlightedHoldTitles.has(step.title)
+      && isLatePhase
+      && latePhaseHoldMultiplier > 1
+    );
+    elapsedBaseDuration += step.delay;
+
+    return {
+      ...step,
+      delay: shouldHoldLonger ? Math.round(step.delay * latePhaseHoldMultiplier) : step.delay,
+      shouldHoldLonger,
     };
   });
 }

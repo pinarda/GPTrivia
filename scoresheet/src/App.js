@@ -43,11 +43,12 @@ import {
 } from './sync';
 import {
   clearCreatorScoreForRound,
+  comparePlayersForDisplay,
   getDisplayedCreatorBonus,
   getDisplayedFinalTotal,
   getDisplayedJokerBonus,
   getDisplayedRoundScore,
-  getSortableFinalTotal,
+  getHighestScoringRoundTitles,
 } from './scoreTotals';
 import { getScoreCellJokerAction } from './scoreCellMenu';
 import {
@@ -1542,13 +1543,18 @@ const PlayerTable = () => {
     }, []);
 
     const sortedPlayersForDisplay = useMemo(
-      () => [...players].sort((b, a) => {
-        const totalScoreA = getSortableFinalTotal(rounds, scores, a, selectedRounds[a], medianScores);
-        const totalScoreB = getSortableFinalTotal(rounds, scores, b, selectedRounds[b], medianScores);
-
-        return isSortAscending ? totalScoreA - totalScoreB : totalScoreB - totalScoreA;
-      }),
-      [players, rounds, scores, selectedRounds, medianScores, isSortAscending],
+      () => [...players].sort((playerA, playerB) => comparePlayersForDisplay({
+        playerA,
+        playerB,
+        players,
+        rounds,
+        scores,
+        selectedRounds,
+        medianScores,
+        tiebreakWinner,
+        isSortAscending,
+      })),
+      [players, rounds, scores, selectedRounds, medianScores, tiebreakWinner, isSortAscending],
     );
 
     const crownedPlayer = useMemo(() => {
@@ -2369,6 +2375,9 @@ const PlayerTable = () => {
           easingPower: 1.75,
           fastDurationMs: 500,
           slowdownCycles: 3,
+          holdLongerForTitles: getHighestScoringRoundTitles(rounds, scores, player),
+          latePhaseThresholdMs: 3000,
+          latePhaseHoldMultiplier: 1.1,
         },
       );
 
@@ -2390,6 +2399,17 @@ const PlayerTable = () => {
       });
 
       const finalTitle = roundTitles[finalIndex];
+      const finalFlashStates = [null, finalTitle, null, finalTitle];
+      const finalFlashStepMs = 180;
+      finalFlashStates.forEach((title, flashIndex) => {
+        timeoutIds.push(window.setTimeout(() => {
+          setJokerRouletteHighlights(prevState => ({
+            ...prevState,
+            [player]: title,
+          }));
+        }, elapsedDelay + (finalFlashStepMs * (flashIndex + 1))));
+      });
+
       timeoutIds.push(window.setTimeout(() => {
         setSelectedRounds(prevState => ({
           ...prevState,
@@ -2397,10 +2417,10 @@ const PlayerTable = () => {
         }));
         clearJokerRouletteForPlayer(player);
         markDirty();
-      }, elapsedDelay + 240));
+      }, elapsedDelay + 1000));
 
       jokerRouletteTimeoutsRef.current[player] = timeoutIds;
-    }, [buildStoredJokerSelection, clearJokerRouletteForPlayer, markDirty, rounds]);
+    }, [buildStoredJokerSelection, clearJokerRouletteForPlayer, markDirty, rounds, scores]);
 
     const handleJokerSelectionChange = useCallback((player, nextValue, options = {}) => {
       if (!options.skipConfirm && !confirmPastChange()) return;

@@ -52,6 +52,7 @@ import {
 import { getScoreCellJokerAction } from './scoreCellMenu';
 import {
   clearCreatorScoreForRound,
+  comparePlayersForDisplay,
   getDisplayedCreatorBonus,
   getDisplayedFinalTotal,
   getDisplayedJokerBonus,
@@ -617,6 +618,26 @@ describe('scoresheet joker roulette helpers', () => {
     expect(sequence[sequence.length - 1].delay).toBeLessThanOrEqual(740);
     expect(sequence[sequence.length - 1].title).toBe('Round 3');
   });
+
+  test('extends late high-score highlights slightly longer during roulette slowdown', () => {
+    const sequence = buildJokerRouletteSequence(
+      ['Round 1', 'Round 2', 'Round 3'],
+      2,
+      {
+        minDelay: 50,
+        maxDelay: 200,
+        fastDurationMs: 150,
+        slowdownCycles: 1,
+        holdLongerForTitles: ['Round 2'],
+        latePhaseThresholdMs: 1000,
+        latePhaseHoldMultiplier: 1.1,
+      },
+    );
+
+    const extendedSteps = sequence.filter(step => step.title === 'Round 2' && step.shouldHoldLonger);
+    expect(extendedSteps.length).toBeGreaterThan(0);
+    expect(extendedSteps.every(step => step.delay > 50)).toBe(true);
+  });
 });
 
 describe('scoresheet style point helpers', () => {
@@ -685,6 +706,42 @@ describe('scoresheet total helpers', () => {
     expect(getDisplayedFinalTotal(rounds, scores, 'score_alex', 'Round 3', medianScores)).toBe(
       parseFloat((displayedRoundSum + displayedJokerBonus + displayedCreatorBonus).toFixed(2)),
     );
+  });
+
+  test('tiebreak winner sorts above other players with the same total', () => {
+    const rounds = [
+      { title: 'Round 1', creator: 'Alex', score_alex: 8, score_megan: 8 },
+      { title: 'Round 2', creator: 'Jenny', score_alex: 2, score_megan: 2 },
+    ];
+    const scores = {
+      score_alex: { 'Round 1': 8, 'Round 2': 2 },
+      score_megan: { 'Round 1': 8, 'Round 2': 2 },
+    };
+    const players = ['score_alex', 'score_megan'];
+
+    expect(comparePlayersForDisplay({
+      playerA: 'score_megan',
+      playerB: 'score_alex',
+      players,
+      rounds,
+      scores,
+      selectedRounds: {},
+      medianScores: [],
+      tiebreakWinner: 'Alex',
+      isSortAscending: false,
+    })).toBeGreaterThan(0);
+
+    expect(comparePlayersForDisplay({
+      playerA: 'score_alex',
+      playerB: 'score_megan',
+      players,
+      rounds,
+      scores,
+      selectedRounds: {},
+      medianScores: [],
+      tiebreakWinner: 'Alex',
+      isSortAscending: true,
+    })).toBeLessThan(0);
   });
 
   test('blank nights stay blank in creator bonus and total cells', () => {

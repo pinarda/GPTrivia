@@ -180,6 +180,67 @@ export function getSortableFinalTotal(rounds, scores, player, selectedRoundTitle
   ) || 0;
 }
 
+export function getHighestScoringRoundTitles(rounds, scores, player) {
+  let highestScore = null;
+  let highestTitles = [];
+
+  (rounds || []).forEach(round => {
+    const score = getDisplayedRoundScore(scores, player, round);
+    if (!isNumericScore(score)) {
+      return;
+    }
+    if (highestScore === null || score > highestScore) {
+      highestScore = score;
+      highestTitles = [round.title];
+      return;
+    }
+    if (score === highestScore) {
+      highestTitles.push(round.title);
+    }
+  });
+
+  return highestTitles;
+}
+
+export function comparePlayersForDisplay({
+  playerA,
+  playerB,
+  players,
+  rounds,
+  scores,
+  selectedRounds,
+  medianScores,
+  tiebreakWinner,
+  isSortAscending = false,
+}) {
+  const totalScoreA = getSortableFinalTotal(rounds, scores, playerA, selectedRounds?.[playerA], medianScores);
+  const totalScoreB = getSortableFinalTotal(rounds, scores, playerB, selectedRounds?.[playerB], medianScores);
+  const scoreDifference = isSortAscending ? totalScoreA - totalScoreB : totalScoreB - totalScoreA;
+
+  if (scoreDifference !== 0) {
+    return scoreDifference;
+  }
+
+  const normalizedTiebreakWinner = getPlayerFieldForName(tiebreakWinner);
+  if (normalizedTiebreakWinner) {
+    if (playerA === normalizedTiebreakWinner && playerB !== normalizedTiebreakWinner) {
+      return -1;
+    }
+    if (playerB === normalizedTiebreakWinner && playerA !== normalizedTiebreakWinner) {
+      return 1;
+    }
+  }
+
+  const playerOrder = Array.isArray(players) ? players : [];
+  const playerAIndex = playerOrder.indexOf(playerA);
+  const playerBIndex = playerOrder.indexOf(playerB);
+  if (playerAIndex !== -1 && playerBIndex !== -1 && playerAIndex !== playerBIndex) {
+    return playerAIndex - playerBIndex;
+  }
+
+  return String(playerA || '').localeCompare(String(playerB || ''));
+}
+
 export function getDisplayedFinalTotal(rounds, scores, player, selectedRoundTitle, medianScores) {
   const roundTotalState = getDisplayedRoundTotalState(rounds, scores, player);
   const creatorBonusState = getCreatorBonusState(rounds, player, selectedRoundTitle, medianScores);
