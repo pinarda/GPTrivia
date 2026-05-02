@@ -167,6 +167,15 @@ PROFILE_STATS_CACHE_TTL_SECONDS = 60 * 60 * 24
 SITE_DATA_CACHE_VERSION_KEY = 'site_data_cache_version'
 
 
+MOBILE_MANIFEST_USER_AGENT_TOKENS = (
+    'android',
+    'iphone',
+    'ipad',
+    'ipod',
+    'mobile',
+)
+
+
 def _get_site_data_cache_version():
     return cache.get_or_set(SITE_DATA_CACHE_VERSION_KEY, 1, None)
 
@@ -176,6 +185,34 @@ def _bump_site_data_cache_version():
         cache.incr(SITE_DATA_CACHE_VERSION_KEY)
     except ValueError:
         cache.set(SITE_DATA_CACHE_VERSION_KEY, 2, None)
+
+
+def _request_prefers_mobile_answer_sheet_start(request):
+    user_agent = (request.META.get('HTTP_USER_AGENT') or '').lower()
+    return any(token in user_agent for token in MOBILE_MANIFEST_USER_AGENT_TOKENS)
+
+
+def web_app_manifest(request):
+    start_url = reverse('answer_sheet') if _request_prefers_mobile_answer_sheet_start(request) else reverse('home')
+    manifest_payload = {
+        'id': '/',
+        'name': 'Hail Science Trivia',
+        'short_name': 'Hail Science',
+        'description': 'An App for Hail Science Trivia',
+        'start_url': start_url,
+        'scope': '/',
+        'display': 'standalone',
+        'background_color': '#ffffff',
+        'theme_color': '#000000',
+        'icons': [
+            {
+                'src': '/static/img/apple-touch-icon.png',
+                'sizes': '192x192',
+                'type': 'image/png',
+            },
+        ],
+    }
+    return JsonResponse(manifest_payload, content_type='application/manifest+json')
 
 
 def _request_wants_fresh_cache(request):

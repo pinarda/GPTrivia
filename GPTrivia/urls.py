@@ -37,6 +37,7 @@ from django.views.generic import TemplateView
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('manifest.json', views.web_app_manifest, name='web_app_manifest'),
     path('blog/', views.blog_index, name='blog_index'),
     path('blog/joker-stats/', views.blog_joker_stats, name='blog_joker_stats'),
     path('blog/other-trivia-plots/', views.blog_other_trivia_plots, name='blog_other_trivia_plots'),
