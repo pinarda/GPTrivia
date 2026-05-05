@@ -434,6 +434,12 @@ body.site-shell.answer-sheet-shell {
     -webkit-touch-callout: none;
 }
 
+.answer-sheet-round-panel[data-input-mode="pencil"] {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
 .answer-sheet-textarea-shell.has-grade-controls {
     grid-template-columns: 3.36rem minmax(0, 1fr);
 }

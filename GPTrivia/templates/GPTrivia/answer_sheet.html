@@ -265,6 +265,12 @@
             status.dataset.state = state || '';
         }
 
+        function getEventRoundPanel(eventTarget) {
+            return eventTarget instanceof Element
+                ? eventTarget.closest('.answer-sheet-round-panel')
+                : null;
+        }
+
         function getRoundPanel(roundId) {
             return pageRoot.querySelector(`.answer-sheet-round-panel[data-round-id="${roundId}"]`);
         }
@@ -321,6 +327,11 @@
                 return null;
             }
             return Math.max(0, Math.min(1, numericValue));
+        }
+
+        function isStylusTouch(touch) {
+            const touchType = String(touch?.touchType || '').toLowerCase();
+            return touchType === 'stylus' || touchType === 'pencil';
         }
 
         function normalizeInkStrokes(rawStrokes) {
@@ -1131,13 +1142,13 @@
             renderTextOverlay(textarea);
         }
 
-        function buildNormalizedInkPoint(canvas, event) {
+        function buildNormalizedInkPointFromClientPosition(canvas, clientX, clientY, pressure) {
             const rect = canvas.getBoundingClientRect();
             if (!rect.width || !rect.height) {
                 return null;
             }
-            const pointX = clampInkCoordinate((event.clientX - rect.left) / rect.width);
-            const pointY = clampInkCoordinate((event.clientY - rect.top) / rect.height);
+            const pointX = clampInkCoordinate((clientX - rect.left) / rect.width);
+            const pointY = clampInkCoordinate((clientY - rect.top) / rect.height);
             if (pointX === null || pointY === null) {
                 return null;
             }
@@ -1145,11 +1156,20 @@
                 x: Number(pointX.toFixed(5)),
                 y: Number(pointY.toFixed(5)),
             };
-            const pointPressure = clampInkCoordinate(event.pressure);
+            const pointPressure = clampInkCoordinate(pressure);
             if (pointPressure !== null) {
                 normalizedPoint.p = Number(pointPressure.toFixed(4));
             }
             return normalizedPoint;
+        }
+
+        function buildNormalizedInkPoint(canvas, event) {
+            return buildNormalizedInkPointFromClientPosition(
+                canvas,
+                event.clientX,
+                event.clientY,
+                event.pressure,
+            );
         }
 
         function eraseInkAtPoint(roundId, point) {
@@ -1186,62 +1206,80 @@
             if (event.pointerType !== 'pen') {
                 return;
             }
-            if (getRoundInkTool(roundId) === 'erase') {
-                const nextPoint = buildNormalizedInkPoint(canvas, event);
-                const changed = eraseInkAtPoint(roundId, nextPoint);
-                activeInkEraserMap.set(`${roundId}:${event.pointerId}`, changed);
-                renderInkCanvas(roundId);
-                return;
+            if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
             }
-            const firstPoint = buildNormalizedInkPoint(canvas, event);
-            if (!firstPoint) {
-                return;
-            }
-            activeInkPointerMap.set(`${roundId}:${event.pointerId}`, [firstPoint]);
-            if (canvas.setPointerCapture) {
-                try {
-                    canvas.setPointerCapture(event.pointerId);
-                } catch (error) {
-                    console.warn('Unable to capture ink pointer:', error);
-                }
-            }
+            const strokeKey = `${roundId}:${event.pointerId}`;
+            beginInkStrokeForKey(
+                roundId,
+                canvas,
+                strokeKey,
+                buildNormalizedInkPoint(canvas, event),
+                event.pointerId,
+            );
         }
 
         function extendInkStroke(roundId, canvas, event) {
             if (event.pointerType !== 'pen') {
                 return;
             }
-            const pointerKey = `${roundId}:${event.pointerId}`;
-            if (getRoundInkTool(roundId) === 'erase') {
-                if (!activeInkEraserMap.has(pointerKey)) {
-                    return;
-                }
-                const nextPoint = buildNormalizedInkPoint(canvas, event);
-                const changed = eraseInkAtPoint(roundId, nextPoint);
-                activeInkEraserMap.set(pointerKey, activeInkEraserMap.get(pointerKey) || changed);
-                renderInkCanvas(roundId);
-                return;
-            }
-            const activeStroke = activeInkPointerMap.get(pointerKey);
-            if (!activeStroke) {
-                return;
-            }
-            const nextPoint = buildNormalizedInkPoint(canvas, event);
-            if (!nextPoint) {
-                return;
-            }
-            activeStroke.push(nextPoint);
-            renderInkCanvas(roundId);
+            const strokeKey = `${roundId}:${event.pointerId}`;
+            extendInkStrokeForKey(roundId, strokeKey, buildNormalizedInkPoint(canvas, event));
         }
 
         function endInkStroke(roundId, canvas, event) {
             if (event.pointerType !== 'pen') {
                 return;
             }
-            const pointerKey = `${roundId}:${event.pointerId}`;
+            const strokeKey = `${roundId}:${event.pointerId}`;
+            endInkStrokeForKey(roundId, strokeKey, buildNormalizedInkPoint(canvas, event));
+        }
+
+        function beginInkStrokeForKey(roundId, canvas, strokeKey, point, capturePointerId = null) {
+            if (!point) {
+                return;
+            }
             if (getRoundInkTool(roundId) === 'erase') {
-                const changed = activeInkEraserMap.get(pointerKey);
-                activeInkEraserMap.delete(pointerKey);
+                const changed = eraseInkAtPoint(roundId, point);
+                activeInkEraserMap.set(strokeKey, changed);
+                renderInkCanvas(roundId);
+                return;
+            }
+            activeInkPointerMap.set(strokeKey, [point]);
+            if (capturePointerId !== null && canvas.setPointerCapture) {
+                try {
+                    canvas.setPointerCapture(capturePointerId);
+                } catch (error) {
+                    console.warn('Unable to capture ink pointer:', error);
+                }
+            }
+        }
+
+        function extendInkStrokeForKey(roundId, strokeKey, point) {
+            if (!point) {
+                return;
+            }
+            if (getRoundInkTool(roundId) === 'erase') {
+                if (!activeInkEraserMap.has(strokeKey)) {
+                    return;
+                }
+                const changed = eraseInkAtPoint(roundId, point);
+                activeInkEraserMap.set(strokeKey, activeInkEraserMap.get(strokeKey) || changed);
+                renderInkCanvas(roundId);
+                return;
+            }
+            const activeStroke = activeInkPointerMap.get(strokeKey);
+            if (!activeStroke) {
+                return;
+            }
+            activeStroke.push(point);
+            renderInkCanvas(roundId);
+        }
+
+        function endInkStrokeForKey(roundId, strokeKey, point) {
+            if (getRoundInkTool(roundId) === 'erase') {
+                const changed = activeInkEraserMap.get(strokeKey);
+                activeInkEraserMap.delete(strokeKey);
                 if (changed) {
                     renderInkCanvas(roundId);
                     setRoundAnswersDirty(roundId, true);
@@ -1250,14 +1288,13 @@
                 }
                 return;
             }
-            const activeStroke = activeInkPointerMap.get(pointerKey);
+            const activeStroke = activeInkPointerMap.get(strokeKey);
             if (!activeStroke) {
                 return;
             }
-            activeInkPointerMap.delete(pointerKey);
-            const finalPoint = buildNormalizedInkPoint(canvas, event);
-            if (finalPoint) {
-                activeStroke.push(finalPoint);
+            activeInkPointerMap.delete(strokeKey);
+            if (point) {
+                activeStroke.push(point);
             }
             const nextStrokes = [...getRoundInkStrokes(roundId), activeStroke];
             setRoundInkStrokes(roundId, nextStrokes);
@@ -1546,6 +1583,18 @@
                 if (getRoundInputMode(roundId) === 'pencil') {
                     renderInkCanvas(roundId);
                 }
+                canvas.addEventListener('contextmenu', (event) => {
+                    if (getRoundInputMode(roundId) !== 'pencil') {
+                        return;
+                    }
+                    event.preventDefault();
+                });
+                canvas.addEventListener('selectstart', (event) => {
+                    if (getRoundInputMode(roundId) !== 'pencil') {
+                        return;
+                    }
+                    event.preventDefault();
+                });
                 canvas.addEventListener('click', (event) => {
                     if (getRoundInputMode(roundId) !== 'pencil' || event.pointerType !== 'pen') {
                         return;
@@ -1588,6 +1637,77 @@
                     }
                     finalizeInkStroke(event);
                 });
+                const getStylusTouch = (touchEvent) => Array.from(touchEvent.changedTouches || []).find(isStylusTouch);
+                canvas.addEventListener('touchstart', (event) => {
+                    if (getRoundInputMode(roundId) !== 'pencil') {
+                        return;
+                    }
+                    const stylusTouch = getStylusTouch(event);
+                    if (!stylusTouch) {
+                        return;
+                    }
+                    if (document.activeElement instanceof HTMLElement) {
+                        document.activeElement.blur();
+                    }
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const strokeKey = `${roundId}:touch:${stylusTouch.identifier}`;
+                    beginInkStrokeForKey(
+                        roundId,
+                        canvas,
+                        strokeKey,
+                        buildNormalizedInkPointFromClientPosition(
+                            canvas,
+                            stylusTouch.clientX,
+                            stylusTouch.clientY,
+                            stylusTouch.force,
+                        ),
+                    );
+                }, { passive: false });
+                canvas.addEventListener('touchmove', (event) => {
+                    if (getRoundInputMode(roundId) !== 'pencil') {
+                        return;
+                    }
+                    const stylusTouch = getStylusTouch(event);
+                    if (!stylusTouch) {
+                        return;
+                    }
+                    event.preventDefault();
+                    event.stopPropagation();
+                    extendInkStrokeForKey(
+                        roundId,
+                        `${roundId}:touch:${stylusTouch.identifier}`,
+                        buildNormalizedInkPointFromClientPosition(
+                            canvas,
+                            stylusTouch.clientX,
+                            stylusTouch.clientY,
+                            stylusTouch.force,
+                        ),
+                    );
+                }, { passive: false });
+                const finalizeStylusTouch = (event) => {
+                    if (getRoundInputMode(roundId) !== 'pencil') {
+                        return;
+                    }
+                    const stylusTouch = getStylusTouch(event);
+                    if (!stylusTouch) {
+                        return;
+                    }
+                    event.preventDefault();
+                    event.stopPropagation();
+                    endInkStrokeForKey(
+                        roundId,
+                        `${roundId}:touch:${stylusTouch.identifier}`,
+                        buildNormalizedInkPointFromClientPosition(
+                            canvas,
+                            stylusTouch.clientX,
+                            stylusTouch.clientY,
+                            stylusTouch.force,
+                        ),
+                    );
+                };
+                canvas.addEventListener('touchend', finalizeStylusTouch, { passive: false });
+                canvas.addEventListener('touchcancel', finalizeStylusTouch, { passive: false });
             }
             if (shell) {
                 shell.addEventListener('click', (event) => {
@@ -1605,6 +1725,15 @@
                     overrideGrade(roundId, questionNumber, mode, textarea, scoreInput);
                 });
             }
+        });
+
+        ['selectstart', 'contextmenu', 'dragstart'].forEach((eventName) => {
+            pageRoot.addEventListener(eventName, (event) => {
+                const panel = getEventRoundPanel(event.target);
+                if (panel?.dataset.inputMode === 'pencil') {
+                    event.preventDefault();
+                }
+            }, true);
         });
 
         pageRoot.querySelectorAll('[data-answer-sheet-input-mode-toggle]').forEach((toggle) => {
