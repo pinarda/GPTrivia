@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505d">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505e">
 {% endblock %}
 
 {% block content %}
@@ -833,15 +833,48 @@
             context.restore();
         }
 
+        function smoothInkPoints(points, iterations = 2) {
+            if (!Array.isArray(points) || points.length < 3) {
+                return points;
+            }
+
+            let smoothedPoints = points.slice();
+            for (let iteration = 0; iteration < iterations; iteration += 1) {
+                if (smoothedPoints.length < 3) {
+                    break;
+                }
+
+                const nextPoints = [smoothedPoints[0]];
+                for (let index = 0; index < smoothedPoints.length - 1; index += 1) {
+                    const currentPoint = smoothedPoints[index];
+                    const nextPoint = smoothedPoints[index + 1];
+                    const firstPoint = {
+                        x: (0.75 * currentPoint.x) + (0.25 * nextPoint.x),
+                        y: (0.75 * currentPoint.y) + (0.25 * nextPoint.y),
+                    };
+                    const secondPoint = {
+                        x: (0.25 * currentPoint.x) + (0.75 * nextPoint.x),
+                        y: (0.25 * currentPoint.y) + (0.75 * nextPoint.y),
+                    };
+                    nextPoints.push(firstPoint, secondPoint);
+                }
+                nextPoints.push(smoothedPoints[smoothedPoints.length - 1]);
+                smoothedPoints = nextPoints;
+            }
+
+            return smoothedPoints;
+        }
+
         function drawInkStroke(context, width, height, stroke) {
             if (!Array.isArray(stroke) || stroke.length === 0) {
                 return;
             }
 
-            const points = stroke.map((point) => ({
+            const basePoints = stroke.map((point) => ({
                 x: point.x * width,
                 y: point.y * height,
             }));
+            const points = smoothInkPoints(basePoints, basePoints.length >= 4 ? 2 : 1);
 
             if (points.length === 1) {
                 const onlyPoint = points[0];
