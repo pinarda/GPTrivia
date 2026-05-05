@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505a">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505b">
 {% endblock %}
 
 {% block content %}
@@ -44,6 +44,14 @@
                                     >
                                     <span>Pencil</span>
                                 </label>
+                                <button
+                                    class="answer-sheet-ink-tool-button"
+                                    type="button"
+                                    data-answer-sheet-ink-tool-toggle="{{ page.round_id }}"
+                                    aria-label="Use eraser"
+                                    title="Use eraser"
+                                    {% if page.input_mode != 'pencil' %}hidden{% endif %}
+                                >✎</button>
                                 <span class="answer-sheet-status" data-status-for="{{ page.round_id }}" data-state="ungraded-saved">Ungraded, Submitted</span>
                             </div>
                         </div>
@@ -207,6 +215,9 @@
         const lineStateMap = new WeakMap();
         const inkStrokeStateMap = new Map();
         const activeInkPointerMap = new Map();
+        const activeInkEraserMap = new Map();
+        const inkToolStateMap = new Map();
+        const roundEntrySaveRequestMap = new Map();
         const MINIMUM_VISIBLE_ROWS = 10;
         const localClientId = (
             window.crypto && typeof window.crypto.randomUUID === 'function'
@@ -274,6 +285,10 @@
             return pageRoot.querySelector(`[data-answer-sheet-input-mode-toggle="${roundId}"]`);
         }
 
+        function getRoundInkToolButton(roundId) {
+            return pageRoot.querySelector(`[data-answer-sheet-ink-tool-toggle="${roundId}"]`);
+        }
+
         function getRoundInkCanvas(roundId) {
             return pageRoot.querySelector(`.answer-sheet-ink-canvas[data-round-id="${roundId}"]`);
         }
@@ -281,6 +296,23 @@
         function getRoundInputMode(roundId) {
             const panel = getRoundPanel(roundId);
             return panel && panel.dataset.inputMode === 'pencil' ? 'pencil' : 'text';
+        }
+
+        function getRoundInkTool(roundId) {
+            return inkToolStateMap.get(String(roundId)) || 'draw';
+        }
+
+        function setRoundInkTool(roundId, nextTool) {
+            const normalizedTool = nextTool === 'erase' ? 'erase' : 'draw';
+            inkToolStateMap.set(String(roundId), normalizedTool);
+            const toolButton = getRoundInkToolButton(roundId);
+            if (!toolButton) {
+                return;
+            }
+            toolButton.dataset.tool = normalizedTool;
+            toolButton.textContent = normalizedTool === 'erase' ? '⌫' : '✎';
+            toolButton.setAttribute('aria-label', normalizedTool === 'erase' ? 'Use pencil' : 'Use eraser');
+            toolButton.title = normalizedTool === 'erase' ? 'Use pencil' : 'Use eraser';
         }
 
         function clampInkCoordinate(value) {
@@ -828,6 +860,11 @@
                     activeInkPointerMap.delete(pointerKey);
                 }
             });
+            Array.from(activeInkEraserMap.keys()).forEach((pointerKey) => {
+                if (pointerKey.startsWith(roundKeyPrefix)) {
+                    activeInkEraserMap.delete(pointerKey);
+                }
+            });
         }
 
         function renderInkCanvas(roundId) {
@@ -855,6 +892,7 @@
             const normalizedMode = nextMode === 'pencil' ? 'pencil' : 'text';
             const panel = getRoundPanel(roundId);
             const toggle = getRoundModeToggle(roundId);
+            const toolButton = getRoundInkToolButton(roundId);
             const textarea = getRoundTextarea(roundId);
             const canvas = getRoundInkCanvas(roundId);
             if (panel) {
@@ -863,15 +901,20 @@
             if (toggle) {
                 toggle.checked = normalizedMode === 'pencil';
             }
+            if (toolButton) {
+                toolButton.hidden = normalizedMode !== 'pencil';
+            }
             if (textarea) {
                 renderTextOverlay(textarea);
             }
             if (canvas) {
                 canvas.hidden = normalizedMode !== 'pencil';
                 if (normalizedMode === 'pencil') {
+                    setRoundInkTool(roundId, getRoundInkTool(roundId));
                     renderInkCanvas(roundId);
                 } else {
                     clearActiveInkStrokes(roundId);
+                    setRoundInkTool(roundId, 'draw');
                 }
             }
         }
@@ -1109,8 +1152,45 @@
             return normalizedPoint;
         }
 
+        function eraseInkAtPoint(roundId, point) {
+            if (!point) {
+                return false;
+            }
+            const eraseRadius = 0.035;
+            const currentStrokes = getRoundInkStrokes(roundId);
+            const nextStrokes = currentStrokes.filter((stroke) => !stroke.some((strokePoint) => {
+                const deltaX = strokePoint.x - point.x;
+                const deltaY = strokePoint.y - point.y;
+                return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY)) <= eraseRadius;
+            }));
+            if (nextStrokes.length === currentStrokes.length) {
+                return false;
+            }
+            setRoundInkStrokes(roundId, nextStrokes);
+            return true;
+        }
+
+        function buildRoundEntryStateSnapshot(roundId) {
+            const textarea = getRoundTextarea(roundId);
+            if (!textarea) {
+                return '';
+            }
+            return JSON.stringify({
+                answers: getTextareaLines(textarea),
+                input_mode: getRoundInputMode(roundId),
+                ink_strokes: getRoundInkStrokes(roundId),
+            });
+        }
+
         function beginInkStroke(roundId, canvas, event) {
             if (event.pointerType !== 'pen') {
+                return;
+            }
+            if (getRoundInkTool(roundId) === 'erase') {
+                const nextPoint = buildNormalizedInkPoint(canvas, event);
+                const changed = eraseInkAtPoint(roundId, nextPoint);
+                activeInkEraserMap.set(`${roundId}:${event.pointerId}`, changed);
+                renderInkCanvas(roundId);
                 return;
             }
             const firstPoint = buildNormalizedInkPoint(canvas, event);
@@ -1132,6 +1212,16 @@
                 return;
             }
             const pointerKey = `${roundId}:${event.pointerId}`;
+            if (getRoundInkTool(roundId) === 'erase') {
+                if (!activeInkEraserMap.has(pointerKey)) {
+                    return;
+                }
+                const nextPoint = buildNormalizedInkPoint(canvas, event);
+                const changed = eraseInkAtPoint(roundId, nextPoint);
+                activeInkEraserMap.set(pointerKey, activeInkEraserMap.get(pointerKey) || changed);
+                renderInkCanvas(roundId);
+                return;
+            }
             const activeStroke = activeInkPointerMap.get(pointerKey);
             if (!activeStroke) {
                 return;
@@ -1149,6 +1239,17 @@
                 return;
             }
             const pointerKey = `${roundId}:${event.pointerId}`;
+            if (getRoundInkTool(roundId) === 'erase') {
+                const changed = activeInkEraserMap.get(pointerKey);
+                activeInkEraserMap.delete(pointerKey);
+                if (changed) {
+                    renderInkCanvas(roundId);
+                    setRoundAnswersDirty(roundId, true);
+                    refreshRoundStatus(roundId);
+                    queueRoundEntrySave(roundId);
+                }
+                return;
+            }
             const activeStroke = activeInkPointerMap.get(pointerKey);
             if (!activeStroke) {
                 return;
@@ -1197,6 +1298,9 @@
             if (!payload) {
                 return;
             }
+            const requestId = (roundEntrySaveRequestMap.get(roundId) || 0) + 1;
+            const requestStateSnapshot = buildRoundEntryStateSnapshot(roundId);
+            roundEntrySaveRequestMap.set(roundId, requestId);
 
             try {
                 const response = await fetch(saveUrl, {
@@ -1210,10 +1314,13 @@
                 if (!response.ok) {
                     throw new Error(`Save failed with status ${response.status}`);
                 }
-                const responsePayload = await response.json().catch(() => ({}));
-                setRoundInputMode(roundId, responsePayload.input_mode || payload.input_mode);
-                setRoundInkStrokes(roundId, responsePayload.ink_strokes || payload.ink_strokes || []);
-                renderInkCanvas(roundId);
+                await response.json().catch(() => ({}));
+                if (roundEntrySaveRequestMap.get(roundId) !== requestId) {
+                    return;
+                }
+                if (buildRoundEntryStateSnapshot(roundId) !== requestStateSnapshot) {
+                    return;
+                }
                 setRoundAnswersDirty(roundId, false);
                 refreshRoundStatus(roundId);
             } catch (error) {
@@ -1439,11 +1546,19 @@
                 if (getRoundInputMode(roundId) === 'pencil') {
                     renderInkCanvas(roundId);
                 }
+                canvas.addEventListener('click', (event) => {
+                    if (getRoundInputMode(roundId) !== 'pencil' || event.pointerType !== 'pen') {
+                        return;
+                    }
+                    event.preventDefault();
+                    event.stopPropagation();
+                });
                 canvas.addEventListener('pointerdown', (event) => {
                     if (getRoundInputMode(roundId) !== 'pencil' || event.pointerType !== 'pen') {
                         return;
                     }
                     event.preventDefault();
+                    event.stopPropagation();
                     beginInkStroke(roundId, canvas, event);
                 });
                 canvas.addEventListener('pointermove', (event) => {
@@ -1451,6 +1566,7 @@
                         return;
                     }
                     event.preventDefault();
+                    event.stopPropagation();
                     extendInkStroke(roundId, canvas, event);
                 });
                 const finalizeInkStroke = (event) => {
@@ -1458,6 +1574,7 @@
                         return;
                     }
                     event.preventDefault();
+                    event.stopPropagation();
                     endInkStroke(roundId, canvas, event);
                 };
                 canvas.addEventListener('pointerup', finalizeInkStroke);
@@ -1503,8 +1620,24 @@
             });
         });
 
+        pageRoot.querySelectorAll('[data-answer-sheet-ink-tool-toggle]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const roundId = button.dataset.answerSheetInkToolToggle;
+                if (!roundId || getRoundInputMode(roundId) !== 'pencil') {
+                    return;
+                }
+                setRoundInkTool(roundId, getRoundInkTool(roundId) === 'erase' ? 'draw' : 'erase');
+            });
+        });
+
         scoreInputs.forEach((input) => {
             setRoundScoreDirty(input.dataset.roundId, false);
+            input.addEventListener('pointerdown', (event) => {
+                const panel = input.closest('.answer-sheet-round-panel');
+                if (panel?.dataset.inputMode === 'pencil' && event.pointerType === 'pen') {
+                    event.preventDefault();
+                }
+            });
             input.addEventListener('input', () => {
                 const normalizedValue = normalizeScoreValue(input.value);
                 if (input.value !== normalizedValue) {
@@ -1528,6 +1661,12 @@
         });
 
         pageRoot.querySelectorAll('[data-submit-score-for]').forEach((button) => {
+            button.addEventListener('pointerdown', (event) => {
+                const panel = button.closest('.answer-sheet-round-panel');
+                if (panel?.dataset.inputMode === 'pencil' && event.pointerType === 'pen') {
+                    event.preventDefault();
+                }
+            });
             button.addEventListener('click', () => {
                 const roundId = button.dataset.submitScoreFor;
                 const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
@@ -1554,6 +1693,12 @@
         });
 
         pageRoot.querySelectorAll('[data-check-answers-for]:not([aria-disabled="true"])').forEach((button) => {
+            button.addEventListener('pointerdown', (event) => {
+                const panel = button.closest('.answer-sheet-round-panel');
+                if (panel?.dataset.inputMode === 'pencil' && event.pointerType === 'pen') {
+                    event.preventDefault();
+                }
+            });
             button.addEventListener('click', () => {
                 const roundId = button.dataset.roundId;
                 const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
@@ -1570,6 +1715,12 @@
         });
 
         pageRoot.querySelectorAll('[data-diverge-round-for]').forEach((button) => {
+            button.addEventListener('pointerdown', (event) => {
+                const panel = button.closest('.answer-sheet-round-panel');
+                if (panel?.dataset.inputMode === 'pencil' && event.pointerType === 'pen') {
+                    event.preventDefault();
+                }
+            });
             button.addEventListener('click', () => {
                 const roundId = button.dataset.divergeRoundFor;
                 const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);

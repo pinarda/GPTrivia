@@ -385,6 +385,26 @@ body.site-shell.answer-sheet-shell {
     accent-color: #9cc8ff;
 }
 
+.answer-sheet-ink-tool-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.8rem;
+    height: 1.8rem;
+    padding: 0 0.35rem;
+    border: 1px solid rgba(156, 200, 255, 0.35);
+    background: rgba(156, 200, 255, 0.08);
+    color: #d9ebff;
+    font: 700 0.9rem/1 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    cursor: pointer;
+}
+
+.answer-sheet-ink-tool-button[data-tool="erase"] {
+    border-color: rgba(255, 178, 96, 0.45);
+    background: rgba(255, 178, 96, 0.12);
+    color: #ffb260;
+}
+
 .answer-sheet-textarea-shell {
     display: grid;
     grid-template-columns: 2.1rem minmax(0, 1fr);
@@ -835,6 +855,18 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-line-plus {
     border-color: rgba(42, 143, 69, 0.45);
     background: rgba(42, 143, 69, 0.1);
     color: #2a8f45;
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-ink-tool-button {
+    border-color: rgba(54, 109, 186, 0.28);
+    background: rgba(54, 109, 186, 0.08);
+    color: #244a84;
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-ink-tool-button[data-tool="erase"] {
+    border-color: rgba(184, 116, 18, 0.32);
+    background: rgba(184, 116, 18, 0.1);
+    color: #9d5f0c;
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-line-minus {
