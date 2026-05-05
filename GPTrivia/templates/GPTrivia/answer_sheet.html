@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505g">
+    <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505h">
 {% endblock %}
 
 {% block content %}
@@ -896,6 +896,35 @@
             context.stroke();
         }
 
+        function getInkStrokeStateColor(state) {
+            const isLightTheme = document.body.dataset.profileTheme === 'light';
+            if (state === 'correct') {
+                return isLightTheme ? '#2a8f45' : '#8ce99a';
+            }
+            if (state === 'incorrect') {
+                return isLightTheme ? '#bf3f3f' : '#ff8c8c';
+            }
+            return getInkStrokeColor();
+        }
+
+        function getInkStrokeRowIndex(roundId, height, stroke) {
+            if (!Array.isArray(stroke) || stroke.length === 0) {
+                return 0;
+            }
+            const textarea = getRoundTextarea(roundId);
+            const shell = textarea ? textarea.closest('.answer-sheet-textarea-shell') : null;
+            if (!shell) {
+                return 0;
+            }
+            const computedStyle = window.getComputedStyle(shell);
+            const lineHeight = parseFloat(computedStyle.getPropertyValue('--answer-sheet-line-height-px')) || 28;
+            const paddingTop = parseFloat(computedStyle.getPropertyValue('--answer-sheet-padding-top-px')) || 14;
+            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, shell.querySelectorAll('.answer-sheet-line-numbers li').length || 0);
+            const averageY = stroke.reduce((total, point) => total + (point.y * height), 0) / stroke.length;
+            const rowIndex = Math.floor((averageY - paddingTop) / lineHeight);
+            return Math.max(0, Math.min(rowCount - 1, rowIndex));
+        }
+
         function getActiveInkStrokes(roundId) {
             const roundKeyPrefix = `${roundId}:`;
             const activeStrokes = [];
@@ -933,12 +962,32 @@
             context.clearRect(0, 0, width, height);
             drawInkGuideLines(roundId, context, width);
 
+            const textarea = getRoundTextarea(roundId);
+            const rowStates = textarea
+                ? getLineStates(
+                    textarea,
+                    Math.max(
+                        MINIMUM_VISIBLE_ROWS,
+                        textarea.closest('.answer-sheet-textarea-shell')?.querySelectorAll('.answer-sheet-line-numbers li').length || 0,
+                    ),
+                )
+                : [];
+            const useGradeColors = getRoundInputMode(roundId) === 'pencil' && getRoundPencilGradeView(roundId);
             const inkStrokes = getRoundInkStrokes(roundId);
             context.save();
-            context.strokeStyle = getInkStrokeColor();
-            context.fillStyle = getInkStrokeColor();
             context.lineWidth = 2.3;
-            inkStrokes.forEach((stroke) => drawInkStroke(context, width, height, stroke));
+            inkStrokes.forEach((stroke) => {
+                const strokeState = useGradeColors
+                    ? rowStates[getInkStrokeRowIndex(roundId, height, stroke)] || 'default'
+                    : 'default';
+                const strokeColor = getInkStrokeStateColor(strokeState);
+                context.strokeStyle = strokeColor;
+                context.fillStyle = strokeColor;
+                drawInkStroke(context, width, height, stroke);
+            });
+            const activeStrokeColor = getInkStrokeColor();
+            context.strokeStyle = activeStrokeColor;
+            context.fillStyle = activeStrokeColor;
             getActiveInkStrokes(roundId).forEach((stroke) => drawInkStroke(context, width, height, stroke));
             context.restore();
         }
@@ -1001,6 +1050,9 @@
             const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, getTextareaLines(textarea).length);
             lineStateMap.set(textarea, Array(rowCount).fill('default'));
             renderTextOverlay(textarea);
+            if (getRoundInputMode(textarea.dataset.roundId) === 'pencil') {
+                renderInkCanvas(textarea.dataset.roundId);
+            }
             refreshRoundStatus(textarea.dataset.roundId);
         }
 
@@ -1083,7 +1135,11 @@
 
         function applyGradePayload(roundId, textarea, scoreInput, payload, options = {}) {
             const preserveScoreState = Boolean(options.preserveScoreState);
-            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, getTextareaLines(textarea).length);
+            const rowCount = Math.max(
+                MINIMUM_VISIBLE_ROWS,
+                getTextareaLines(textarea).length,
+                Array.isArray(payload.row_results) ? payload.row_results.length : 0,
+            );
             const nextStates = Array(rowCount).fill('default');
             (payload.row_results || []).forEach((rowResult, index) => {
                 if (rowResult.state === 'correct') {
@@ -1094,6 +1150,9 @@
             });
             lineStateMap.set(textarea, nextStates);
             renderTextOverlay(textarea);
+            if (getRoundInputMode(roundId) === 'pencil') {
+                renderInkCanvas(roundId);
+            }
             if (!preserveScoreState) {
                 scoreInput.value = payload.score_display || '';
                 setRoundScoreDirty(
@@ -1122,7 +1181,8 @@
             if (divergeButton) {
                 divergeButton.textContent = incomingIsDiverged ? 'Merge' : 'Diverge';
             }
-            if (Array.isArray(payload.answers)) {
+            const shouldApplyTextAnswers = (payload?.input_mode || getRoundInputMode(roundId)) !== 'pencil';
+            if (shouldApplyTextAnswers && Array.isArray(payload.answers)) {
                 textarea.value = payload.answers.map((answer) => String(answer || '')).join('\n');
                 syncLineNumbers(textarea);
                 setRoundAnswersDirty(roundId, false);
@@ -1546,7 +1606,7 @@
                     throw new Error(payload.detail || `Grade failed with status ${response.status}`);
                 }
 
-                if (Array.isArray(payload.answers)) {
+                if (inputMode !== 'pencil' && Array.isArray(payload.answers)) {
                     textarea.value = payload.answers.map((answer) => String(answer || '')).join('\n');
                     syncLineNumbers(textarea);
                 }

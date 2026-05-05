@@ -15,6 +15,7 @@ from GPTrivia.models import (
     RoundQuestionAnalysisRun,
 )
 from GPTrivia.player_scores import get_round_score_map
+from GPTrivia.views import _group_answer_sheet_ink_strokes_by_row
 
 
 class AnswerSheetTests(TestCase):
@@ -1548,7 +1549,7 @@ class AnswerSheetTests(TestCase):
         payload = response.json()
         self.assertTrue(payload["transcribed_from_ink"])
         self.assertEqual(payload["input_mode"], "pencil")
-        self.assertEqual(payload["answers"][:2], ["zebra", "Wrong answer"])
+        self.assertEqual(payload["answers"], [""] * 10)
         self.assertEqual(payload["score"], 1)
         self.assertEqual(payload["score_display"], "1")
         self.assertEqual(payload["row_results"][0]["submitted_text"], "zebra")
@@ -1558,9 +1559,23 @@ class AnswerSheetTests(TestCase):
 
         mock_transcribe.assert_called_once()
         entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
-        self.assertEqual(entry.answers[:2], ["zebra", "Wrong answer"])
+        self.assertEqual(entry.answers, [""] * 10)
+        self.assertEqual(entry.pencil_answers[:2], ["zebra", "Wrong answer"])
         self.assertEqual(entry.input_mode, AnswerSheetEntry.INPUT_MODE_PENCIL)
         self.assertTrue(entry.was_graded)
+
+    def test_group_answer_sheet_ink_strokes_by_row_preserves_blank_rows(self):
+        grouped = _group_answer_sheet_ink_strokes_by_row(
+            [
+                [{"x": 0.2, "y": 0.06}, {"x": 0.3, "y": 0.08}],
+                [{"x": 0.2, "y": 0.14}, {"x": 0.3, "y": 0.16}],
+                [{"x": 0.2, "y": 0.31}, {"x": 0.3, "y": 0.33}],
+            ],
+            row_count=10,
+        )
+
+        populated_rows = [row_index + 1 for row_index, row_strokes in grouped.items() if row_strokes]
+        self.assertEqual(populated_rows, [1, 2, 4])
 
     def test_override_answer_sheet_grade_marks_specific_row_correct(self):
         round_obj = GPTriviaRound.objects.create(

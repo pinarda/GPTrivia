@@ -514,19 +514,6 @@ body.site-shell.answer-sheet-shell {
     display: none;
 }
 
-.answer-sheet-round-panel[data-input-mode="pencil"][data-pencil-grade-view="true"] .answer-sheet-text-overlay,
-.answer-sheet-round-panel[data-input-mode="pencil"][data-pencil-grade-view="true"] .answer-sheet-textarea {
-    display: block;
-}
-
-.answer-sheet-round-panel[data-input-mode="pencil"][data-pencil-grade-view="true"] .answer-sheet-ink-canvas {
-    display: none;
-}
-
-.answer-sheet-round-panel[data-input-mode="pencil"][data-pencil-grade-view="true"] .answer-sheet-textarea-shell {
-    cursor: text;
-}
-
 .answer-sheet-text-overlay {
     position: absolute;
     inset: 0;

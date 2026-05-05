@@ -1667,6 +1667,14 @@ def _normalize_answer_sheet_ink_strokes(raw_strokes):
     return normalized_strokes
 
 
+def _get_answer_sheet_ocr_image_height(row_count):
+    return (
+        ANSWER_SHEET_OCR_PADDING_TOP
+        + ANSWER_SHEET_OCR_PADDING_BOTTOM
+        + (max(10, int(row_count or 10)) * ANSWER_SHEET_OCR_ROW_HEIGHT)
+    )
+
+
 def _answer_sheet_row_count(raw_row_count, raw_answers=None):
     try:
         parsed_row_count = int(raw_row_count)
@@ -1685,14 +1693,29 @@ def _answer_sheet_row_count(raw_row_count, raw_answers=None):
     return max(10, candidate_count)
 
 
+def _group_answer_sheet_ink_strokes_by_row(ink_strokes, *, row_count=10):
+    normalized_strokes = _normalize_answer_sheet_ink_strokes(ink_strokes)
+    row_count = max(10, int(row_count or 10))
+    row_buckets = {row_index: [] for row_index in range(row_count)}
+    if not normalized_strokes:
+        return row_buckets
+
+    image_height = _get_answer_sheet_ocr_image_height(row_count)
+    for stroke in normalized_strokes:
+        if not stroke:
+            continue
+        average_y = sum(point["y"] * image_height for point in stroke) / len(stroke)
+        row_index = int((average_y - ANSWER_SHEET_OCR_PADDING_TOP) / ANSWER_SHEET_OCR_ROW_HEIGHT)
+        row_index = max(0, min(row_count - 1, row_index))
+        row_buckets[row_index].append(stroke)
+
+    return row_buckets
+
+
 def _build_answer_sheet_ink_transcription_image_data_url(ink_strokes, *, row_count=10):
     normalized_strokes = _normalize_answer_sheet_ink_strokes(ink_strokes)
     row_count = max(10, int(row_count or 10))
-    image_height = (
-        ANSWER_SHEET_OCR_PADDING_TOP
-        + ANSWER_SHEET_OCR_PADDING_BOTTOM
-        + (row_count * ANSWER_SHEET_OCR_ROW_HEIGHT)
-    )
+    image_height = _get_answer_sheet_ocr_image_height(row_count)
     image = Image.new("RGB", (ANSWER_SHEET_OCR_IMAGE_WIDTH, image_height), "white")
     draw = ImageDraw.Draw(image)
 
@@ -1740,6 +1763,69 @@ def _build_answer_sheet_ink_transcription_image_data_url(ink_strokes, *, row_cou
     return f"data:image/png;base64,{encoded_image}"
 
 
+def _build_answer_sheet_ink_row_image_data_urls(ink_strokes, *, row_count=10):
+    normalized_strokes = _normalize_answer_sheet_ink_strokes(ink_strokes)
+    row_count = max(10, int(row_count or 10))
+    if not normalized_strokes:
+        return {}
+
+    row_buckets = _group_answer_sheet_ink_strokes_by_row(normalized_strokes, row_count=row_count)
+    full_image_height = _get_answer_sheet_ocr_image_height(row_count)
+    drawable_width = ANSWER_SHEET_OCR_IMAGE_WIDTH - (2 * ANSWER_SHEET_OCR_SIDE_PADDING)
+    row_image_height = (
+        ANSWER_SHEET_OCR_PADDING_TOP
+        + ANSWER_SHEET_OCR_PADDING_BOTTOM
+        + ANSWER_SHEET_OCR_ROW_HEIGHT
+    )
+    row_image_urls = {}
+
+    for row_index, row_strokes in row_buckets.items():
+        if not row_strokes:
+            continue
+
+        image = Image.new("RGB", (ANSWER_SHEET_OCR_IMAGE_WIDTH, row_image_height), "white")
+        draw = ImageDraw.Draw(image)
+        guide_y = ANSWER_SHEET_OCR_PADDING_TOP + ANSWER_SHEET_OCR_ROW_HEIGHT - ANSWER_SHEET_OCR_GUIDE_INSET
+        draw.line(
+            [
+                (ANSWER_SHEET_OCR_SIDE_PADDING, guide_y),
+                (ANSWER_SHEET_OCR_IMAGE_WIDTH - ANSWER_SHEET_OCR_SIDE_PADDING, guide_y),
+            ],
+            fill=(206, 214, 224),
+            width=1,
+        )
+
+        row_top = ANSWER_SHEET_OCR_PADDING_TOP + (row_index * ANSWER_SHEET_OCR_ROW_HEIGHT)
+        for stroke in row_strokes:
+            points = [
+                (
+                    ANSWER_SHEET_OCR_SIDE_PADDING + (point["x"] * drawable_width),
+                    (point["y"] * full_image_height) - row_top + ANSWER_SHEET_OCR_PADDING_TOP,
+                )
+                for point in stroke
+            ]
+            if len(points) == 1:
+                point_x, point_y = points[0]
+                radius = max(ANSWER_SHEET_OCR_STROKE_WIDTH // 2, 2)
+                draw.ellipse(
+                    [
+                        (point_x - radius, point_y - radius),
+                        (point_x + radius, point_y + radius),
+                    ],
+                    fill="black",
+                )
+                continue
+            draw.line(points, fill="black", width=ANSWER_SHEET_OCR_STROKE_WIDTH, joint="curve")
+
+        image_buffer = BytesIO()
+        image.save(image_buffer, format="PNG")
+        row_image_urls[row_index + 1] = (
+            f"data:image/png;base64,{base64.b64encode(image_buffer.getvalue()).decode('ascii')}"
+        )
+
+    return row_image_urls
+
+
 def _transcribe_answer_sheet_ink_strokes_to_lines(ink_strokes, *, row_count=10, round_title=''):
     normalized_strokes = _normalize_answer_sheet_ink_strokes(ink_strokes)
     row_count = max(10, int(row_count or 10))
@@ -1748,12 +1834,15 @@ def _transcribe_answer_sheet_ink_strokes_to_lines(ink_strokes, *, row_count=10, 
 
     from .round_analysis import _parse_openai_json_response
 
-    image_url = _build_answer_sheet_ink_transcription_image_data_url(normalized_strokes, row_count=row_count)
+    row_image_urls = _build_answer_sheet_ink_row_image_data_urls(normalized_strokes, row_count=row_count)
+    if not row_image_urls:
+        return [''] * row_count
+
     instructions = (
-        "Transcribe handwritten trivia answers from a lined answer sheet image. "
-        f"Return strict JSON with exactly one key named lines whose value is an array of exactly {row_count} strings. "
-        "Each string must correspond to one horizontal answer row from top to bottom. "
-        "Use an empty string for blank rows. "
+        "Transcribe handwritten trivia answers from separate lined answer-row images. "
+        "Return strict JSON with exactly one key named lines_by_row whose value is an object. "
+        "Each key must be a row number as a string and each value must be that row's transcription. "
+        "Only include the provided row numbers. Do not renumber or collapse rows. "
         "Do not add numbering, commentary, markdown, or extra keys. "
         "Preserve the handwritten wording as best you can in plain text. "
         "If handwriting is ambiguous, make the best short plain-text guess."
@@ -1761,35 +1850,49 @@ def _transcribe_answer_sheet_ink_strokes_to_lines(ink_strokes, *, row_count=10, 
     input_payload = {
         'row_count': row_count,
         'round_title': str(round_title or '').strip(),
+        'provided_rows': sorted(row_image_urls.keys()),
     }
+    content_items = [
+        {
+            'type': 'input_text',
+            'text': json.dumps(input_payload, ensure_ascii=True),
+        },
+    ]
+    for row_number in sorted(row_image_urls.keys()):
+        content_items.append({
+            'type': 'input_text',
+            'text': f'Row {row_number}',
+        })
+        content_items.append({
+            'type': 'input_image',
+            'image_url': row_image_urls[row_number],
+        })
+
     response_text = _create_openai_text_response(
         _get_openai_client(),
         instructions=instructions,
         input_items=[
             {
                 'role': 'user',
-                'content': [
-                    {
-                        'type': 'input_text',
-                        'text': json.dumps(input_payload, ensure_ascii=True),
-                    },
-                    {
-                        'type': 'input_image',
-                        'image_url': image_url,
-                    },
-                ],
+                'content': content_items,
             }
         ],
         max_output_tokens=1200,
         reasoning_effort="low",
     )
     parsed_payload = _parse_openai_json_response(response_text)
-    if not isinstance(parsed_payload, dict) or not isinstance(parsed_payload.get('lines'), list):
+    if not isinstance(parsed_payload, dict) or not isinstance(parsed_payload.get('lines_by_row'), dict):
         raise RuntimeError(f"Could not parse handwritten transcription JSON: {response_text}")
 
-    normalized_lines = [str(line or '').strip() for line in parsed_payload['lines'][:row_count]]
-    if len(normalized_lines) < row_count:
-        normalized_lines.extend([''] * (row_count - len(normalized_lines)))
+    normalized_lines = [''] * row_count
+    for raw_row_number, raw_line in parsed_payload['lines_by_row'].items():
+        try:
+            row_number = int(str(raw_row_number).strip())
+        except (TypeError, ValueError):
+            continue
+        if row_number < 1 or row_number > row_count or row_number not in row_image_urls:
+            continue
+        normalized_lines[row_number - 1] = str(raw_line or '').strip()
     return normalized_lines
 
 
@@ -1828,11 +1931,22 @@ def _serialize_answer_sheet_entry_state(answer_entry):
         return {
             'input_mode': AnswerSheetEntry.INPUT_MODE_TEXT,
             'ink_strokes': [],
+            'pencil_answers': [''] * 10,
         }
     return {
         'input_mode': _normalize_answer_sheet_input_mode(getattr(answer_entry, 'input_mode', '')),
         'ink_strokes': _normalize_answer_sheet_ink_strokes(getattr(answer_entry, 'ink_strokes', [])),
+        'pencil_answers': _normalize_answer_sheet_answers(getattr(answer_entry, 'pencil_answers', [])),
     }
+
+
+def _get_answer_sheet_grade_answers(answer_entry):
+    if answer_entry is None:
+        return [''] * 10
+    entry_state = _serialize_answer_sheet_entry_state(answer_entry)
+    if entry_state['input_mode'] == AnswerSheetEntry.INPUT_MODE_PENCIL:
+        return entry_state['pencil_answers']
+    return _normalize_answer_sheet_answers(getattr(answer_entry, 'answers', []))
 
 
 def _get_changed_answer_sheet_questions(previous_answers, next_answers):
@@ -2132,7 +2246,7 @@ def _build_saved_answer_sheet_grade_payload(round_obj, answer_entry):
     try:
         return _grade_answer_sheet_answers(
             round_obj,
-            _normalize_answer_sheet_answers(answer_entry.answers or []),
+            _get_answer_sheet_grade_answers(answer_entry),
             manual_correct_questions=answer_entry.grade_overrides,
             manual_incorrect_questions=answer_entry.grade_rejections,
             invalidated_questions=getattr(answer_entry, 'grade_invalidated_questions', []),
@@ -2159,7 +2273,7 @@ def _promote_answer_sheet_overrides_to_possible_answers(round_obj, answer_entry)
         entry.question_number: entry
         for entry in RoundQuestionAnalysisEntry.objects.filter(run=latest_completed_run).order_by('question_number', 'id')
     }
-    normalized_answers = _normalize_answer_sheet_answers(answer_entry.answers or [])
+    normalized_answers = _get_answer_sheet_grade_answers(answer_entry)
     updated_entry_count = 0
 
     for question_number in overridden_questions:
@@ -2217,7 +2331,7 @@ def _remove_answer_sheet_rejections_from_possible_answers(round_obj, answer_entr
         entry.question_number: entry
         for entry in RoundQuestionAnalysisEntry.objects.filter(run=latest_completed_run).order_by('question_number', 'id')
     }
-    normalized_answers = _normalize_answer_sheet_answers(answer_entry.answers or [])
+    normalized_answers = _get_answer_sheet_grade_answers(answer_entry)
     updated_entry_count = 0
 
     for question_number in rejected_questions:
@@ -2627,9 +2741,14 @@ def save_answer_sheet_entry(request):
         updated_entries = {}
         for target_user in target_users:
             previous_entry = AnswerSheetEntry.objects.filter(user=target_user, round=round_obj).first()
-            previous_answers = previous_entry.answers if previous_entry else []
+            previous_answers = _normalize_answer_sheet_answers(previous_entry.answers if previous_entry else [])
+            previous_pencil_answers = _normalize_answer_sheet_answers(
+                getattr(previous_entry, 'pencil_answers', []) if previous_entry else []
+            )
             previous_was_graded = bool(previous_entry.was_graded) if previous_entry else False
             previous_entry_state = _serialize_answer_sheet_entry_state(previous_entry)
+            next_answers = previous_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else answers
+            next_pencil_answers = previous_pencil_answers
             pencil_strokes_changed = (
                 input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL
                 and previous_entry is not None
@@ -2643,17 +2762,17 @@ def save_answer_sheet_entry(request):
             else:
                 next_grade_overrides = _clear_answer_sheet_overrides_for_changed_answers(
                     previous_answers,
-                    answers,
+                    next_answers,
                     previous_entry.grade_overrides if previous_entry else [],
                 )
                 next_grade_rejections = _clear_answer_sheet_grade_marks_for_changed_answers(
                     previous_answers,
-                    answers,
+                    next_answers,
                     previous_entry.grade_rejections if previous_entry else [],
                 )
                 next_grade_invalidated_questions = _build_answer_sheet_invalidated_questions(
                     previous_answers,
-                    answers,
+                    next_answers,
                     previous_entry.grade_invalidated_questions if previous_entry else [],
                     was_graded=previous_was_graded,
                 )
@@ -2662,7 +2781,8 @@ def save_answer_sheet_entry(request):
                 round=round_obj,
                 defaults={
                     'trivia_date': round_obj.date,
-                    'answers': answers,
+                    'answers': next_answers,
+                    'pencil_answers': next_pencil_answers,
                     'input_mode': input_mode,
                     'ink_strokes': ink_strokes,
                     'grade_overrides': next_grade_overrides,
@@ -2685,7 +2805,7 @@ def save_answer_sheet_entry(request):
             'round_id': round_obj.id,
             'client_id': client_id,
             'target_user_ids': [target_user.id for target_user in target_users],
-            'answers': answers,
+            'answers': response_entry.answers,
             'input_mode': input_mode,
             'ink_strokes': ink_strokes,
             'updated_at': response_entry.updated_at.isoformat() if response_entry.updated_at else '',
@@ -2756,6 +2876,7 @@ def diverge_answer_sheet_round(request):
         defaults={
             'trivia_date': round_obj.date,
             'answers': answers,
+            'pencil_answers': source_entry_state['pencil_answers'],
             'input_mode': input_mode,
             'ink_strokes': ink_strokes,
             'grade_overrides': _normalize_answer_sheet_grade_overrides(
@@ -2903,6 +3024,7 @@ def merge_answer_sheet_round(request):
             round=round_obj,
             trivia_date=round_obj.date,
             answers=communal_answers,
+            pencil_answers=communal_entry_state['pencil_answers'],
             input_mode=communal_entry_state['input_mode'],
             ink_strokes=communal_entry_state['ink_strokes'],
             grade_overrides=communal_grade_overrides,
@@ -3054,6 +3176,7 @@ def grade_answer_sheet_round(request):
     raw_answers = payload.get('answers', [])
     row_count = _answer_sheet_row_count(payload.get('row_count'), raw_answers)
     transcribed_from_ink = False
+    typed_answers = _normalize_answer_sheet_answers(current_entry.answers if current_entry else [])
     if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL:
         try:
             answers = _transcribe_answer_sheet_ink_strokes_to_lines(
@@ -3104,13 +3227,24 @@ def grade_answer_sheet_round(request):
     with transaction.atomic():
         for target_user in target_users:
             previous_entry = AnswerSheetEntry.objects.filter(user=target_user, round=round_obj).first()
+            previous_typed_answers = _normalize_answer_sheet_answers(previous_entry.answers if previous_entry else [])
+            previous_pencil_answers = _normalize_answer_sheet_answers(
+                getattr(previous_entry, 'pencil_answers', []) if previous_entry else []
+            )
+            previous_grade_answers = (
+                previous_pencil_answers
+                if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL
+                else previous_typed_answers
+            )
+            next_typed_answers = previous_typed_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else normalized_answers
+            next_pencil_answers = normalized_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else previous_pencil_answers
             next_grade_overrides = _clear_answer_sheet_overrides_for_changed_answers(
-                previous_entry.answers if previous_entry else [],
+                previous_grade_answers,
                 normalized_answers,
                 previous_entry.grade_overrides if previous_entry else [],
             )
             next_grade_rejections = _clear_answer_sheet_grade_marks_for_changed_answers(
-                previous_entry.answers if previous_entry else [],
+                previous_grade_answers,
                 normalized_answers,
                 previous_entry.grade_rejections if previous_entry else [],
             )
@@ -3119,7 +3253,8 @@ def grade_answer_sheet_round(request):
                 round=round_obj,
                 defaults={
                     'trivia_date': round_obj.date,
-                    'answers': normalized_answers,
+                    'answers': next_typed_answers,
+                    'pencil_answers': next_pencil_answers,
                     'input_mode': input_mode,
                     'ink_strokes': ink_strokes,
                     'grade_overrides': next_grade_overrides,
@@ -3137,7 +3272,7 @@ def grade_answer_sheet_round(request):
             'round_id': round_obj.id,
             'client_id': client_id,
             'target_user_ids': [target_user.id for target_user in target_users],
-            'answers': normalized_answers,
+            'answers': typed_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else normalized_answers,
             'input_mode': input_mode,
             'shared': bool(round_obj.cooperative and not current_user_is_diverged),
             'is_diverged': bool(current_user_is_diverged),
@@ -3149,7 +3284,7 @@ def grade_answer_sheet_round(request):
         'ok': True,
         'round_id': round_obj.id,
         'shared': bool(round_obj.cooperative and not current_user_is_diverged),
-        'answers': normalized_answers,
+        'answers': typed_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else normalized_answers,
         'input_mode': input_mode,
         'transcribed_from_ink': transcribed_from_ink,
         **grade_payload,
@@ -3192,7 +3327,13 @@ def override_answer_sheet_grade(request):
     current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
     current_user_is_diverged = bool(current_entry.is_diverged) if current_entry else False
     current_entry_state = _serialize_answer_sheet_entry_state(current_entry)
-    normalized_answers = _normalize_answer_sheet_answers(answers)
+    input_mode = current_entry_state['input_mode']
+    normalized_answers = (
+        current_entry_state['pencil_answers']
+        if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL
+        else _normalize_answer_sheet_answers(answers)
+    )
+    typed_answers = _normalize_answer_sheet_answers(current_entry.answers if current_entry else [])
 
     target_users = [request.user]
     if round_obj.cooperative and not current_user_is_diverged:
@@ -3211,13 +3352,22 @@ def override_answer_sheet_grade(request):
         applied_grade_rejections = []
         for target_user in target_users:
             previous_entry = AnswerSheetEntry.objects.filter(user=target_user, round=round_obj).first()
+            previous_typed_answers = _normalize_answer_sheet_answers(previous_entry.answers if previous_entry else [])
+            previous_pencil_answers = _normalize_answer_sheet_answers(
+                getattr(previous_entry, 'pencil_answers', []) if previous_entry else []
+            )
+            previous_grade_answers = (
+                previous_pencil_answers
+                if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL
+                else previous_typed_answers
+            )
             next_grade_overrides = _clear_answer_sheet_overrides_for_changed_answers(
-                previous_entry.answers if previous_entry else [],
+                previous_grade_answers,
                 normalized_answers,
                 previous_entry.grade_overrides if previous_entry else [],
             )
             next_grade_rejections = _clear_answer_sheet_grade_marks_for_changed_answers(
-                previous_entry.answers if previous_entry else [],
+                previous_grade_answers,
                 normalized_answers,
                 previous_entry.grade_rejections if previous_entry else [],
             )
@@ -3242,7 +3392,8 @@ def override_answer_sheet_grade(request):
                 round=round_obj,
                 defaults={
                     'trivia_date': round_obj.date,
-                    'answers': normalized_answers,
+                    'answers': previous_typed_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else normalized_answers,
+                    'pencil_answers': normalized_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else previous_pencil_answers,
                     'grade_overrides': next_grade_overrides,
                     'grade_rejections': next_grade_rejections,
                     'grade_invalidated_questions': [],
@@ -3276,7 +3427,7 @@ def override_answer_sheet_grade(request):
         'round_id': round_obj.id,
         'client_id': client_id,
         'target_user_ids': [target_user.id for target_user in target_users],
-        'answers': normalized_answers,
+        'answers': typed_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else normalized_answers,
         'input_mode': current_entry_state['input_mode'],
         'shared': bool(round_obj.cooperative and not current_user_is_diverged),
         'is_diverged': bool(current_user_is_diverged),
@@ -3288,7 +3439,7 @@ def override_answer_sheet_grade(request):
         'ok': True,
         'round_id': round_obj.id,
         'shared': bool(round_obj.cooperative and not current_user_is_diverged),
-        'answers': normalized_answers,
+        'answers': typed_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else normalized_answers,
         'input_mode': current_entry_state['input_mode'],
         'transcribed_from_ink': current_entry_state['input_mode'] == AnswerSheetEntry.INPUT_MODE_PENCIL,
         **grade_payload,
