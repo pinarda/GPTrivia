@@ -1667,6 +1667,24 @@ def _normalize_answer_sheet_ink_strokes(raw_strokes):
     return normalized_strokes
 
 
+def _normalize_answer_sheet_ink_stroke_rows(raw_rows, *, stroke_count=0, row_count=10):
+    normalized_rows = []
+    if not isinstance(raw_rows, list):
+        return normalized_rows
+    max_row_count = max(10, int(row_count or 10))
+    for raw_value in raw_rows[:stroke_count or len(raw_rows)]:
+        try:
+            row_number = int(raw_value)
+        except (TypeError, ValueError):
+            normalized_rows.append(None)
+            continue
+        if row_number < 1 or row_number > max_row_count:
+            normalized_rows.append(None)
+            continue
+        normalized_rows.append(row_number)
+    return normalized_rows
+
+
 def _get_answer_sheet_ocr_image_height(row_count):
     return (
         ANSWER_SHEET_OCR_PADDING_TOP
@@ -1693,20 +1711,33 @@ def _answer_sheet_row_count(raw_row_count, raw_answers=None):
     return max(10, candidate_count)
 
 
-def _group_answer_sheet_ink_strokes_by_row(ink_strokes, *, row_count=10):
+def _group_answer_sheet_ink_strokes_by_row(ink_strokes, *, row_count=10, stroke_rows=None):
     normalized_strokes = _normalize_answer_sheet_ink_strokes(ink_strokes)
     row_count = max(10, int(row_count or 10))
     row_buckets = {row_index: [] for row_index in range(row_count)}
     if not normalized_strokes:
         return row_buckets
 
+    normalized_stroke_rows = _normalize_answer_sheet_ink_stroke_rows(
+        stroke_rows,
+        stroke_count=len(normalized_strokes),
+        row_count=row_count,
+    )
     image_height = _get_answer_sheet_ocr_image_height(row_count)
-    for stroke in normalized_strokes:
+    for stroke_index, stroke in enumerate(normalized_strokes):
         if not stroke:
             continue
-        average_y = sum(point["y"] * image_height for point in stroke) / len(stroke)
-        row_index = int((average_y - ANSWER_SHEET_OCR_PADDING_TOP) / ANSWER_SHEET_OCR_ROW_HEIGHT)
-        row_index = max(0, min(row_count - 1, row_index))
+        explicit_row_number = (
+            normalized_stroke_rows[stroke_index]
+            if stroke_index < len(normalized_stroke_rows)
+            else None
+        )
+        if explicit_row_number:
+            row_index = explicit_row_number - 1
+        else:
+            average_y = sum(point["y"] * image_height for point in stroke) / len(stroke)
+            row_index = int((average_y - ANSWER_SHEET_OCR_PADDING_TOP) / ANSWER_SHEET_OCR_ROW_HEIGHT)
+            row_index = max(0, min(row_count - 1, row_index))
         row_buckets[row_index].append(stroke)
 
     return row_buckets
@@ -1763,13 +1794,17 @@ def _build_answer_sheet_ink_transcription_image_data_url(ink_strokes, *, row_cou
     return f"data:image/png;base64,{encoded_image}"
 
 
-def _build_answer_sheet_ink_row_image_data_urls(ink_strokes, *, row_count=10):
+def _build_answer_sheet_ink_row_image_data_urls(ink_strokes, *, row_count=10, stroke_rows=None):
     normalized_strokes = _normalize_answer_sheet_ink_strokes(ink_strokes)
     row_count = max(10, int(row_count or 10))
     if not normalized_strokes:
         return {}
 
-    row_buckets = _group_answer_sheet_ink_strokes_by_row(normalized_strokes, row_count=row_count)
+    row_buckets = _group_answer_sheet_ink_strokes_by_row(
+        normalized_strokes,
+        row_count=row_count,
+        stroke_rows=stroke_rows,
+    )
     full_image_height = _get_answer_sheet_ocr_image_height(row_count)
     drawable_width = ANSWER_SHEET_OCR_IMAGE_WIDTH - (2 * ANSWER_SHEET_OCR_SIDE_PADDING)
     row_image_height = (
@@ -1826,7 +1861,7 @@ def _build_answer_sheet_ink_row_image_data_urls(ink_strokes, *, row_count=10):
     return row_image_urls
 
 
-def _transcribe_answer_sheet_ink_strokes_to_lines(ink_strokes, *, row_count=10, round_title=''):
+def _transcribe_answer_sheet_ink_strokes_to_lines(ink_strokes, *, row_count=10, round_title='', stroke_rows=None):
     normalized_strokes = _normalize_answer_sheet_ink_strokes(ink_strokes)
     row_count = max(10, int(row_count or 10))
     if not normalized_strokes:
@@ -1834,7 +1869,11 @@ def _transcribe_answer_sheet_ink_strokes_to_lines(ink_strokes, *, row_count=10, 
 
     from .round_analysis import _parse_openai_json_response
 
-    row_image_urls = _build_answer_sheet_ink_row_image_data_urls(normalized_strokes, row_count=row_count)
+    row_image_urls = _build_answer_sheet_ink_row_image_data_urls(
+        normalized_strokes,
+        row_count=row_count,
+        stroke_rows=stroke_rows,
+    )
     if not row_image_urls:
         return [''] * row_count
 
@@ -2708,6 +2747,7 @@ def save_answer_sheet_entry(request):
     round_obj = get_object_or_404(GPTriviaRound, id=round_id)
     answers = _normalize_answer_sheet_answers(payload.get('answers', []))
     row_count = _answer_sheet_row_count(payload.get('row_count'), payload.get('answers', []))
+    edited_row_numbers = _normalize_answer_sheet_grade_overrides(payload.get('edited_row_numbers', []))
     client_id = str(payload.get('client_id') or '').strip()
     current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
     current_entry_state = _serialize_answer_sheet_entry_state(current_entry)
@@ -2749,16 +2789,29 @@ def save_answer_sheet_entry(request):
             previous_entry_state = _serialize_answer_sheet_entry_state(previous_entry)
             next_answers = previous_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else answers
             next_pencil_answers = previous_pencil_answers
-            pencil_strokes_changed = (
-                input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL
-                and previous_entry is not None
-                and previous_entry_state['ink_strokes'] != ink_strokes
-            )
-            if pencil_strokes_changed:
-                next_grade_overrides = []
-                next_grade_rejections = []
-                next_grade_invalidated_questions = []
-                previous_was_graded = False
+            if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL and edited_row_numbers:
+                next_grade_overrides = _clear_answer_sheet_overrides_for_changed_answers(
+                    previous_pencil_answers,
+                    previous_pencil_answers,
+                    [
+                        question_number
+                        for question_number in (previous_entry.grade_overrides if previous_entry else [])
+                        if question_number not in edited_row_numbers
+                    ],
+                )
+                next_grade_rejections = _clear_answer_sheet_grade_marks_for_changed_answers(
+                    previous_pencil_answers,
+                    previous_pencil_answers,
+                    [
+                        question_number
+                        for question_number in (previous_entry.grade_rejections if previous_entry else [])
+                        if question_number not in edited_row_numbers
+                    ],
+                )
+                next_grade_invalidated_questions = _normalize_answer_sheet_grade_overrides([
+                    *(previous_entry.grade_invalidated_questions if previous_entry else []),
+                    *edited_row_numbers,
+                ])
             else:
                 next_grade_overrides = _clear_answer_sheet_overrides_for_changed_answers(
                     previous_answers,
@@ -3175,6 +3228,11 @@ def grade_answer_sheet_round(request):
     )
     raw_answers = payload.get('answers', [])
     row_count = _answer_sheet_row_count(payload.get('row_count'), raw_answers)
+    ink_stroke_rows = _normalize_answer_sheet_ink_stroke_rows(
+        payload.get('ink_stroke_rows', []),
+        stroke_count=len(ink_strokes),
+        row_count=row_count,
+    )
     transcribed_from_ink = False
     typed_answers = _normalize_answer_sheet_answers(current_entry.answers if current_entry else [])
     if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL:
@@ -3183,6 +3241,7 @@ def grade_answer_sheet_round(request):
                 ink_strokes,
                 row_count=row_count,
                 round_title=round_obj.title,
+                stroke_rows=ink_stroke_rows,
             )
         except Exception as error:
             logger.exception("Unable to transcribe handwritten answer sheet round %s", round_obj.id)
@@ -3212,6 +3271,19 @@ def grade_answer_sheet_round(request):
         )
     except ValueError as error:
         return JsonResponse({'detail': str(error)}, status=400)
+
+    if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL:
+        present_row_numbers = {
+            row_number
+            for row_number in ink_stroke_rows
+            if isinstance(row_number, int) and row_number >= 1
+        }
+        for row_result in grade_payload['row_results']:
+            if (
+                row_result['question_number'] in present_row_numbers
+                and row_result['state'] == 'blank'
+            ):
+                row_result['state'] = 'incorrect'
 
     target_users = [request.user]
     if round_obj.cooperative and not current_user_is_diverged:

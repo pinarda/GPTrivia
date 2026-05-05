@@ -217,6 +217,8 @@
         const inkStrokeStateMap = new Map();
         const activeInkPointerMap = new Map();
         const activeInkEraserMap = new Map();
+        const activeInkEditedRowsMap = new Map();
+        const editedInkRowsMap = new Map();
         const inkToolStateMap = new Map();
         const recentFingerTapMap = new Map();
         const roundEntrySaveRequestMap = new Map();
@@ -412,6 +414,41 @@
                 panel.dataset.inkStrokes = JSON.stringify(normalizedStrokes);
             }
             return normalizedStrokes;
+        }
+
+        function getEditedInkRows(roundId) {
+            return Array.from(editedInkRowsMap.get(String(roundId)) || []).sort((left, right) => left - right);
+        }
+
+        function clearEditedInkRows(roundId, rows = null) {
+            const roundKey = String(roundId || '');
+            if (!editedInkRowsMap.has(roundKey)) {
+                return;
+            }
+            if (!Array.isArray(rows) || rows.length === 0) {
+                editedInkRowsMap.delete(roundKey);
+                return;
+            }
+            const nextRows = new Set(editedInkRowsMap.get(roundKey));
+            rows.forEach((rowNumber) => nextRows.delete(Number(rowNumber)));
+            if (nextRows.size) {
+                editedInkRowsMap.set(roundKey, nextRows);
+            } else {
+                editedInkRowsMap.delete(roundKey);
+            }
+        }
+
+        function markEditedInkRows(roundId, rowNumbers) {
+            const normalizedRows = Array.from(new Set((rowNumbers || [])
+                .map((value) => Number(value))
+                .filter((value) => Number.isInteger(value) && value >= 1)));
+            if (!normalizedRows.length) {
+                return;
+            }
+            const roundKey = String(roundId || '');
+            const nextRows = new Set(editedInkRowsMap.get(roundKey) || []);
+            normalizedRows.forEach((rowNumber) => nextRows.add(rowNumber));
+            editedInkRowsMap.set(roundKey, nextRows);
         }
 
         function getInkStrokeColor() {
@@ -790,6 +827,40 @@
             overlay.scrollTop = textarea.scrollTop;
         }
 
+        function getRoundLineMetrics(roundId) {
+            const textarea = getRoundTextarea(roundId);
+            const shell = textarea ? textarea.closest('.answer-sheet-textarea-shell') : null;
+            if (!shell) {
+                return null;
+            }
+            const computedStyle = window.getComputedStyle(shell);
+            const lineHeight = parseFloat(computedStyle.getPropertyValue('--answer-sheet-line-height-px')) || 28;
+            const paddingTop = parseFloat(computedStyle.getPropertyValue('--answer-sheet-padding-top-px')) || 14;
+            const paddingBottom = parseFloat(computedStyle.getPropertyValue('--answer-sheet-padding-bottom-px')) || 14;
+            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, shell.querySelectorAll('.answer-sheet-line-numbers li').length || 0);
+            return {
+                shell,
+                lineHeight,
+                paddingTop,
+                paddingBottom,
+                rowCount,
+                totalHeight: paddingTop + paddingBottom + (lineHeight * rowCount),
+            };
+        }
+
+        function getRoundRowNumberFromPoint(roundId, point) {
+            if (!point) {
+                return null;
+            }
+            const lineMetrics = getRoundLineMetrics(roundId);
+            if (!lineMetrics) {
+                return null;
+            }
+            const pointY = point.y * lineMetrics.totalHeight;
+            const rowIndex = Math.floor((pointY - lineMetrics.paddingTop) / lineMetrics.lineHeight);
+            return Math.max(1, Math.min(lineMetrics.rowCount, rowIndex + 1));
+        }
+
         function getCaretLineIndex(textarea) {
             const caretPosition = typeof textarea.selectionStart === 'number'
                 ? textarea.selectionStart
@@ -828,21 +899,15 @@
         }
 
         function drawInkGuideLines(roundId, context, width) {
-            const textarea = getRoundTextarea(roundId);
-            const shell = textarea ? textarea.closest('.answer-sheet-textarea-shell') : null;
-            if (!shell) {
+            const lineMetrics = getRoundLineMetrics(roundId);
+            if (!lineMetrics) {
                 return;
             }
-
-            const computedStyle = window.getComputedStyle(shell);
-            const lineHeight = parseFloat(computedStyle.getPropertyValue('--answer-sheet-line-height-px')) || 28;
-            const paddingTop = parseFloat(computedStyle.getPropertyValue('--answer-sheet-padding-top-px')) || 14;
-            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, shell.querySelectorAll('.answer-sheet-line-numbers li').length || 0);
             context.save();
             context.strokeStyle = getInkGuideColor();
             context.lineWidth = 1;
-            for (let index = 0; index < rowCount; index += 1) {
-                const guideY = paddingTop + ((index + 1) * lineHeight) - 3;
+            for (let index = 0; index < lineMetrics.rowCount; index += 1) {
+                const guideY = lineMetrics.paddingTop + ((index + 1) * lineMetrics.lineHeight) - 3;
                 context.beginPath();
                 context.moveTo(0, guideY);
                 context.lineTo(width, guideY);
@@ -911,18 +976,17 @@
             if (!Array.isArray(stroke) || stroke.length === 0) {
                 return 0;
             }
-            const textarea = getRoundTextarea(roundId);
-            const shell = textarea ? textarea.closest('.answer-sheet-textarea-shell') : null;
-            if (!shell) {
+            const lineMetrics = getRoundLineMetrics(roundId);
+            if (!lineMetrics) {
                 return 0;
             }
-            const computedStyle = window.getComputedStyle(shell);
-            const lineHeight = parseFloat(computedStyle.getPropertyValue('--answer-sheet-line-height-px')) || 28;
-            const paddingTop = parseFloat(computedStyle.getPropertyValue('--answer-sheet-padding-top-px')) || 14;
-            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, shell.querySelectorAll('.answer-sheet-line-numbers li').length || 0);
-            const averageY = stroke.reduce((total, point) => total + (point.y * height), 0) / stroke.length;
-            const rowIndex = Math.floor((averageY - paddingTop) / lineHeight);
-            return Math.max(0, Math.min(rowCount - 1, rowIndex));
+            const averageY = stroke.reduce((total, point) => total + (point.y * lineMetrics.totalHeight), 0) / stroke.length;
+            const rowIndex = Math.floor((averageY - lineMetrics.paddingTop) / lineMetrics.lineHeight);
+            return Math.max(0, Math.min(lineMetrics.rowCount - 1, rowIndex));
+        }
+
+        function getRoundInkStrokeRows(roundId) {
+            return getRoundInkStrokes(roundId).map((stroke) => getInkStrokeRowIndex(roundId, 0, stroke) + 1);
         }
 
         function getActiveInkStrokes(roundId) {
@@ -946,6 +1010,11 @@
             Array.from(activeInkEraserMap.keys()).forEach((pointerKey) => {
                 if (pointerKey.startsWith(roundKeyPrefix)) {
                     activeInkEraserMap.delete(pointerKey);
+                }
+            });
+            Array.from(activeInkEditedRowsMap.keys()).forEach((pointerKey) => {
+                if (pointerKey.startsWith(roundKeyPrefix)) {
+                    activeInkEditedRowsMap.delete(pointerKey);
                 }
             });
             recentFingerTapMap.delete(String(roundId));
@@ -1054,6 +1123,36 @@
                 renderInkCanvas(textarea.dataset.roundId);
             }
             refreshRoundStatus(textarea.dataset.roundId);
+        }
+
+        function invalidateRoundRows(roundId, rowNumbers) {
+            const textarea = getRoundTextarea(roundId);
+            if (!textarea) {
+                return;
+            }
+            const normalizedRows = Array.from(new Set((rowNumbers || [])
+                .map((value) => Number(value))
+                .filter((value) => Number.isInteger(value) && value >= 1)));
+            if (!normalizedRows.length) {
+                return;
+            }
+            const existingStates = getLineStates(
+                textarea,
+                Math.max(MINIMUM_VISIBLE_ROWS, getTextareaLines(textarea).length),
+            ).slice();
+            normalizedRows.forEach((rowNumber) => {
+                const rowIndex = rowNumber - 1;
+                if (rowIndex >= 0 && rowIndex < existingStates.length) {
+                    existingStates[rowIndex] = 'default';
+                }
+            });
+            lineStateMap.set(textarea, existingStates);
+            markEditedInkRows(roundId, normalizedRows);
+            renderTextOverlay(textarea);
+            if (getRoundInputMode(roundId) === 'pencil') {
+                renderInkCanvas(roundId);
+            }
+            refreshRoundStatus(roundId);
         }
 
         function updateLineNumberControls(textarea, states) {
@@ -1336,7 +1435,7 @@
             return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY)) <= radius;
         }
 
-        function commitInkStroke(roundId, stroke) {
+        function commitInkStroke(roundId, stroke, touchedRowNumbers = []) {
             if (!Array.isArray(stroke) || stroke.length === 0) {
                 return;
             }
@@ -1344,6 +1443,9 @@
             setRoundInkStrokes(roundId, nextStrokes);
             renderInkCanvas(roundId);
             setRoundAnswersDirty(roundId, true);
+            if (touchedRowNumbers.length) {
+                markEditedInkRows(roundId, touchedRowNumbers);
+            }
             refreshRoundStatus(roundId);
             queueRoundEntrySave(roundId);
         }
@@ -1417,12 +1519,11 @@
             if (!point) {
                 return;
             }
-            if (getRoundPencilGradeView(roundId)) {
-                setRoundPencilGradeView(roundId, false);
-                const textarea = getRoundTextarea(roundId);
-                if (textarea) {
-                    clearGradingState(textarea);
-                }
+            const touchedRowNumber = getRoundRowNumberFromPoint(roundId, point);
+            const touchedRows = touchedRowNumber ? new Set([touchedRowNumber]) : new Set();
+            activeInkEditedRowsMap.set(strokeKey, touchedRows);
+            if (touchedRowNumber) {
+                invalidateRoundRows(roundId, [touchedRowNumber]);
             }
             if (getRoundInkTool(roundId) === 'erase') {
                 const changed = eraseInkAtPoint(roundId, point);
@@ -1444,6 +1545,15 @@
             if (!point) {
                 return;
             }
+            const touchedRowNumber = getRoundRowNumberFromPoint(roundId, point);
+            if (touchedRowNumber) {
+                const touchedRows = activeInkEditedRowsMap.get(strokeKey) || new Set();
+                if (!touchedRows.has(touchedRowNumber)) {
+                    touchedRows.add(touchedRowNumber);
+                    activeInkEditedRowsMap.set(strokeKey, touchedRows);
+                    invalidateRoundRows(roundId, [touchedRowNumber]);
+                }
+            }
             if (getRoundInkTool(roundId) === 'erase') {
                 if (!activeInkEraserMap.has(strokeKey)) {
                     return;
@@ -1462,6 +1572,8 @@
         }
 
         function endInkStrokeForKey(roundId, strokeKey, point) {
+            const touchedRowNumbers = Array.from(activeInkEditedRowsMap.get(strokeKey) || []);
+            activeInkEditedRowsMap.delete(strokeKey);
             if (getRoundInkTool(roundId) === 'erase') {
                 const changed = activeInkEraserMap.get(strokeKey);
                 activeInkEraserMap.delete(strokeKey);
@@ -1469,6 +1581,9 @@
                     renderInkCanvas(roundId);
                     setRoundAnswersDirty(roundId, true);
                     refreshRoundStatus(roundId);
+                    if (touchedRowNumbers.length) {
+                        markEditedInkRows(roundId, touchedRowNumbers);
+                    }
                     queueRoundEntrySave(roundId);
                 }
                 return;
@@ -1481,7 +1596,7 @@
             if (point) {
                 activeStroke.push(point);
             }
-            commitInkStroke(roundId, activeStroke);
+            commitInkStroke(roundId, activeStroke, touchedRowNumbers);
         }
 
         function queueRoundEntrySave(roundId) {
@@ -1502,6 +1617,8 @@
                 answers: getTextareaLines(textarea),
                 input_mode: getRoundInputMode(roundId),
                 ink_strokes: getRoundInkStrokes(roundId),
+                ink_stroke_rows: getRoundInputMode(roundId) === 'pencil' ? getRoundInkStrokeRows(roundId) : [],
+                edited_row_numbers: getRoundInputMode(roundId) === 'pencil' ? getEditedInkRows(roundId) : [],
                 client_id: localClientId,
             };
         }
@@ -1539,6 +1656,7 @@
                     return;
                 }
                 setRoundAnswersDirty(roundId, false);
+                clearEditedInkRows(roundId, payload.edited_row_numbers);
                 refreshRoundStatus(roundId);
             } catch (error) {
                 console.error('Error saving answer sheet entry:', error);
@@ -1597,6 +1715,7 @@
                         answers: getTextareaLines(textarea),
                         input_mode: inputMode,
                         ink_strokes: inputMode === 'pencil' ? getRoundInkStrokes(roundId) : [],
+                        ink_stroke_rows: inputMode === 'pencil' ? getRoundInkStrokeRows(roundId) : [],
                         row_count: Math.max(MINIMUM_VISIBLE_ROWS, countLogicalLines(textarea.value)),
                         client_id: localClientId,
                     }),
