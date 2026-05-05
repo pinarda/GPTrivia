@@ -835,7 +835,7 @@
             context.restore();
         }
 
-        function smoothInkPoints(points, iterations = 2) {
+        function smoothInkPoints(points, iterations = 4) {
             if (!Array.isArray(points) || points.length < 3) {
                 return points;
             }
@@ -864,6 +864,24 @@
                 smoothedPoints = nextPoints;
             }
 
+            for (let iteration = 0; iteration < 2; iteration += 1) {
+                if (smoothedPoints.length < 3) {
+                    break;
+                }
+                const averagedPoints = [smoothedPoints[0]];
+                for (let index = 1; index < smoothedPoints.length - 1; index += 1) {
+                    const previousPoint = smoothedPoints[index - 1];
+                    const currentPoint = smoothedPoints[index];
+                    const nextPoint = smoothedPoints[index + 1];
+                    averagedPoints.push({
+                        x: ((previousPoint.x + (2 * currentPoint.x) + nextPoint.x) / 4),
+                        y: ((previousPoint.y + (2 * currentPoint.y) + nextPoint.y) / 4),
+                    });
+                }
+                averagedPoints.push(smoothedPoints[smoothedPoints.length - 1]);
+                smoothedPoints = averagedPoints;
+            }
+
             return smoothedPoints;
         }
 
@@ -878,7 +896,7 @@
             }));
             const shouldSmooth = Boolean(options.smooth);
             const points = shouldSmooth
-                ? smoothInkPoints(basePoints, basePoints.length >= 4 ? 2 : 1)
+                ? smoothInkPoints(basePoints, basePoints.length >= 8 ? 4 : (basePoints.length >= 5 ? 3 : 2))
                 : basePoints;
 
             if (points.length === 1) {
