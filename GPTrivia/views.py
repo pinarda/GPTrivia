@@ -2543,6 +2543,8 @@ def save_answer_sheet_entry(request):
             'ink_strokes': ink_strokes,
             'updated_at': response_entry.updated_at.isoformat() if response_entry.updated_at else '',
             'grade_payload': shared_grade_payload,
+            'shared': bool(round_obj.cooperative and not current_user_is_diverged),
+            'is_diverged': bool(response_entry.is_diverged),
         })
 
     return JsonResponse({
@@ -2948,16 +2950,18 @@ def grade_answer_sheet_round(request):
                 },
             )
 
-        if round_obj.cooperative and not current_user_is_diverged:
-            _schedule_scoresheet_broadcast({
-                'action': 'answer_sheet',
-                'event': 'answer_sheet_grade',
-                'selected_date': round_obj.date.isoformat() if round_obj.date else '',
-                'round_id': round_obj.id,
-                'client_id': client_id,
-                'answers': normalized_answers,
-                **grade_payload,
-            })
+        _schedule_scoresheet_broadcast({
+            'action': 'answer_sheet',
+            'event': 'answer_sheet_grade',
+            'selected_date': round_obj.date.isoformat() if round_obj.date else '',
+            'round_id': round_obj.id,
+            'client_id': client_id,
+            'target_user_ids': [target_user.id for target_user in target_users],
+            'answers': normalized_answers,
+            'shared': bool(round_obj.cooperative and not current_user_is_diverged),
+            'is_diverged': bool(current_user_is_diverged),
+            **grade_payload,
+        })
 
     return JsonResponse({
         'ok': True,
@@ -3080,16 +3084,18 @@ def override_answer_sheet_grade(request):
     except ValueError as error:
         return JsonResponse({'detail': str(error)}, status=400)
 
-    if round_obj.cooperative and not current_user_is_diverged:
-        _schedule_scoresheet_broadcast({
-            'action': 'answer_sheet',
-            'event': 'answer_sheet_grade',
-            'selected_date': round_obj.date.isoformat() if round_obj.date else '',
-            'round_id': round_obj.id,
-            'client_id': client_id,
-            'answers': normalized_answers,
-            **grade_payload,
-        })
+    _schedule_scoresheet_broadcast({
+        'action': 'answer_sheet',
+        'event': 'answer_sheet_grade',
+        'selected_date': round_obj.date.isoformat() if round_obj.date else '',
+        'round_id': round_obj.id,
+        'client_id': client_id,
+        'target_user_ids': [target_user.id for target_user in target_users],
+        'answers': normalized_answers,
+        'shared': bool(round_obj.cooperative and not current_user_is_diverged),
+        'is_diverged': bool(current_user_is_diverged),
+        **grade_payload,
+    })
 
     return JsonResponse({
         'ok': True,

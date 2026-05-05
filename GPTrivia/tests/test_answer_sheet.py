@@ -2185,7 +2185,7 @@ class AnswerSheetTests(TestCase):
             [1],
         )
 
-    def test_grade_answer_sheet_round_does_not_broadcast_for_diverged_coop_round(self):
+    def test_grade_answer_sheet_round_broadcasts_to_current_user_devices_for_diverged_coop_round(self):
         User.objects.create_user(username="Megan", password="pw")
         trivia_date = datetime.date(2026, 4, 17)
         round_obj = GPTriviaRound.objects.create(
@@ -2226,16 +2226,86 @@ class AnswerSheetTests(TestCase):
         )
 
         with patch("GPTrivia.views._broadcast_scoresheet_message") as broadcast:
-            response = self.client.post(
-                reverse("grade_answer_sheet_round"),
-                data=json.dumps({
-                    "round_id": round_obj.id,
-                    "answers": "Zebra",
-                    "client_id": "grade-client-2",
-                }),
-                content_type="application/json",
-            )
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse("grade_answer_sheet_round"),
+                    data=json.dumps({
+                        "round_id": round_obj.id,
+                        "answers": "Zebra",
+                        "client_id": "grade-client-2",
+                    }),
+                    content_type="application/json",
+                )
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["shared"])
-        broadcast.assert_not_called()
+        broadcast.assert_called_once()
+        message = broadcast.call_args.args[0]
+        self.assertEqual(message["event"], "answer_sheet_grade")
+        self.assertEqual(message["client_id"], "grade-client-2")
+        self.assertEqual(message["target_user_ids"], [self.user.id])
+        self.assertTrue(message["is_diverged"])
+        self.assertFalse(message["shared"])
+
+    def test_override_answer_sheet_grade_broadcasts_to_current_user_devices_for_diverged_coop_round(self):
+        User.objects.create_user(username="Megan", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Diverged Override Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="What animal is white with black stripes?",
+            answer_text="A Zebra",
+            possible_answers=["A Zebra", "Zebra", "zebra"],
+            round_type="text",
+            player_correctness={"Alex": "", "Megan": ""},
+        )
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=round_obj,
+            trivia_date=trivia_date,
+            answers=["Wrong answer"] + [""] * 9,
+            is_diverged=True,
+        )
+
+        with patch("GPTrivia.views._broadcast_scoresheet_message") as broadcast:
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse("override_answer_sheet_grade"),
+                    data=json.dumps({
+                        "round_id": round_obj.id,
+                        "question_number": 1,
+                        "answers": ["Wrong answer"] + [""] * 9,
+                        "client_id": "override-client-diverged-1",
+                    }),
+                    content_type="application/json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["shared"])
+        broadcast.assert_called_once()
+        message = broadcast.call_args.args[0]
+        self.assertEqual(message["event"], "answer_sheet_grade")
+        self.assertEqual(message["client_id"], "override-client-diverged-1")
+        self.assertEqual(message["target_user_ids"], [self.user.id])
+        self.assertTrue(message["is_diverged"])
+        self.assertFalse(message["shared"])

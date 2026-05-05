@@ -994,13 +994,21 @@
 
         function applySharedAnswersUpdate(roundId, payload) {
             const panel = getRoundPanel(roundId);
-            if (panel && panel.dataset.diverged === 'true') {
+            const divergeButton = pageRoot.querySelector(`[data-diverge-round-for="${roundId}"]`);
+            const incomingIsDiverged = String(payload?.is_diverged) === 'true' || payload?.is_diverged === true;
+            if (panel && panel.dataset.diverged === 'true' && !incomingIsDiverged) {
                 return;
             }
             const textarea = getRoundTextarea(roundId);
             const scoreInput = getRoundScoreInput(roundId);
             if (!textarea) {
                 return;
+            }
+            if (panel) {
+                panel.dataset.diverged = incomingIsDiverged ? 'true' : 'false';
+            }
+            if (divergeButton) {
+                divergeButton.textContent = incomingIsDiverged ? 'Merge' : 'Diverge';
             }
             const normalizedAnswers = Array.isArray(payload?.answers)
                 ? payload.answers.map((answer) => String(answer || ''))
@@ -1051,13 +1059,21 @@
 
         function applySharedGradeUpdate(roundId, payload) {
             const panel = getRoundPanel(roundId);
-            if (panel && panel.dataset.diverged === 'true') {
+            const divergeButton = pageRoot.querySelector(`[data-diverge-round-for="${roundId}"]`);
+            const incomingIsDiverged = String(payload?.is_diverged) === 'true' || payload?.is_diverged === true;
+            if (panel && panel.dataset.diverged === 'true' && !incomingIsDiverged) {
                 return;
             }
             const textarea = getRoundTextarea(roundId);
             const scoreInput = getRoundScoreInput(roundId);
             if (!textarea || !scoreInput) {
                 return;
+            }
+            if (panel) {
+                panel.dataset.diverged = incomingIsDiverged ? 'true' : 'false';
+            }
+            if (divergeButton) {
+                divergeButton.textContent = incomingIsDiverged ? 'Merge' : 'Diverge';
             }
             if (Array.isArray(payload.answers)) {
                 textarea.value = payload.answers.map((answer) => String(answer || '')).join('\n');
