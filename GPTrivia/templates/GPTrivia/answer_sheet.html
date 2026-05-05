@@ -217,8 +217,6 @@
         const inkStrokeStateMap = new Map();
         const activeInkPointerMap = new Map();
         const activeInkEraserMap = new Map();
-        const finishingInkPreviewMap = new Map();
-        const inkCommitTimerMap = new Map();
         const inkToolStateMap = new Map();
         const recentFingerTapMap = new Map();
         const roundEntrySaveRequestMap = new Map();
@@ -835,69 +833,15 @@
             context.restore();
         }
 
-        function smoothInkPoints(points, iterations = 4) {
-            if (!Array.isArray(points) || points.length < 3) {
-                return points;
-            }
-
-            let smoothedPoints = points.slice();
-            for (let iteration = 0; iteration < iterations; iteration += 1) {
-                if (smoothedPoints.length < 3) {
-                    break;
-                }
-
-                const nextPoints = [smoothedPoints[0]];
-                for (let index = 0; index < smoothedPoints.length - 1; index += 1) {
-                    const currentPoint = smoothedPoints[index];
-                    const nextPoint = smoothedPoints[index + 1];
-                    const firstPoint = {
-                        x: (0.75 * currentPoint.x) + (0.25 * nextPoint.x),
-                        y: (0.75 * currentPoint.y) + (0.25 * nextPoint.y),
-                    };
-                    const secondPoint = {
-                        x: (0.25 * currentPoint.x) + (0.75 * nextPoint.x),
-                        y: (0.25 * currentPoint.y) + (0.75 * nextPoint.y),
-                    };
-                    nextPoints.push(firstPoint, secondPoint);
-                }
-                nextPoints.push(smoothedPoints[smoothedPoints.length - 1]);
-                smoothedPoints = nextPoints;
-            }
-
-            for (let iteration = 0; iteration < 2; iteration += 1) {
-                if (smoothedPoints.length < 3) {
-                    break;
-                }
-                const averagedPoints = [smoothedPoints[0]];
-                for (let index = 1; index < smoothedPoints.length - 1; index += 1) {
-                    const previousPoint = smoothedPoints[index - 1];
-                    const currentPoint = smoothedPoints[index];
-                    const nextPoint = smoothedPoints[index + 1];
-                    averagedPoints.push({
-                        x: ((previousPoint.x + (2 * currentPoint.x) + nextPoint.x) / 4),
-                        y: ((previousPoint.y + (2 * currentPoint.y) + nextPoint.y) / 4),
-                    });
-                }
-                averagedPoints.push(smoothedPoints[smoothedPoints.length - 1]);
-                smoothedPoints = averagedPoints;
-            }
-
-            return smoothedPoints;
-        }
-
-        function drawInkStroke(context, width, height, stroke, options = {}) {
+        function drawInkStroke(context, width, height, stroke) {
             if (!Array.isArray(stroke) || stroke.length === 0) {
                 return;
             }
 
-            const basePoints = stroke.map((point) => ({
+            const points = stroke.map((point) => ({
                 x: point.x * width,
                 y: point.y * height,
             }));
-            const shouldSmooth = Boolean(options.smooth);
-            const points = shouldSmooth
-                ? smoothInkPoints(basePoints, basePoints.length >= 8 ? 4 : (basePoints.length >= 5 ? 3 : 2))
-                : basePoints;
 
             if (points.length === 1) {
                 const onlyPoint = points[0];
@@ -945,17 +889,6 @@
             return activeStrokes;
         }
 
-        function getFinishingInkStrokes(roundId) {
-            const roundKeyPrefix = `${roundId}:`;
-            const previewStrokes = [];
-            finishingInkPreviewMap.forEach((stroke, strokeKey) => {
-                if (strokeKey.startsWith(roundKeyPrefix) && Array.isArray(stroke) && stroke.length > 0) {
-                    previewStrokes.push(stroke);
-                }
-            });
-            return previewStrokes;
-        }
-
         function clearActiveInkStrokes(roundId) {
             const roundKeyPrefix = `${roundId}:`;
             Array.from(activeInkPointerMap.keys()).forEach((pointerKey) => {
@@ -966,17 +899,6 @@
             Array.from(activeInkEraserMap.keys()).forEach((pointerKey) => {
                 if (pointerKey.startsWith(roundKeyPrefix)) {
                     activeInkEraserMap.delete(pointerKey);
-                }
-            });
-            Array.from(finishingInkPreviewMap.keys()).forEach((strokeKey) => {
-                if (strokeKey.startsWith(roundKeyPrefix)) {
-                    finishingInkPreviewMap.delete(strokeKey);
-                }
-            });
-            Array.from(inkCommitTimerMap.keys()).forEach((strokeKey) => {
-                if (strokeKey.startsWith(roundKeyPrefix)) {
-                    window.clearTimeout(inkCommitTimerMap.get(strokeKey));
-                    inkCommitTimerMap.delete(strokeKey);
                 }
             });
             recentFingerTapMap.delete(String(roundId));
@@ -998,9 +920,8 @@
             context.strokeStyle = getInkStrokeColor();
             context.fillStyle = getInkStrokeColor();
             context.lineWidth = 2.3;
-            inkStrokes.forEach((stroke) => drawInkStroke(context, width, height, stroke, { smooth: true }));
-            getActiveInkStrokes(roundId).forEach((stroke) => drawInkStroke(context, width, height, stroke, { smooth: false }));
-            getFinishingInkStrokes(roundId).forEach((stroke) => drawInkStroke(context, width, height, stroke, { smooth: false }));
+            inkStrokes.forEach((stroke) => drawInkStroke(context, width, height, stroke));
+            getActiveInkStrokes(roundId).forEach((stroke) => drawInkStroke(context, width, height, stroke));
             context.restore();
         }
 
@@ -1332,20 +1253,6 @@
             queueRoundEntrySave(roundId);
         }
 
-        function commitInkStrokeWithVisibleSettle(roundId, strokeKey, stroke) {
-            if (!Array.isArray(stroke) || stroke.length === 0) {
-                return;
-            }
-            finishingInkPreviewMap.set(strokeKey, stroke);
-            renderInkCanvas(roundId);
-            window.clearTimeout(inkCommitTimerMap.get(strokeKey));
-            inkCommitTimerMap.set(strokeKey, window.setTimeout(() => {
-                inkCommitTimerMap.delete(strokeKey);
-                finishingInkPreviewMap.delete(strokeKey);
-                commitInkStroke(roundId, stroke);
-            }, 70));
-        }
-
         function toggleRoundInkTool(roundId) {
             setRoundInkTool(roundId, getRoundInkTool(roundId) === 'erase' ? 'draw' : 'erase');
         }
@@ -1472,7 +1379,7 @@
             if (point) {
                 activeStroke.push(point);
             }
-            commitInkStrokeWithVisibleSettle(roundId, strokeKey, activeStroke);
+            commitInkStroke(roundId, activeStroke);
         }
 
         function queueRoundEntrySave(roundId) {
