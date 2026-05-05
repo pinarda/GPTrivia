@@ -2418,7 +2418,7 @@ def answer_sheet_sync(request):
     )
     selected_date = selected_date_obj.isoformat() if selected_date_obj else ''
     selected_rounds = list(
-        GPTriviaRound.objects.filter(date=selected_date, cooperative=True).order_by('round_number', 'id')
+        GPTriviaRound.objects.filter(date=selected_date).order_by('round_number', 'id')
     ) if selected_date else []
     saved_entries = {
         entry.round_id: entry
@@ -2667,20 +2667,28 @@ def _get_answer_sheet_communal_entry(round_obj, current_user=None):
 
 def _serialize_answer_sheet_sync_round(round_obj, user, current_entry=None, current_user_player_field=''):
     communal_entry = _get_answer_sheet_communal_entry(round_obj, current_user=user)
-    communal_entry_state = _serialize_answer_sheet_entry_state(communal_entry)
-    normalized_answers = _normalize_answer_sheet_answers(communal_entry.answers if communal_entry else [])
+    use_current_entry = bool(
+        current_entry
+        and (
+            not round_obj.cooperative
+            or bool(current_entry.is_diverged)
+        )
+    )
+    source_entry = current_entry if use_current_entry else (communal_entry or current_entry)
+    source_entry_state = _serialize_answer_sheet_entry_state(source_entry)
+    normalized_answers = _normalize_answer_sheet_answers(source_entry.answers if source_entry else [])
     score_map = get_round_score_map(round_obj, include_null_fixed=False)
     current_score = score_map.get(current_user_player_field) if current_user_player_field else None
 
     response_payload = {
         'round_id': round_obj.id,
         'answers': normalized_answers,
-        'input_mode': communal_entry_state['input_mode'],
-        'ink_strokes': communal_entry_state['ink_strokes'],
+        'input_mode': source_entry_state['input_mode'],
+        'ink_strokes': source_entry_state['ink_strokes'],
         'score_value': _format_profile_round_score(current_score),
         'is_diverged': bool(current_entry.is_diverged) if current_entry else False,
         'shared': bool(round_obj.cooperative and not (bool(current_entry.is_diverged) if current_entry else False)),
-        'grade_payload': _build_saved_answer_sheet_grade_payload(round_obj, communal_entry),
+        'grade_payload': _build_saved_answer_sheet_grade_payload(round_obj, source_entry),
     }
 
     return response_payload

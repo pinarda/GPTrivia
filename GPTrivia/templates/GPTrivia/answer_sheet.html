@@ -519,17 +519,15 @@
             const panel = getRoundPanel(roundId);
             const textarea = getRoundTextarea(roundId);
             const scoreInput = getRoundScoreInput(roundId);
+            const divergeButton = pageRoot.querySelector(`[data-diverge-round-for="${roundId}"]`);
             if (!roundId || !panel || !textarea || !scoreInput) {
-                return;
-            }
-
-            if (String(roundState.is_diverged) === 'true' || roundState.is_diverged === true || panel.dataset.diverged === 'true') {
                 return;
             }
 
             const answersDirty = panel.dataset.answersDirty === 'true';
             const scoreDirty = panel.dataset.scoreDirty === 'true';
             const forceSharedSaveState = Boolean(options.forceSharedSaveState);
+            const isDiverged = String(roundState.is_diverged) === 'true' || roundState.is_diverged === true;
             const normalizedAnswers = Array.isArray(roundState.answers)
                 ? roundState.answers.map((answer) => String(answer || ''))
                 : [];
@@ -537,6 +535,11 @@
                 ? roundState.ink_strokes
                 : [];
             const savedScoreValue = getSharedSavedScoreValue(roundState);
+
+            panel.dataset.diverged = isDiverged ? 'true' : 'false';
+            if (divergeButton) {
+                divergeButton.textContent = isDiverged ? 'Merge' : 'Diverge';
+            }
 
             if (!answersDirty) {
                 textarea.value = normalizedAnswers.join('\n');

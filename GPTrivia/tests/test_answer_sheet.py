@@ -542,7 +542,7 @@ class AnswerSheetTests(TestCase):
             cooperative=True,
             score_alex=6.5,
         )
-        GPTriviaRound.objects.create(
+        solo_round = GPTriviaRound.objects.create(
             creator="Alex",
             title="Solo Round",
             major_category="Science",
@@ -588,6 +588,14 @@ class AnswerSheetTests(TestCase):
             grade_rejections=[],
             is_diverged=False,
         )
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=solo_round,
+            trivia_date=trivia_date,
+            answers=["Solo answer"] + [""] * 9,
+            input_mode=AnswerSheetEntry.INPUT_MODE_PENCIL,
+            ink_strokes=[[{"x": 0.15, "y": 0.25}, {"x": 0.45, "y": 0.55}]],
+        )
 
         response = self.client.get(
             reverse("answer_sheet_sync"),
@@ -597,17 +605,27 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["selected_date"], trivia_date.isoformat())
-        self.assertEqual(len(payload["rounds"]), 1)
-        round_payload = payload["rounds"][0]
-        self.assertEqual(round_payload["round_id"], cooperative_round.id)
-        self.assertEqual(round_payload["answers"][0], "Zebra")
-        self.assertEqual(round_payload["input_mode"], "text")
-        self.assertEqual(round_payload["ink_strokes"], [])
-        self.assertEqual(round_payload["score_value"], "6.5")
-        self.assertTrue(round_payload["shared"])
-        self.assertFalse(round_payload["is_diverged"])
-        self.assertEqual(round_payload["grade_payload"]["score"], 1)
-        self.assertEqual(round_payload["grade_payload"]["row_results"][0]["state"], "correct")
+        self.assertEqual(len(payload["rounds"]), 2)
+        rounds_by_id = {round_payload["round_id"]: round_payload for round_payload in payload["rounds"]}
+
+        cooperative_payload = rounds_by_id[cooperative_round.id]
+        self.assertEqual(cooperative_payload["answers"][0], "Zebra")
+        self.assertEqual(cooperative_payload["input_mode"], "text")
+        self.assertEqual(cooperative_payload["ink_strokes"], [])
+        self.assertEqual(cooperative_payload["score_value"], "6.5")
+        self.assertTrue(cooperative_payload["shared"])
+        self.assertFalse(cooperative_payload["is_diverged"])
+        self.assertEqual(cooperative_payload["grade_payload"]["score"], 1)
+        self.assertEqual(cooperative_payload["grade_payload"]["row_results"][0]["state"], "correct")
+
+        solo_payload = rounds_by_id[solo_round.id]
+        self.assertEqual(solo_payload["answers"][0], "Solo answer")
+        self.assertEqual(solo_payload["input_mode"], "pencil")
+        self.assertEqual(solo_payload["ink_strokes"], [[{"x": 0.15, "y": 0.25}, {"x": 0.45, "y": 0.55}]])
+        self.assertEqual(solo_payload["score_value"], "")
+        self.assertFalse(solo_payload["shared"])
+        self.assertFalse(solo_payload["is_diverged"])
+        self.assertIsNone(solo_payload["grade_payload"])
 
     def test_answer_sheet_sync_restores_saved_grade_state_without_manual_overrides(self):
         megan = User.objects.create_user(username="Megan", password="pw")
@@ -686,6 +704,61 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(round_payload["grade_payload"]["row_results"][0]["state"], "correct")
         self.assertEqual(round_payload["grade_payload"]["row_results"][1]["state"], "default")
         self.assertTrue(round_payload["grade_payload"]["row_results"][1]["invalidated"])
+
+    def test_answer_sheet_sync_returns_diverged_saved_entry_state(self):
+        megan = User.objects.create_user(username="Megan", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Diverged Sync Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+            },
+        )
+        AnswerSheetEntry.objects.create(
+            user=megan,
+            round=round_obj,
+            trivia_date=trivia_date,
+            answers=["Shared answer"] + [""] * 9,
+            input_mode=AnswerSheetEntry.INPUT_MODE_TEXT,
+            ink_strokes=[],
+            is_diverged=False,
+        )
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=round_obj,
+            trivia_date=trivia_date,
+            answers=["My diverged answer"] + [""] * 9,
+            input_mode=AnswerSheetEntry.INPUT_MODE_PENCIL,
+            ink_strokes=[[{"x": 0.22, "y": 0.33}, {"x": 0.44, "y": 0.66}]],
+            is_diverged=True,
+        )
+
+        response = self.client.get(
+            reverse("answer_sheet_sync"),
+            {"date": trivia_date.isoformat()},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        round_payload = response.json()["rounds"][0]
+        self.assertEqual(round_payload["answers"][0], "My diverged answer")
+        self.assertEqual(round_payload["input_mode"], "pencil")
+        self.assertEqual(round_payload["ink_strokes"], [[{"x": 0.22, "y": 0.33}, {"x": 0.44, "y": 0.66}]])
+        self.assertTrue(round_payload["is_diverged"])
+        self.assertFalse(round_payload["shared"])
 
     def test_diverge_answer_sheet_round_stops_future_shared_answer_updates(self):
         megan = User.objects.create_user(username="Megan", password="pw")
