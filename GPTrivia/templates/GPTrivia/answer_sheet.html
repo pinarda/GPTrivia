@@ -39,6 +39,7 @@
                                     <input
                                         id="answer-sheet-pencil-{{ page.round_id }}"
                                         type="checkbox"
+                                        class="answer-sheet-input-mode-checkbox"
                                         data-answer-sheet-input-mode-toggle="{{ page.round_id }}"
                                         {% if page.input_mode == 'pencil' %}checked{% endif %}
                                     >
@@ -217,6 +218,7 @@
         const activeInkPointerMap = new Map();
         const activeInkEraserMap = new Map();
         const inkToolStateMap = new Map();
+        const pendingInkTapMap = new Map();
         const roundEntrySaveRequestMap = new Map();
         const MINIMUM_VISIBLE_ROWS = 10;
         const localClientId = (
@@ -876,6 +878,7 @@
                     activeInkEraserMap.delete(pointerKey);
                 }
             });
+            clearPendingInkTap(roundId);
         }
 
         function renderInkCanvas(roundId) {
@@ -1190,6 +1193,79 @@
             return true;
         }
 
+        function pointsNear(leftPoint, rightPoint, radius = 0.05) {
+            if (!leftPoint || !rightPoint) {
+                return false;
+            }
+            const deltaX = leftPoint.x - rightPoint.x;
+            const deltaY = leftPoint.y - rightPoint.y;
+            return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY)) <= radius;
+        }
+
+        function clearPendingInkTap(roundId) {
+            const pendingTap = pendingInkTapMap.get(String(roundId));
+            if (!pendingTap) {
+                return null;
+            }
+            window.clearTimeout(pendingTap.timeoutId);
+            pendingInkTapMap.delete(String(roundId));
+            return pendingTap;
+        }
+
+        function commitInkStroke(roundId, stroke) {
+            if (!Array.isArray(stroke) || stroke.length === 0) {
+                return;
+            }
+            const nextStrokes = [...getRoundInkStrokes(roundId), stroke];
+            setRoundInkStrokes(roundId, nextStrokes);
+            renderInkCanvas(roundId);
+            setRoundAnswersDirty(roundId, true);
+            refreshRoundStatus(roundId);
+            queueRoundEntrySave(roundId);
+        }
+
+        function finalizePendingInkTap(roundId) {
+            const pendingTap = clearPendingInkTap(roundId);
+            if (!pendingTap || pendingTap.tool !== 'draw') {
+                return;
+            }
+            commitInkStroke(roundId, pendingTap.stroke);
+        }
+
+        function toggleRoundInkTool(roundId) {
+            setRoundInkTool(roundId, getRoundInkTool(roundId) === 'erase' ? 'draw' : 'erase');
+        }
+
+        function handleInkTapGesture(roundId, tool, point, stroke = null) {
+            const roundKey = String(roundId);
+            const pendingTap = pendingInkTapMap.get(roundKey);
+            if (pendingTap && pendingTap.tool === tool && pointsNear(pendingTap.point, point)) {
+                clearPendingInkTap(roundId);
+                toggleRoundInkTool(roundId);
+                return true;
+            }
+            clearPendingInkTap(roundId);
+            const timeoutId = window.setTimeout(() => {
+                finalizePendingInkTap(roundId);
+            }, 280);
+            pendingInkTapMap.set(roundKey, {
+                timeoutId,
+                tool,
+                point,
+                stroke,
+            });
+            return true;
+        }
+
+        function isTapStroke(stroke) {
+            if (!Array.isArray(stroke) || stroke.length === 0) {
+                return false;
+            }
+            const firstPoint = stroke[0];
+            const lastPoint = stroke[stroke.length - 1];
+            return pointsNear(firstPoint, lastPoint, 0.018);
+        }
+
         function buildRoundEntryStateSnapshot(roundId) {
             const textarea = getRoundTextarea(roundId);
             if (!textarea) {
@@ -1280,6 +1356,11 @@
             if (getRoundInkTool(roundId) === 'erase') {
                 const changed = activeInkEraserMap.get(strokeKey);
                 activeInkEraserMap.delete(strokeKey);
+                if (!changed && point) {
+                    handleInkTapGesture(roundId, 'erase', point, null);
+                    return;
+                }
+                clearPendingInkTap(roundId);
                 if (changed) {
                     renderInkCanvas(roundId);
                     setRoundAnswersDirty(roundId, true);
@@ -1296,12 +1377,13 @@
             if (point) {
                 activeStroke.push(point);
             }
-            const nextStrokes = [...getRoundInkStrokes(roundId), activeStroke];
-            setRoundInkStrokes(roundId, nextStrokes);
-            renderInkCanvas(roundId);
-            setRoundAnswersDirty(roundId, true);
-            refreshRoundStatus(roundId);
-            queueRoundEntrySave(roundId);
+            if (isTapStroke(activeStroke)) {
+                handleInkTapGesture(roundId, 'draw', activeStroke[activeStroke.length - 1], activeStroke);
+                renderInkCanvas(roundId);
+                return;
+            }
+            finalizePendingInkTap(roundId);
+            commitInkStroke(roundId, activeStroke);
         }
 
         function queueRoundEntrySave(roundId) {
@@ -2192,6 +2274,10 @@
             });
 
             window.addEventListener('online', () => {
+                ensureAnswerSheetRealtime(true);
+            });
+
+            window.addEventListener('focus', () => {
                 ensureAnswerSheetRealtime(true);
             });
 

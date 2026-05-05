@@ -378,11 +378,51 @@ body.site-shell.answer-sheet-shell {
     user-select: none;
 }
 
-.answer-sheet-input-mode-toggle input {
+.answer-sheet-input-mode-toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #0073cc;
+    background-color: white;
+    color: #0073cc;
+    cursor: pointer;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
     margin: 0;
-    width: 0.92rem;
-    height: 0.92rem;
-    accent-color: #9cc8ff;
+    padding: 0;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 0 !important;
+    outline: none;
+    box-shadow: none;
+    line-height: 1;
+}
+
+.answer-sheet-input-mode-toggle input[type="checkbox"]::before {
+    content: '';
+    width: 5px;
+    height: 9px;
+    border-right: 2px solid #ffffff;
+    border-bottom: 2px solid #ffffff;
+    transform: rotate(45deg);
+    opacity: 0;
+    box-sizing: border-box;
+}
+
+.answer-sheet-input-mode-toggle input[type="checkbox"]:checked {
+    background-color: #0073cc;
+    color: white;
+}
+
+.answer-sheet-input-mode-toggle input[type="checkbox"]:checked::before {
+    opacity: 1;
+}
+
+.answer-sheet-input-mode-toggle input[type="checkbox"]:hover {
+    border-color: #005a99;
 }
 
 .answer-sheet-ink-tool-button {
@@ -861,6 +901,12 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-line-plus {
     border-color: rgba(42, 143, 69, 0.45);
     background: rgba(42, 143, 69, 0.1);
     color: #2a8f45;
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-input-mode-toggle input[type="checkbox"]::before,
+body.site-shell[data-profile-theme="light"] .answer-sheet-input-mode-toggle input[type="checkbox"]:checked::before {
+    border-right-color: #ffffff !important;
+    border-bottom-color: #ffffff !important;
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-ink-tool-button {
