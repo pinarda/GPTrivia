@@ -217,6 +217,8 @@
         const inkStrokeStateMap = new Map();
         const activeInkPointerMap = new Map();
         const activeInkEraserMap = new Map();
+        const finishingInkPreviewMap = new Map();
+        const inkCommitTimerMap = new Map();
         const inkToolStateMap = new Map();
         const recentFingerTapMap = new Map();
         const roundEntrySaveRequestMap = new Map();
@@ -925,6 +927,17 @@
             return activeStrokes;
         }
 
+        function getFinishingInkStrokes(roundId) {
+            const roundKeyPrefix = `${roundId}:`;
+            const previewStrokes = [];
+            finishingInkPreviewMap.forEach((stroke, strokeKey) => {
+                if (strokeKey.startsWith(roundKeyPrefix) && Array.isArray(stroke) && stroke.length > 0) {
+                    previewStrokes.push(stroke);
+                }
+            });
+            return previewStrokes;
+        }
+
         function clearActiveInkStrokes(roundId) {
             const roundKeyPrefix = `${roundId}:`;
             Array.from(activeInkPointerMap.keys()).forEach((pointerKey) => {
@@ -935,6 +948,17 @@
             Array.from(activeInkEraserMap.keys()).forEach((pointerKey) => {
                 if (pointerKey.startsWith(roundKeyPrefix)) {
                     activeInkEraserMap.delete(pointerKey);
+                }
+            });
+            Array.from(finishingInkPreviewMap.keys()).forEach((strokeKey) => {
+                if (strokeKey.startsWith(roundKeyPrefix)) {
+                    finishingInkPreviewMap.delete(strokeKey);
+                }
+            });
+            Array.from(inkCommitTimerMap.keys()).forEach((strokeKey) => {
+                if (strokeKey.startsWith(roundKeyPrefix)) {
+                    window.clearTimeout(inkCommitTimerMap.get(strokeKey));
+                    inkCommitTimerMap.delete(strokeKey);
                 }
             });
             recentFingerTapMap.delete(String(roundId));
@@ -958,6 +982,7 @@
             context.lineWidth = 2.3;
             inkStrokes.forEach((stroke) => drawInkStroke(context, width, height, stroke, { smooth: true }));
             getActiveInkStrokes(roundId).forEach((stroke) => drawInkStroke(context, width, height, stroke, { smooth: false }));
+            getFinishingInkStrokes(roundId).forEach((stroke) => drawInkStroke(context, width, height, stroke, { smooth: false }));
             context.restore();
         }
 
@@ -1289,6 +1314,20 @@
             queueRoundEntrySave(roundId);
         }
 
+        function commitInkStrokeWithVisibleSettle(roundId, strokeKey, stroke) {
+            if (!Array.isArray(stroke) || stroke.length === 0) {
+                return;
+            }
+            finishingInkPreviewMap.set(strokeKey, stroke);
+            renderInkCanvas(roundId);
+            window.clearTimeout(inkCommitTimerMap.get(strokeKey));
+            inkCommitTimerMap.set(strokeKey, window.setTimeout(() => {
+                inkCommitTimerMap.delete(strokeKey);
+                finishingInkPreviewMap.delete(strokeKey);
+                commitInkStroke(roundId, stroke);
+            }, 70));
+        }
+
         function toggleRoundInkTool(roundId) {
             setRoundInkTool(roundId, getRoundInkTool(roundId) === 'erase' ? 'draw' : 'erase');
         }
@@ -1415,7 +1454,7 @@
             if (point) {
                 activeStroke.push(point);
             }
-            commitInkStroke(roundId, activeStroke);
+            commitInkStrokeWithVisibleSettle(roundId, strokeKey, activeStroke);
         }
 
         function queueRoundEntrySave(roundId) {
