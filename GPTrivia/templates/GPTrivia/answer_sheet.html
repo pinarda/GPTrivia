@@ -214,6 +214,7 @@
         const saveTimers = new Map();
         const buttonMessageTimers = new Map();
         const lineStateMap = new WeakMap();
+        const pencilLineStateMap = new Map();
         const inkStrokeStateMap = new Map();
         const activeInkPointerMap = new Map();
         const activeInkEraserMap = new Map();
@@ -809,13 +810,32 @@
         }
 
         function getLineStates(textarea, rowCount) {
-            const existingStates = lineStateMap.get(textarea) || [];
+            const roundId = String(textarea?.dataset?.roundId || '');
+            const usePencilStates = roundId && getRoundInputMode(roundId) === 'pencil';
+            const existingStates = usePencilStates
+                ? (pencilLineStateMap.get(roundId) || [])
+                : (lineStateMap.get(textarea) || []);
             const nextStates = [];
             for (let index = 0; index < rowCount; index += 1) {
                 nextStates.push(existingStates[index] || 'default');
             }
-            lineStateMap.set(textarea, nextStates);
+            if (usePencilStates) {
+                pencilLineStateMap.set(roundId, nextStates);
+            } else {
+                lineStateMap.set(textarea, nextStates);
+            }
             return nextStates;
+        }
+
+        function setCurrentModeLineStates(textarea, nextStates) {
+            const normalizedStates = Array.isArray(nextStates) ? nextStates.slice() : [];
+            const roundId = String(textarea?.dataset?.roundId || '');
+            if (roundId && getRoundInputMode(roundId) === 'pencil') {
+                pencilLineStateMap.set(roundId, normalizedStates);
+            } else {
+                lineStateMap.set(textarea, normalizedStates);
+            }
+            return normalizedStates;
         }
 
         function syncOverlayScroll(textarea) {
@@ -830,6 +850,7 @@
         function getRoundLineMetrics(roundId) {
             const textarea = getRoundTextarea(roundId);
             const shell = textarea ? textarea.closest('.answer-sheet-textarea-shell') : null;
+            const canvas = getRoundInkCanvas(roundId);
             if (!shell) {
                 return null;
             }
@@ -838,6 +859,8 @@
             const paddingTop = parseFloat(computedStyle.getPropertyValue('--answer-sheet-padding-top-px')) || 14;
             const paddingBottom = parseFloat(computedStyle.getPropertyValue('--answer-sheet-padding-bottom-px')) || 14;
             const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, shell.querySelectorAll('.answer-sheet-line-numbers li').length || 0);
+            const shellRect = shell.getBoundingClientRect();
+            const canvasRect = canvas ? canvas.getBoundingClientRect() : null;
             return {
                 shell,
                 lineHeight,
@@ -845,6 +868,7 @@
                 paddingBottom,
                 rowCount,
                 totalHeight: paddingTop + paddingBottom + (lineHeight * rowCount),
+                renderedHeight: canvasRect?.height || shellRect.height || (paddingTop + paddingBottom + (lineHeight * rowCount)),
             };
         }
 
@@ -856,7 +880,7 @@
             if (!lineMetrics) {
                 return null;
             }
-            const pointY = point.y * lineMetrics.totalHeight;
+            const pointY = point.y * lineMetrics.renderedHeight;
             const rowIndex = Math.floor((pointY - lineMetrics.paddingTop) / lineMetrics.lineHeight);
             return Math.max(1, Math.min(lineMetrics.rowCount, rowIndex + 1));
         }
@@ -980,7 +1004,7 @@
             if (!lineMetrics) {
                 return 0;
             }
-            const averageY = stroke.reduce((total, point) => total + (point.y * lineMetrics.totalHeight), 0) / stroke.length;
+            const averageY = stroke.reduce((total, point) => total + (point.y * lineMetrics.renderedHeight), 0) / stroke.length;
             const rowIndex = Math.floor((averageY - lineMetrics.paddingTop) / lineMetrics.lineHeight);
             return Math.max(0, Math.min(lineMetrics.rowCount - 1, rowIndex));
         }
@@ -1117,7 +1141,7 @@
 
         function clearGradingState(textarea) {
             const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, getTextareaLines(textarea).length);
-            lineStateMap.set(textarea, Array(rowCount).fill('default'));
+            setCurrentModeLineStates(textarea, Array(rowCount).fill('default'));
             renderTextOverlay(textarea);
             if (getRoundInputMode(textarea.dataset.roundId) === 'pencil') {
                 renderInkCanvas(textarea.dataset.roundId);
@@ -1146,7 +1170,7 @@
                     existingStates[rowIndex] = 'default';
                 }
             });
-            lineStateMap.set(textarea, existingStates);
+            setCurrentModeLineStates(textarea, existingStates);
             markEditedInkRows(roundId, normalizedRows);
             renderTextOverlay(textarea);
             if (getRoundInputMode(roundId) === 'pencil') {
@@ -1247,7 +1271,7 @@
                     nextStates[index] = 'incorrect';
                 }
             });
-            lineStateMap.set(textarea, nextStates);
+            setCurrentModeLineStates(textarea, nextStates);
             renderTextOverlay(textarea);
             if (getRoundInputMode(roundId) === 'pencil') {
                 renderInkCanvas(roundId);
@@ -1881,7 +1905,7 @@
                 const nextStates = getLineStates(textarea, Math.max(MINIMUM_VISIBLE_ROWS, nextLines.length)).slice();
                 const editedLineIndex = Math.max(0, Math.min(nextStates.length - 1, getCaretLineIndex(textarea)));
                 nextStates[editedLineIndex] = 'default';
-                lineStateMap.set(textarea, nextStates);
+                setCurrentModeLineStates(textarea, nextStates);
                 renderTextOverlay(textarea);
                 setRoundAnswersDirty(roundId, true);
                 refreshRoundStatus(roundId);
