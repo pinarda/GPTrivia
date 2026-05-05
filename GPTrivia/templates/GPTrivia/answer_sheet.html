@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505c">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505d">
 {% endblock %}
 
 {% block content %}
@@ -53,7 +53,7 @@
                                     title="Use eraser"
                                     {% if page.input_mode != 'pencil' %}hidden{% endif %}
                                 >✎</button>
-                                <span class="answer-sheet-status" data-status-for="{{ page.round_id }}" data-state="ungraded-saved">Ungraded, Submitted</span>
+                                <span class="answer-sheet-status" data-status-for="{{ page.round_id }}" data-state="ungraded-saved">Submitted</span>
                             </div>
                         </div>
                         <h2>{{ page.round_title }}</h2>
@@ -473,14 +473,14 @@
             const hasUnsavedScore = panel.dataset.scoreDirty === 'true';
             const hasGrading = roundHasGradedRows(textarea);
             let statusState = 'ungraded-saved';
-            let statusText = 'Ungraded, Submitted';
+            let statusText = 'Submitted';
 
             if (hasUnsavedScore) {
                 statusState = 'ungraded-dirty';
-                statusText = 'Ungraded, Unsubmitted';
+                statusText = 'Unsubmitted';
             } else if (hasGrading) {
                 statusState = 'graded-saved';
-                statusText = 'Graded, Submitted';
+                statusText = 'Submitted';
             }
 
             status.textContent = statusText;
@@ -838,24 +838,44 @@
                 return;
             }
 
-            context.beginPath();
-            stroke.forEach((point, pointIndex) => {
-                const pointX = point.x * width;
-                const pointY = point.y * height;
-                if (pointIndex === 0) {
-                    context.moveTo(pointX, pointY);
-                } else {
-                    context.lineTo(pointX, pointY);
-                }
-            });
-            context.stroke();
+            const points = stroke.map((point) => ({
+                x: point.x * width,
+                y: point.y * height,
+            }));
 
-            if (stroke.length === 1) {
-                const onlyPoint = stroke[0];
+            if (points.length === 1) {
+                const onlyPoint = points[0];
                 context.beginPath();
-                context.arc(onlyPoint.x * width, onlyPoint.y * height, 1.6, 0, Math.PI * 2);
+                context.arc(onlyPoint.x, onlyPoint.y, 1.6, 0, Math.PI * 2);
                 context.fill();
+                return;
             }
+
+            context.beginPath();
+            context.moveTo(points[0].x, points[0].y);
+
+            if (points.length === 2) {
+                context.lineTo(points[1].x, points[1].y);
+            } else {
+                for (let index = 1; index < points.length - 1; index += 1) {
+                    const currentPoint = points[index];
+                    const nextPoint = points[index + 1];
+                    const midpointX = (currentPoint.x + nextPoint.x) / 2;
+                    const midpointY = (currentPoint.y + nextPoint.y) / 2;
+                    context.quadraticCurveTo(currentPoint.x, currentPoint.y, midpointX, midpointY);
+                }
+
+                const penultimatePoint = points[points.length - 2];
+                const finalPoint = points[points.length - 1];
+                context.quadraticCurveTo(
+                    penultimatePoint.x,
+                    penultimatePoint.y,
+                    finalPoint.x,
+                    finalPoint.y,
+                );
+            }
+
+            context.stroke();
         }
 
         function getActiveInkStrokes(roundId) {
