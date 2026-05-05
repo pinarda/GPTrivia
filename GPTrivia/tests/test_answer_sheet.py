@@ -142,6 +142,48 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(AnswerSheetEntry.objects.filter(user=self.user, round=round_obj).count(), 1)
         self.assertEqual(entry.answers[:3], ["Updated", "Answer", ""])
 
+    def test_save_answer_sheet_entry_broadcasts_to_current_user_devices(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Mode Sync Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+
+        with patch("GPTrivia.views._broadcast_scoresheet_message") as broadcast:
+            with self.captureOnCommitCallbacks(execute=False) as callbacks:
+                response = self.client.post(
+                    reverse("save_answer_sheet_entry"),
+                    data=json.dumps({
+                        "round_id": round_obj.id,
+                        "answers": ["One"] + [""] * 9,
+                        "input_mode": "pencil",
+                        "ink_strokes": [[{"x": 0.2, "y": 0.3}, {"x": 0.4, "y": 0.5}]],
+                        "client_id": "mode-sync-1",
+                    }),
+                    content_type="application/json",
+                )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(len(callbacks), 1)
+            broadcast.assert_not_called()
+
+            callbacks[0]()
+            broadcast.assert_called_once()
+            message = broadcast.call_args.args[0]
+            self.assertEqual(message["action"], "answer_sheet")
+            self.assertEqual(message["event"], "answer_sheet_save")
+            self.assertEqual(message["client_id"], "mode-sync-1")
+            self.assertEqual(message["target_user_ids"], [self.user.id])
+            self.assertEqual(message["input_mode"], "pencil")
+            self.assertEqual(message["ink_strokes"], [[{"x": 0.2, "y": 0.3}, {"x": 0.4, "y": 0.5}]])
+
     def test_save_answer_sheet_entry_preserves_rows_beyond_ten(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
@@ -312,6 +354,7 @@ class AnswerSheetTests(TestCase):
             self.assertEqual(message["event"], "answer_sheet_save")
             self.assertEqual(message["client_id"], "coop-client-1")
             self.assertEqual(message["round_id"], round_obj.id)
+            self.assertEqual(message["target_user_ids"], [self.user.id, megan.id, jenny.id])
             self.assertEqual(message["answers"][:4], ["One", "Two", "Three", ""])
             self.assertEqual(message["input_mode"], "text")
             self.assertEqual(message["ink_strokes"], [])

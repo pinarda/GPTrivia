@@ -435,6 +435,10 @@ body.site-shell.answer-sheet-shell {
     touch-action: none;
 }
 
+.answer-sheet-ink-canvas[hidden] {
+    display: none !important;
+}
+
 .answer-sheet-round-panel[data-input-mode="pencil"] .answer-sheet-line-numbers {
     pointer-events: none;
 }
