@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505b">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505c">
 {% endblock %}
 
 {% block content %}
@@ -218,7 +218,7 @@
         const activeInkPointerMap = new Map();
         const activeInkEraserMap = new Map();
         const inkToolStateMap = new Map();
-        const pendingInkTapMap = new Map();
+        const recentFingerTapMap = new Map();
         const roundEntrySaveRequestMap = new Map();
         const MINIMUM_VISIBLE_ROWS = 10;
         const localClientId = (
@@ -878,7 +878,7 @@
                     activeInkEraserMap.delete(pointerKey);
                 }
             });
-            clearPendingInkTap(roundId);
+            recentFingerTapMap.delete(String(roundId));
         }
 
         function renderInkCanvas(roundId) {
@@ -1202,16 +1202,6 @@
             return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY)) <= radius;
         }
 
-        function clearPendingInkTap(roundId) {
-            const pendingTap = pendingInkTapMap.get(String(roundId));
-            if (!pendingTap) {
-                return null;
-            }
-            window.clearTimeout(pendingTap.timeoutId);
-            pendingInkTapMap.delete(String(roundId));
-            return pendingTap;
-        }
-
         function commitInkStroke(roundId, stroke) {
             if (!Array.isArray(stroke) || stroke.length === 0) {
                 return;
@@ -1224,46 +1214,24 @@
             queueRoundEntrySave(roundId);
         }
 
-        function finalizePendingInkTap(roundId) {
-            const pendingTap = clearPendingInkTap(roundId);
-            if (!pendingTap || pendingTap.tool !== 'draw') {
-                return;
-            }
-            commitInkStroke(roundId, pendingTap.stroke);
-        }
-
         function toggleRoundInkTool(roundId) {
             setRoundInkTool(roundId, getRoundInkTool(roundId) === 'erase' ? 'draw' : 'erase');
         }
 
-        function handleInkTapGesture(roundId, tool, point, stroke = null) {
+        function handleFingerDoubleTap(roundId, point) {
             const roundKey = String(roundId);
-            const pendingTap = pendingInkTapMap.get(roundKey);
-            if (pendingTap && pendingTap.tool === tool && pointsNear(pendingTap.point, point)) {
-                clearPendingInkTap(roundId);
+            const previousTap = recentFingerTapMap.get(roundKey);
+            const now = Date.now();
+            if (previousTap && (now - previousTap.timestamp) <= 320 && pointsNear(previousTap.point, point, 0.08)) {
+                recentFingerTapMap.delete(roundKey);
                 toggleRoundInkTool(roundId);
                 return true;
             }
-            clearPendingInkTap(roundId);
-            const timeoutId = window.setTimeout(() => {
-                finalizePendingInkTap(roundId);
-            }, 280);
-            pendingInkTapMap.set(roundKey, {
-                timeoutId,
-                tool,
+            recentFingerTapMap.set(roundKey, {
+                timestamp: now,
                 point,
-                stroke,
             });
-            return true;
-        }
-
-        function isTapStroke(stroke) {
-            if (!Array.isArray(stroke) || stroke.length === 0) {
-                return false;
-            }
-            const firstPoint = stroke[0];
-            const lastPoint = stroke[stroke.length - 1];
-            return pointsNear(firstPoint, lastPoint, 0.018);
+            return false;
         }
 
         function buildRoundEntryStateSnapshot(roundId) {
@@ -1356,11 +1324,6 @@
             if (getRoundInkTool(roundId) === 'erase') {
                 const changed = activeInkEraserMap.get(strokeKey);
                 activeInkEraserMap.delete(strokeKey);
-                if (!changed && point) {
-                    handleInkTapGesture(roundId, 'erase', point, null);
-                    return;
-                }
-                clearPendingInkTap(roundId);
                 if (changed) {
                     renderInkCanvas(roundId);
                     setRoundAnswersDirty(roundId, true);
@@ -1377,12 +1340,6 @@
             if (point) {
                 activeStroke.push(point);
             }
-            if (isTapStroke(activeStroke)) {
-                handleInkTapGesture(roundId, 'draw', activeStroke[activeStroke.length - 1], activeStroke);
-                renderInkCanvas(roundId);
-                return;
-            }
-            finalizePendingInkTap(roundId);
             commitInkStroke(roundId, activeStroke);
         }
 
@@ -1726,6 +1683,23 @@
                     }
                     const stylusTouch = getStylusTouch(event);
                     if (!stylusTouch) {
+                        const fingerTouch = event.changedTouches && event.changedTouches.length === 1
+                            ? event.changedTouches[0]
+                            : null;
+                        if (!fingerTouch) {
+                            return;
+                        }
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handleFingerDoubleTap(
+                            roundId,
+                            buildNormalizedInkPointFromClientPosition(
+                                canvas,
+                                fingerTouch.clientX,
+                                fingerTouch.clientY,
+                                fingerTouch.force,
+                            ),
+                        );
                         return;
                     }
                     if (document.activeElement instanceof HTMLElement) {
