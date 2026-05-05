@@ -406,6 +406,14 @@ body.site-shell.answer-sheet-shell {
     cursor: crosshair;
 }
 
+.answer-sheet-round-panel[data-input-mode="pencil"] .answer-sheet-line-numbers,
+.answer-sheet-round-panel[data-input-mode="pencil"] .answer-sheet-textarea-shell,
+.answer-sheet-round-panel[data-input-mode="pencil"] .answer-sheet-ink-canvas {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
 .answer-sheet-textarea-shell.has-grade-controls {
     grid-template-columns: 3.36rem minmax(0, 1fr);
 }
@@ -425,6 +433,10 @@ body.site-shell.answer-sheet-shell {
     height: 100%;
     display: block;
     touch-action: none;
+}
+
+.answer-sheet-round-panel[data-input-mode="pencil"] .answer-sheet-line-numbers {
+    pointer-events: none;
 }
 
 .answer-sheet-round-panel[data-input-mode="pencil"] .answer-sheet-text-overlay,

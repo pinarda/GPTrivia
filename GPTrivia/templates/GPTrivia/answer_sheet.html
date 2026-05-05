@@ -721,54 +721,6 @@
                 .split('\n').length - 1;
         }
 
-        function getLineStartOffset(value, lineIndex) {
-            const normalizedValue = normalizeTextareaValue(value);
-            const lines = normalizedValue.split('\n');
-            let offset = 0;
-            for (let index = 0; index < Math.min(lineIndex, lines.length - 1); index += 1) {
-                offset += lines[index].length + 1;
-            }
-            return offset;
-        }
-
-        function measureTextareaCharacterWidth(textarea) {
-            const sample = document.createElement('span');
-            const computedStyle = window.getComputedStyle(textarea);
-            sample.textContent = '0000000000';
-            sample.style.position = 'absolute';
-            sample.style.visibility = 'hidden';
-            sample.style.pointerEvents = 'none';
-            sample.style.whiteSpace = 'pre';
-            sample.style.font = computedStyle.font;
-            sample.style.letterSpacing = computedStyle.letterSpacing;
-            document.body.appendChild(sample);
-            const width = sample.getBoundingClientRect().width / 10;
-            sample.remove();
-            return width || 9;
-        }
-
-        function placeCaretFromPointer(textarea, clientX, clientY, forceLineStart) {
-            const computedStyle = window.getComputedStyle(textarea);
-            const lineHeight = parseFloat(computedStyle.lineHeight) || 24;
-            const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
-            const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
-            const rect = textarea.getBoundingClientRect();
-            const lines = getTextareaLines(textarea);
-            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, lines.length);
-            const relativeY = clientY - rect.top - paddingTop + textarea.scrollTop;
-            const lineIndex = Math.max(0, Math.min(rowCount - 1, Math.floor(relativeY / lineHeight)));
-            const charWidth = measureTextareaCharacterWidth(textarea);
-            const relativeX = clientX - rect.left - paddingLeft + textarea.scrollLeft;
-            const lineText = lines[lineIndex] || '';
-            const columnIndex = forceLineStart
-                ? 0
-                : Math.max(0, Math.min(lineText.length, Math.round(relativeX / Math.max(charWidth, 1))));
-            const lineStartOffset = getLineStartOffset(textarea.value, lineIndex);
-            const nextOffset = lineStartOffset + columnIndex;
-            textarea.focus({ preventScroll: true });
-            textarea.setSelectionRange(nextOffset, nextOffset);
-        }
-
         function configureInkCanvas(canvas) {
             if (!canvas) {
                 return null;
@@ -846,6 +798,26 @@
             }
         }
 
+        function getActiveInkStrokes(roundId) {
+            const roundKeyPrefix = `${roundId}:`;
+            const activeStrokes = [];
+            activeInkPointerMap.forEach((stroke, pointerKey) => {
+                if (pointerKey.startsWith(roundKeyPrefix) && Array.isArray(stroke) && stroke.length > 0) {
+                    activeStrokes.push(stroke);
+                }
+            });
+            return activeStrokes;
+        }
+
+        function clearActiveInkStrokes(roundId) {
+            const roundKeyPrefix = `${roundId}:`;
+            Array.from(activeInkPointerMap.keys()).forEach((pointerKey) => {
+                if (pointerKey.startsWith(roundKeyPrefix)) {
+                    activeInkPointerMap.delete(pointerKey);
+                }
+            });
+        }
+
         function renderInkCanvas(roundId) {
             const canvas = getRoundInkCanvas(roundId);
             const canvasConfig = configureInkCanvas(canvas);
@@ -863,6 +835,7 @@
             context.fillStyle = getInkStrokeColor();
             context.lineWidth = 2.3;
             inkStrokes.forEach((stroke) => drawInkStroke(context, width, height, stroke));
+            getActiveInkStrokes(roundId).forEach((stroke) => drawInkStroke(context, width, height, stroke));
             context.restore();
         }
 
@@ -885,6 +858,8 @@
                 canvas.hidden = normalizedMode !== 'pencil';
                 if (normalizedMode === 'pencil') {
                     renderInkCanvas(roundId);
+                } else {
+                    clearActiveInkStrokes(roundId);
                 }
             }
         }
@@ -1123,6 +1098,9 @@
         }
 
         function beginInkStroke(roundId, canvas, event) {
+            if (event.pointerType !== 'pen') {
+                return;
+            }
             const firstPoint = buildNormalizedInkPoint(canvas, event);
             if (!firstPoint) {
                 return;
@@ -1138,6 +1116,9 @@
         }
 
         function extendInkStroke(roundId, canvas, event) {
+            if (event.pointerType !== 'pen') {
+                return;
+            }
             const pointerKey = `${roundId}:${event.pointerId}`;
             const activeStroke = activeInkPointerMap.get(pointerKey);
             if (!activeStroke) {
@@ -1148,14 +1129,13 @@
                 return;
             }
             activeStroke.push(nextPoint);
-            const savedStrokes = getRoundInkStrokes(roundId);
-            const previewStrokes = [...savedStrokes, activeStroke];
-            inkStrokeStateMap.set(String(roundId), previewStrokes);
             renderInkCanvas(roundId);
-            inkStrokeStateMap.set(String(roundId), savedStrokes);
         }
 
         function endInkStroke(roundId, canvas, event) {
+            if (event.pointerType !== 'pen') {
+                return;
+            }
             const pointerKey = `${roundId}:${event.pointerId}`;
             const activeStroke = activeInkPointerMap.get(pointerKey);
             if (!activeStroke) {
@@ -1444,29 +1424,36 @@
                 syncOverlayScroll(textarea);
             }, { passive: true });
             if (canvas) {
-                renderInkCanvas(roundId);
+                if (getRoundInputMode(roundId) === 'pencil') {
+                    renderInkCanvas(roundId);
+                }
                 canvas.addEventListener('pointerdown', (event) => {
-                    if (getRoundInputMode(roundId) !== 'pencil') {
+                    if (getRoundInputMode(roundId) !== 'pencil' || event.pointerType !== 'pen') {
                         return;
                     }
                     event.preventDefault();
                     beginInkStroke(roundId, canvas, event);
                 });
                 canvas.addEventListener('pointermove', (event) => {
-                    if (getRoundInputMode(roundId) !== 'pencil') {
+                    if (getRoundInputMode(roundId) !== 'pencil' || event.pointerType !== 'pen') {
                         return;
                     }
+                    event.preventDefault();
                     extendInkStroke(roundId, canvas, event);
                 });
                 const finalizeInkStroke = (event) => {
-                    if (getRoundInputMode(roundId) !== 'pencil') {
+                    if (getRoundInputMode(roundId) !== 'pencil' || event.pointerType !== 'pen') {
                         return;
                     }
+                    event.preventDefault();
                     endInkStroke(roundId, canvas, event);
                 };
                 canvas.addEventListener('pointerup', finalizeInkStroke);
                 canvas.addEventListener('pointercancel', finalizeInkStroke);
                 canvas.addEventListener('pointerleave', (event) => {
+                    if (event.pointerType !== 'pen') {
+                        return;
+                    }
                     if (!activeInkPointerMap.has(`${roundId}:${event.pointerId}`)) {
                         return;
                     }
@@ -1474,25 +1461,6 @@
                 });
             }
             if (shell) {
-                shell.addEventListener('pointerdown', (event) => {
-                    if (getRoundInputMode(roundId) === 'pencil') {
-                        return;
-                    }
-                    if (event.target.closest('.answer-sheet-line-adjust')) {
-                        return;
-                    }
-                    const clickedNumbers = Boolean(event.target.closest('.answer-sheet-line-numbers'));
-                    if (event.pointerType !== 'pen' && !clickedNumbers) {
-                        return;
-                    }
-                    event.preventDefault();
-                    placeCaretFromPointer(
-                        textarea,
-                        clickedNumbers ? textarea.getBoundingClientRect().left : event.clientX,
-                        event.clientY,
-                        clickedNumbers
-                    );
-                });
                 shell.addEventListener('click', (event) => {
                     const adjustButton = event.target.closest('.answer-sheet-line-adjust');
                     if (!adjustButton || adjustButton.hidden || adjustButton.disabled) {
