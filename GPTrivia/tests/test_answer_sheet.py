@@ -178,6 +178,42 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(len(round_pages[0]["answers"]), 12)
         self.assertIn("Answer 11\nAnswer 12", round_pages[0]["answers_text"])
 
+    def test_save_answer_sheet_entry_persists_pencil_mode_and_ink_strokes(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Pencil Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+
+        response = self.client.post(
+            reverse("save_answer_sheet_entry"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "One\nTwo",
+                "input_mode": "pencil",
+                "ink_strokes": [
+                    [{"x": 0.1, "y": 0.2}, {"x": 0.4, "y": 0.5, "p": 0.8}],
+                    [{"x": 0.7, "y": 0.8}],
+                ],
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
+        self.assertEqual(entry.input_mode, AnswerSheetEntry.INPUT_MODE_PENCIL)
+        self.assertEqual(entry.ink_strokes[0][0], {"x": 0.1, "y": 0.2})
+        self.assertEqual(entry.ink_strokes[0][1], {"x": 0.4, "y": 0.5, "p": 0.8})
+        self.assertEqual(response.json()["input_mode"], "pencil")
+        self.assertEqual(response.json()["ink_strokes"][1][0], {"x": 0.7, "y": 0.8})
+
     def test_save_answer_sheet_entry_clears_grade_overrides_for_changed_rows(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
@@ -277,6 +313,8 @@ class AnswerSheetTests(TestCase):
             self.assertEqual(message["client_id"], "coop-client-1")
             self.assertEqual(message["round_id"], round_obj.id)
             self.assertEqual(message["answers"][:4], ["One", "Two", "Three", ""])
+            self.assertEqual(message["input_mode"], "text")
+            self.assertEqual(message["ink_strokes"], [])
 
         other_client = self.client_class()
         other_client.force_login(jenny)
@@ -284,6 +322,55 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(shared_response.status_code, 200)
         round_pages = shared_response.context["round_pages"]
         self.assertEqual(round_pages[0]["answers"][:4], ["One", "Two", "Three", ""])
+        self.assertEqual(round_pages[0]["input_mode"], "text")
+        self.assertEqual(round_pages[0]["ink_strokes"], [])
+
+    def test_save_answer_sheet_entry_shares_pencil_mode_and_ink_strokes_across_coop_round(self):
+        megan = User.objects.create_user(username="Megan", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Shared Pencil Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+        MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+            },
+        )
+
+        response = self.client.post(
+            reverse("save_answer_sheet_entry"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": ["One"] + [""] * 9,
+                "input_mode": "pencil",
+                "ink_strokes": [[{"x": 0.25, "y": 0.3}, {"x": 0.55, "y": 0.65}]],
+                "client_id": "coop-pencil-1",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            AnswerSheetEntry.objects.get(user=megan, round=round_obj).input_mode,
+            AnswerSheetEntry.INPUT_MODE_PENCIL,
+        )
+        shared_response = self.client.get(reverse("answer_sheet_sync"), {"date": trivia_date.isoformat()})
+        self.assertEqual(shared_response.status_code, 200)
+        round_payload = shared_response.json()["rounds"][0]
+        self.assertEqual(round_payload["input_mode"], "pencil")
+        self.assertEqual(round_payload["ink_strokes"], [[{"x": 0.25, "y": 0.3}, {"x": 0.55, "y": 0.65}]])
 
     def test_save_answer_sheet_entry_invalidates_only_changed_rows_for_shared_graded_round(self):
         megan = User.objects.create_user(username="Megan", password="pw")
@@ -471,6 +558,8 @@ class AnswerSheetTests(TestCase):
         round_payload = payload["rounds"][0]
         self.assertEqual(round_payload["round_id"], cooperative_round.id)
         self.assertEqual(round_payload["answers"][0], "Zebra")
+        self.assertEqual(round_payload["input_mode"], "text")
+        self.assertEqual(round_payload["ink_strokes"], [])
         self.assertEqual(round_payload["score_value"], "6.5")
         self.assertTrue(round_payload["shared"])
         self.assertFalse(round_payload["is_diverged"])

@@ -222,10 +222,19 @@ class PresentationBuildState(models.Model):
 
 
 class AnswerSheetEntry(models.Model):
+    INPUT_MODE_TEXT = 'text'
+    INPUT_MODE_PENCIL = 'pencil'
+    INPUT_MODE_CHOICES = [
+        (INPUT_MODE_TEXT, 'Text'),
+        (INPUT_MODE_PENCIL, 'Pencil'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='answer_sheet_entries')
     round = models.ForeignKey('GPTriviaRound', on_delete=models.CASCADE, related_name='answer_sheet_entries')
     trivia_date = models.DateField(db_index=True)
     answers = jsonfield.JSONField(default=list, blank=True)
+    input_mode = models.CharField(max_length=16, choices=INPUT_MODE_CHOICES, default=INPUT_MODE_TEXT)
+    ink_strokes = jsonfield.JSONField(default=list, blank=True)
     grade_overrides = jsonfield.JSONField(default=list, blank=True)
     grade_rejections = jsonfield.JSONField(default=list, blank=True)
     grade_invalidated_questions = jsonfield.JSONField(default=list, blank=True)

@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260501a">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505a">
 {% endblock %}
 
 {% block content %}
@@ -25,7 +25,7 @@
     {% if round_pages %}
         <div class="answer-sheet-track" id="answer-sheet-track">
             {% for page in round_pages %}
-                <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}" data-round-title="{{ page.round_title }}" data-cooperative="{% if page.cooperative %}true{% else %}false{% endif %}" data-diverged="{% if page.is_diverged %}true{% else %}false{% endif %}" data-answers-dirty="false" data-score-dirty="false">
+                <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}" data-round-title="{{ page.round_title }}" data-cooperative="{% if page.cooperative %}true{% else %}false{% endif %}" data-diverged="{% if page.is_diverged %}true{% else %}false{% endif %}" data-answers-dirty="false" data-score-dirty="false" data-input-mode="{{ page.input_mode }}" data-ink-strokes="{{ page.ink_strokes_json|escape }}">
                     <div class="answer-sheet-round-header">
                         <div class="answer-sheet-round-meta">
                             <div class="answer-sheet-round-kicker">
@@ -34,7 +34,18 @@
                                     <span class="answer-sheet-round-coop">CO-OP</span>
                                 {% endif %}
                             </div>
-                            <span class="answer-sheet-status" data-status-for="{{ page.round_id }}" data-state="ungraded-saved">Ungraded, Submitted</span>
+                            <div class="answer-sheet-round-meta-actions">
+                                <label class="answer-sheet-input-mode-toggle" for="answer-sheet-pencil-{{ page.round_id }}">
+                                    <input
+                                        id="answer-sheet-pencil-{{ page.round_id }}"
+                                        type="checkbox"
+                                        data-answer-sheet-input-mode-toggle="{{ page.round_id }}"
+                                        {% if page.input_mode == 'pencil' %}checked{% endif %}
+                                    >
+                                    <span>Pencil</span>
+                                </label>
+                                <span class="answer-sheet-status" data-status-for="{{ page.round_id }}" data-state="ungraded-saved">Ungraded, Submitted</span>
+                            </div>
                         </div>
                         <h2>{{ page.round_title }}</h2>
                     </div>
@@ -55,6 +66,12 @@
                                 data-round-id="{{ page.round_id }}"
                                 spellcheck="false"
                             >{{ page.answers_text }}</textarea>
+                            <canvas
+                                class="answer-sheet-ink-canvas"
+                                data-round-id="{{ page.round_id }}"
+                                aria-label="Pencil input for {{ page.round_title }}"
+                                {% if page.input_mode != 'pencil' %}hidden{% endif %}
+                            ></canvas>
                         </div>
                     </div>
 
@@ -186,6 +203,8 @@
         const saveTimers = new Map();
         const buttonMessageTimers = new Map();
         const lineStateMap = new WeakMap();
+        const inkStrokeStateMap = new Map();
+        const activeInkPointerMap = new Map();
         const MINIMUM_VISIBLE_ROWS = 10;
         const localClientId = (
             window.crypto && typeof window.crypto.randomUUID === 'function'
@@ -237,6 +256,102 @@
 
         function getRoundSubmitButton(roundId) {
             return pageRoot.querySelector(`[data-submit-score-for="${roundId}"]`);
+        }
+
+        function getRoundModeToggle(roundId) {
+            return pageRoot.querySelector(`[data-answer-sheet-input-mode-toggle="${roundId}"]`);
+        }
+
+        function getRoundInkCanvas(roundId) {
+            return pageRoot.querySelector(`.answer-sheet-ink-canvas[data-round-id="${roundId}"]`);
+        }
+
+        function getRoundInputMode(roundId) {
+            const panel = getRoundPanel(roundId);
+            return panel && panel.dataset.inputMode === 'pencil' ? 'pencil' : 'text';
+        }
+
+        function clampInkCoordinate(value) {
+            const numericValue = Number(value);
+            if (!Number.isFinite(numericValue)) {
+                return null;
+            }
+            return Math.max(0, Math.min(1, numericValue));
+        }
+
+        function normalizeInkStrokes(rawStrokes) {
+            if (!Array.isArray(rawStrokes)) {
+                return [];
+            }
+
+            return rawStrokes
+                .map((stroke) => {
+                    const points = Array.isArray(stroke)
+                        ? stroke
+                        : (stroke && Array.isArray(stroke.points) ? stroke.points : []);
+                    return points
+                        .map((point) => {
+                            if (!point || typeof point !== 'object') {
+                                return null;
+                            }
+                            const pointX = clampInkCoordinate(point.x);
+                            const pointY = clampInkCoordinate(point.y);
+                            if (pointX === null || pointY === null) {
+                                return null;
+                            }
+                            const normalizedPoint = {
+                                x: Number(pointX.toFixed(5)),
+                                y: Number(pointY.toFixed(5)),
+                            };
+                            const pointPressure = clampInkCoordinate(point.p);
+                            if (pointPressure !== null) {
+                                normalizedPoint.p = Number(pointPressure.toFixed(4));
+                            }
+                            return normalizedPoint;
+                        })
+                        .filter(Boolean);
+                })
+                .filter((stroke) => stroke.length > 0);
+        }
+
+        function getRoundInkStrokes(roundId) {
+            const roundKey = String(roundId || '');
+            if (inkStrokeStateMap.has(roundKey)) {
+                return inkStrokeStateMap.get(roundKey);
+            }
+            const panel = getRoundPanel(roundKey);
+            let parsedStrokes = [];
+            if (panel && panel.dataset.inkStrokes) {
+                try {
+                    parsedStrokes = JSON.parse(panel.dataset.inkStrokes);
+                } catch (error) {
+                    parsedStrokes = [];
+                }
+            }
+            const normalizedStrokes = normalizeInkStrokes(parsedStrokes);
+            inkStrokeStateMap.set(roundKey, normalizedStrokes);
+            return normalizedStrokes;
+        }
+
+        function setRoundInkStrokes(roundId, rawStrokes) {
+            const roundKey = String(roundId || '');
+            const normalizedStrokes = normalizeInkStrokes(rawStrokes);
+            inkStrokeStateMap.set(roundKey, normalizedStrokes);
+            const panel = getRoundPanel(roundKey);
+            if (panel) {
+                panel.dataset.inkStrokes = JSON.stringify(normalizedStrokes);
+            }
+            return normalizedStrokes;
+        }
+
+        function getInkStrokeColor() {
+            return document.body.dataset.profileTheme === 'light' ? '#1b2530' : '#f5f6fb';
+        }
+
+        function getInkGuideColor() {
+            return document.body.dataset.profileTheme === 'light'
+                ? 'rgba(27, 37, 48, 0.16)'
+                : 'rgba(245, 246, 251, 0.16)';
         }
 
         function getSharedSavedScoreValue(roundState) {
@@ -335,11 +450,10 @@
                 window.clearTimeout(timerId);
                 saveTimers.delete(roundId);
                 const panel = getRoundPanel(roundId);
-                const textarea = getRoundTextarea(roundId);
-                if (!panel || !textarea || panel.dataset.answersDirty !== 'true') {
+                if (!panel || panel.dataset.answersDirty !== 'true') {
                     return;
                 }
-                saveAnswers(roundId, textarea.value);
+                saveRoundEntry(roundId);
             });
         }
 
@@ -362,11 +476,16 @@
             const normalizedAnswers = Array.isArray(roundState.answers)
                 ? roundState.answers.map((answer) => String(answer || ''))
                 : [];
+            const normalizedInkStrokes = Array.isArray(roundState.ink_strokes)
+                ? roundState.ink_strokes
+                : [];
             const savedScoreValue = getSharedSavedScoreValue(roundState);
 
             if (!answersDirty) {
                 textarea.value = normalizedAnswers.join('\n');
+                setRoundInkStrokes(roundId, normalizedInkStrokes);
                 syncLineNumbers(textarea);
+                setRoundInputMode(roundId, roundState.input_mode || 'text');
                 setRoundAnswersDirty(roundId, false);
             }
 
@@ -650,6 +769,126 @@
             textarea.setSelectionRange(nextOffset, nextOffset);
         }
 
+        function configureInkCanvas(canvas) {
+            if (!canvas) {
+                return null;
+            }
+            const rect = canvas.getBoundingClientRect();
+            const width = Math.max(rect.width, 1);
+            const height = Math.max(rect.height, 1);
+            const devicePixelRatio = window.devicePixelRatio || 1;
+            const targetWidth = Math.max(1, Math.round(width * devicePixelRatio));
+            const targetHeight = Math.max(1, Math.round(height * devicePixelRatio));
+            if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+            }
+            const context = canvas.getContext('2d');
+            if (!context) {
+                return null;
+            }
+            context.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+            context.lineCap = 'round';
+            context.lineJoin = 'round';
+            return {
+                context,
+                width,
+                height,
+            };
+        }
+
+        function drawInkGuideLines(roundId, context, width) {
+            const textarea = getRoundTextarea(roundId);
+            const shell = textarea ? textarea.closest('.answer-sheet-textarea-shell') : null;
+            if (!shell) {
+                return;
+            }
+
+            const computedStyle = window.getComputedStyle(shell);
+            const lineHeight = parseFloat(computedStyle.getPropertyValue('--answer-sheet-line-height-px')) || 28;
+            const paddingTop = parseFloat(computedStyle.getPropertyValue('--answer-sheet-padding-top-px')) || 14;
+            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, shell.querySelectorAll('.answer-sheet-line-numbers li').length || 0);
+            context.save();
+            context.strokeStyle = getInkGuideColor();
+            context.lineWidth = 1;
+            for (let index = 0; index < rowCount; index += 1) {
+                const guideY = paddingTop + ((index + 1) * lineHeight) - 3;
+                context.beginPath();
+                context.moveTo(0, guideY);
+                context.lineTo(width, guideY);
+                context.stroke();
+            }
+            context.restore();
+        }
+
+        function drawInkStroke(context, width, height, stroke) {
+            if (!Array.isArray(stroke) || stroke.length === 0) {
+                return;
+            }
+
+            context.beginPath();
+            stroke.forEach((point, pointIndex) => {
+                const pointX = point.x * width;
+                const pointY = point.y * height;
+                if (pointIndex === 0) {
+                    context.moveTo(pointX, pointY);
+                } else {
+                    context.lineTo(pointX, pointY);
+                }
+            });
+            context.stroke();
+
+            if (stroke.length === 1) {
+                const onlyPoint = stroke[0];
+                context.beginPath();
+                context.arc(onlyPoint.x * width, onlyPoint.y * height, 1.6, 0, Math.PI * 2);
+                context.fill();
+            }
+        }
+
+        function renderInkCanvas(roundId) {
+            const canvas = getRoundInkCanvas(roundId);
+            const canvasConfig = configureInkCanvas(canvas);
+            if (!canvasConfig) {
+                return;
+            }
+
+            const { context, width, height } = canvasConfig;
+            context.clearRect(0, 0, width, height);
+            drawInkGuideLines(roundId, context, width);
+
+            const inkStrokes = getRoundInkStrokes(roundId);
+            context.save();
+            context.strokeStyle = getInkStrokeColor();
+            context.fillStyle = getInkStrokeColor();
+            context.lineWidth = 2.3;
+            inkStrokes.forEach((stroke) => drawInkStroke(context, width, height, stroke));
+            context.restore();
+        }
+
+        function setRoundInputMode(roundId, nextMode) {
+            const normalizedMode = nextMode === 'pencil' ? 'pencil' : 'text';
+            const panel = getRoundPanel(roundId);
+            const toggle = getRoundModeToggle(roundId);
+            const textarea = getRoundTextarea(roundId);
+            const canvas = getRoundInkCanvas(roundId);
+            if (panel) {
+                panel.dataset.inputMode = normalizedMode;
+            }
+            if (toggle) {
+                toggle.checked = normalizedMode === 'pencil';
+            }
+            if (textarea) {
+                renderTextOverlay(textarea);
+            }
+            if (canvas) {
+                canvas.hidden = normalizedMode !== 'pencil';
+                if (normalizedMode === 'pencil') {
+                    renderInkCanvas(roundId);
+                }
+            }
+        }
+
         function renderTextOverlay(textarea) {
             const overlay = pageRoot.querySelector(`[data-overlay-for="${textarea.dataset.roundId}"]`);
             if (!overlay) {
@@ -683,9 +922,10 @@
             if (!numberList) {
                 return;
             }
+            const isPencilMode = getRoundInputMode(textarea.dataset.roundId) === 'pencil';
             const hasGradeControls = states.some((state) => state === 'correct' || state === 'incorrect');
             if (shell) {
-                shell.classList.toggle('has-grade-controls', hasGradeControls);
+                shell.classList.toggle('has-grade-controls', hasGradeControls && !isPencilMode);
             }
             Array.from(numberList.querySelectorAll('li')).forEach((item, index) => {
                 const plusButton = item.querySelector('.answer-sheet-line-plus');
@@ -694,8 +934,8 @@
                     return;
                 }
                 const currentState = states[index] || 'default';
-                const showPlus = currentState === 'correct';
-                const showMinus = currentState === 'incorrect';
+                const showPlus = !isPencilMode && currentState === 'correct';
+                const showMinus = !isPencilMode && currentState === 'incorrect';
                 plusButton.hidden = !showPlus;
                 plusButton.disabled = !showPlus;
                 plusButton.setAttribute('aria-hidden', showPlus ? 'false' : 'true');
@@ -718,8 +958,13 @@
             const normalizedAnswers = Array.isArray(payload?.answers)
                 ? payload.answers.map((answer) => String(answer || ''))
                 : [];
+            const normalizedInkStrokes = Array.isArray(payload?.ink_strokes)
+                ? payload.ink_strokes
+                : [];
             textarea.value = normalizedAnswers.join('\n');
+            setRoundInkStrokes(roundId, normalizedInkStrokes);
             syncLineNumbers(textarea);
+            setRoundInputMode(roundId, payload?.input_mode || 'text');
             setRoundAnswersDirty(roundId, false);
             if (payload?.grade_payload && scoreInput) {
                 applyGradePayload(roundId, textarea, scoreInput, payload.grade_payload, {
@@ -856,8 +1101,108 @@
             renderTextOverlay(textarea);
         }
 
-        async function saveAnswers(roundId, value) {
+        function buildNormalizedInkPoint(canvas, event) {
+            const rect = canvas.getBoundingClientRect();
+            if (!rect.width || !rect.height) {
+                return null;
+            }
+            const pointX = clampInkCoordinate((event.clientX - rect.left) / rect.width);
+            const pointY = clampInkCoordinate((event.clientY - rect.top) / rect.height);
+            if (pointX === null || pointY === null) {
+                return null;
+            }
+            const normalizedPoint = {
+                x: Number(pointX.toFixed(5)),
+                y: Number(pointY.toFixed(5)),
+            };
+            const pointPressure = clampInkCoordinate(event.pressure);
+            if (pointPressure !== null) {
+                normalizedPoint.p = Number(pointPressure.toFixed(4));
+            }
+            return normalizedPoint;
+        }
+
+        function beginInkStroke(roundId, canvas, event) {
+            const firstPoint = buildNormalizedInkPoint(canvas, event);
+            if (!firstPoint) {
+                return;
+            }
+            activeInkPointerMap.set(`${roundId}:${event.pointerId}`, [firstPoint]);
+            if (canvas.setPointerCapture) {
+                try {
+                    canvas.setPointerCapture(event.pointerId);
+                } catch (error) {
+                    console.warn('Unable to capture ink pointer:', error);
+                }
+            }
+        }
+
+        function extendInkStroke(roundId, canvas, event) {
+            const pointerKey = `${roundId}:${event.pointerId}`;
+            const activeStroke = activeInkPointerMap.get(pointerKey);
+            if (!activeStroke) {
+                return;
+            }
+            const nextPoint = buildNormalizedInkPoint(canvas, event);
+            if (!nextPoint) {
+                return;
+            }
+            activeStroke.push(nextPoint);
+            const savedStrokes = getRoundInkStrokes(roundId);
+            const previewStrokes = [...savedStrokes, activeStroke];
+            inkStrokeStateMap.set(String(roundId), previewStrokes);
+            renderInkCanvas(roundId);
+            inkStrokeStateMap.set(String(roundId), savedStrokes);
+        }
+
+        function endInkStroke(roundId, canvas, event) {
+            const pointerKey = `${roundId}:${event.pointerId}`;
+            const activeStroke = activeInkPointerMap.get(pointerKey);
+            if (!activeStroke) {
+                return;
+            }
+            activeInkPointerMap.delete(pointerKey);
+            const finalPoint = buildNormalizedInkPoint(canvas, event);
+            if (finalPoint) {
+                activeStroke.push(finalPoint);
+            }
+            const nextStrokes = [...getRoundInkStrokes(roundId), activeStroke];
+            setRoundInkStrokes(roundId, nextStrokes);
+            renderInkCanvas(roundId);
+            setRoundAnswersDirty(roundId, true);
+            refreshRoundStatus(roundId);
+            queueRoundEntrySave(roundId);
+        }
+
+        function queueRoundEntrySave(roundId) {
+            window.clearTimeout(saveTimers.get(roundId));
+            saveTimers.set(roundId, window.setTimeout(() => {
+                saveRoundEntry(roundId);
+            }, 500));
+        }
+
+        function buildRoundEntrySavePayload(roundId) {
+            const textarea = getRoundTextarea(roundId);
+            if (!textarea) {
+                return null;
+            }
+
+            return {
+                round_id: roundId,
+                answers: getTextareaLines(textarea),
+                input_mode: getRoundInputMode(roundId),
+                ink_strokes: getRoundInkStrokes(roundId),
+                client_id: localClientId,
+            };
+        }
+
+        async function saveRoundEntry(roundId) {
             if (!saveUrl) {
+                return;
+            }
+
+            const payload = buildRoundEntrySavePayload(roundId);
+            if (!payload) {
                 return;
             }
 
@@ -868,15 +1213,15 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCsrfToken(),
                     },
-                    body: JSON.stringify({
-                        round_id: roundId,
-                        answers: value.split(/\r?\n/),
-                        client_id: localClientId,
-                    }),
+                    body: JSON.stringify(payload),
                 });
                 if (!response.ok) {
                     throw new Error(`Save failed with status ${response.status}`);
                 }
+                const responsePayload = await response.json().catch(() => ({}));
+                setRoundInputMode(roundId, responsePayload.input_mode || payload.input_mode);
+                setRoundInkStrokes(roundId, responsePayload.ink_strokes || payload.ink_strokes || []);
+                renderInkCanvas(roundId);
                 setRoundAnswersDirty(roundId, false);
                 refreshRoundStatus(roundId);
             } catch (error) {
@@ -996,6 +1341,8 @@
                     body: JSON.stringify({
                         round_id: roundId,
                         answers: getTextareaLines(textarea),
+                        input_mode: getRoundInputMode(roundId),
+                        ink_strokes: getRoundInkStrokes(roundId),
                     }),
                 });
                 const payload = await response.json().catch(() => ({}));
@@ -1014,6 +1361,8 @@
                 if (divergeButton) {
                     divergeButton.textContent = 'Merge';
                 }
+                setRoundInkStrokes(roundId, payload.ink_strokes || getRoundInkStrokes(roundId));
+                setRoundInputMode(roundId, payload.input_mode || getRoundInputMode(roundId));
                 setStatus(roundId, 'Diverged', 'saved');
             } catch (error) {
                 console.error('Error diverging answer sheet round:', error);
@@ -1049,8 +1398,10 @@
                     panel.dataset.diverged = 'false';
                 }
                 textarea.value = (payload.answers || []).map((answer) => String(answer || '')).join('\n');
+                setRoundInkStrokes(roundId, payload.ink_strokes || []);
                 clearGradingState(textarea);
                 syncLineNumbers(textarea);
+                setRoundInputMode(roundId, payload.input_mode || 'text');
                 setRoundAnswersDirty(roundId, false);
                 if (submitButton) {
                     submitButton.dataset.submitRequiresConfirmation = payload.submit_requires_confirmation ? 'true' : 'false';
@@ -1067,8 +1418,14 @@
 
         textareas.forEach((textarea) => {
             const roundId = textarea.dataset.roundId;
+            const panel = getRoundPanel(roundId);
             const shell = textarea.closest('.answer-sheet-textarea-shell');
+            const canvas = getRoundInkCanvas(roundId);
+            if (panel) {
+                getRoundInkStrokes(roundId);
+            }
             syncLineNumbers(textarea);
+            setRoundInputMode(roundId, panel?.dataset.inputMode || 'text');
             syncOverlayScroll(textarea);
             setRoundAnswersDirty(roundId, false);
             textarea.addEventListener('input', () => {
@@ -1081,16 +1438,46 @@
                 renderTextOverlay(textarea);
                 setRoundAnswersDirty(roundId, true);
                 refreshRoundStatus(roundId);
-                window.clearTimeout(saveTimers.get(roundId));
-                saveTimers.set(roundId, window.setTimeout(() => {
-                    saveAnswers(roundId, textarea.value);
-                }, 500));
+                queueRoundEntrySave(roundId);
             });
             textarea.addEventListener('scroll', () => {
                 syncOverlayScroll(textarea);
             }, { passive: true });
+            if (canvas) {
+                renderInkCanvas(roundId);
+                canvas.addEventListener('pointerdown', (event) => {
+                    if (getRoundInputMode(roundId) !== 'pencil') {
+                        return;
+                    }
+                    event.preventDefault();
+                    beginInkStroke(roundId, canvas, event);
+                });
+                canvas.addEventListener('pointermove', (event) => {
+                    if (getRoundInputMode(roundId) !== 'pencil') {
+                        return;
+                    }
+                    extendInkStroke(roundId, canvas, event);
+                });
+                const finalizeInkStroke = (event) => {
+                    if (getRoundInputMode(roundId) !== 'pencil') {
+                        return;
+                    }
+                    endInkStroke(roundId, canvas, event);
+                };
+                canvas.addEventListener('pointerup', finalizeInkStroke);
+                canvas.addEventListener('pointercancel', finalizeInkStroke);
+                canvas.addEventListener('pointerleave', (event) => {
+                    if (!activeInkPointerMap.has(`${roundId}:${event.pointerId}`)) {
+                        return;
+                    }
+                    finalizeInkStroke(event);
+                });
+            }
             if (shell) {
                 shell.addEventListener('pointerdown', (event) => {
+                    if (getRoundInputMode(roundId) === 'pencil') {
+                        return;
+                    }
                     if (event.target.closest('.answer-sheet-line-adjust')) {
                         return;
                     }
@@ -1121,6 +1508,19 @@
                     overrideGrade(roundId, questionNumber, mode, textarea, scoreInput);
                 });
             }
+        });
+
+        pageRoot.querySelectorAll('[data-answer-sheet-input-mode-toggle]').forEach((toggle) => {
+            toggle.addEventListener('change', () => {
+                const roundId = toggle.dataset.answerSheetInputModeToggle;
+                if (!roundId) {
+                    return;
+                }
+                setRoundInputMode(roundId, toggle.checked ? 'pencil' : 'text');
+                setRoundAnswersDirty(roundId, true);
+                refreshRoundStatus(roundId);
+                queueRoundEntrySave(roundId);
+            });
         });
 
         scoreInputs.forEach((input) => {
@@ -1179,6 +1579,10 @@
                 const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
                 const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
                 if (!roundId || !textarea || !scoreInput) {
+                    return;
+                }
+                if (getRoundInputMode(roundId) === 'pencil') {
+                    showButtonMessage(roundId, "pencil mode can't be graded");
                     return;
                 }
                 gradeRound(roundId, textarea, scoreInput);
@@ -1370,6 +1774,9 @@
 
         window.addEventListener('resize', () => {
             textareas.forEach(syncLineNumbers);
+            pageRoot.querySelectorAll('.answer-sheet-ink-canvas').forEach((canvas) => {
+                renderInkCanvas(canvas.dataset.roundId);
+            });
             updateActiveDot(roundIndexFromScroll());
         });
 

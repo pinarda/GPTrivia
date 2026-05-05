@@ -1609,6 +1609,56 @@ def _normalize_answer_sheet_answers(raw_answers):
     return normalized_answers
 
 
+def _normalize_answer_sheet_input_mode(raw_input_mode):
+    normalized_mode = str(raw_input_mode or '').strip().lower()
+    if normalized_mode == AnswerSheetEntry.INPUT_MODE_PENCIL:
+        return AnswerSheetEntry.INPUT_MODE_PENCIL
+    return AnswerSheetEntry.INPUT_MODE_TEXT
+
+
+def _normalize_answer_sheet_ink_strokes(raw_strokes):
+    normalized_strokes = []
+    if not isinstance(raw_strokes, list):
+        return normalized_strokes
+
+    for raw_stroke in raw_strokes[:400]:
+        raw_points = raw_stroke.get('points') if isinstance(raw_stroke, dict) else raw_stroke
+        if not isinstance(raw_points, list):
+            continue
+
+        normalized_points = []
+        for raw_point in raw_points[:2000]:
+            if not isinstance(raw_point, dict):
+                continue
+            try:
+                point_x = float(raw_point.get('x'))
+                point_y = float(raw_point.get('y'))
+            except (TypeError, ValueError):
+                continue
+
+            if not (0 <= point_x <= 1 and 0 <= point_y <= 1):
+                continue
+
+            normalized_point = {
+                'x': round(point_x, 5),
+                'y': round(point_y, 5),
+            }
+
+            try:
+                point_pressure = float(raw_point.get('p'))
+            except (TypeError, ValueError):
+                point_pressure = None
+            if point_pressure is not None and 0 <= point_pressure <= 1:
+                normalized_point['p'] = round(point_pressure, 4)
+
+            normalized_points.append(normalized_point)
+
+        if normalized_points:
+            normalized_strokes.append(normalized_points)
+
+    return normalized_strokes
+
+
 def _normalize_answer_sheet_score(raw_score):
     score_text = str(raw_score or '').strip()
     if score_text == '':
@@ -1637,6 +1687,18 @@ def _normalize_answer_sheet_grade_overrides(raw_overrides):
         seen.add(question_number)
         normalized_overrides.append(question_number)
     return normalized_overrides
+
+
+def _serialize_answer_sheet_entry_state(answer_entry):
+    if answer_entry is None:
+        return {
+            'input_mode': AnswerSheetEntry.INPUT_MODE_TEXT,
+            'ink_strokes': [],
+        }
+    return {
+        'input_mode': _normalize_answer_sheet_input_mode(getattr(answer_entry, 'input_mode', '')),
+        'ink_strokes': _normalize_answer_sheet_ink_strokes(getattr(answer_entry, 'ink_strokes', [])),
+    }
 
 
 def _get_changed_answer_sheet_questions(previous_answers, next_answers):
@@ -2272,6 +2334,7 @@ def _build_answer_sheet_context(user, requested_date=''):
     round_pages = []
     for round_obj in selected_rounds:
         saved_entry = saved_entries.get(round_obj.id)
+        saved_entry_state = _serialize_answer_sheet_entry_state(saved_entry)
         answers = _normalize_answer_sheet_answers((saved_entry.answers if saved_entry else []))
         score_map = get_round_score_map(round_obj, include_null_fixed=False)
         current_score = score_map.get(current_user_player_field) if current_user_player_field else None
@@ -2308,6 +2371,9 @@ def _build_answer_sheet_context(user, requested_date=''):
             'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(saved_entry.grade_invalidated_questions if saved_entry else []),
             'was_graded': bool(saved_entry.was_graded) if saved_entry else False,
             'score_value': _format_profile_round_score(current_score),
+            'input_mode': saved_entry_state['input_mode'],
+            'ink_strokes': saved_entry_state['ink_strokes'],
+            'ink_strokes_json': json.dumps(saved_entry_state['ink_strokes'], cls=DjangoJSONEncoder),
         })
 
     return {
@@ -2395,6 +2461,17 @@ def save_answer_sheet_entry(request):
     answers = _normalize_answer_sheet_answers(payload.get('answers', []))
     client_id = str(payload.get('client_id') or '').strip()
     current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
+    current_entry_state = _serialize_answer_sheet_entry_state(current_entry)
+    input_mode = (
+        _normalize_answer_sheet_input_mode(payload.get('input_mode'))
+        if 'input_mode' in payload
+        else current_entry_state['input_mode']
+    )
+    ink_strokes = (
+        _normalize_answer_sheet_ink_strokes(payload.get('ink_strokes', []))
+        if 'ink_strokes' in payload
+        else current_entry_state['ink_strokes']
+    )
     current_user_is_diverged = bool(current_entry.is_diverged) if current_entry else False
 
     target_users = [request.user]
@@ -2439,6 +2516,8 @@ def save_answer_sheet_entry(request):
                 defaults={
                     'trivia_date': round_obj.date,
                     'answers': answers,
+                    'input_mode': input_mode,
+                    'ink_strokes': ink_strokes,
                     'grade_overrides': next_grade_overrides,
                     'grade_rejections': next_grade_rejections,
                     'grade_invalidated_questions': next_grade_invalidated_questions,
@@ -2460,6 +2539,8 @@ def save_answer_sheet_entry(request):
                 'round_id': round_obj.id,
                 'client_id': client_id,
                 'answers': answers,
+                'input_mode': input_mode,
+                'ink_strokes': ink_strokes,
                 'updated_at': response_entry.updated_at.isoformat() if response_entry.updated_at else '',
                 'grade_payload': shared_grade_payload,
             })
@@ -2469,6 +2550,8 @@ def save_answer_sheet_entry(request):
         'round_id': round_obj.id,
         'trivia_date': round_obj.date.isoformat() if round_obj.date else '',
         'answers': response_entry.answers,
+        'input_mode': _normalize_answer_sheet_input_mode(response_entry.input_mode),
+        'ink_strokes': _normalize_answer_sheet_ink_strokes(response_entry.ink_strokes),
         'grade_overrides': _normalize_answer_sheet_grade_overrides(response_entry.grade_overrides),
         'grade_rejections': _normalize_answer_sheet_grade_overrides(response_entry.grade_rejections),
         'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(response_entry.grade_invalidated_questions),
@@ -2504,12 +2587,25 @@ def diverge_answer_sheet_round(request):
     current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
     communal_entry = _get_answer_sheet_communal_entry(round_obj, current_user=request.user)
     source_entry = current_entry or communal_entry
+    source_entry_state = _serialize_answer_sheet_entry_state(source_entry)
+    input_mode = (
+        _normalize_answer_sheet_input_mode(payload.get('input_mode'))
+        if 'input_mode' in payload
+        else source_entry_state['input_mode']
+    )
+    ink_strokes = (
+        _normalize_answer_sheet_ink_strokes(payload.get('ink_strokes', []))
+        if 'ink_strokes' in payload
+        else source_entry_state['ink_strokes']
+    )
     entry, _ = AnswerSheetEntry.objects.update_or_create(
         user=request.user,
         round=round_obj,
         defaults={
             'trivia_date': round_obj.date,
             'answers': answers,
+            'input_mode': input_mode,
+            'ink_strokes': ink_strokes,
             'grade_overrides': _normalize_answer_sheet_grade_overrides(
                 source_entry.grade_overrides if source_entry else []
             ),
@@ -2528,6 +2624,8 @@ def diverge_answer_sheet_round(request):
         'ok': True,
         'round_id': round_obj.id,
         'answers': entry.answers,
+        'input_mode': _normalize_answer_sheet_input_mode(entry.input_mode),
+        'ink_strokes': _normalize_answer_sheet_ink_strokes(entry.ink_strokes),
         'grade_overrides': _normalize_answer_sheet_grade_overrides(entry.grade_overrides),
         'grade_rejections': _normalize_answer_sheet_grade_overrides(entry.grade_rejections),
         'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(entry.grade_invalidated_questions),
@@ -2569,6 +2667,7 @@ def _get_answer_sheet_communal_entry(round_obj, current_user=None):
 
 def _serialize_answer_sheet_sync_round(round_obj, user, current_entry=None, current_user_player_field=''):
     communal_entry = _get_answer_sheet_communal_entry(round_obj, current_user=user)
+    communal_entry_state = _serialize_answer_sheet_entry_state(communal_entry)
     normalized_answers = _normalize_answer_sheet_answers(communal_entry.answers if communal_entry else [])
     score_map = get_round_score_map(round_obj, include_null_fixed=False)
     current_score = score_map.get(current_user_player_field) if current_user_player_field else None
@@ -2576,6 +2675,8 @@ def _serialize_answer_sheet_sync_round(round_obj, user, current_entry=None, curr
     response_payload = {
         'round_id': round_obj.id,
         'answers': normalized_answers,
+        'input_mode': communal_entry_state['input_mode'],
+        'ink_strokes': communal_entry_state['ink_strokes'],
         'score_value': _format_profile_round_score(current_score),
         'is_diverged': bool(current_entry.is_diverged) if current_entry else False,
         'shared': bool(round_obj.cooperative and not (bool(current_entry.is_diverged) if current_entry else False)),
@@ -2629,6 +2730,7 @@ def merge_answer_sheet_round(request):
         communal_entry.grade_invalidated_questions if communal_entry else []
     )
     communal_was_graded = bool(communal_entry.was_graded) if communal_entry else False
+    communal_entry_state = _serialize_answer_sheet_entry_state(communal_entry)
 
     with transaction.atomic():
         AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).delete()
@@ -2637,6 +2739,8 @@ def merge_answer_sheet_round(request):
             round=round_obj,
             trivia_date=round_obj.date,
             answers=communal_answers,
+            input_mode=communal_entry_state['input_mode'],
+            ink_strokes=communal_entry_state['ink_strokes'],
             grade_overrides=communal_grade_overrides,
             grade_rejections=communal_grade_rejections,
             grade_invalidated_questions=communal_grade_invalidated_questions,
@@ -2648,6 +2752,8 @@ def merge_answer_sheet_round(request):
         'ok': True,
         'round_id': round_obj.id,
         'answers': merged_entry.answers,
+        'input_mode': _normalize_answer_sheet_input_mode(merged_entry.input_mode),
+        'ink_strokes': _normalize_answer_sheet_ink_strokes(merged_entry.ink_strokes),
         'grade_overrides': _normalize_answer_sheet_grade_overrides(merged_entry.grade_overrides),
         'grade_rejections': _normalize_answer_sheet_grade_overrides(merged_entry.grade_rejections),
         'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(merged_entry.grade_invalidated_questions),
