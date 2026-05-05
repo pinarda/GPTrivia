@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505e">
+    <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505g">
 {% endblock %}
 
 {% block content %}
@@ -25,7 +25,7 @@
     {% if round_pages %}
         <div class="answer-sheet-track" id="answer-sheet-track">
             {% for page in round_pages %}
-                <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}" data-round-title="{{ page.round_title }}" data-cooperative="{% if page.cooperative %}true{% else %}false{% endif %}" data-diverged="{% if page.is_diverged %}true{% else %}false{% endif %}" data-answers-dirty="false" data-score-dirty="false" data-input-mode="{{ page.input_mode }}" data-ink-strokes="{{ page.ink_strokes_json|escape }}">
+                <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}" data-round-title="{{ page.round_title }}" data-cooperative="{% if page.cooperative %}true{% else %}false{% endif %}" data-diverged="{% if page.is_diverged %}true{% else %}false{% endif %}" data-pencil-grade-view="false" data-answers-dirty="false" data-score-dirty="false" data-input-mode="{{ page.input_mode }}" data-ink-strokes="{{ page.ink_strokes_json|escape }}">
                     <div class="answer-sheet-round-header">
                         <div class="answer-sheet-round-meta">
                             <div class="answer-sheet-round-kicker">
@@ -306,6 +306,19 @@
             return panel && panel.dataset.inputMode === 'pencil' ? 'pencil' : 'text';
         }
 
+        function getRoundPencilGradeView(roundId) {
+            const panel = getRoundPanel(roundId);
+            return Boolean(panel && panel.dataset.pencilGradeView === 'true');
+        }
+
+        function setRoundPencilGradeView(roundId, isVisible) {
+            const panel = getRoundPanel(roundId);
+            if (!panel) {
+                return;
+            }
+            panel.dataset.pencilGradeView = isVisible ? 'true' : 'false';
+        }
+
         function getRoundInkTool(roundId) {
             return inkToolStateMap.get(String(roundId)) || 'draw';
         }
@@ -546,6 +559,11 @@
                 setRoundInkStrokes(roundId, normalizedInkStrokes);
                 syncLineNumbers(textarea);
                 setRoundInputMode(roundId, roundState.input_mode || 'text');
+                setRoundPencilGradeView(
+                    roundId,
+                    (roundState.input_mode || 'text') === 'pencil'
+                    && Boolean(roundState.grade_payload || roundState.transcribed_from_ink)
+                );
                 setRoundAnswersDirty(roundId, false);
             }
 
@@ -941,6 +959,9 @@
             if (toolButton) {
                 toolButton.hidden = normalizedMode !== 'pencil';
             }
+            if (normalizedMode !== 'pencil') {
+                setRoundPencilGradeView(roundId, false);
+            }
             if (textarea) {
                 renderTextOverlay(textarea);
             }
@@ -990,9 +1011,10 @@
                 return;
             }
             const isPencilMode = getRoundInputMode(textarea.dataset.roundId) === 'pencil';
+            const isPencilGradeView = getRoundPencilGradeView(textarea.dataset.roundId);
             const hasGradeControls = states.some((state) => state === 'correct' || state === 'incorrect');
             if (shell) {
-                shell.classList.toggle('has-grade-controls', hasGradeControls && !isPencilMode);
+                shell.classList.toggle('has-grade-controls', hasGradeControls && (!isPencilMode || isPencilGradeView));
             }
             Array.from(numberList.querySelectorAll('li')).forEach((item, index) => {
                 const plusButton = item.querySelector('.answer-sheet-line-plus');
@@ -1001,8 +1023,9 @@
                     return;
                 }
                 const currentState = states[index] || 'default';
-                const showPlus = !isPencilMode && currentState === 'correct';
-                const showMinus = !isPencilMode && currentState === 'incorrect';
+                const allowGradeControls = !isPencilMode || isPencilGradeView;
+                const showPlus = allowGradeControls && currentState === 'correct';
+                const showMinus = allowGradeControls && currentState === 'incorrect';
                 plusButton.hidden = !showPlus;
                 plusButton.disabled = !showPlus;
                 plusButton.setAttribute('aria-hidden', showPlus ? 'false' : 'true');
@@ -1040,6 +1063,10 @@
             setRoundInkStrokes(roundId, normalizedInkStrokes);
             syncLineNumbers(textarea);
             setRoundInputMode(roundId, payload?.input_mode || 'text');
+            setRoundPencilGradeView(
+                roundId,
+                (payload?.input_mode === 'pencil') && Boolean(payload?.grade_payload || payload?.transcribed_from_ink)
+            );
             setRoundAnswersDirty(roundId, false);
             if (payload?.grade_payload && scoreInput) {
                 applyGradePayload(roundId, textarea, scoreInput, payload.grade_payload, {
@@ -1100,6 +1127,14 @@
                 syncLineNumbers(textarea);
                 setRoundAnswersDirty(roundId, false);
             }
+            if (payload?.input_mode) {
+                setRoundInputMode(roundId, payload.input_mode);
+            }
+            setRoundPencilGradeView(
+                roundId,
+                (payload?.input_mode || getRoundInputMode(roundId)) === 'pencil'
+                && Boolean(payload?.transcribed_from_ink)
+            );
             applyGradePayload(roundId, textarea, scoreInput, payload);
         }
 
@@ -1322,6 +1357,13 @@
             if (!point) {
                 return;
             }
+            if (getRoundPencilGradeView(roundId)) {
+                setRoundPencilGradeView(roundId, false);
+                const textarea = getRoundTextarea(roundId);
+                if (textarea) {
+                    clearGradingState(textarea);
+                }
+            }
             if (getRoundInkTool(roundId) === 'erase') {
                 const changed = eraseInkAtPoint(roundId, point);
                 activeInkEraserMap.set(strokeKey, changed);
@@ -1482,6 +1524,7 @@
             }
 
             setStatus(roundId, 'Grading...', 'saving');
+            const inputMode = getRoundInputMode(roundId);
             try {
                 const response = await fetch(gradeUrl, {
                     method: 'POST',
@@ -1492,6 +1535,9 @@
                     body: JSON.stringify({
                         round_id: roundId,
                         answers: getTextareaLines(textarea),
+                        input_mode: inputMode,
+                        ink_strokes: inputMode === 'pencil' ? getRoundInkStrokes(roundId) : [],
+                        row_count: Math.max(MINIMUM_VISIBLE_ROWS, countLogicalLines(textarea.value)),
                         client_id: localClientId,
                     }),
                 });
@@ -1500,6 +1546,14 @@
                     throw new Error(payload.detail || `Grade failed with status ${response.status}`);
                 }
 
+                if (Array.isArray(payload.answers)) {
+                    textarea.value = payload.answers.map((answer) => String(answer || '')).join('\n');
+                    syncLineNumbers(textarea);
+                }
+                setRoundPencilGradeView(
+                    roundId,
+                    inputMode === 'pencil' && Boolean(payload.transcribed_from_ink)
+                );
                 applyGradePayload(roundId, textarea, scoreInput, payload);
             } catch (error) {
                 console.error('Error grading answer sheet round:', error);
@@ -1928,10 +1982,6 @@
                 const textarea = pageRoot.querySelector(`.answer-sheet-textarea[data-round-id="${roundId}"]`);
                 const scoreInput = pageRoot.querySelector(`.answer-sheet-score-input[data-round-id="${roundId}"]`);
                 if (!roundId || !textarea || !scoreInput) {
-                    return;
-                }
-                if (getRoundInputMode(roundId) === 'pencil') {
-                    showButtonMessage(roundId, "pencil mode can't be graded");
                     return;
                 }
                 gradeRound(roundId, textarea, scoreInput);

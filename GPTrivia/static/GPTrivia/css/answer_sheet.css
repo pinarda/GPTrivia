@@ -514,6 +514,19 @@ body.site-shell.answer-sheet-shell {
     display: none;
 }
 
+.answer-sheet-round-panel[data-input-mode="pencil"][data-pencil-grade-view="true"] .answer-sheet-text-overlay,
+.answer-sheet-round-panel[data-input-mode="pencil"][data-pencil-grade-view="true"] .answer-sheet-textarea {
+    display: block;
+}
+
+.answer-sheet-round-panel[data-input-mode="pencil"][data-pencil-grade-view="true"] .answer-sheet-ink-canvas {
+    display: none;
+}
+
+.answer-sheet-round-panel[data-input-mode="pencil"][data-pencil-grade-view="true"] .answer-sheet-textarea-shell {
+    cursor: text;
+}
+
 .answer-sheet-text-overlay {
     position: absolute;
     inset: 0;
@@ -746,6 +759,10 @@ body.site-shell .answer-sheet-page input.answer-sheet-score-input[type="text"] {
 
 .answer-sheet-round-panel[data-input-mode="pencil"] .answer-sheet-line-controls {
     display: none;
+}
+
+.answer-sheet-round-panel[data-input-mode="pencil"][data-pencil-grade-view="true"] .answer-sheet-line-controls {
+    display: inline-flex;
 }
 
 .answer-sheet-status[data-state="saving"] {

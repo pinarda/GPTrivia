@@ -1477,6 +1477,91 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(payload["row_results"][2]["state"], "incorrect")
         self.assertEqual(payload["row_results"][3]["state"], "blank")
 
+    @patch("GPTrivia.views._transcribe_answer_sheet_ink_strokes_to_lines")
+    def test_grade_answer_sheet_round_transcribes_pencil_mode_before_grading(self, mock_transcribe):
+        mock_transcribe.return_value = ["zebra", "Wrong answer"] + [""] * 8
+
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Pencil Grade Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="What animal is white with black stripes?",
+            answer_text="A Zebra",
+            possible_answers=["A Zebra", "a zebra", "Zebra", "zebra"],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=2,
+            question_text="What is the fastest land animal?",
+            answer_text="Cheetah",
+            possible_answers=["Cheetah", "cheetah"],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=round_obj,
+            trivia_date=round_obj.date,
+            answers=[""] * 10,
+            input_mode=AnswerSheetEntry.INPUT_MODE_PENCIL,
+            ink_strokes=[[{"x": 0.15, "y": 0.2}, {"x": 0.45, "y": 0.52}]],
+        )
+
+        response = self.client.post(
+            reverse("grade_answer_sheet_round"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "input_mode": "pencil",
+                "ink_strokes": [[{"x": 0.15, "y": 0.2}, {"x": 0.45, "y": 0.52}]],
+                "row_count": 10,
+                "answers": [""] * 10,
+                "client_id": "pencil-grade-1",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["transcribed_from_ink"])
+        self.assertEqual(payload["input_mode"], "pencil")
+        self.assertEqual(payload["answers"][:2], ["zebra", "Wrong answer"])
+        self.assertEqual(payload["score"], 1)
+        self.assertEqual(payload["score_display"], "1")
+        self.assertEqual(payload["row_results"][0]["submitted_text"], "zebra")
+        self.assertEqual(payload["row_results"][0]["state"], "correct")
+        self.assertEqual(payload["row_results"][1]["submitted_text"], "Wrong answer")
+        self.assertEqual(payload["row_results"][1]["state"], "incorrect")
+
+        mock_transcribe.assert_called_once()
+        entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
+        self.assertEqual(entry.answers[:2], ["zebra", "Wrong answer"])
+        self.assertEqual(entry.input_mode, AnswerSheetEntry.INPUT_MODE_PENCIL)
+        self.assertTrue(entry.was_graded)
+
     def test_override_answer_sheet_grade_marks_specific_row_correct(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
