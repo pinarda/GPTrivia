@@ -43,6 +43,20 @@
     color: mediumpurple;
 }
 
+.snake-sprite-icon {
+    display: inline-block;
+    width: 28px;
+    height: 34px;
+    background: url("/static/img/snakey.png") no-repeat 0 0;
+    background-size: 700% 100%;
+    filter: brightness(0) invert(1);
+    flex-shrink: 0;
+}
+
+body.site-shell[data-profile-theme="light"] .snake-sprite-icon {
+    filter: brightness(0);
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
