@@ -99,11 +99,23 @@ body.site-shell.answer-sheet-shell {
     box-shadow: none;
 }
 
+.calendar-trigger-button.answer-sheet-header-date-button {
+    background: rgba(147, 112, 219, 0.18);
+    color: #d9c4ff;
+}
+
 .answer-sheet-header-date-button:hover,
 .answer-sheet-header-date-button:focus,
 .answer-sheet-header-date-button[aria-expanded="true"] {
     background: rgba(147, 112, 219, 0.28);
     border-color: rgba(186, 146, 255, 0.72);
+}
+
+.calendar-trigger-button.answer-sheet-header-date-button:hover,
+.calendar-trigger-button.answer-sheet-header-date-button:focus,
+.calendar-trigger-button.answer-sheet-header-date-button[aria-expanded="true"] {
+    background: rgba(147, 112, 219, 0.28);
+    color: #efe4ff;
 }
 
 .disabled-button {
@@ -454,6 +466,10 @@ body.site-shell.answer-sheet-shell {
     color: #d9ebff;
     font: 700 0.9rem/1 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     cursor: pointer;
+}
+
+.answer-sheet-ink-tool-button[hidden] {
+    display: none !important;
 }
 
 .answer-sheet-ink-tool-button[data-tool="erase"] {
@@ -896,11 +912,23 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-header-date-button {
     color: #6741b9;
 }
 
+body.site-shell[data-profile-theme="light"] .calendar-trigger-button.answer-sheet-header-date-button {
+    background: rgba(147, 112, 219, 0.16);
+    color: #6741b9;
+}
+
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-date-button:hover,
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-date-button:focus,
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-date-button[aria-expanded="true"] {
     background: rgba(147, 112, 219, 0.24);
     border-color: rgba(123, 92, 200, 0.5);
+}
+
+body.site-shell[data-profile-theme="light"] .calendar-trigger-button.answer-sheet-header-date-button:hover,
+body.site-shell[data-profile-theme="light"] .calendar-trigger-button.answer-sheet-header-date-button:focus,
+body.site-shell[data-profile-theme="light"] .calendar-trigger-button.answer-sheet-header-date-button[aria-expanded="true"] {
+    background: rgba(147, 112, 219, 0.24);
+    color: #51319a;
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-textarea-shell {
