@@ -348,6 +348,11 @@ import {
       `;
 
     const RoundDateFormControl = styled(StyledFormControl)`
+      @media (min-width: 751px) and (max-width: 1000px) {
+        width: clamp(11rem, 24vw, 13rem);
+        max-width: clamp(11rem, 24vw, 13rem);
+      }
+
       @media (max-width: 750px) {
         width: min(100%, 21.35rem);
         max-width: min(100%, 21.35rem);
@@ -359,6 +364,11 @@ import {
     `;
 
     const RoundSwitchFormControl = styled(StyledFormControl)`
+      @media (min-width: 751px) and (max-width: 1000px) {
+        width: clamp(20rem, 54vw, 31rem);
+        max-width: clamp(20rem, 54vw, 31rem);
+      }
+
       @media (max-width: 750px) {
         width: min(100%, 21.35rem);
         max-width: min(100%, 21.35rem);
@@ -398,6 +408,27 @@ import {
         flex-direction: column;
         gap: 0.7rem;
       }
+    `;
+
+    const TabletControlsStack = styled.div`
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      gap: 0.75rem;
+      padding: 0.32rem 0.65rem 0.18rem;
+      box-sizing: border-box;
+    `;
+
+    const TabletActionRow = styled.div`
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      width: 100%;
+      max-width: 100%;
     `;
 
     const JokerFormControl = styled(StyledFormControl).attrs(({ className }) => ({
@@ -1382,6 +1413,7 @@ const PlayerTable = () => {
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
     const isCompactScreen = useMediaQuery('(max-width:1000px)');
     const isMobileView = useMediaQuery('(max-width:750px)');
+    const isTabletView = isCompactScreen && !isMobileView;
 
     const fallbackBaseUrl = "https://hailsciencetrivia.com";
     const url =
@@ -3218,8 +3250,12 @@ const PlayerTable = () => {
                     },
                   },
                   sx: {
-                    minWidth: isMobileView ? '100%' : (isCompactScreen ? (isSmallScreen ? '9.1rem' : '9.7rem') : '9.5rem'),
-                    maxWidth: isMobileView ? '100%' : (isCompactScreen ? (isSmallScreen ? '9.1rem' : '9.7rem') : '10.25rem'),
+                    minWidth: isMobileView
+                      ? '100%'
+                      : (isTabletView ? '12rem' : (isCompactScreen ? (isSmallScreen ? '9.1rem' : '9.7rem') : '9.5rem')),
+                    maxWidth: isMobileView
+                      ? '100%'
+                      : (isTabletView ? '12rem' : (isCompactScreen ? (isSmallScreen ? '9.1rem' : '9.7rem') : '10.25rem')),
                     width: '100%',
                     margin: isCompactScreen ? 0 : '0.4rem',
                     backgroundColor: dateFieldBg,
@@ -3502,12 +3538,66 @@ const PlayerTable = () => {
     </DetailsPanel>
   );
 
+  const addPlayerControls = (
+    <CompactTopControlGroup>
+      <StyledTextField
+        inputRef={newPlayerInputRef}
+        value={newPlayerName}
+        onChange={(e) => setNewPlayerName(e.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            handleAddPlayer();
+          }
+        }}
+        variant="outlined"
+        placeholder="Add player"
+        style={{
+          margin: isCompactScreen ? 0 : '0.4rem',
+          marginLeft: isCompactScreen ? '0' : '1rem',
+          width: isTabletView
+            ? 'min(100%, 16rem)'
+            : (isCompactScreen ? (isSmallScreen ? '11rem' : 'min(100%, 15rem)') : undefined),
+          maxWidth: isTabletView
+            ? '16rem'
+            : (isCompactScreen ? (isSmallScreen ? '11rem' : '15rem') : undefined),
+        }}
+      />
+
+      <StyledButton variant="contained" color="secondary" onClick={handleAddPlayer}>
+        Add
+      </StyledButton>
+    </CompactTopControlGroup>
+  );
+
+  const secondaryRoundControls = (
+    <>
+      <StyledButton variant="contained" color="secondary" onClick={() => setIsBottomRowVisible(prevState => !prevState)}>
+        Toggle Details
+      </StyledButton>
+      <StyledButton variant="contained" color="secondary" onClick={() => handleAddColumn(selectedDate, rounds.length + 1)}>
+        Add Round
+      </StyledButton>
+    </>
+  );
+
   return (
     <>
     <GlobalStyle />
     <StyledTableContainer>
+      {isTabletView && (
+        <TabletControlsStack>
+          {roundNavigationControls}
+          <TabletActionRow>
+            {addPlayerControls}
+            {secondaryRoundControls}
+          </TabletActionRow>
+        </TabletControlsStack>
+      )}
       <Grid container alignItems="center" rowSpacing={1} columnSpacing={0} sx={{ width: '100%', margin: 0 }}>
 
+        {!isTabletView && (
+        <>
         {/* Left Section */}
         <Grid item xs={12} md={isCompactScreen ? 12 : 4} sx={{ minWidth: 0 }}>
           <Box
@@ -3537,31 +3627,7 @@ const PlayerTable = () => {
             {/*</StyledFormControl>*/}
             {!isMobileView && roundNavigationControls}
 
-            <CompactTopControlGroup>
-              <StyledTextField
-                inputRef={newPlayerInputRef}
-                value={newPlayerName}
-                onChange={(e) => setNewPlayerName(e.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    handleAddPlayer();
-                  }
-                }}
-                variant="outlined"
-                placeholder="Add player"
-                style={{
-                  margin: isCompactScreen ? 0 : '0.4rem',
-                  marginLeft: isCompactScreen ? '0' : '1rem',
-                  width: isCompactScreen ? (isSmallScreen ? '11rem' : 'min(100%, 15rem)') : undefined,
-                  maxWidth: isCompactScreen ? (isSmallScreen ? '11rem' : '15rem') : undefined,
-                }}
-              />
-
-              <StyledButton variant="contained" color="secondary" onClick={handleAddPlayer}>
-                Add
-              </StyledButton>
-            </CompactTopControlGroup>
+            {addPlayerControls}
           </Box>
         </Grid>
 
@@ -3579,12 +3645,7 @@ const PlayerTable = () => {
             minWidth={0}
             margin={isCompactScreen ? '0 auto' : 0}
           >
-            <StyledButton variant="contained" color="secondary" onClick={() => setIsBottomRowVisible(prevState => !prevState)}>
-              Toggle Details
-            </StyledButton>
-            <StyledButton variant="contained" color="secondary" onClick={() => handleAddColumn(selectedDate, rounds.length + 1)}>
-              Add Round
-            </StyledButton>
+            {secondaryRoundControls}
             {isMobileView && roundNavigationControls}
 
             {!isCompactScreen && (
@@ -3605,6 +3666,8 @@ const PlayerTable = () => {
             {/*</StyledButton>*/}
           </Box>
         </Grid>
+        </>
+        )}
 
                 {/* Animated image appears here once showPic is true */}
       {showPic && (

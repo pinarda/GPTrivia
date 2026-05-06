@@ -499,6 +499,8 @@ a .logo {
     .logo img {
         width: 8vw;
         margin-right: 0vw;
+        position: relative;
+        top: -3px;
     }
 
     .dropbtn {
