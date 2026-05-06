@@ -2577,6 +2577,51 @@ def _get_answer_sheet_diverged_player_fields(round_obj):
     return diverged_fields
 
 
+def _answer_sheet_user_is_round_creator(user, round_obj):
+    if not user or not getattr(user, 'is_authenticated', False) or not round_obj:
+        return False
+    player_field = player_field_for_name(getattr(user, 'username', ''))
+    if not player_field:
+        return False
+    return _profile_player_matches_any_creator(
+        player_field,
+        getattr(round_obj, 'creator', ''),
+        getattr(round_obj, 'secondary_creator', ''),
+    )
+
+
+def _get_answer_sheet_communal_score_display(round_obj):
+    score_map = get_round_score_map(round_obj, include_null_fixed=False)
+    creator_fields = {
+        normalized_field
+        for normalized_field in (
+            player_field_for_name(getattr(round_obj, 'creator', '')),
+            player_field_for_name(getattr(round_obj, 'secondary_creator', '')),
+        )
+        if normalized_field
+    }
+    communal_fields = [
+        candidate_field
+        for candidate_field in _get_answer_sheet_round_player_fields(round_obj)
+        if candidate_field not in creator_fields and candidate_field not in _get_answer_sheet_diverged_player_fields(round_obj)
+    ]
+    for candidate_field in communal_fields:
+        candidate_score = score_map.get(candidate_field)
+        if candidate_score is not None:
+            return _format_profile_round_score(candidate_score)
+    return ''
+
+
+def _get_answer_sheet_display_score(round_obj, user, current_user_player_field=''):
+    score_map = get_round_score_map(round_obj, include_null_fixed=False)
+    current_score = score_map.get(current_user_player_field) if current_user_player_field else None
+    if current_score is not None:
+        return _format_profile_round_score(current_score)
+    if round_obj.cooperative and _answer_sheet_user_is_round_creator(user, round_obj):
+        return _get_answer_sheet_communal_score_display(round_obj)
+    return ''
+
+
 def _get_answer_sheet_date_values():
     return sorted({
         round_date.isoformat()
@@ -2621,12 +2666,15 @@ def _build_answer_sheet_context(user, requested_date=''):
     round_pages = []
     for round_obj in selected_rounds:
         saved_entry = saved_entries.get(round_obj.id)
-        saved_entry_state = _serialize_answer_sheet_entry_state(saved_entry)
-        answers = _normalize_answer_sheet_answers((saved_entry.answers if saved_entry else []))
-        score_map = get_round_score_map(round_obj, include_null_fixed=False)
-        current_score = score_map.get(current_user_player_field) if current_user_player_field else None
+        round_state = _serialize_answer_sheet_sync_round(
+            round_obj,
+            user,
+            current_entry=saved_entry,
+            current_user_player_field=current_user_player_field,
+        )
         creator_allows_analysis = bool(creator_opt_in_map.get(round_obj.creator, False))
         latest_completed_run = latest_completed_run_by_round_id.get(round_obj.id)
+        user_is_round_creator = _answer_sheet_user_is_round_creator(user, round_obj)
         grade_enabled = bool(
             creator_allows_analysis
             and latest_completed_run is not None
@@ -2643,25 +2691,25 @@ def _build_answer_sheet_context(user, requested_date=''):
             'round_title': round_obj.title,
             'round_creator': round_obj.creator,
             'cooperative': bool(round_obj.cooperative),
-            'is_diverged': bool(saved_entry.is_diverged) if saved_entry else False,
+            'is_diverged': bool(round_state['is_diverged']),
             'submit_requires_confirmation': bool(
                 round_obj.cooperative
-                and not (bool(saved_entry.is_diverged) if saved_entry else False)
-                and str(getattr(user, 'username', '') or '').strip().casefold()
-                != str(getattr(round_obj, 'creator', '') or '').strip().casefold()
+                and not bool(round_state['is_diverged'])
+                and not user_is_round_creator
             ),
+            'show_diverge': bool(round_obj.cooperative and not user_is_round_creator),
             'grade_enabled': grade_enabled,
             'grade_disabled_message': grade_disabled_message,
-            'answers': answers,
-            'answers_text': '\n'.join(answers),
+            'answers': round_state['answers'],
+            'answers_text': '\n'.join(round_state['answers']),
             'grade_overrides': _normalize_answer_sheet_grade_overrides(saved_entry.grade_overrides if saved_entry else []),
             'grade_rejections': _normalize_answer_sheet_grade_overrides(saved_entry.grade_rejections if saved_entry else []),
             'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(saved_entry.grade_invalidated_questions if saved_entry else []),
             'was_graded': bool(saved_entry.was_graded) if saved_entry else False,
-            'score_value': _format_profile_round_score(current_score),
-            'input_mode': saved_entry_state['input_mode'],
-            'ink_strokes': saved_entry_state['ink_strokes'],
-            'ink_strokes_json': json.dumps(saved_entry_state['ink_strokes'], cls=DjangoJSONEncoder),
+            'score_value': round_state['score_value'],
+            'input_mode': round_state['input_mode'],
+            'ink_strokes': round_state['ink_strokes'],
+            'ink_strokes_json': json.dumps(round_state['ink_strokes'], cls=DjangoJSONEncoder),
         })
 
     return {
@@ -2908,6 +2956,8 @@ def diverge_answer_sheet_round(request):
     round_obj = get_object_or_404(GPTriviaRound, id=round_id)
     if not round_obj.cooperative:
         return JsonResponse({'detail': 'Only cooperative rounds can diverge.'}, status=400)
+    if _answer_sheet_user_is_round_creator(request.user, round_obj):
+        return JsonResponse({'detail': 'Round creators cannot diverge cooperative rounds.'}, status=400)
 
     answers = _normalize_answer_sheet_answers(payload.get('answers', []))
     current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
@@ -3004,15 +3054,12 @@ def _serialize_answer_sheet_sync_round(round_obj, user, current_entry=None, curr
     source_entry = current_entry if use_current_entry else (communal_entry or current_entry)
     source_entry_state = _serialize_answer_sheet_entry_state(source_entry)
     normalized_answers = _normalize_answer_sheet_answers(source_entry.answers if source_entry else [])
-    score_map = get_round_score_map(round_obj, include_null_fixed=False)
-    current_score = score_map.get(current_user_player_field) if current_user_player_field else None
-
     response_payload = {
         'round_id': round_obj.id,
         'answers': normalized_answers,
         'input_mode': source_entry_state['input_mode'],
         'ink_strokes': source_entry_state['ink_strokes'],
-        'score_value': _format_profile_round_score(current_score),
+        'score_value': _get_answer_sheet_display_score(round_obj, user, current_user_player_field=current_user_player_field),
         'is_diverged': bool(current_entry.is_diverged) if current_entry else False,
         'shared': bool(round_obj.cooperative and not (bool(current_entry.is_diverged) if current_entry else False)),
         'grade_payload': _build_saved_answer_sheet_grade_payload(round_obj, source_entry),

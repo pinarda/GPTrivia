@@ -9,6 +9,8 @@ body.site-shell.answer-sheet-shell {
     --answer-sheet-calendar-accent: #0073cc;
     --answer-sheet-calendar-accent-strong: #005a99;
     --answer-sheet-calendar-control-surface: rgba(255, 255, 255, 0.08);
+    --answer-sheet-date-accent: mediumpurple;
+    --answer-sheet-date-accent-strong: #7b5cc8;
 }
 
 .answer-sheet-page {
@@ -51,7 +53,10 @@ body.site-shell.answer-sheet-shell {
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
 }
 
-.answer-sheet-header-card,
+.answer-sheet-header-card {
+    padding: 14px 16px;
+}
+
 .answer-sheet-empty-card {
     padding: 20px;
 }
@@ -68,8 +73,8 @@ body.site-shell.answer-sheet-shell {
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
-    font-size: 0.92rem;
-    line-height: 1.2;
+    font-size: 0.88rem;
+    line-height: 1.08;
 }
 
 .answer-sheet-header-label {
@@ -84,11 +89,11 @@ body.site-shell.answer-sheet-shell {
 }
 
 .answer-sheet-header-date-button {
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: rgba(255, 255, 255, 0.06);
-    color: inherit;
+    border: 1px solid rgba(186, 146, 255, 0.46);
+    background: rgba(147, 112, 219, 0.18);
+    color: #d9c4ff;
     font: inherit;
-    padding: 6px 10px;
+    padding: 5px 10px;
     margin: 0;
     border-radius: 0;
     box-shadow: none;
@@ -97,8 +102,8 @@ body.site-shell.answer-sheet-shell {
 .answer-sheet-header-date-button:hover,
 .answer-sheet-header-date-button:focus,
 .answer-sheet-header-date-button[aria-expanded="true"] {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.26);
+    background: rgba(147, 112, 219, 0.28);
+    border-color: rgba(186, 146, 255, 0.72);
 }
 
 .disabled-button {
@@ -320,9 +325,16 @@ body.site-shell.answer-sheet-shell {
 
 .answer-sheet-round-header {
     display: grid;
-    gap: 6px;
-    margin-bottom: 10px;
+    gap: 4px;
+    margin-bottom: 8px;
     flex: 0 0 auto;
+}
+
+.answer-sheet-round-title-line {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.45rem 0.9rem;
 }
 
 .answer-sheet-round-header h2 {
@@ -332,7 +344,7 @@ body.site-shell.answer-sheet-shell {
 }
 
 .answer-sheet-round-creator {
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     color: rgba(245, 246, 251, 0.68);
 }
 
@@ -879,15 +891,16 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-header-date {
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-date-button {
-    border-color: rgba(45, 48, 71, 0.16);
-    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(123, 92, 200, 0.35);
+    background: rgba(147, 112, 219, 0.16);
+    color: #6741b9;
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-date-button:hover,
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-date-button:focus,
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-date-button[aria-expanded="true"] {
-    background: rgba(255, 255, 255, 1);
-    border-color: rgba(45, 48, 71, 0.24);
+    background: rgba(147, 112, 219, 0.24);
+    border-color: rgba(123, 92, 200, 0.5);
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-textarea-shell {

@@ -56,10 +56,12 @@
                                 <span class="answer-sheet-status" data-status-for="{{ page.round_id }}" data-state="ungraded-saved">Submitted</span>
                             </div>
                         </div>
-                        <h2>{{ page.round_title }}</h2>
-                        {% if page.round_creator %}
-                            <div class="answer-sheet-round-creator">Creator: {{ page.round_creator }}</div>
-                        {% endif %}
+                        <div class="answer-sheet-round-title-line">
+                            <h2>{{ page.round_title }}</h2>
+                            {% if page.round_creator %}
+                                <div class="answer-sheet-round-creator">Creator: {{ page.round_creator }}</div>
+                            {% endif %}
+                        </div>
                     </div>
 
                     <div class="answer-sheet-textarea-shell">
@@ -117,7 +119,7 @@
                             data-check-answers-for="{{ page.round_id }}"
                         ><span class="answer-sheet-check-label-full">Check Answers</span><span class="answer-sheet-check-label-short">Check</span></button>
                     </div>
-                    {% if page.cooperative %}
+                    {% if page.show_diverge %}
                         <button
                             class="answer-sheet-action-button answer-sheet-diverge-button"
                             type="button"
