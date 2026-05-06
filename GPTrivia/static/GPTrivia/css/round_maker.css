@@ -519,6 +519,11 @@ body.site-shell[data-profile-theme="light"] .spinner {
 
     .swoop-header-snake + span {
         position: relative;
+        top: -6px;
+    }
+
+    body.site-shell .mobile-footer-item.menu-item svg {
+        position: relative;
         top: -3px;
     }
 }
