@@ -321,6 +321,16 @@
                 : TEXT_MINIMUM_VISIBLE_ROWS;
         }
 
+        function getRoundPencilDisplayScale(roundId = '') {
+            if (getRoundInputMode(roundId) !== 'pencil') {
+                return 1;
+            }
+            if (window.matchMedia && window.matchMedia('(max-width: 700px)').matches) {
+                return 0.7;
+            }
+            return 1;
+        }
+
         function getRoundPencilGradeView(roundId) {
             const panel = getRoundPanel(roundId);
             return Boolean(panel && panel.dataset.pencilGradeView === 'true');
@@ -437,7 +447,7 @@
                     if (!Number.isFinite(pointX) || !Number.isFinite(pointY)) {
                         return point;
                     }
-                    const pixelX = pointX * (lineMetrics.shell.getBoundingClientRect().width || 1);
+                    const pixelX = pointX * (lineMetrics.visibleWidth || lineMetrics.shell.getBoundingClientRect().width || 1);
                     const pixelY = pointY * lineMetrics.totalHeight;
                     const rowIndex = Math.max(
                         0,
@@ -925,6 +935,7 @@
             const textarea = getRoundTextarea(roundId);
             const shell = textarea ? textarea.closest('.answer-sheet-textarea-shell') : null;
             const canvas = getRoundInkCanvas(roundId);
+            const textStack = shell ? shell.querySelector('.answer-sheet-text-stack') : null;
             if (!shell) {
                 return null;
             }
@@ -934,14 +945,17 @@
             const paddingBottom = parseFloat(computedStyle.getPropertyValue('--answer-sheet-padding-bottom-px')) || 14;
             const rowCount = Math.max(getMinimumVisibleRows(roundId), shell.querySelectorAll('.answer-sheet-line-numbers li').length || 0);
             const shellRect = shell.getBoundingClientRect();
+            const textStackRect = textStack ? textStack.getBoundingClientRect() : null;
             const canvasRect = canvas ? canvas.getBoundingClientRect() : null;
             return {
                 shell,
+                textStack,
                 lineHeight,
                 paddingTop,
                 paddingBottom,
                 rowCount,
                 totalHeight: paddingTop + paddingBottom + (lineHeight * rowCount),
+                visibleWidth: textStack?.clientWidth || textStackRect?.width || canvasRect?.width || shellRect.width || 1,
                 renderedHeight: canvasRect?.height || shellRect.height || (paddingTop + paddingBottom + (lineHeight * rowCount)),
             };
         }
@@ -994,7 +1008,7 @@
                 return null;
             }
 
-            const shellWidth = resolvedLineMetrics.shell.getBoundingClientRect().width || 1;
+            const shellWidth = resolvedLineMetrics.visibleWidth || resolvedLineMetrics.shell.getBoundingClientRect().width || 1;
             return {
                 x: pointX * shellWidth,
                 y: pointY * resolvedLineMetrics.totalHeight,
@@ -1139,6 +1153,33 @@
             return getRoundInkStrokes(roundId).map((stroke) => getInkStrokeRowIndex(roundId, 0, stroke) + 1);
         }
 
+        function getRoundInkRenderWidth(roundId, lineMetrics = null) {
+            const resolvedLineMetrics = lineMetrics || getRoundLineMetrics(roundId);
+            if (!resolvedLineMetrics) {
+                return 0;
+            }
+            let maxX = 0;
+            const allStrokes = [
+                ...getRoundInkStrokes(roundId),
+                ...getActiveInkStrokes(roundId),
+            ];
+            allStrokes.forEach((stroke) => {
+                if (!Array.isArray(stroke)) {
+                    return;
+                }
+                stroke.forEach((point) => {
+                    const renderedPoint = getInkPointCanvasCoordinates(roundId, point, resolvedLineMetrics);
+                    if (renderedPoint) {
+                        maxX = Math.max(maxX, renderedPoint.x);
+                    }
+                });
+            });
+            return Math.max(
+                resolvedLineMetrics.visibleWidth,
+                Math.ceil(maxX + (resolvedLineMetrics.lineHeight * 1.2)),
+            );
+        }
+
         function getActiveInkStrokes(roundId) {
             const roundKeyPrefix = `${roundId}:`;
             const activeStrokes = [];
@@ -1172,6 +1213,11 @@
 
         function renderInkCanvas(roundId) {
             const canvas = getRoundInkCanvas(roundId);
+            const lineMetrics = getRoundLineMetrics(roundId);
+            const renderWidth = getRoundInkRenderWidth(roundId, lineMetrics);
+            if (canvas && renderWidth > 0) {
+                canvas.style.width = `${renderWidth}px`;
+            }
             const canvasConfig = configureInkCanvas(canvas);
             if (!canvasConfig) {
                 return;
@@ -1193,7 +1239,6 @@
                 : [];
             const useGradeColors = getRoundInputMode(roundId) === 'pencil' && getRoundPencilGradeView(roundId);
             const inkStrokes = getRoundInkStrokes(roundId);
-            const lineMetrics = getRoundLineMetrics(roundId);
             const strokeHeight = lineMetrics?.totalHeight || height;
             context.save();
             context.lineWidth = 2.3;
@@ -1479,10 +1524,12 @@
             }
 
             const computedStyle = window.getComputedStyle(textarea);
-            const lineHeight = parseFloat(computedStyle.lineHeight) || 24;
-            const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
-            const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
-            const fontSize = computedStyle.fontSize || '16px';
+            const displayScale = getRoundPencilDisplayScale(textarea.dataset.roundId);
+            const lineHeight = (parseFloat(computedStyle.lineHeight) || 24) * displayScale;
+            const paddingTop = (parseFloat(computedStyle.paddingTop) || 0) * displayScale;
+            const paddingBottom = (parseFloat(computedStyle.paddingBottom) || 0) * displayScale;
+            const baseFontSize = parseFloat(computedStyle.fontSize) || 16;
+            const fontSize = `${baseFontSize * displayScale}px`;
             normalizeTextareaValueInPlace(textarea);
             const rowCount = Math.max(getMinimumVisibleRows(textarea.dataset.roundId), countLogicalLines(textarea.value));
             const targetHeight = Math.ceil(paddingTop + paddingBottom + (lineHeight * rowCount));
