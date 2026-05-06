@@ -489,6 +489,7 @@ body.site-shell.answer-sheet-shell {
     overflow: hidden;
     min-width: 0;
     --answer-sheet-line-height-px: 28px;
+    --answer-sheet-ink-unit-px: 28px;
     --answer-sheet-padding-top-px: 14px;
     --answer-sheet-padding-bottom-px: 14px;
     --answer-sheet-font-size-px: 16px;

@@ -460,8 +460,8 @@
                     return {
                         ...point,
                         r: rowIndex + 1,
-                        ux: Number((pixelX / lineMetrics.lineHeight).toFixed(5)),
-                        uy: Number((((pixelY - lineMetrics.paddingTop) / lineMetrics.lineHeight) - rowIndex).toFixed(5)),
+                        ux: Number((pixelX / lineMetrics.inkUnitSize).toFixed(5)),
+                        uy: Number(((pixelY - lineMetrics.paddingTop - (rowIndex * lineMetrics.lineHeight)) / lineMetrics.inkUnitSize).toFixed(5)),
                     };
                 });
             });
@@ -941,6 +941,7 @@
             }
             const computedStyle = window.getComputedStyle(shell);
             const lineHeight = parseFloat(computedStyle.getPropertyValue('--answer-sheet-line-height-px')) || 28;
+            const inkUnitSize = parseFloat(computedStyle.getPropertyValue('--answer-sheet-ink-unit-px')) || lineHeight;
             const paddingTop = parseFloat(computedStyle.getPropertyValue('--answer-sheet-padding-top-px')) || 14;
             const paddingBottom = parseFloat(computedStyle.getPropertyValue('--answer-sheet-padding-bottom-px')) || 14;
             const rowCount = Math.max(getMinimumVisibleRows(roundId), shell.querySelectorAll('.answer-sheet-line-numbers li').length || 0);
@@ -951,6 +952,7 @@
                 shell,
                 textStack,
                 lineHeight,
+                inkUnitSize,
                 paddingTop,
                 paddingBottom,
                 rowCount,
@@ -997,8 +999,8 @@
             ) {
                 const rowNumber = Math.max(1, Math.min(resolvedLineMetrics.rowCount, Number(point.r)));
                 return {
-                    x: Number(point.ux) * resolvedLineMetrics.lineHeight,
-                    y: resolvedLineMetrics.paddingTop + (((rowNumber - 1) + Number(point.uy)) * resolvedLineMetrics.lineHeight),
+                    x: Number(point.ux) * resolvedLineMetrics.inkUnitSize,
+                    y: resolvedLineMetrics.paddingTop + ((rowNumber - 1) * resolvedLineMetrics.lineHeight) + (Number(point.uy) * resolvedLineMetrics.inkUnitSize),
                 };
             }
 
@@ -1176,7 +1178,7 @@
             });
             return Math.max(
                 resolvedLineMetrics.visibleWidth,
-                Math.ceil(maxX + (resolvedLineMetrics.lineHeight * 1.2)),
+                Math.ceil(maxX + (resolvedLineMetrics.inkUnitSize * 1.2)),
             );
         }
 
@@ -1525,9 +1527,12 @@
 
             const computedStyle = window.getComputedStyle(textarea);
             const displayScale = getRoundPencilDisplayScale(textarea.dataset.roundId);
-            const lineHeight = (parseFloat(computedStyle.lineHeight) || 24) * displayScale;
-            const paddingTop = (parseFloat(computedStyle.paddingTop) || 0) * displayScale;
-            const paddingBottom = (parseFloat(computedStyle.paddingBottom) || 0) * displayScale;
+            const isMobilePencil = getRoundInputMode(textarea.dataset.roundId) === 'pencil' && displayScale < 1;
+            const rowSpacingScale = isMobilePencil ? 0.82 : displayScale;
+            const lineHeight = (parseFloat(computedStyle.lineHeight) || 24) * rowSpacingScale;
+            const inkUnitSize = (parseFloat(computedStyle.lineHeight) || 24) * displayScale;
+            const paddingTop = (parseFloat(computedStyle.paddingTop) || 0) * rowSpacingScale;
+            const paddingBottom = (parseFloat(computedStyle.paddingBottom) || 0) * rowSpacingScale;
             const baseFontSize = parseFloat(computedStyle.fontSize) || 16;
             const fontSize = `${baseFontSize * displayScale}px`;
             normalizeTextareaValueInPlace(textarea);
@@ -1538,6 +1543,7 @@
             textarea.style.height = `${targetHeight}px`;
             shell.style.height = `${targetHeight}px`;
             shell.style.setProperty('--answer-sheet-line-height-px', `${lineHeight}px`);
+            shell.style.setProperty('--answer-sheet-ink-unit-px', `${inkUnitSize}px`);
             shell.style.setProperty('--answer-sheet-padding-top-px', `${paddingTop}px`);
             shell.style.setProperty('--answer-sheet-padding-bottom-px', `${paddingBottom}px`);
             shell.style.setProperty('--answer-sheet-font-size-px', fontSize);
@@ -1607,8 +1613,8 @@
                     ),
                 );
                 normalizedPoint.r = rowIndex + 1;
-                normalizedPoint.ux = Number((pixelX / lineMetrics.lineHeight).toFixed(5));
-                normalizedPoint.uy = Number((((pixelY - lineMetrics.paddingTop) / lineMetrics.lineHeight) - rowIndex).toFixed(5));
+                normalizedPoint.ux = Number((pixelX / lineMetrics.inkUnitSize).toFixed(5));
+                normalizedPoint.uy = Number(((pixelY - lineMetrics.paddingTop - (rowIndex * lineMetrics.lineHeight)) / lineMetrics.inkUnitSize).toFixed(5));
             }
             const pointPressure = clampInkCoordinate(pressure);
             if (pointPressure !== null) {
