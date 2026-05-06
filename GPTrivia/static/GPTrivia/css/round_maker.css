@@ -408,7 +408,6 @@ select option {
     width: 72px;
     height: 46px;
     margin-right: 1.2vw;
-    vertical-align: middle;
 }
 
 
@@ -511,6 +510,11 @@ body.site-shell[data-profile-theme="light"] .spinner {
     .header-container {
         /*flex-direction: column;*/
         padding: 10px;
+    }
+
+    .swoop-header-snake {
+        width: 50px;
+        height: 32px;
     }
 }
 

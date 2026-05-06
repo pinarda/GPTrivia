@@ -215,9 +215,15 @@ def web_app_manifest(request):
         'theme_color': '#000000',
         'icons': [
             {
-                'src': '/static/img/apple-touch-icon.png',
+                'src': '/static/img/app-snake-icon-192.png',
                 'sizes': '192x192',
                 'type': 'image/png',
+            },
+            {
+                'src': '/static/splash/app-snake-icon-512.maskable.png',
+                'sizes': '512x512',
+                'type': 'image/png',
+                'purpose': 'maskable',
             },
         ],
     }
