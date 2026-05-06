@@ -7,52 +7,58 @@
 {% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260320m">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_analysis.css' %}?v=20260505a">
 {% endblock %}
 
 {% block content %}
 <div class="content-wrapper">
     <div class="select-wrapper">
-        <div class="select-container">
-            <label for="creator-selector" class="select-label">Creator</label>
-            <select name="creators" id="creator-selector" class="select-dropdown">
-                <option value="" {% if not initial_creator_selection %}selected{% endif %}>-- Select a creator --</option>
-                {% for creator in creators %}
-                <option value="{{ creator }}" {% if creator == initial_creator_selection %}selected{% endif %}>{{ creator }}</option>
-                {% endfor %}
-            </select>
+        <div class="analysis-filter-row">
+            <div class="select-container">
+                <label for="creator-selector" class="select-label">Creator</label>
+                <select name="creators" id="creator-selector" class="select-dropdown">
+                    <option value="" {% if not initial_creator_selection %}selected{% endif %}>-- Select a creator --</option>
+                    {% for creator in creators %}
+                    <option value="{{ creator }}" {% if creator == initial_creator_selection %}selected{% endif %}>{{ creator }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="select-container">
+                <label for="category-selector" class="select-label">Category</label>
+                <select name="categories" id="category-selector" class="select-dropdown">
+                    <option value="" {% if not initial_category_selection %}selected{% endif %}>-- Select a category --</option>
+                    {% for category in categories %}
+                    <option value="{{ category }}" {% if category == initial_category_selection %}selected{% endif %}>{{ category }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="select-container">
+                <label for="player-selector" class="select-label">Player</label>
+                <select name="players" id="player-selector" class="select-dropdown">
+                    <option value="" {% if not initial_player_selection %}selected{% endif %}>-- Select a player --</option>
+                    {% for player in players %}
+                    <option value="{{ player }}" {% if player == initial_player_selection %}selected{% endif %}>{{ player }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
 
-        <div class="select-container">
-            <label for="category-selector" class="select-label">Category</label>
-            <select name="categories" id="category-selector" class="select-dropdown">
-                <option value="" {% if not initial_category_selection %}selected{% endif %}>-- Select a category --</option>
-                {% for category in categories %}
-                <option value="{{ category }}" {% if category == initial_category_selection %}selected{% endif %}>{{ category }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <div class="select-container">
-            <label for="player-selector" class="select-label">Player</label>
-            <select name="players" id="player-selector" class="select-dropdown">
-                <option value="" {% if not initial_player_selection %}selected{% endif %}>-- Select a player --</option>
-                {% for player in players %}
-                <option value="{{ player }}" {% if player == initial_player_selection %}selected{% endif %}>{{ player }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <div class="select-container select-container--checkbox">
-            <label for="include-coop-checkbox" class="select-label">Include in Analysis</label>
-            <label class="analysis-checkbox-toggle" for="include-coop-checkbox">
-                <input type="checkbox" id="include-coop-checkbox" {% if initial_include_coop %}checked{% endif %}>
-                <span>Include co-op rounds</span>
-            </label>
-            <label class="analysis-checkbox-toggle" for="include-inactive-checkbox">
-                <input type="checkbox" id="include-inactive-checkbox" {% if initial_include_inactive %}checked{% endif %}>
-                <span>Include inactive players/creators</span>
-            </label>
+        <div class="analysis-filter-row analysis-filter-row--checkboxes">
+            <div class="select-container select-container--checkbox">
+                <label for="include-coop-checkbox" class="select-label">Include in Analysis</label>
+                <div class="analysis-checkbox-controls">
+                    <label class="analysis-checkbox-toggle" for="include-coop-checkbox">
+                        <input type="checkbox" id="include-coop-checkbox" {% if initial_include_coop %}checked{% endif %}>
+                        <span>Include co-op rounds</span>
+                    </label>
+                    <label class="analysis-checkbox-toggle" for="include-inactive-checkbox">
+                        <input type="checkbox" id="include-inactive-checkbox" {% if initial_include_inactive %}checked{% endif %}>
+                        <span>Include inactive players/creators</span>
+                    </label>
+                </div>
+            </div>
         </div>
     </div>
 

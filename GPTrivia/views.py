@@ -2641,6 +2641,7 @@ def _build_answer_sheet_context(user, requested_date=''):
             'round_id': round_obj.id,
             'round_number': round_obj.round_number,
             'round_title': round_obj.title,
+            'round_creator': round_obj.creator,
             'cooperative': bool(round_obj.cooperative),
             'is_diverged': bool(saved_entry.is_diverged) if saved_entry else False,
             'submit_requires_confirmation': bool(

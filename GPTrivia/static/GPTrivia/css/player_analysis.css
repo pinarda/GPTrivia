@@ -95,9 +95,33 @@ body.site-shell[data-profile-theme="light"] .table-class th {
     justify-content: center;
 }
 
+.analysis-filter-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    flex-wrap: wrap;
+}
+
 .select-container--checkbox {
     min-width: 0;
     gap: 4px;
+    width: min(100%, 760px);
+    margin-right: 0;
+    align-items: stretch;
+    text-align: left;
+}
+
+.analysis-filter-row--checkboxes {
+    align-items: stretch;
+}
+
+.analysis-checkbox-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    width: 100%;
 }
 
 .analysis-checkbox-toggle {
@@ -169,6 +193,7 @@ body.site-shell[data-profile-theme="light"] .table-class th {
 
 .analysis-checkbox-toggle span {
     display: inline-block;
+    white-space: normal;
 }
 
 .select-dropdown option {
@@ -456,7 +481,8 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
 /* Existing .select-wrapper styles */
 .select-wrapper {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     justify-content: center;
     /* Add the following styles */
     background-color: var(--analysis-panel-bg);
@@ -469,11 +495,6 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
 
 /* Responsive Styles */
 @media (max-width: 800px) {
-    .select-wrapper {
-        flex-direction: column;
-        align-items: center;
-    }
-
     .select-container {
         width: min(100%, 340px);
         margin-bottom: 20px;
@@ -481,6 +502,7 @@ body.site-shell[data-profile-theme="light"] .analysis-plot-card {
 
     .select-dropdown,
     .select-container--checkbox,
+    .analysis-checkbox-controls,
     .select-container--checkbox .analysis-checkbox-toggle {
         width: 100%;
     }

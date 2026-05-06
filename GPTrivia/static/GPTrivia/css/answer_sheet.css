@@ -331,6 +331,11 @@ body.site-shell.answer-sheet-shell {
     line-height: 1.2;
 }
 
+.answer-sheet-round-creator {
+    font-size: 0.88rem;
+    color: rgba(245, 246, 251, 0.68);
+}
+
 .answer-sheet-round-meta {
     display: flex;
     align-items: baseline;
@@ -506,6 +511,16 @@ body.site-shell.answer-sheet-shell {
 }
 
 .answer-sheet-round-panel[data-input-mode="pencil"] .answer-sheet-line-numbers {
+    pointer-events: none;
+}
+
+.answer-sheet-round-panel[data-input-mode="pencil"][data-pencil-grade-view="true"] .answer-sheet-line-numbers,
+.answer-sheet-round-panel[data-input-mode="pencil"][data-pencil-grade-view="true"] .answer-sheet-line-controls,
+.answer-sheet-round-panel[data-input-mode="pencil"][data-pencil-grade-view="true"] .answer-sheet-line-adjust {
+    pointer-events: auto;
+}
+
+.answer-sheet-round-panel[data-input-mode="pencil"][data-pencil-grade-view="true"] .answer-sheet-line-number-label {
     pointer-events: none;
 }
 
@@ -856,6 +871,7 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-round-panel {
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-card p,
 body.site-shell[data-profile-theme="light"] .answer-sheet-round-header p,
 body.site-shell[data-profile-theme="light"] .answer-sheet-round-kicker,
+body.site-shell[data-profile-theme="light"] .answer-sheet-round-creator,
 body.site-shell[data-profile-theme="light"] .answer-sheet-input-mode-toggle,
 body.site-shell[data-profile-theme="light"] .answer-sheet-status,
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-date {

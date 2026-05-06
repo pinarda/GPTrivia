@@ -260,6 +260,10 @@ body.site-shell[data-profile-theme="light"] {
     display: none !important;
 }
 
+.presentation-switch-date-label-short {
+    display: none;
+}
+
 .round-selection-table-header,
 .round-selection-table-row {
     display: grid;
@@ -726,6 +730,23 @@ body.site-shell[data-profile-theme="light"] .calendar-select {
     }
 }
 
+@media (min-width: 701px) and (max-width: 1180px) {
+    .round-selection-shell,
+    .round-selection-table,
+    .presentation-actions,
+    .presentation-action-buttons {
+        width: 100%;
+    }
+
+    .presentation-switch-date-label-full {
+        display: none;
+    }
+
+    .presentation-switch-date-label-short {
+        display: inline;
+    }
+}
+
 @media (max-width: 700px) {
     .round-selection-table {
         --round-table-columns: 58px minmax(0, 1.42fr) minmax(0, 0.86fr) 66px;
@@ -931,7 +952,8 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                             type="button"
                             {% if not presentation_calendar %}disabled{% endif %}
                         >
-                            Switch Presentation Date
+                            <span class="presentation-switch-date-label-full">Switch Presentation Date</span>
+                            <span class="presentation-switch-date-label-short">Switch Date</span>
                         </button>
                         <img class="spinner" id="submit-spinner1" src="{% static 'GPTrivia/css/ouroboros.png' %}" style="display:none;" alt="Loading..." width="25px" height="25px">
                     </div>

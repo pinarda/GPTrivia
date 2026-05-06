@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505h">
+    <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505i">
 {% endblock %}
 
 {% block content %}
@@ -57,6 +57,9 @@
                             </div>
                         </div>
                         <h2>{{ page.round_title }}</h2>
+                        {% if page.round_creator %}
+                            <div class="answer-sheet-round-creator">Creator: {{ page.round_creator }}</div>
+                        {% endif %}
                     </div>
 
                     <div class="answer-sheet-textarea-shell">
@@ -223,7 +226,8 @@
         const inkToolStateMap = new Map();
         const recentFingerTapMap = new Map();
         const roundEntrySaveRequestMap = new Map();
-        const MINIMUM_VISIBLE_ROWS = 10;
+        const TEXT_MINIMUM_VISIBLE_ROWS = 10;
+        const PENCIL_MINIMUM_VISIBLE_ROWS = 12;
         const localClientId = (
             window.crypto && typeof window.crypto.randomUUID === 'function'
                 ? window.crypto.randomUUID()
@@ -307,6 +311,12 @@
         function getRoundInputMode(roundId) {
             const panel = getRoundPanel(roundId);
             return panel && panel.dataset.inputMode === 'pencil' ? 'pencil' : 'text';
+        }
+
+        function getMinimumVisibleRows(roundId = '') {
+            return getRoundInputMode(roundId) === 'pencil'
+                ? PENCIL_MINIMUM_VISIBLE_ROWS
+                : TEXT_MINIMUM_VISIBLE_ROWS;
         }
 
         function getRoundPencilGradeView(roundId) {
@@ -493,7 +503,7 @@
             if (!textarea) {
                 return false;
             }
-            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, getTextareaLines(textarea).length);
+            const rowCount = Math.max(getMinimumVisibleRows(textarea.dataset.roundId), getTextareaLines(textarea).length);
             return getLineStates(textarea, rowCount).some((state) => state === 'correct' || state === 'incorrect');
         }
 
@@ -599,8 +609,8 @@
                 setRoundInputMode(roundId, roundState.input_mode || 'text');
                 setRoundPencilGradeView(
                     roundId,
-                    (roundState.input_mode || 'text') === 'pencil'
-                    && Boolean(roundState.grade_payload || roundState.transcribed_from_ink)
+                    getRoundPencilGradeView(roundId)
+                    || Boolean(roundState.grade_payload || roundState.transcribed_from_ink)
                 );
                 setRoundAnswersDirty(roundId, false);
             }
@@ -858,7 +868,7 @@
             const lineHeight = parseFloat(computedStyle.getPropertyValue('--answer-sheet-line-height-px')) || 28;
             const paddingTop = parseFloat(computedStyle.getPropertyValue('--answer-sheet-padding-top-px')) || 14;
             const paddingBottom = parseFloat(computedStyle.getPropertyValue('--answer-sheet-padding-bottom-px')) || 14;
-            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, shell.querySelectorAll('.answer-sheet-line-numbers li').length || 0);
+            const rowCount = Math.max(getMinimumVisibleRows(roundId), shell.querySelectorAll('.answer-sheet-line-numbers li').length || 0);
             const shellRect = shell.getBoundingClientRect();
             const canvasRect = canvas ? canvas.getBoundingClientRect() : null;
             return {
@@ -880,7 +890,7 @@
             if (!lineMetrics) {
                 return null;
             }
-            const pointY = point.y * lineMetrics.renderedHeight;
+            const pointY = point.y * lineMetrics.totalHeight;
             const rowIndex = Math.floor((pointY - lineMetrics.paddingTop) / lineMetrics.lineHeight);
             return Math.max(1, Math.min(lineMetrics.rowCount, rowIndex + 1));
         }
@@ -1004,7 +1014,7 @@
             if (!lineMetrics) {
                 return 0;
             }
-            const averageY = stroke.reduce((total, point) => total + (point.y * lineMetrics.renderedHeight), 0) / stroke.length;
+            const averageY = stroke.reduce((total, point) => total + (point.y * lineMetrics.totalHeight), 0) / stroke.length;
             const rowIndex = Math.floor((averageY - lineMetrics.paddingTop) / lineMetrics.lineHeight);
             return Math.max(0, Math.min(lineMetrics.rowCount - 1, rowIndex));
         }
@@ -1060,13 +1070,15 @@
                 ? getLineStates(
                     textarea,
                     Math.max(
-                        MINIMUM_VISIBLE_ROWS,
+                        getMinimumVisibleRows(roundId),
                         textarea.closest('.answer-sheet-textarea-shell')?.querySelectorAll('.answer-sheet-line-numbers li').length || 0,
                     ),
                 )
                 : [];
             const useGradeColors = getRoundInputMode(roundId) === 'pencil' && getRoundPencilGradeView(roundId);
             const inkStrokes = getRoundInkStrokes(roundId);
+            const lineMetrics = getRoundLineMetrics(roundId);
+            const strokeHeight = lineMetrics?.totalHeight || height;
             context.save();
             context.lineWidth = 2.3;
             inkStrokes.forEach((stroke) => {
@@ -1076,12 +1088,12 @@
                 const strokeColor = getInkStrokeStateColor(strokeState);
                 context.strokeStyle = strokeColor;
                 context.fillStyle = strokeColor;
-                drawInkStroke(context, width, height, stroke);
+                drawInkStroke(context, width, strokeHeight, stroke);
             });
             const activeStrokeColor = getInkStrokeColor();
             context.strokeStyle = activeStrokeColor;
             context.fillStyle = activeStrokeColor;
-            getActiveInkStrokes(roundId).forEach((stroke) => drawInkStroke(context, width, height, stroke));
+            getActiveInkStrokes(roundId).forEach((stroke) => drawInkStroke(context, width, strokeHeight, stroke));
             context.restore();
         }
 
@@ -1101,10 +1113,8 @@
             if (toolButton) {
                 toolButton.hidden = normalizedMode !== 'pencil';
             }
-            if (normalizedMode !== 'pencil') {
-                setRoundPencilGradeView(roundId, false);
-            }
             if (textarea) {
+                syncLineNumbers(textarea);
                 renderTextOverlay(textarea);
             }
             if (canvas) {
@@ -1126,7 +1136,7 @@
             }
 
             const lines = getTextareaLines(textarea);
-            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, lines.length);
+            const rowCount = Math.max(getMinimumVisibleRows(textarea.dataset.roundId), lines.length);
             const states = getLineStates(textarea, rowCount);
             overlay.innerHTML = '';
             for (let index = 0; index < rowCount; index += 1) {
@@ -1140,7 +1150,7 @@
         }
 
         function clearGradingState(textarea) {
-            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, getTextareaLines(textarea).length);
+            const rowCount = Math.max(getMinimumVisibleRows(textarea.dataset.roundId), getTextareaLines(textarea).length);
             setCurrentModeLineStates(textarea, Array(rowCount).fill('default'));
             renderTextOverlay(textarea);
             if (getRoundInputMode(textarea.dataset.roundId) === 'pencil') {
@@ -1162,7 +1172,7 @@
             }
             const existingStates = getLineStates(
                 textarea,
-                Math.max(MINIMUM_VISIBLE_ROWS, getTextareaLines(textarea).length),
+                Math.max(getMinimumVisibleRows(roundId), getTextareaLines(textarea).length),
             ).slice();
             normalizedRows.forEach((rowNumber) => {
                 const rowIndex = rowNumber - 1;
@@ -1240,7 +1250,8 @@
             setRoundInputMode(roundId, payload?.input_mode || 'text');
             setRoundPencilGradeView(
                 roundId,
-                (payload?.input_mode === 'pencil') && Boolean(payload?.grade_payload || payload?.transcribed_from_ink)
+                getRoundPencilGradeView(roundId)
+                || Boolean(payload?.grade_payload || payload?.transcribed_from_ink)
             );
             setRoundAnswersDirty(roundId, false);
             if (payload?.grade_payload && scoreInput) {
@@ -1259,13 +1270,16 @@
         function applyGradePayload(roundId, textarea, scoreInput, payload, options = {}) {
             const preserveScoreState = Boolean(options.preserveScoreState);
             const rowCount = Math.max(
-                MINIMUM_VISIBLE_ROWS,
+                getMinimumVisibleRows(roundId),
                 getTextareaLines(textarea).length,
                 Array.isArray(payload.row_results) ? payload.row_results.length : 0,
             );
             const nextStates = Array(rowCount).fill('default');
             (payload.row_results || []).forEach((rowResult, index) => {
-                if (rowResult.state === 'correct') {
+                const hasVisibleSubmission = Boolean(String(rowResult.submitted_text || '').trim());
+                if (!hasVisibleSubmission && !rowResult.manually_overridden && !rowResult.manually_rejected) {
+                    nextStates[index] = 'default';
+                } else if (rowResult.state === 'correct') {
                     nextStates[index] = 'correct';
                 } else if (rowResult.state === 'incorrect') {
                     nextStates[index] = 'incorrect';
@@ -1315,8 +1329,8 @@
             }
             setRoundPencilGradeView(
                 roundId,
-                (payload?.input_mode || getRoundInputMode(roundId)) === 'pencil'
-                && Boolean(payload?.transcribed_from_ink)
+                getRoundPencilGradeView(roundId)
+                || Boolean(payload?.transcribed_from_ink)
             );
             applyGradePayload(roundId, textarea, scoreInput, payload);
         }
@@ -1354,7 +1368,7 @@
             const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
             const fontSize = computedStyle.fontSize || '16px';
             normalizeTextareaValueInPlace(textarea);
-            const rowCount = Math.max(MINIMUM_VISIBLE_ROWS, countLogicalLines(textarea.value));
+            const rowCount = Math.max(getMinimumVisibleRows(textarea.dataset.roundId), countLogicalLines(textarea.value));
             const targetHeight = Math.ceil(paddingTop + paddingBottom + (lineHeight * rowCount));
 
             textarea.rows = rowCount;
@@ -1364,6 +1378,7 @@
             shell.style.setProperty('--answer-sheet-padding-top-px', `${paddingTop}px`);
             shell.style.setProperty('--answer-sheet-padding-bottom-px', `${paddingBottom}px`);
             shell.style.setProperty('--answer-sheet-font-size-px', fontSize);
+            shell.style.setProperty('--answer-sheet-row-count', String(rowCount));
 
             numberList.innerHTML = '';
             for (let index = 1; index <= rowCount; index += 1) {
@@ -1402,13 +1417,15 @@
             renderTextOverlay(textarea);
         }
 
-        function buildNormalizedInkPointFromClientPosition(canvas, clientX, clientY, pressure) {
+        function buildNormalizedInkPointFromClientPosition(roundId, canvas, clientX, clientY, pressure) {
             const rect = canvas.getBoundingClientRect();
-            if (!rect.width || !rect.height) {
+            const lineMetrics = getRoundLineMetrics(roundId);
+            const effectiveHeight = lineMetrics?.totalHeight || rect.height;
+            if (!rect.width || !effectiveHeight) {
                 return null;
             }
             const pointX = clampInkCoordinate((clientX - rect.left) / rect.width);
-            const pointY = clampInkCoordinate((clientY - rect.top) / rect.height);
+            const pointY = clampInkCoordinate((clientY - rect.top) / effectiveHeight);
             if (pointX === null || pointY === null) {
                 return null;
             }
@@ -1423,8 +1440,9 @@
             return normalizedPoint;
         }
 
-        function buildNormalizedInkPoint(canvas, event) {
+        function buildNormalizedInkPoint(roundId, canvas, event) {
             return buildNormalizedInkPointFromClientPosition(
+                roundId,
                 canvas,
                 event.clientX,
                 event.clientY,
@@ -1518,7 +1536,7 @@
                 roundId,
                 canvas,
                 strokeKey,
-                buildNormalizedInkPoint(canvas, event),
+                buildNormalizedInkPoint(roundId, canvas, event),
                 event.pointerId,
             );
         }
@@ -1528,7 +1546,7 @@
                 return;
             }
             const strokeKey = `${roundId}:${event.pointerId}`;
-            extendInkStrokeForKey(roundId, strokeKey, buildNormalizedInkPoint(canvas, event));
+            extendInkStrokeForKey(roundId, strokeKey, buildNormalizedInkPoint(roundId, canvas, event));
         }
 
         function endInkStroke(roundId, canvas, event) {
@@ -1536,7 +1554,7 @@
                 return;
             }
             const strokeKey = `${roundId}:${event.pointerId}`;
-            endInkStrokeForKey(roundId, strokeKey, buildNormalizedInkPoint(canvas, event));
+            endInkStrokeForKey(roundId, strokeKey, buildNormalizedInkPoint(roundId, canvas, event));
         }
 
         function beginInkStrokeForKey(roundId, canvas, strokeKey, point, capturePointerId = null) {
@@ -1740,7 +1758,7 @@
                         input_mode: inputMode,
                         ink_strokes: inputMode === 'pencil' ? getRoundInkStrokes(roundId) : [],
                         ink_stroke_rows: inputMode === 'pencil' ? getRoundInkStrokeRows(roundId) : [],
-                        row_count: Math.max(MINIMUM_VISIBLE_ROWS, countLogicalLines(textarea.value)),
+                        row_count: Math.max(getMinimumVisibleRows(roundId), countLogicalLines(textarea.value)),
                         client_id: localClientId,
                     }),
                 });
@@ -1755,7 +1773,8 @@
                 }
                 setRoundPencilGradeView(
                     roundId,
-                    inputMode === 'pencil' && Boolean(payload.transcribed_from_ink)
+                    getRoundPencilGradeView(roundId)
+                    || (inputMode === 'pencil' && Boolean(payload.transcribed_from_ink))
                 );
                 applyGradePayload(roundId, textarea, scoreInput, payload);
             } catch (error) {
@@ -1902,7 +1921,7 @@
             textarea.addEventListener('input', () => {
                 syncLineNumbers(textarea);
                 const nextLines = getTextareaLines(textarea);
-                const nextStates = getLineStates(textarea, Math.max(MINIMUM_VISIBLE_ROWS, nextLines.length)).slice();
+                const nextStates = getLineStates(textarea, Math.max(getMinimumVisibleRows(roundId), nextLines.length)).slice();
                 const editedLineIndex = Math.max(0, Math.min(nextStates.length - 1, getCaretLineIndex(textarea)));
                 nextStates[editedLineIndex] = 'default';
                 setCurrentModeLineStates(textarea, nextStates);
@@ -1990,6 +2009,7 @@
                         handleFingerDoubleTap(
                             roundId,
                             buildNormalizedInkPointFromClientPosition(
+                                roundId,
                                 canvas,
                                 fingerTouch.clientX,
                                 fingerTouch.clientY,
@@ -2009,6 +2029,7 @@
                         canvas,
                         strokeKey,
                         buildNormalizedInkPointFromClientPosition(
+                            roundId,
                             canvas,
                             stylusTouch.clientX,
                             stylusTouch.clientY,
@@ -2030,6 +2051,7 @@
                         roundId,
                         `${roundId}:touch:${stylusTouch.identifier}`,
                         buildNormalizedInkPointFromClientPosition(
+                            roundId,
                             canvas,
                             stylusTouch.clientX,
                             stylusTouch.clientY,
@@ -2051,6 +2073,7 @@
                         roundId,
                         `${roundId}:touch:${stylusTouch.identifier}`,
                         buildNormalizedInkPointFromClientPosition(
+                            roundId,
                             canvas,
                             stylusTouch.clientX,
                             stylusTouch.clientY,
