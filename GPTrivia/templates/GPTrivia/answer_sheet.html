@@ -1618,7 +1618,7 @@
             if (!lineMetrics || !leftRenderedPoint || !rightRenderedPoint) {
                 return false;
             }
-            const pixelRadius = radius * lineMetrics.lineHeight;
+            const pixelRadius = radius * Math.max(lineMetrics.lineHeight, 32);
             const deltaX = leftRenderedPoint.x - rightRenderedPoint.x;
             const deltaY = leftRenderedPoint.y - rightRenderedPoint.y;
             return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY)) <= pixelRadius;
@@ -1648,7 +1648,7 @@
             const previousTap = recentFingerTapMap.get(roundKey);
             const now = Date.now();
             const tapPoint = point ? { ...point, roundId: roundKey } : null;
-            if (previousTap && tapPoint && (now - previousTap.timestamp) <= 320 && pointsNear(previousTap.point, tapPoint, 0.08)) {
+            if (previousTap && tapPoint && (now - previousTap.timestamp) <= 320 && pointsNear(previousTap.point, tapPoint, 0.75)) {
                 recentFingerTapMap.delete(roundKey);
                 toggleRoundInkTool(roundId);
                 return true;
