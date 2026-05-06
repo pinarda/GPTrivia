@@ -22,6 +22,7 @@ from django.shortcuts import redirect
 from django.contrib.auth.models import User
 import subprocess
 import base64
+import math
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 import pytz
@@ -1651,6 +1652,27 @@ def _normalize_answer_sheet_ink_strokes(raw_strokes):
                 'x': round(point_x, 5),
                 'y': round(point_y, 5),
             }
+
+            try:
+                point_row = int(raw_point.get('r'))
+            except (TypeError, ValueError):
+                point_row = None
+            if point_row is not None and point_row >= 1:
+                normalized_point['r'] = point_row
+
+            try:
+                point_unit_x = float(raw_point.get('ux'))
+            except (TypeError, ValueError):
+                point_unit_x = None
+            if point_unit_x is not None and math.isfinite(point_unit_x):
+                normalized_point['ux'] = round(point_unit_x, 5)
+
+            try:
+                point_unit_y = float(raw_point.get('uy'))
+            except (TypeError, ValueError):
+                point_unit_y = None
+            if point_unit_y is not None and math.isfinite(point_unit_y):
+                normalized_point['uy'] = round(point_unit_y, 5)
 
             try:
                 point_pressure = float(raw_point.get('p'))

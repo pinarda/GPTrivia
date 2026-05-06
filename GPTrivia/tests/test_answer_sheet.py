@@ -242,8 +242,11 @@ class AnswerSheetTests(TestCase):
                 "answers": "One\nTwo",
                 "input_mode": "pencil",
                 "ink_strokes": [
-                    [{"x": 0.1, "y": 0.2}, {"x": 0.4, "y": 0.5, "p": 0.8}],
-                    [{"x": 0.7, "y": 0.8}],
+                    [
+                        {"x": 0.1, "y": 0.2, "r": 1, "ux": 1.25, "uy": 0.18},
+                        {"x": 0.4, "y": 0.5, "p": 0.8, "r": 2, "ux": 3.75, "uy": 0.62},
+                    ],
+                    [{"x": 0.7, "y": 0.8, "r": 4, "ux": 5.4, "uy": 0.09}],
                 ],
             }),
             content_type="application/json",
@@ -252,10 +255,10 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(response.status_code, 200)
         entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
         self.assertEqual(entry.input_mode, AnswerSheetEntry.INPUT_MODE_PENCIL)
-        self.assertEqual(entry.ink_strokes[0][0], {"x": 0.1, "y": 0.2})
-        self.assertEqual(entry.ink_strokes[0][1], {"x": 0.4, "y": 0.5, "p": 0.8})
+        self.assertEqual(entry.ink_strokes[0][0], {"x": 0.1, "y": 0.2, "r": 1, "ux": 1.25, "uy": 0.18})
+        self.assertEqual(entry.ink_strokes[0][1], {"x": 0.4, "y": 0.5, "p": 0.8, "r": 2, "ux": 3.75, "uy": 0.62})
         self.assertEqual(response.json()["input_mode"], "pencil")
-        self.assertEqual(response.json()["ink_strokes"][1][0], {"x": 0.7, "y": 0.8})
+        self.assertEqual(response.json()["ink_strokes"][1][0], {"x": 0.7, "y": 0.8, "r": 4, "ux": 5.4, "uy": 0.09})
 
     def test_save_answer_sheet_entry_clears_grade_overrides_for_changed_rows(self):
         round_obj = GPTriviaRound.objects.create(

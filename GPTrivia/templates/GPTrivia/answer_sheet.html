@@ -392,11 +392,70 @@
                             if (pointPressure !== null) {
                                 normalizedPoint.p = Number(pointPressure.toFixed(4));
                             }
+                            const pointRow = Number(point.r);
+                            if (Number.isInteger(pointRow) && pointRow >= 1) {
+                                normalizedPoint.r = pointRow;
+                            }
+                            const unitX = Number(point.ux);
+                            if (Number.isFinite(unitX)) {
+                                normalizedPoint.ux = Number(unitX.toFixed(5));
+                            }
+                            const unitY = Number(point.uy);
+                            if (Number.isFinite(unitY)) {
+                                normalizedPoint.uy = Number(unitY.toFixed(5));
+                            }
                             return normalizedPoint;
                         })
                         .filter(Boolean);
                 })
                 .filter((stroke) => stroke.length > 0);
+        }
+
+        function enrichInkPointsWithLayout(roundId, strokes) {
+            const lineMetrics = getRoundLineMetrics(roundId);
+            if (!lineMetrics || !Array.isArray(strokes)) {
+                return strokes;
+            }
+            let changed = false;
+            const nextStrokes = strokes.map((stroke) => {
+                if (!Array.isArray(stroke)) {
+                    return stroke;
+                }
+                return stroke.map((point) => {
+                    if (!point || typeof point !== 'object') {
+                        return point;
+                    }
+                    if (
+                        Number.isInteger(Number(point.r))
+                        && Number.isFinite(Number(point.ux))
+                        && Number.isFinite(Number(point.uy))
+                    ) {
+                        return point;
+                    }
+                    const pointX = Number(point.x);
+                    const pointY = Number(point.y);
+                    if (!Number.isFinite(pointX) || !Number.isFinite(pointY)) {
+                        return point;
+                    }
+                    const pixelX = pointX * (lineMetrics.shell.getBoundingClientRect().width || 1);
+                    const pixelY = pointY * lineMetrics.totalHeight;
+                    const rowIndex = Math.max(
+                        0,
+                        Math.min(
+                            lineMetrics.rowCount - 1,
+                            Math.floor((pixelY - lineMetrics.paddingTop) / lineMetrics.lineHeight),
+                        ),
+                    );
+                    changed = true;
+                    return {
+                        ...point,
+                        r: rowIndex + 1,
+                        ux: Number((pixelX / lineMetrics.lineHeight).toFixed(5)),
+                        uy: Number((((pixelY - lineMetrics.paddingTop) / lineMetrics.lineHeight) - rowIndex).toFixed(5)),
+                    };
+                });
+            });
+            return changed ? nextStrokes : strokes;
         }
 
         function getRoundInkStrokes(roundId) {
@@ -413,14 +472,17 @@
                     parsedStrokes = [];
                 }
             }
-            const normalizedStrokes = normalizeInkStrokes(parsedStrokes);
+            const normalizedStrokes = enrichInkPointsWithLayout(roundKey, normalizeInkStrokes(parsedStrokes));
             inkStrokeStateMap.set(roundKey, normalizedStrokes);
+            if (panel) {
+                panel.dataset.inkStrokes = JSON.stringify(normalizedStrokes);
+            }
             return normalizedStrokes;
         }
 
         function setRoundInkStrokes(roundId, rawStrokes) {
             const roundKey = String(roundId || '');
-            const normalizedStrokes = normalizeInkStrokes(rawStrokes);
+            const normalizedStrokes = enrichInkPointsWithLayout(roundKey, normalizeInkStrokes(rawStrokes));
             inkStrokeStateMap.set(roundKey, normalizedStrokes);
             const panel = getRoundPanel(roundKey);
             if (panel) {
@@ -888,6 +950,14 @@
             if (!point) {
                 return null;
             }
+            const explicitRowNumber = Number(point.r);
+            if (Number.isInteger(explicitRowNumber) && explicitRowNumber >= 1) {
+                const explicitLineMetrics = getRoundLineMetrics(roundId);
+                if (!explicitLineMetrics) {
+                    return explicitRowNumber;
+                }
+                return Math.max(1, Math.min(explicitLineMetrics.rowCount, explicitRowNumber));
+            }
             const lineMetrics = getRoundLineMetrics(roundId);
             if (!lineMetrics) {
                 return null;
@@ -895,6 +965,40 @@
             const pointY = point.y * lineMetrics.totalHeight;
             const rowIndex = Math.floor((pointY - lineMetrics.paddingTop) / lineMetrics.lineHeight);
             return Math.max(1, Math.min(lineMetrics.rowCount, rowIndex + 1));
+        }
+
+        function getInkPointCanvasCoordinates(roundId, point, lineMetrics = null) {
+            if (!point || typeof point !== 'object') {
+                return null;
+            }
+            const resolvedLineMetrics = lineMetrics || getRoundLineMetrics(roundId);
+            if (!resolvedLineMetrics) {
+                return null;
+            }
+
+            if (
+                Number.isInteger(Number(point?.r))
+                && Number.isFinite(Number(point?.ux))
+                && Number.isFinite(Number(point?.uy))
+            ) {
+                const rowNumber = Math.max(1, Math.min(resolvedLineMetrics.rowCount, Number(point.r)));
+                return {
+                    x: Number(point.ux) * resolvedLineMetrics.lineHeight,
+                    y: resolvedLineMetrics.paddingTop + (((rowNumber - 1) + Number(point.uy)) * resolvedLineMetrics.lineHeight),
+                };
+            }
+
+            const pointX = Number(point.x);
+            const pointY = Number(point.y);
+            if (!Number.isFinite(pointX) || !Number.isFinite(pointY)) {
+                return null;
+            }
+
+            const shellWidth = resolvedLineMetrics.shell.getBoundingClientRect().width || 1;
+            return {
+                x: pointX * shellWidth,
+                y: pointY * resolvedLineMetrics.totalHeight,
+            };
         }
 
         function getCaretLineIndex(textarea) {
@@ -952,15 +1056,19 @@
             context.restore();
         }
 
-        function drawInkStroke(context, width, height, stroke) {
+        function drawInkStroke(roundId, context, width, height, stroke) {
             if (!Array.isArray(stroke) || stroke.length === 0) {
                 return;
             }
 
-            const points = stroke.map((point) => ({
-                x: point.x * width,
-                y: point.y * height,
-            }));
+            const lineMetrics = getRoundLineMetrics(roundId);
+            const points = stroke
+                .map((point) => getInkPointCanvasCoordinates(roundId, point, lineMetrics))
+                .filter(Boolean);
+
+            if (!points.length) {
+                return;
+            }
 
             if (points.length === 1) {
                 const onlyPoint = points[0];
@@ -1016,7 +1124,13 @@
             if (!lineMetrics) {
                 return 0;
             }
-            const averageY = stroke.reduce((total, point) => total + (point.y * lineMetrics.totalHeight), 0) / stroke.length;
+            const pointPositions = stroke
+                .map((point) => getInkPointCanvasCoordinates(roundId, point, lineMetrics))
+                .filter(Boolean);
+            if (!pointPositions.length) {
+                return 0;
+            }
+            const averageY = pointPositions.reduce((total, point) => total + point.y, 0) / pointPositions.length;
             const rowIndex = Math.floor((averageY - lineMetrics.paddingTop) / lineMetrics.lineHeight);
             return Math.max(0, Math.min(lineMetrics.rowCount - 1, rowIndex));
         }
@@ -1090,12 +1204,12 @@
                 const strokeColor = getInkStrokeStateColor(strokeState);
                 context.strokeStyle = strokeColor;
                 context.fillStyle = strokeColor;
-                drawInkStroke(context, width, strokeHeight, stroke);
+                drawInkStroke(roundId, context, width, strokeHeight, stroke);
             });
             const activeStrokeColor = getInkStrokeColor();
             context.strokeStyle = activeStrokeColor;
             context.fillStyle = activeStrokeColor;
-            getActiveInkStrokes(roundId).forEach((stroke) => drawInkStroke(context, width, strokeHeight, stroke));
+            getActiveInkStrokes(roundId).forEach((stroke) => drawInkStroke(roundId, context, width, strokeHeight, stroke));
             context.restore();
         }
 
@@ -1435,6 +1549,20 @@
                 x: Number(pointX.toFixed(5)),
                 y: Number(pointY.toFixed(5)),
             };
+            if (lineMetrics) {
+                const pixelX = clientX - rect.left;
+                const pixelY = clientY - rect.top;
+                const rowIndex = Math.max(
+                    0,
+                    Math.min(
+                        lineMetrics.rowCount - 1,
+                        Math.floor((pixelY - lineMetrics.paddingTop) / lineMetrics.lineHeight),
+                    ),
+                );
+                normalizedPoint.r = rowIndex + 1;
+                normalizedPoint.ux = Number((pixelX / lineMetrics.lineHeight).toFixed(5));
+                normalizedPoint.uy = Number((((pixelY - lineMetrics.paddingTop) / lineMetrics.lineHeight) - rowIndex).toFixed(5));
+            }
             const pointPressure = clampInkCoordinate(pressure);
             if (pointPressure !== null) {
                 normalizedPoint.p = Number(pointPressure.toFixed(4));
@@ -1456,11 +1584,20 @@
             if (!point) {
                 return false;
             }
-            const eraseRadius = 0.035;
+            const lineMetrics = getRoundLineMetrics(roundId);
+            const targetPoint = getInkPointCanvasCoordinates(roundId, point, lineMetrics);
+            if (!lineMetrics || !targetPoint) {
+                return false;
+            }
+            const eraseRadius = lineMetrics.lineHeight * 0.6;
             const currentStrokes = getRoundInkStrokes(roundId);
             const nextStrokes = currentStrokes.filter((stroke) => !stroke.some((strokePoint) => {
-                const deltaX = strokePoint.x - point.x;
-                const deltaY = strokePoint.y - point.y;
+                const renderedPoint = getInkPointCanvasCoordinates(roundId, strokePoint, lineMetrics);
+                if (!renderedPoint) {
+                    return false;
+                }
+                const deltaX = renderedPoint.x - targetPoint.x;
+                const deltaY = renderedPoint.y - targetPoint.y;
                 return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY)) <= eraseRadius;
             }));
             if (nextStrokes.length === currentStrokes.length) {
@@ -1474,9 +1611,17 @@
             if (!leftPoint || !rightPoint) {
                 return false;
             }
-            const deltaX = leftPoint.x - rightPoint.x;
-            const deltaY = leftPoint.y - rightPoint.y;
-            return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY)) <= radius;
+            const roundId = leftPoint.roundId || rightPoint.roundId;
+            const lineMetrics = getRoundLineMetrics(roundId);
+            const leftRenderedPoint = getInkPointCanvasCoordinates(roundId, leftPoint, lineMetrics);
+            const rightRenderedPoint = getInkPointCanvasCoordinates(roundId, rightPoint, lineMetrics);
+            if (!lineMetrics || !leftRenderedPoint || !rightRenderedPoint) {
+                return false;
+            }
+            const pixelRadius = radius * lineMetrics.lineHeight;
+            const deltaX = leftRenderedPoint.x - rightRenderedPoint.x;
+            const deltaY = leftRenderedPoint.y - rightRenderedPoint.y;
+            return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY)) <= pixelRadius;
         }
 
         function commitInkStroke(roundId, stroke, touchedRowNumbers = []) {
@@ -1502,14 +1647,15 @@
             const roundKey = String(roundId);
             const previousTap = recentFingerTapMap.get(roundKey);
             const now = Date.now();
-            if (previousTap && (now - previousTap.timestamp) <= 320 && pointsNear(previousTap.point, point, 0.08)) {
+            const tapPoint = point ? { ...point, roundId: roundKey } : null;
+            if (previousTap && tapPoint && (now - previousTap.timestamp) <= 320 && pointsNear(previousTap.point, tapPoint, 0.08)) {
                 recentFingerTapMap.delete(roundKey);
                 toggleRoundInkTool(roundId);
                 return true;
             }
             recentFingerTapMap.set(roundKey, {
                 timestamp: now,
-                point,
+                point: tapPoint,
             });
             return false;
         }
