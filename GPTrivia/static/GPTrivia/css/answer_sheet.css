@@ -89,9 +89,9 @@ body.site-shell.answer-sheet-shell {
 }
 
 .answer-sheet-header-date-button {
-    border: 1px solid rgba(186, 146, 255, 0.46);
-    background: rgba(147, 112, 219, 0.18);
-    color: #d9c4ff;
+    border: 1px solid #7b5cc8;
+    background: #9370db;
+    color: #f5eeff;
     font: inherit;
     padding: 5px 10px;
     margin: 0;
@@ -100,22 +100,22 @@ body.site-shell.answer-sheet-shell {
 }
 
 .calendar-trigger-button.answer-sheet-header-date-button {
-    background: rgba(147, 112, 219, 0.18);
-    color: #d9c4ff;
+    background: #9370db;
+    color: #f5eeff;
 }
 
 .answer-sheet-header-date-button:hover,
 .answer-sheet-header-date-button:focus,
 .answer-sheet-header-date-button[aria-expanded="true"] {
-    background: rgba(147, 112, 219, 0.28);
-    border-color: rgba(186, 146, 255, 0.72);
+    background: #7b5cc8;
+    border-color: #6a49bc;
 }
 
 .calendar-trigger-button.answer-sheet-header-date-button:hover,
 .calendar-trigger-button.answer-sheet-header-date-button:focus,
 .calendar-trigger-button.answer-sheet-header-date-button[aria-expanded="true"] {
-    background: rgba(147, 112, 219, 0.28);
-    color: #efe4ff;
+    background: #7b5cc8;
+    color: #f8f2ff;
 }
 
 .disabled-button {
@@ -907,28 +907,28 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-header-date {
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-date-button {
-    border-color: rgba(123, 92, 200, 0.35);
-    background: rgba(147, 112, 219, 0.16);
-    color: #6741b9;
+    border-color: #7b5cc8;
+    background: #9370db;
+    color: #f8f2ff;
 }
 
 body.site-shell[data-profile-theme="light"] .calendar-trigger-button.answer-sheet-header-date-button {
-    background: rgba(147, 112, 219, 0.16);
-    color: #6741b9;
+    background: #9370db;
+    color: #f8f2ff;
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-date-button:hover,
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-date-button:focus,
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-date-button[aria-expanded="true"] {
-    background: rgba(147, 112, 219, 0.24);
-    border-color: rgba(123, 92, 200, 0.5);
+    background: #7b5cc8;
+    border-color: #6a49bc;
 }
 
 body.site-shell[data-profile-theme="light"] .calendar-trigger-button.answer-sheet-header-date-button:hover,
 body.site-shell[data-profile-theme="light"] .calendar-trigger-button.answer-sheet-header-date-button:focus,
 body.site-shell[data-profile-theme="light"] .calendar-trigger-button.answer-sheet-header-date-button[aria-expanded="true"] {
-    background: rgba(147, 112, 219, 0.24);
-    color: #51319a;
+    background: #7b5cc8;
+    color: #ffffff;
 }
 
 body.site-shell[data-profile-theme="light"] .answer-sheet-textarea-shell {
