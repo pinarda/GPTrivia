@@ -873,6 +873,12 @@ body.site-shell .answer-sheet-page input.answer-sheet-score-input[type="text"] {
     background: #f5f6fb;
 }
 
+body.site-shell.answer-sheet-shell header,
+body.site-shell.answer-sheet-shell .header-container {
+    background: #2d3047 !important;
+    background-image: none !important;
+}
+
 body.site-shell.answer-sheet-shell footer,
 body.site-shell.answer-sheet-shell .footer-container,
 body.site-shell.answer-sheet-shell .footer-content,
