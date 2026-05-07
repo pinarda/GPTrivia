@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260505k">
+    <link rel="stylesheet" href="{% static 'GPTrivia/css/answer_sheet.css' %}?v=20260506a">
 {% endblock %}
 
 {% block content %}
@@ -59,7 +59,14 @@
                         <div class="answer-sheet-round-title-line">
                             <h2>{{ page.round_title }}</h2>
                             {% if page.round_creator %}
-                                <div class="answer-sheet-round-creator">Creator: {{ page.round_creator }}</div>
+                                <div class="answer-sheet-round-creator">
+                                    <span class="answer-sheet-round-creator-label">Creator:</span>
+                                    <a
+                                        class="answer-sheet-round-creator-link"
+                                        href="{{ page.round_creator_profile_url }}"
+                                        style="--answer-sheet-creator-hover-color: {{ page.round_creator_color }};"
+                                    >{{ page.round_creator_display|default:page.round_creator }}</a>
+                                </div>
                             {% endif %}
                         </div>
                     </div>

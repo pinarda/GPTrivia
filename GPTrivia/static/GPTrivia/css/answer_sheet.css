@@ -1,4 +1,5 @@
 body.site-shell.answer-sheet-shell {
+    --shell-chrome-color: #2d3047;
     --answer-sheet-calendar-bg: #3b414a;
     --answer-sheet-calendar-border: rgba(255, 255, 255, 0.16);
     --answer-sheet-calendar-text-muted: rgba(245, 246, 251, 0.72);
@@ -360,6 +361,21 @@ body.site-shell.answer-sheet-shell {
 .answer-sheet-round-creator {
     font-size: 0.9rem;
     color: rgba(245, 246, 251, 0.68);
+}
+
+.answer-sheet-round-creator-label {
+    margin-right: 0.28rem;
+}
+
+.answer-sheet-round-creator-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s ease;
+}
+
+.answer-sheet-round-creator-link:hover,
+.answer-sheet-round-creator-link:focus-visible {
+    color: var(--answer-sheet-creator-hover-color, inherit);
 }
 
 .answer-sheet-round-meta {

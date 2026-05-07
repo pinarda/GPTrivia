@@ -2703,6 +2703,12 @@ def _build_answer_sheet_context(user, requested_date=''):
         creator_allows_analysis = bool(creator_opt_in_map.get(round_obj.creator, False))
         latest_completed_run = latest_completed_run_by_round_id.get(round_obj.id)
         user_is_round_creator = _answer_sheet_user_is_round_creator(user, round_obj)
+        round_creator_display = display_name_for_player_field(round_obj.creator)
+        round_creator_profile_url = (
+            reverse('player_profile', kwargs={'player_name': round_creator_display})
+            if round_creator_display
+            else ''
+        )
         grade_enabled = bool(
             creator_allows_analysis
             and latest_completed_run is not None
@@ -2718,6 +2724,9 @@ def _build_answer_sheet_context(user, requested_date=''):
             'round_number': round_obj.round_number,
             'round_title': round_obj.title,
             'round_creator': round_obj.creator,
+            'round_creator_display': round_creator_display,
+            'round_creator_profile_url': round_creator_profile_url,
+            'round_creator_color': get_player_color(round_creator_display),
             'cooperative': bool(round_obj.cooperative),
             'is_diverged': bool(round_state['is_diverged']),
             'submit_requires_confirmation': bool(
