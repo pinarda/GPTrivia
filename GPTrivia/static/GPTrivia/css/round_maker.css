@@ -519,12 +519,17 @@ body.site-shell[data-profile-theme="light"] .spinner {
 
     .swoop-header-snake + span {
         position: relative;
-        top: -6px;
+        top: -8px;
     }
 
     body.site-shell .mobile-footer-item.menu-item svg {
         position: relative;
         top: -3px;
+    }
+
+    body.site-shell .mobile-footer-item.menu-item .mobile-footer-label {
+        position: relative;
+        top: -2px;
     }
 }
 

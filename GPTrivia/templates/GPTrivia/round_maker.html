@@ -8,11 +8,15 @@
 {% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/round_maker.css' %}?v=20260506a">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/round_maker.css' %}?v=20260506b">
   <style>
     @media (max-width: 750px) {
-      .logo span {
-        font-size: 0.835em;
+      body.site-shell .logo > div > span:first-of-type {
+        font-size: 0.85em;
+      }
+
+      body.site-shell .logo > div > span:first-of-type > span {
+        font-size: 1em;
       }
     }
   </style>
