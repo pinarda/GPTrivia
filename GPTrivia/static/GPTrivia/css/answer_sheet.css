@@ -54,6 +54,8 @@ body.site-shell.answer-sheet-shell {
 }
 
 .answer-sheet-header-card {
+    background: #2d3047;
+    border-color: rgba(255, 255, 255, 0.14);
     padding: 14px 16px;
 }
 
