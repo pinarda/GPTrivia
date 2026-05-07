@@ -941,6 +941,18 @@ body.site-shell[data-profile-theme="light"] .answer-sheet-header-date {
     color: rgba(27, 37, 48, 0.72);
 }
 
+body.site-shell[data-profile-theme="light"] .answer-sheet-header-card {
+    background: #2d3047;
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+}
+
+body.site-shell[data-profile-theme="light"] .answer-sheet-header-card p,
+body.site-shell[data-profile-theme="light"] .answer-sheet-header-card .answer-sheet-header-label,
+body.site-shell[data-profile-theme="light"] .answer-sheet-header-card .answer-sheet-header-date {
+    color: rgba(245, 246, 251, 0.82);
+}
+
 body.site-shell[data-profile-theme="light"] .answer-sheet-header-date-button {
     border-color: var(--answer-sheet-date-accent-strong);
     background: var(--answer-sheet-date-accent);
@@ -1121,16 +1133,16 @@ body.site-shell[data-profile-theme="light"].answer-sheet-shell footer,
 body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-container,
 body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-content,
 body.site-shell[data-profile-theme="light"].answer-sheet-shell .footer-bottom {
-    background: #f3eee7 !important;
-    color: #1b2530 !important;
+    background: #2d3047 !important;
+    color: #ffffff !important;
 }
 
 body.site-shell[data-profile-theme="light"].answer-sheet-shell .mobile-footer-item {
-    color: #000;
+    color: #fff;
 }
 
 body.site-shell[data-profile-theme="light"].answer-sheet-shell .mobile-footer-item .mobile-footer-swoop-icon {
-    filter: brightness(0) saturate(100%);
+    filter: brightness(0) invert(1);
 }
 
 @media (min-width: 701px) and (max-width: 1180px) and (pointer: coarse) {
