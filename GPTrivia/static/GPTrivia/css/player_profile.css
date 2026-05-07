@@ -697,6 +697,16 @@ a {
     font-size: 0.98rem;
 }
 
+.profile-heading-player-name {
+    color: inherit;
+    transition: color 0.18s ease;
+}
+
+.profile-heading-player-name:hover,
+.profile-heading-player-name:focus-visible {
+    color: var(--profile-player-color, inherit);
+}
+
 .profile-inline-form,
 .profile-settings-form,
 #roundbuttons form {

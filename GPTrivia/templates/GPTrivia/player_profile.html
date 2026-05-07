@@ -14,7 +14,7 @@
       --profile-player-color: {{ player_color }};
     }
   </style>
-  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260416a">
+  <link rel="stylesheet" href="{% static 'GPTrivia/css/player_profile.css' %}?v=20260506a">
 {% endblock %}
 
 {% block extra_meta %}
@@ -31,7 +31,7 @@
 
                 <section class="profile-intro-card">
                     <div class="profile-control-heading">
-                        <h2>About {{ player_name }}</h2>
+                        <h2>About <span class="profile-heading-player-name">{{ player_name }}</span></h2>
                     </div>
                     <div class="profile-intro-layout">
                         <div class="profile-intro-copy">
