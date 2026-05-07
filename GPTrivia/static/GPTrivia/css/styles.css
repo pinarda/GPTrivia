@@ -350,7 +350,7 @@ body {
 }
 
 .logo img {
-    width: 96px;
+    width: 87px;
     vertical-align: sub;
     color: white;
     /*padding: 15px;*/
@@ -497,7 +497,7 @@ a .logo {
     }
 
     .logo img {
-        width: 11vw;
+        width: 10vw;
         margin-right: 0vw;
         position: relative;
         top: -3px;
