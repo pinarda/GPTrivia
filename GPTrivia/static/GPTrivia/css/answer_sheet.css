@@ -351,7 +351,8 @@ body.site-shell.answer-sheet-shell {
     display: flex;
     align-items: baseline;
     flex-wrap: wrap;
-    gap: 0.45rem 0.9rem;
+    column-gap: 0.9rem;
+    row-gap: 0.1rem;
 }
 
 .answer-sheet-round-header h2 {
