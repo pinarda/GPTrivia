@@ -19,7 +19,6 @@
     let lockTimeout = null; // Reference to the timeout
     let hardLock = true; // Prevent unlocking until explicitly unlocked
     let unlock_time = 0;
-    let max_time = 100000000000000;
 
     const clientId = Math.random().toString(36).substr(2, 9);
     {#// WebSocket setup#}
@@ -29,6 +28,55 @@
 
     let socket;
     let reconnectInterval;
+
+    function formatReactionMs(value) {
+        const normalizedValue = Number(value);
+        if (!Number.isFinite(normalizedValue)) {
+            return '—';
+        }
+        return `${normalizedValue.toFixed(2)} ms`;
+    }
+
+    function clearButtonResults() {
+        const winnerElement = document.getElementById('last-press');
+        const placementsElement = document.getElementById('button-placements');
+        if (winnerElement) {
+            winnerElement.textContent = 'No one yet';
+        }
+        if (placementsElement) {
+            placementsElement.innerHTML = '';
+            placementsElement.classList.add('hidden');
+        }
+    }
+
+    function renderButtonResults(payload) {
+        const winnerElement = document.getElementById('last-press');
+        const placementsElement = document.getElementById('button-placements');
+        if (!winnerElement || !placementsElement) {
+            return;
+        }
+
+        const standings = Array.isArray(payload?.standings) ? payload.standings : [];
+        const winner = payload?.winner || standings[0] || null;
+        if (!winner || !standings.length) {
+            clearButtonResults();
+            return;
+        }
+
+        winnerElement.textContent = `${winner.username} (${formatReactionMs(winner.reaction_ms)})`;
+
+        const trailingStandings = standings.slice(1);
+        if (!trailingStandings.length) {
+            placementsElement.innerHTML = '';
+            placementsElement.classList.add('hidden');
+            return;
+        }
+
+        placementsElement.innerHTML = trailingStandings.map((entry) => (
+            `<li><span class="button-placement-rank">${entry.place}.</span> <span class="button-placement-name">${entry.username}</span> <span class="button-placement-gap">(+${formatReactionMs(entry.miss_ms)})</span></li>`
+        )).join('');
+        placementsElement.classList.remove('hidden');
+    }
 
     // Function to establish the WebSocket connection
     function connectWebSocket() {
@@ -46,7 +94,8 @@
 
 
             if (data.type === 'unlock') {
-                unlock_time = Date.now()
+                unlock_time = Date.now();
+                clearButtonResults();
                 if (data.sender_id === clientId) {
                     console.log("Ignoring message from self.");
                     return;
@@ -66,7 +115,7 @@
                 mainButton.classList.remove('locked');
                 mainButton.textContent = "Push Me!!";
             } else if (data.type === 'lock') {
-                max_time = 100000000000000;
+                clearButtonResults();
                 if (data.sender_id === clientId) {
                     console.log("Ignoring message from self.");
                     return;
@@ -94,16 +143,14 @@
                 }
 
             } else if (data.type === 'update') {
-                const lastPressElement = document.getElementById('last-press');
-                if (data.timestamp < max_time) {
-                    lastPressElement.textContent = data.username;
-                }
-                max_time = data.timestamp;
-                console.log(`Received WebSocket message: ${data.username}`);
+                renderButtonResults(data);
+                console.log('Received WebSocket message:', data);
 
                 // Lock the button when a WebSocket message is received
                 console.log("Locking button due to WebSocket message.");
                 lockMainButton();
+            } else if (data.type === 'button_state') {
+                renderButtonResults(data);
             } else if (data.type === 'host_options_toggle') {
                 if (data.sender_id === clientId) {
                     console.log("Ignoring message from self.");
@@ -120,8 +167,8 @@
                 const mainButton = document.getElementById('action-button');
                 mainButton.removeAttribute('disabled'); // Ensure the button is enabled
             } else if (data.type === 'reset_max_time') {
-                console.log("Received reset signal from WebSocket. Resetting max_time.");
-                max_time = 100000000000000;
+                console.log("Received reset signal from WebSocket.");
+                renderButtonResults(data);
             }
         };
 
@@ -147,11 +194,6 @@
             connectWebSocket();
         }, 3000); // Attempt to reconnect every 3 seconds
     }
-
-    // Initialize the WebSocket connection on page load
-    document.addEventListener('DOMContentLoaded', () => {
-        connectWebSocket();
-    });
 
     function blurInitialTextFocus() {
         const usernameInput = document.getElementById('buzzer-name');
@@ -247,6 +289,8 @@
         // Local unlock for the user who clicked the unlock button
         hardLock = false;
         isLocked = false;
+        unlock_time = Date.now();
+        clearButtonResults();
 
         if (lockTimeout) {
             clearTimeout(lockTimeout); // Clear any existing timeout
@@ -272,6 +316,7 @@
         // Local lock for the user who clicked the lock button
         hardLock = true;
         isLocked = true;
+        clearButtonResults();
 
         mainButton.classList.add('locked');
         mainButton.textContent = "WAIT";
@@ -392,6 +437,7 @@
         </div>
         <h3>Last person to press the button:</h3>
         <p id="last-press">No one yet</p>
+        <ol id="button-placements" class="button-placements-list hidden" aria-label="Other button placements"></ol>
     </div>
 
     <audio id="locked-sound" src="{% static 'audio/buzzer.mp3' %}" preload="auto"></audio>

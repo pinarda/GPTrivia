@@ -1,8 +1,94 @@
 # consumers.py
 from channels.generic.websocket import AsyncWebsocketConsumer
-import json
-import time
+from collections import deque
 import asyncio
+import json
+import math
+import uuid
+
+
+def _normalize_button_reaction_ms(value):
+    try:
+        normalized_value = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(normalized_value) or normalized_value < 0:
+        return None
+    return round(normalized_value, 2)
+
+
+def _upsert_button_press(presses, *, username, sender_id, reaction_ms):
+    normalized_time = _normalize_button_reaction_ms(reaction_ms)
+    normalized_name = str(username or '').strip()
+    normalized_sender_id = str(sender_id or '').strip()
+    if normalized_time is None or not normalized_name or not normalized_sender_id:
+        return list(presses or [])
+
+    next_presses = [dict(press) for press in (presses or [])]
+    existing_index = next(
+        (index for index, press in enumerate(next_presses) if press.get('sender_id') == normalized_sender_id),
+        None,
+    )
+
+    if existing_index is None:
+        next_presses.append({
+            'username': normalized_name,
+            'sender_id': normalized_sender_id,
+            'reaction_ms': normalized_time,
+            'order': len(next_presses),
+        })
+    else:
+        existing_press = next_presses[existing_index]
+        if normalized_time >= float(existing_press.get('reaction_ms', normalized_time)):
+            return sorted(
+                next_presses,
+                key=lambda press: (float(press.get('reaction_ms', 0.0)), int(press.get('order', 0))),
+            )
+        existing_press['username'] = normalized_name
+        existing_press['reaction_ms'] = normalized_time
+
+    return sorted(
+        next_presses,
+        key=lambda press: (float(press.get('reaction_ms', 0.0)), int(press.get('order', 0))),
+    )
+
+
+def _serialize_button_results(presses):
+    ordered_presses = [
+        {
+            'username': str(press.get('username', '')).strip(),
+            'sender_id': str(press.get('sender_id', '')).strip(),
+            'reaction_ms': _normalize_button_reaction_ms(press.get('reaction_ms')),
+            'order': int(press.get('order', 0)),
+        }
+        for press in (presses or [])
+    ]
+    ordered_presses = [
+        press for press in ordered_presses
+        if press['username'] and press['sender_id'] and press['reaction_ms'] is not None
+    ]
+    ordered_presses.sort(key=lambda press: (press['reaction_ms'], press['order']))
+
+    if not ordered_presses:
+        return {
+            'winner': None,
+            'standings': [],
+        }
+
+    winning_time = ordered_presses[0]['reaction_ms']
+    standings = []
+    for index, press in enumerate(ordered_presses):
+        standings.append({
+            'place': index + 1,
+            'username': press['username'],
+            'reaction_ms': press['reaction_ms'],
+            'miss_ms': round(press['reaction_ms'] - winning_time, 2),
+        })
+
+    return {
+        'winner': standings[0],
+        'standings': standings,
+    }
 
 class ScoresheetConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -78,9 +164,28 @@ class HomePageConsumer(AsyncWebsocketConsumer):
 
 
 class ButtonPressConsumer(AsyncWebsocketConsumer):
-    # periodic_task = None  # Reference to the periodic task
-    reset_task = None  # Reference to the reset task
-    last_update_time = 0  # Class-level variable to track the last update time
+    reset_task = None
+    button_presses = []
+    processed_event_ids = deque(maxlen=256)
+
+    @classmethod
+    def _mark_event_processed(cls, event_id):
+        normalized_event_id = str(event_id or '').strip()
+        if not normalized_event_id:
+            return False
+        if normalized_event_id in cls.processed_event_ids:
+            return False
+        cls.processed_event_ids.append(normalized_event_id)
+        return True
+
+    @classmethod
+    def _clear_button_results(cls):
+        cls.button_presses = []
+
+    @classmethod
+    def _button_results_payload(cls):
+        return _serialize_button_results(cls.button_presses)
+
     async def connect(self):
         self.room_group_name = 'button_group'
 
@@ -90,10 +195,10 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
         await self.accept()
-
-        # Start periodic task for resetting max_time
-        # if not type(self).periodic_task:
-        #     type(self).periodic_task = asyncio.create_task(self.periodic_reset())
+        await self.send(text_data=json.dumps({
+            'type': 'button_state',
+            **type(self)._button_results_payload(),
+        }))
 
 
     async def disconnect(self, close_code):
@@ -103,52 +208,47 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
 
-        # Dynamically reference the class to manage periodic_task
-        if not self.channel_layer.groups[self.room_group_name]:  # Check if group is empty
-            if type(self).periodic_task:
-                type(self).periodic_task.cancel()
-                type(self).periodic_task = None
-
     async def receive(self, text_data):
         data = json.loads(text_data)
 
         if data['type'] == 'unlock':
             await self.channel_layer.group_send(
                 self.room_group_name,
-                {'type': 'unlock_message', 'sender_id': data.get('sender_id')}
+                {
+                    'type': 'unlock_message',
+                    'sender_id': data.get('sender_id'),
+                    'event_id': data.get('event_id') or uuid.uuid4().hex,
+                }
             )
         elif data['type'] == 'lock':
             await self.channel_layer.group_send(
                 self.room_group_name,
-                {'type': 'lock_message', 'sender_id': data.get('sender_id')}
+                {
+                    'type': 'lock_message',
+                    'sender_id': data.get('sender_id'),
+                    'event_id': data.get('event_id') or uuid.uuid4().hex,
+                }
             )
         elif data['type'] == 'update':
             username = data['username']
             client_timestamp = data.get('timestamp_diff')
 
-            # if client_timestamp:
-            #     server_time = time.time() * 1000  # Current server time in milliseconds
-                # rtt = server_time - client_timestamp
-
-                # Log and store the RTT
-                # self.connected_clients[self.client_id]["rtt"] = rtt
-                # print(f"RTT for client {self.client_id}: {rtt} ms")
-            type(self).last_update_time = time.time()
-            print(f"Update message received. Last update time set to {type(self).last_update_time}")
-
-
-            self.last_update_time = time.time()
-
             # Cancel any existing reset task
-            if self.reset_task and not self.reset_task.done():
-                self.reset_task.cancel()
+            if type(self).reset_task and not type(self).reset_task.done():
+                type(self).reset_task.cancel()
 
             # Create a new reset task
-            self.reset_task = asyncio.create_task(self.schedule_reset())
+            type(self).reset_task = asyncio.create_task(self.schedule_reset())
 
             await self.channel_layer.group_send(
                 self.room_group_name,
-                {'type': 'update_message', 'username': username, 'sender_id': data.get('sender_id'), 'timestamp_diff': client_timestamp}
+                {
+                    'type': 'update_message',
+                    'username': username,
+                    'sender_id': data.get('sender_id'),
+                    'timestamp_diff': client_timestamp,
+                    'event_id': data.get('event_id') or uuid.uuid4().hex,
+                }
             )
 
         elif data['type'] == 'host_options_toggle':
@@ -162,7 +262,6 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
         try:
             await asyncio.sleep(2)
             # After exactly 2 seconds with no new message:
-            print("Sending exact 2-second reset message.")
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -173,6 +272,9 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
             # This happens if a new message arrives before 2 seconds are up
             # Just pass and let the new timer take over
             pass
+        finally:
+            if type(self).reset_task is asyncio.current_task():
+                type(self).reset_task = None
 
     # async def periodic_reset(self):
     #     while True:
@@ -198,19 +300,43 @@ class ButtonPressConsumer(AsyncWebsocketConsumer):
     async def reset_message(self, event):
         # Send reset message to the WebSocket
         await self.send(text_data=json.dumps({
-            'type': 'reset_max_time'
+            'type': 'reset_max_time',
+            **type(self)._button_results_payload(),
         }))
 
     async def lock_message(self, event):
-        await self.send(text_data=json.dumps({'type': 'lock', 'sender_id': event.get('sender_id')}))
+        if type(self)._mark_event_processed(event.get('event_id')):
+            type(self)._clear_button_results()
+        await self.send(text_data=json.dumps({
+            'type': 'lock',
+            'sender_id': event.get('sender_id'),
+            **type(self)._button_results_payload(),
+        }))
 
     async def unlock_message(self, event):
-        await self.send(text_data=json.dumps({'type': 'unlock', 'sender_id': event.get('sender_id')}))
+        if type(self)._mark_event_processed(event.get('event_id')):
+            type(self)._clear_button_results()
+        await self.send(text_data=json.dumps({
+            'type': 'unlock',
+            'sender_id': event.get('sender_id'),
+            **type(self)._button_results_payload(),
+        }))
 
     async def update_message(self, event):
-        username = event['username']
+        if type(self)._mark_event_processed(event.get('event_id')):
+            type(self).button_presses = _upsert_button_press(
+                type(self).button_presses,
+                username=event.get('username'),
+                sender_id=event.get('sender_id'),
+                reaction_ms=event.get('timestamp_diff'),
+            )
+        payload = type(self)._button_results_payload()
         await self.send(
-            text_data=json.dumps({'type': 'update', 'username': username, 'sender_id': event.get('sender_id'), 'timestamp': event.get('timestamp_diff')}))
+            text_data=json.dumps({
+                'type': 'update',
+                'sender_id': event.get('sender_id'),
+                **payload,
+            }))
 
     async def host_options_toggle_message(self, event):
         await self.send(text_data=json.dumps({'type': 'host_options_toggle', 'sender_id': event.get('sender_id')}))

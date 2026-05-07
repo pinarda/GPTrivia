@@ -8,6 +8,28 @@
     border: 1px solid transparent; /* Optional: For alignment debugging */
 }
 
+.button-placements-list {
+    margin: 0.4rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    text-align: center;
+}
+
+.button-placements-list li {
+    font-size: 0.98rem;
+}
+
+.button-placement-rank {
+    font-weight: 700;
+}
+
+.button-placement-gap {
+    opacity: 0.82;
+}
+
 
 #action-button, #unlock-button, #lock-button, #show-host-options-button {
     font-size: 1rem;
