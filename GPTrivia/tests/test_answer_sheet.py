@@ -758,7 +758,7 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(response.status_code, 200)
         round_payload = response.json()["rounds"][0]
         self.assertEqual(round_payload["input_mode"], "pencil")
-        self.assertEqual(round_payload["answers"][0], "Handwritten Zebra")
+        self.assertEqual(round_payload["answers"][0], "Zebra")
         self.assertEqual(round_payload["graded_input_mode"], "text")
         self.assertIsNone(round_payload["grade_payload"])
         self.assertIsNotNone(round_payload["grade_payloads"]["text"])

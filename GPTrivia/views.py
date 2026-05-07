@@ -2012,12 +2012,9 @@ def _get_answer_sheet_entry_answers_for_mode(answer_entry, input_mode=''):
         return [''] * 10
     entry_state = _serialize_answer_sheet_entry_state(answer_entry)
     normalized_mode = _normalize_answer_sheet_input_mode(input_mode) or entry_state['input_mode']
-    typed_answers = _normalize_answer_sheet_answers(getattr(answer_entry, 'answers', []))
     if normalized_mode == AnswerSheetEntry.INPUT_MODE_PENCIL:
-        pencil_answers = entry_state['pencil_answers']
-        if any(str(answer or '').strip() for answer in pencil_answers):
-            return pencil_answers
-    return typed_answers
+        return entry_state['pencil_answers']
+    return _normalize_answer_sheet_answers(getattr(answer_entry, 'answers', []))
 
 
 def _get_answer_sheet_graded_input_mode(answer_entry):
@@ -2984,7 +2981,7 @@ def save_answer_sheet_entry(request):
         shared_entry = _get_answer_sheet_communal_entry(round_obj, current_user=request.user)
         broadcast_entry = shared_entry or response_entry
         response_input_mode = _normalize_answer_sheet_input_mode(response_entry.input_mode)
-        response_answers = _get_answer_sheet_entry_answers_for_mode(response_entry, response_input_mode)
+        response_answers = _normalize_answer_sheet_answers(getattr(response_entry, 'answers', []))
         shared_grade_payloads, shared_graded_input_mode = _build_saved_answer_sheet_grade_payloads(round_obj, broadcast_entry)
         shared_grade_payload = shared_grade_payloads.get(response_input_mode)
 
@@ -3107,7 +3104,7 @@ def diverge_answer_sheet_round(request):
     return JsonResponse({
         'ok': True,
         'round_id': round_obj.id,
-        'answers': _get_answer_sheet_entry_answers_for_mode(entry, response_input_mode),
+        'answers': _normalize_answer_sheet_answers(entry.answers),
         'input_mode': response_input_mode,
         'ink_strokes': _normalize_answer_sheet_ink_strokes(entry.ink_strokes),
         'grade_overrides': _normalize_answer_sheet_grade_overrides(entry.grade_overrides),
@@ -3167,7 +3164,7 @@ def _serialize_answer_sheet_sync_round(round_obj, user, current_entry=None, curr
     source_entry_state = _serialize_answer_sheet_entry_state(source_entry)
     current_input_mode = source_entry_state['input_mode']
     grade_payloads, graded_input_mode = _build_saved_answer_sheet_grade_payloads(round_obj, source_entry)
-    current_answers = _get_answer_sheet_entry_answers_for_mode(source_entry, current_input_mode)
+    current_answers = _normalize_answer_sheet_answers(source_entry.answers if source_entry else [])
     text_grade_payload = grade_payloads[AnswerSheetEntry.INPUT_MODE_TEXT]
     pencil_grade_payload = grade_payloads[AnswerSheetEntry.INPUT_MODE_PENCIL]
     response_payload = {
@@ -3266,7 +3263,7 @@ def merge_answer_sheet_round(request):
     return JsonResponse({
         'ok': True,
         'round_id': round_obj.id,
-        'answers': _get_answer_sheet_entry_answers_for_mode(merged_entry, response_input_mode),
+        'answers': _normalize_answer_sheet_answers(merged_entry.answers),
         'input_mode': response_input_mode,
         'ink_strokes': _normalize_answer_sheet_ink_strokes(merged_entry.ink_strokes),
         'grade_overrides': _normalize_answer_sheet_grade_overrides(merged_entry.grade_overrides),
