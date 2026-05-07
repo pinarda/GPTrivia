@@ -236,6 +236,7 @@
         const inkToolStateMap = new Map();
         const recentFingerTapMap = new Map();
         const roundEntrySaveRequestMap = new Map();
+        const savedGradePayloadMap = new Map();
         const TEXT_MINIMUM_VISIBLE_ROWS = 10;
         const PENCIL_MINIMUM_VISIBLE_ROWS = 12;
         const localClientId = (
@@ -350,6 +351,41 @@
                 return;
             }
             panel.dataset.pencilGradeView = isVisible ? 'true' : 'false';
+        }
+
+        function normalizeStoredGradePayloads(rawPayloads = {}, fallbackMode = '', fallbackPayload = null) {
+            const normalized = {
+                text: null,
+                pencil: null,
+            };
+            if (rawPayloads && typeof rawPayloads === 'object') {
+                if (rawPayloads.text && typeof rawPayloads.text === 'object') {
+                    normalized.text = rawPayloads.text;
+                }
+                if (rawPayloads.pencil && typeof rawPayloads.pencil === 'object') {
+                    normalized.pencil = rawPayloads.pencil;
+                }
+            }
+            const normalizedFallbackMode = fallbackMode === 'pencil' ? 'pencil' : 'text';
+            if (fallbackPayload && typeof fallbackPayload === 'object' && !normalized[normalizedFallbackMode]) {
+                normalized[normalizedFallbackMode] = fallbackPayload;
+            }
+            return normalized;
+        }
+
+        function getStoredGradePayloads(roundId) {
+            return savedGradePayloadMap.get(String(roundId)) || { text: null, pencil: null };
+        }
+
+        function setStoredGradePayloads(roundId, rawPayloads = {}, fallbackMode = '', fallbackPayload = null) {
+            const normalized = normalizeStoredGradePayloads(rawPayloads, fallbackMode, fallbackPayload);
+            savedGradePayloadMap.set(String(roundId), normalized);
+            return normalized;
+        }
+
+        function getStoredGradePayload(roundId, mode = '') {
+            const normalizedMode = mode === 'pencil' ? 'pencil' : 'text';
+            return getStoredGradePayloads(roundId)[normalizedMode] || null;
         }
 
         function getRoundInkTool(roundId) {
@@ -678,6 +714,12 @@
                 ? roundState.ink_strokes
                 : [];
             const savedScoreValue = getSharedSavedScoreValue(roundState);
+            setStoredGradePayloads(
+                roundId,
+                roundState.grade_payloads || {},
+                roundState.graded_input_mode || roundState.input_mode || 'text',
+                roundState.grade_payload || null
+            );
 
             panel.dataset.diverged = isDiverged ? 'true' : 'false';
             if (divergeButton) {
@@ -689,11 +731,6 @@
                 setRoundInkStrokes(roundId, normalizedInkStrokes);
                 syncLineNumbers(textarea);
                 setRoundInputMode(roundId, roundState.input_mode || 'text');
-                setRoundPencilGradeView(
-                    roundId,
-                    getRoundPencilGradeView(roundId)
-                    || Boolean(roundState.grade_payload || roundState.transcribed_from_ink)
-                );
                 setRoundAnswersDirty(roundId, false);
             }
 
@@ -701,13 +738,10 @@
                 scoreInput.dataset.savedScore = savedScoreValue;
             }
 
-            if (!answersDirty && roundState.grade_payload) {
-                applyGradePayload(roundId, textarea, scoreInput, roundState.grade_payload, {
+            if (!answersDirty) {
+                applyStoredModeGradeState(roundId, textarea, scoreInput, {
                     preserveScoreState: true,
                 });
-            } else if (!answersDirty) {
-                clearGradingState(textarea);
-                syncLineNumbers(textarea);
             }
 
             if (!scoreDirty || forceSharedSaveState) {
@@ -1469,18 +1503,17 @@
             setRoundInkStrokes(roundId, normalizedInkStrokes);
             syncLineNumbers(textarea);
             setRoundInputMode(roundId, payload?.input_mode || 'text');
-            setRoundPencilGradeView(
+            setStoredGradePayloads(
                 roundId,
-                getRoundPencilGradeView(roundId)
-                || Boolean(payload?.grade_payload || payload?.transcribed_from_ink)
+                payload?.grade_payloads || {},
+                payload?.graded_input_mode || payload?.input_mode || 'text',
+                payload?.grade_payload || null
             );
             setRoundAnswersDirty(roundId, false);
-            if (payload?.grade_payload && scoreInput) {
-                applyGradePayload(roundId, textarea, scoreInput, payload.grade_payload, {
+            if (scoreInput) {
+                applyStoredModeGradeState(roundId, textarea, scoreInput, {
                     preserveScoreState: true,
                 });
-            } else {
-                clearGradingState(textarea);
             }
             if (scoreInput) {
                 setRoundScoreDirty(roundId, false);
@@ -1521,6 +1554,19 @@
             refreshRoundStatus(roundId);
         }
 
+        function applyStoredModeGradeState(roundId, textarea, scoreInput, options = {}) {
+            const currentMode = getRoundInputMode(roundId);
+            const storedPayload = getStoredGradePayload(roundId, currentMode);
+            if (storedPayload) {
+                setRoundPencilGradeView(roundId, currentMode === 'pencil');
+                applyGradePayload(roundId, textarea, scoreInput, storedPayload, options);
+                return true;
+            }
+            setRoundPencilGradeView(roundId, false);
+            clearGradingState(textarea);
+            return false;
+        }
+
         function applySharedGradeUpdate(roundId, payload) {
             const panel = getRoundPanel(roundId);
             const divergeButton = pageRoot.querySelector(`[data-diverge-round-for="${roundId}"]`);
@@ -1548,12 +1594,20 @@
             if (payload?.input_mode) {
                 setRoundInputMode(roundId, payload.input_mode);
             }
-            setRoundPencilGradeView(
+            setStoredGradePayloads(
                 roundId,
-                getRoundPencilGradeView(roundId)
-                || Boolean(payload?.transcribed_from_ink)
+                payload?.grade_payloads || {},
+                payload?.graded_input_mode || payload?.input_mode || 'text',
+                payload
             );
-            applyGradePayload(roundId, textarea, scoreInput, payload);
+            if ((payload?.input_mode || getRoundInputMode(roundId)) === getRoundInputMode(roundId)) {
+                setRoundPencilGradeView(roundId, getRoundInputMode(roundId) === 'pencil');
+                applyGradePayload(roundId, textarea, scoreInput, payload);
+                return;
+            }
+            applyStoredModeGradeState(roundId, textarea, scoreInput, {
+                preserveScoreState: true,
+            });
         }
 
         function applySharedScoreUpdate(roundId, rawScore) {
@@ -1930,6 +1984,8 @@
             }
 
             const payload = buildRoundEntrySavePayload(roundId);
+            const textarea = getRoundTextarea(roundId);
+            const scoreInput = getRoundScoreInput(roundId);
             if (!payload) {
                 return;
             }
@@ -1949,7 +2005,7 @@
                 if (!response.ok) {
                     throw new Error(`Save failed with status ${response.status}`);
                 }
-                await response.json().catch(() => ({}));
+                const responsePayload = await response.json().catch(() => ({}));
                 if (roundEntrySaveRequestMap.get(roundId) !== requestId) {
                     return;
                 }
@@ -1958,6 +2014,17 @@
                 }
                 setRoundAnswersDirty(roundId, false);
                 clearEditedInkRows(roundId, payload.edited_row_numbers);
+                if (textarea && scoreInput) {
+                    setStoredGradePayloads(
+                        roundId,
+                        responsePayload.grade_payloads || {},
+                        responsePayload.graded_input_mode || responsePayload.input_mode || payload.input_mode,
+                        responsePayload.grade_payload || null
+                    );
+                    applyStoredModeGradeState(roundId, textarea, scoreInput, {
+                        preserveScoreState: true,
+                    });
+                }
                 refreshRoundStatus(roundId);
             } catch (error) {
                 console.error('Error saving answer sheet entry:', error);
@@ -2030,11 +2097,13 @@
                     textarea.value = payload.answers.map((answer) => String(answer || '')).join('\n');
                     syncLineNumbers(textarea);
                 }
-                setRoundPencilGradeView(
+                setStoredGradePayloads(
                     roundId,
-                    getRoundPencilGradeView(roundId)
-                    || (inputMode === 'pencil' && Boolean(payload.transcribed_from_ink))
+                    payload.grade_payloads || {},
+                    payload.graded_input_mode || inputMode,
+                    payload.grade_payload || payload
                 );
+                setRoundPencilGradeView(roundId, inputMode === 'pencil');
                 applyGradePayload(roundId, textarea, scoreInput, payload);
             } catch (error) {
                 console.error('Error grading answer sheet round:', error);
@@ -2049,6 +2118,7 @@
 
             setStatus(roundId, 'Saving...', 'saving');
             try {
+                const inputMode = getRoundInputMode(roundId);
                 const response = await fetch(overrideGradeUrl, {
                     method: 'POST',
                     headers: {
@@ -2060,6 +2130,7 @@
                         question_number: questionNumber,
                         mode: mode,
                         answers: getTextareaLines(textarea),
+                        input_mode: inputMode,
                         client_id: localClientId,
                     }),
                 });
@@ -2067,6 +2138,13 @@
                 if (!response.ok) {
                     throw new Error(payload.detail || `Override failed with status ${response.status}`);
                 }
+                setStoredGradePayloads(
+                    roundId,
+                    payload.grade_payloads || {},
+                    payload.graded_input_mode || inputMode,
+                    payload.grade_payload || payload
+                );
+                setRoundPencilGradeView(roundId, inputMode === 'pencil');
                 applyGradePayload(roundId, textarea, scoreInput, payload);
             } catch (error) {
                 console.error('Error overriding answer sheet grade:', error);
@@ -2112,6 +2190,18 @@
                 }
                 setRoundInkStrokes(roundId, payload.ink_strokes || getRoundInkStrokes(roundId));
                 setRoundInputMode(roundId, payload.input_mode || getRoundInputMode(roundId));
+                setStoredGradePayloads(
+                    roundId,
+                    payload.grade_payloads || {},
+                    payload.graded_input_mode || payload.input_mode || getRoundInputMode(roundId),
+                    payload.grade_payload || null
+                );
+                const scoreInput = getRoundScoreInput(roundId);
+                if (scoreInput) {
+                    applyStoredModeGradeState(roundId, textarea, scoreInput, {
+                        preserveScoreState: true,
+                    });
+                }
                 setStatus(roundId, 'Diverged', 'saved');
             } catch (error) {
                 console.error('Error diverging answer sheet round:', error);
@@ -2148,9 +2238,17 @@
                 }
                 textarea.value = (payload.answers || []).map((answer) => String(answer || '')).join('\n');
                 setRoundInkStrokes(roundId, payload.ink_strokes || []);
-                clearGradingState(textarea);
                 syncLineNumbers(textarea);
                 setRoundInputMode(roundId, payload.input_mode || 'text');
+                setStoredGradePayloads(
+                    roundId,
+                    payload.grade_payloads || {},
+                    payload.graded_input_mode || payload.input_mode || 'text',
+                    payload.grade_payload || null
+                );
+                applyStoredModeGradeState(roundId, textarea, scoreInput, {
+                    preserveScoreState: true,
+                });
                 setRoundAnswersDirty(roundId, false);
                 if (submitButton) {
                     submitButton.dataset.submitRequiresConfirmation = payload.submit_requires_confirmation ? 'true' : 'false';
@@ -2377,6 +2475,13 @@
                     return;
                 }
                 setRoundInputMode(roundId, toggle.checked ? 'pencil' : 'text');
+                const textarea = getRoundTextarea(roundId);
+                const scoreInput = getRoundScoreInput(roundId);
+                if (textarea && scoreInput) {
+                    applyStoredModeGradeState(roundId, textarea, scoreInput, {
+                        preserveScoreState: true,
+                    });
+                }
                 setRoundAnswersDirty(roundId, true);
                 refreshRoundStatus(roundId);
                 queueRoundEntrySave(roundId);

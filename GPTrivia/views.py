@@ -2007,13 +2007,41 @@ def _serialize_answer_sheet_entry_state(answer_entry):
     }
 
 
-def _get_answer_sheet_grade_answers(answer_entry):
+def _get_answer_sheet_entry_answers_for_mode(answer_entry, input_mode=''):
     if answer_entry is None:
         return [''] * 10
     entry_state = _serialize_answer_sheet_entry_state(answer_entry)
-    if entry_state['input_mode'] == AnswerSheetEntry.INPUT_MODE_PENCIL:
-        return entry_state['pencil_answers']
-    return _normalize_answer_sheet_answers(getattr(answer_entry, 'answers', []))
+    normalized_mode = _normalize_answer_sheet_input_mode(input_mode) or entry_state['input_mode']
+    typed_answers = _normalize_answer_sheet_answers(getattr(answer_entry, 'answers', []))
+    if normalized_mode == AnswerSheetEntry.INPUT_MODE_PENCIL:
+        pencil_answers = entry_state['pencil_answers']
+        if any(str(answer or '').strip() for answer in pencil_answers):
+            return pencil_answers
+    return typed_answers
+
+
+def _get_answer_sheet_graded_input_mode(answer_entry):
+    if answer_entry is None:
+        return ''
+    normalized_mode = _normalize_answer_sheet_input_mode(getattr(answer_entry, 'graded_input_mode', ''))
+    if normalized_mode:
+        return normalized_mode
+    if not _has_answer_sheet_saved_grade_state(answer_entry):
+        return ''
+    entry_state = _serialize_answer_sheet_entry_state(answer_entry)
+    typed_answers = _normalize_answer_sheet_answers(getattr(answer_entry, 'answers', []))
+    pencil_answers = entry_state['pencil_answers']
+    typed_has_content = any(str(answer or '').strip() for answer in typed_answers)
+    pencil_has_content = any(str(answer or '').strip() for answer in pencil_answers)
+    if entry_state['input_mode'] == AnswerSheetEntry.INPUT_MODE_TEXT and not typed_has_content and pencil_has_content:
+        return AnswerSheetEntry.INPUT_MODE_PENCIL
+    if entry_state['input_mode'] == AnswerSheetEntry.INPUT_MODE_PENCIL and not pencil_has_content and typed_has_content:
+        return AnswerSheetEntry.INPUT_MODE_TEXT
+    return entry_state['input_mode']
+
+
+def _get_answer_sheet_grade_answers(answer_entry, input_mode=''):
+    return _get_answer_sheet_entry_answers_for_mode(answer_entry, input_mode=input_mode)
 
 
 def _get_changed_answer_sheet_questions(previous_answers, next_answers):
@@ -2307,19 +2335,37 @@ def _has_answer_sheet_saved_grade_state(answer_entry):
     )
 
 
-def _build_saved_answer_sheet_grade_payload(round_obj, answer_entry):
+def _build_saved_answer_sheet_grade_payload(round_obj, answer_entry, input_mode=''):
     if answer_entry is None or not _has_answer_sheet_saved_grade_state(answer_entry):
+        return None
+    normalized_mode = _normalize_answer_sheet_input_mode(input_mode) or _get_answer_sheet_graded_input_mode(answer_entry)
+    if not normalized_mode:
         return None
     try:
         return _grade_answer_sheet_answers(
             round_obj,
-            _get_answer_sheet_grade_answers(answer_entry),
+            _get_answer_sheet_grade_answers(answer_entry, input_mode=normalized_mode),
             manual_correct_questions=answer_entry.grade_overrides,
             manual_incorrect_questions=answer_entry.grade_rejections,
             invalidated_questions=getattr(answer_entry, 'grade_invalidated_questions', []),
         )
     except ValueError:
         return None
+
+
+def _build_saved_answer_sheet_grade_payloads(round_obj, answer_entry):
+    graded_input_mode = _get_answer_sheet_graded_input_mode(answer_entry)
+    payloads = {
+        AnswerSheetEntry.INPUT_MODE_TEXT: None,
+        AnswerSheetEntry.INPUT_MODE_PENCIL: None,
+    }
+    if graded_input_mode:
+        payloads[graded_input_mode] = _build_saved_answer_sheet_grade_payload(
+            round_obj,
+            answer_entry,
+            input_mode=graded_input_mode,
+        )
+    return payloads, graded_input_mode
 
 
 def _promote_answer_sheet_overrides_to_possible_answers(round_obj, answer_entry):
@@ -2872,7 +2918,7 @@ def save_answer_sheet_entry(request):
                 getattr(previous_entry, 'pencil_answers', []) if previous_entry else []
             )
             previous_was_graded = bool(previous_entry.was_graded) if previous_entry else False
-            previous_entry_state = _serialize_answer_sheet_entry_state(previous_entry)
+            previous_graded_input_mode = _get_answer_sheet_graded_input_mode(previous_entry)
             next_answers = previous_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else answers
             next_pencil_answers = previous_pencil_answers
             if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL and edited_row_numbers:
@@ -2928,6 +2974,7 @@ def save_answer_sheet_entry(request):
                     'grade_rejections': next_grade_rejections,
                     'grade_invalidated_questions': next_grade_invalidated_questions,
                     'was_graded': previous_was_graded,
+                    'graded_input_mode': previous_graded_input_mode if previous_was_graded else '',
                     'is_diverged': bool(current_entry.is_diverged) if (current_entry and target_user.id == request.user.id) else False,
                 },
             )
@@ -2935,7 +2982,11 @@ def save_answer_sheet_entry(request):
 
         response_entry = updated_entries.get(request.user.id) or next(iter(updated_entries.values()))
         shared_entry = _get_answer_sheet_communal_entry(round_obj, current_user=request.user)
-        shared_grade_payload = _build_saved_answer_sheet_grade_payload(round_obj, shared_entry or response_entry)
+        broadcast_entry = shared_entry or response_entry
+        response_input_mode = _normalize_answer_sheet_input_mode(response_entry.input_mode)
+        response_answers = _get_answer_sheet_entry_answers_for_mode(response_entry, response_input_mode)
+        shared_grade_payloads, shared_graded_input_mode = _build_saved_answer_sheet_grade_payloads(round_obj, broadcast_entry)
+        shared_grade_payload = shared_grade_payloads.get(response_input_mode)
 
         _schedule_scoresheet_broadcast({
             'action': 'answer_sheet',
@@ -2944,33 +2995,49 @@ def save_answer_sheet_entry(request):
             'round_id': round_obj.id,
             'client_id': client_id,
             'target_user_ids': [target_user.id for target_user in target_users],
-            'answers': response_entry.answers,
-            'input_mode': input_mode,
+            'answers': response_answers,
+            'input_mode': response_input_mode,
             'ink_strokes': ink_strokes,
             'updated_at': response_entry.updated_at.isoformat() if response_entry.updated_at else '',
             'grade_payload': shared_grade_payload,
+            'grade_payloads': {
+                'text': shared_grade_payloads[AnswerSheetEntry.INPUT_MODE_TEXT],
+                'pencil': shared_grade_payloads[AnswerSheetEntry.INPUT_MODE_PENCIL],
+            },
+            'graded_input_mode': shared_graded_input_mode,
             'shared': bool(round_obj.cooperative and not current_user_is_diverged),
             'is_diverged': bool(response_entry.is_diverged),
             'row_count': row_count,
-            'transcribed_from_ink': bool(input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL and shared_grade_payload),
+            'transcribed_from_ink': bool(
+                shared_graded_input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL
+                and shared_grade_payloads[AnswerSheetEntry.INPUT_MODE_PENCIL]
+            ),
         })
 
     return JsonResponse({
         'ok': True,
         'round_id': round_obj.id,
         'trivia_date': round_obj.date.isoformat() if round_obj.date else '',
-        'answers': response_entry.answers,
-        'input_mode': _normalize_answer_sheet_input_mode(response_entry.input_mode),
+        'answers': response_answers,
+        'input_mode': response_input_mode,
         'ink_strokes': _normalize_answer_sheet_ink_strokes(response_entry.ink_strokes),
         'grade_overrides': _normalize_answer_sheet_grade_overrides(response_entry.grade_overrides),
         'grade_rejections': _normalize_answer_sheet_grade_overrides(response_entry.grade_rejections),
         'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(response_entry.grade_invalidated_questions),
         'grade_payload': shared_grade_payload,
+        'grade_payloads': {
+            'text': shared_grade_payloads[AnswerSheetEntry.INPUT_MODE_TEXT],
+            'pencil': shared_grade_payloads[AnswerSheetEntry.INPUT_MODE_PENCIL],
+        },
+        'graded_input_mode': shared_graded_input_mode,
         'was_graded': bool(response_entry.was_graded),
         'updated_at': response_entry.updated_at.isoformat() if response_entry.updated_at else '',
         'shared': bool(round_obj.cooperative and not current_user_is_diverged),
         'is_diverged': bool(response_entry.is_diverged),
-        'transcribed_from_ink': bool(input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL and shared_grade_payload),
+        'transcribed_from_ink': bool(
+            shared_graded_input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL
+            and shared_grade_payloads[AnswerSheetEntry.INPUT_MODE_PENCIL]
+        ),
     })
 
 
@@ -3030,20 +3097,28 @@ def diverge_answer_sheet_round(request):
                 source_entry.grade_invalidated_questions if source_entry else []
             ),
             'was_graded': bool(source_entry.was_graded) if source_entry else False,
+            'graded_input_mode': _get_answer_sheet_graded_input_mode(source_entry),
             'is_diverged': True,
         },
     )
+    grade_payloads, graded_input_mode = _build_saved_answer_sheet_grade_payloads(round_obj, entry)
+    response_input_mode = _normalize_answer_sheet_input_mode(entry.input_mode)
 
     return JsonResponse({
         'ok': True,
         'round_id': round_obj.id,
-        'answers': entry.answers,
-        'input_mode': _normalize_answer_sheet_input_mode(entry.input_mode),
+        'answers': _get_answer_sheet_entry_answers_for_mode(entry, response_input_mode),
+        'input_mode': response_input_mode,
         'ink_strokes': _normalize_answer_sheet_ink_strokes(entry.ink_strokes),
         'grade_overrides': _normalize_answer_sheet_grade_overrides(entry.grade_overrides),
         'grade_rejections': _normalize_answer_sheet_grade_overrides(entry.grade_rejections),
         'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(entry.grade_invalidated_questions),
-        'grade_payload': _build_saved_answer_sheet_grade_payload(round_obj, entry),
+        'grade_payload': grade_payloads.get(response_input_mode),
+        'grade_payloads': {
+            'text': grade_payloads[AnswerSheetEntry.INPUT_MODE_TEXT],
+            'pencil': grade_payloads[AnswerSheetEntry.INPUT_MODE_PENCIL],
+        },
+        'graded_input_mode': graded_input_mode,
         'was_graded': bool(entry.was_graded),
         'is_diverged': True,
         'shared': False,
@@ -3090,19 +3165,32 @@ def _serialize_answer_sheet_sync_round(round_obj, user, current_entry=None, curr
     )
     source_entry = current_entry if use_current_entry else (communal_entry or current_entry)
     source_entry_state = _serialize_answer_sheet_entry_state(source_entry)
-    normalized_answers = _normalize_answer_sheet_answers(source_entry.answers if source_entry else [])
+    current_input_mode = source_entry_state['input_mode']
+    grade_payloads, graded_input_mode = _build_saved_answer_sheet_grade_payloads(round_obj, source_entry)
+    current_answers = _get_answer_sheet_entry_answers_for_mode(source_entry, current_input_mode)
+    text_grade_payload = grade_payloads[AnswerSheetEntry.INPUT_MODE_TEXT]
+    pencil_grade_payload = grade_payloads[AnswerSheetEntry.INPUT_MODE_PENCIL]
     response_payload = {
         'round_id': round_obj.id,
-        'answers': normalized_answers,
-        'input_mode': source_entry_state['input_mode'],
+        'answers': current_answers,
+        'input_mode': current_input_mode,
         'ink_strokes': source_entry_state['ink_strokes'],
         'score_value': _get_answer_sheet_display_score(round_obj, user, current_user_player_field=current_user_player_field),
         'is_diverged': bool(current_entry.is_diverged) if current_entry else False,
         'shared': bool(round_obj.cooperative and not (bool(current_entry.is_diverged) if current_entry else False)),
-        'grade_payload': _build_saved_answer_sheet_grade_payload(round_obj, source_entry),
+        'grade_payload': (
+            pencil_grade_payload
+            if current_input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL
+            else text_grade_payload
+        ),
+        'grade_payloads': {
+            'text': text_grade_payload,
+            'pencil': pencil_grade_payload,
+        },
+        'graded_input_mode': graded_input_mode,
         'transcribed_from_ink': bool(
-            source_entry_state['input_mode'] == AnswerSheetEntry.INPUT_MODE_PENCIL
-            and _has_answer_sheet_saved_grade_state(source_entry)
+            graded_input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL
+            and pencil_grade_payload
         ) if source_entry else False,
     }
 
@@ -3169,19 +3257,27 @@ def merge_answer_sheet_round(request):
             grade_rejections=communal_grade_rejections,
             grade_invalidated_questions=communal_grade_invalidated_questions,
             was_graded=communal_was_graded,
+            graded_input_mode=_get_answer_sheet_graded_input_mode(communal_entry),
             is_diverged=False,
         )
+    grade_payloads, graded_input_mode = _build_saved_answer_sheet_grade_payloads(round_obj, merged_entry)
+    response_input_mode = _normalize_answer_sheet_input_mode(merged_entry.input_mode)
 
     return JsonResponse({
         'ok': True,
         'round_id': round_obj.id,
-        'answers': merged_entry.answers,
-        'input_mode': _normalize_answer_sheet_input_mode(merged_entry.input_mode),
+        'answers': _get_answer_sheet_entry_answers_for_mode(merged_entry, response_input_mode),
+        'input_mode': response_input_mode,
         'ink_strokes': _normalize_answer_sheet_ink_strokes(merged_entry.ink_strokes),
         'grade_overrides': _normalize_answer_sheet_grade_overrides(merged_entry.grade_overrides),
         'grade_rejections': _normalize_answer_sheet_grade_overrides(merged_entry.grade_rejections),
         'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(merged_entry.grade_invalidated_questions),
-        'grade_payload': _build_saved_answer_sheet_grade_payload(round_obj, merged_entry),
+        'grade_payload': grade_payloads.get(response_input_mode),
+        'grade_payloads': {
+            'text': grade_payloads[AnswerSheetEntry.INPUT_MODE_TEXT],
+            'pencil': grade_payloads[AnswerSheetEntry.INPUT_MODE_PENCIL],
+        },
+        'graded_input_mode': graded_input_mode,
         'was_graded': bool(merged_entry.was_graded),
         'is_diverged': False,
         'shared': True,
@@ -3382,6 +3478,7 @@ def grade_answer_sheet_round(request):
             target_users = [request.user]
 
     with transaction.atomic():
+        response_entry = None
         for target_user in target_users:
             previous_entry = AnswerSheetEntry.objects.filter(user=target_user, round=round_obj).first()
             previous_typed_answers = _normalize_answer_sheet_answers(previous_entry.answers if previous_entry else [])
@@ -3405,7 +3502,7 @@ def grade_answer_sheet_round(request):
                 normalized_answers,
                 previous_entry.grade_rejections if previous_entry else [],
             )
-            AnswerSheetEntry.objects.update_or_create(
+            answer_entry, _ = AnswerSheetEntry.objects.update_or_create(
                 user=target_user,
                 round=round_obj,
                 defaults={
@@ -3418,9 +3515,16 @@ def grade_answer_sheet_round(request):
                     'grade_rejections': next_grade_rejections,
                     'grade_invalidated_questions': [],
                     'was_graded': True,
+                    'graded_input_mode': input_mode,
                     'is_diverged': bool(current_entry.is_diverged) if (current_entry and target_user.id == request.user.id) else False,
                 },
             )
+            if target_user.id == request.user.id:
+                response_entry = answer_entry
+
+        if response_entry is None:
+            response_entry = AnswerSheetEntry.objects.get(user=request.user, round=round_obj)
+        grade_payloads, graded_input_mode = _build_saved_answer_sheet_grade_payloads(round_obj, response_entry)
 
         _schedule_scoresheet_broadcast({
             'action': 'answer_sheet',
@@ -3431,6 +3535,12 @@ def grade_answer_sheet_round(request):
             'target_user_ids': [target_user.id for target_user in target_users],
             'answers': typed_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else normalized_answers,
             'input_mode': input_mode,
+            'grade_payload': grade_payloads.get(input_mode),
+            'grade_payloads': {
+                'text': grade_payloads[AnswerSheetEntry.INPUT_MODE_TEXT],
+                'pencil': grade_payloads[AnswerSheetEntry.INPUT_MODE_PENCIL],
+            },
+            'graded_input_mode': graded_input_mode,
             'shared': bool(round_obj.cooperative and not current_user_is_diverged),
             'is_diverged': bool(current_user_is_diverged),
             'transcribed_from_ink': transcribed_from_ink,
@@ -3443,6 +3553,12 @@ def grade_answer_sheet_round(request):
         'shared': bool(round_obj.cooperative and not current_user_is_diverged),
         'answers': typed_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else normalized_answers,
         'input_mode': input_mode,
+        'grade_payload': grade_payloads.get(input_mode),
+        'grade_payloads': {
+            'text': grade_payloads[AnswerSheetEntry.INPUT_MODE_TEXT],
+            'pencil': grade_payloads[AnswerSheetEntry.INPUT_MODE_PENCIL],
+        },
+        'graded_input_mode': graded_input_mode,
         'transcribed_from_ink': transcribed_from_ink,
         **grade_payload,
     })
@@ -3484,7 +3600,11 @@ def override_answer_sheet_grade(request):
     current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
     current_user_is_diverged = bool(current_entry.is_diverged) if current_entry else False
     current_entry_state = _serialize_answer_sheet_entry_state(current_entry)
-    input_mode = current_entry_state['input_mode']
+    input_mode = (
+        _normalize_answer_sheet_input_mode(payload.get('input_mode'))
+        if 'input_mode' in payload
+        else current_entry_state['input_mode']
+    )
     normalized_answers = (
         current_entry_state['pencil_answers']
         if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL
@@ -3549,12 +3669,14 @@ def override_answer_sheet_grade(request):
                 round=round_obj,
                 defaults={
                     'trivia_date': round_obj.date,
+                    'input_mode': input_mode,
                     'answers': previous_typed_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else normalized_answers,
                     'pencil_answers': normalized_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else previous_pencil_answers,
                     'grade_overrides': next_grade_overrides,
                     'grade_rejections': next_grade_rejections,
                     'grade_invalidated_questions': [],
                     'was_graded': True,
+                    'graded_input_mode': input_mode,
                     'is_diverged': bool(current_entry.is_diverged) if (current_entry and target_user.id == request.user.id) else False,
                 },
             )
@@ -3576,6 +3698,7 @@ def override_answer_sheet_grade(request):
         )
     except ValueError as error:
         return JsonResponse({'detail': str(error)}, status=400)
+    grade_payloads, graded_input_mode = _build_saved_answer_sheet_grade_payloads(round_obj, response_entry)
 
     _schedule_scoresheet_broadcast({
         'action': 'answer_sheet',
@@ -3585,10 +3708,16 @@ def override_answer_sheet_grade(request):
         'client_id': client_id,
         'target_user_ids': [target_user.id for target_user in target_users],
         'answers': typed_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else normalized_answers,
-        'input_mode': current_entry_state['input_mode'],
+        'input_mode': input_mode,
+        'grade_payload': grade_payloads.get(input_mode),
+        'grade_payloads': {
+            'text': grade_payloads[AnswerSheetEntry.INPUT_MODE_TEXT],
+            'pencil': grade_payloads[AnswerSheetEntry.INPUT_MODE_PENCIL],
+        },
+        'graded_input_mode': graded_input_mode,
         'shared': bool(round_obj.cooperative and not current_user_is_diverged),
         'is_diverged': bool(current_user_is_diverged),
-        'transcribed_from_ink': current_entry_state['input_mode'] == AnswerSheetEntry.INPUT_MODE_PENCIL,
+        'transcribed_from_ink': input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL,
         **grade_payload,
     })
 
@@ -3597,8 +3726,14 @@ def override_answer_sheet_grade(request):
         'round_id': round_obj.id,
         'shared': bool(round_obj.cooperative and not current_user_is_diverged),
         'answers': typed_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else normalized_answers,
-        'input_mode': current_entry_state['input_mode'],
-        'transcribed_from_ink': current_entry_state['input_mode'] == AnswerSheetEntry.INPUT_MODE_PENCIL,
+        'input_mode': input_mode,
+        'grade_payload': grade_payloads.get(input_mode),
+        'grade_payloads': {
+            'text': grade_payloads[AnswerSheetEntry.INPUT_MODE_TEXT],
+            'pencil': grade_payloads[AnswerSheetEntry.INPUT_MODE_PENCIL],
+        },
+        'graded_input_mode': graded_input_mode,
+        'transcribed_from_ink': input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL,
         **grade_payload,
     })
 

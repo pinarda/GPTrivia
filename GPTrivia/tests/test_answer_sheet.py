@@ -709,6 +709,61 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(round_payload["grade_payload"]["row_results"][1]["state"], "default")
         self.assertTrue(round_payload["grade_payload"]["row_results"][1]["invalidated"])
 
+    def test_answer_sheet_sync_returns_mode_specific_grade_payloads(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Mode Specific Sync Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="What animal is white with black stripes?",
+            answer_text="A Zebra",
+            possible_answers=["A Zebra", "Zebra", "zebra"],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=round_obj,
+            trivia_date=round_obj.date,
+            answers=["Zebra"] + [""] * 9,
+            pencil_answers=["Handwritten Zebra"] + [""] * 11,
+            input_mode=AnswerSheetEntry.INPUT_MODE_PENCIL,
+            was_graded=True,
+            graded_input_mode=AnswerSheetEntry.INPUT_MODE_TEXT,
+        )
+
+        response = self.client.get(
+            reverse("answer_sheet_sync"),
+            {"date": round_obj.date.isoformat()},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        round_payload = response.json()["rounds"][0]
+        self.assertEqual(round_payload["input_mode"], "pencil")
+        self.assertEqual(round_payload["answers"][0], "Handwritten Zebra")
+        self.assertEqual(round_payload["graded_input_mode"], "text")
+        self.assertIsNone(round_payload["grade_payload"])
+        self.assertIsNotNone(round_payload["grade_payloads"]["text"])
+        self.assertIsNone(round_payload["grade_payloads"]["pencil"])
+
     def test_answer_sheet_sync_returns_diverged_saved_entry_state(self):
         megan = User.objects.create_user(username="Megan", password="pw")
         trivia_date = datetime.date(2026, 4, 17)
@@ -1566,6 +1621,75 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(entry.pencil_answers[:2], ["zebra", "Wrong answer"])
         self.assertEqual(entry.input_mode, AnswerSheetEntry.INPUT_MODE_PENCIL)
         self.assertTrue(entry.was_graded)
+        self.assertEqual(entry.graded_input_mode, AnswerSheetEntry.INPUT_MODE_PENCIL)
+
+    @patch("GPTrivia.views._transcribe_answer_sheet_ink_strokes_to_lines")
+    def test_grade_answer_sheet_round_persists_pencil_grade_for_future_sync(self, mock_transcribe):
+        mock_transcribe.return_value = ["zebra"] + [""] * 11
+
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Persisted Pencil Grade Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="What animal is white with black stripes?",
+            answer_text="A Zebra",
+            possible_answers=["A Zebra", "Zebra", "zebra"],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+
+        response = self.client.post(
+            reverse("grade_answer_sheet_round"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": [""] * 12,
+                "input_mode": "pencil",
+                "ink_strokes": [[
+                    {"x": 0.1, "y": 0.2, "r": 1, "ux": 1.0, "uy": 0.2},
+                    {"x": 0.25, "y": 0.35, "r": 1, "ux": 2.2, "uy": 0.34},
+                ]],
+                "ink_stroke_rows": [1],
+                "row_count": 12,
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
+        self.assertEqual(entry.input_mode, AnswerSheetEntry.INPUT_MODE_PENCIL)
+        self.assertEqual(entry.graded_input_mode, AnswerSheetEntry.INPUT_MODE_PENCIL)
+
+        sync_response = self.client.get(
+            reverse("answer_sheet_sync"),
+            {"date": round_obj.date.isoformat()},
+        )
+
+        self.assertEqual(sync_response.status_code, 200)
+        round_payload = sync_response.json()["rounds"][0]
+        self.assertEqual(round_payload["input_mode"], "pencil")
+        self.assertEqual(round_payload["graded_input_mode"], "pencil")
+        self.assertIsNotNone(round_payload["grade_payload"])
+        self.assertIsNone(round_payload["grade_payloads"]["text"])
+        self.assertIsNotNone(round_payload["grade_payloads"]["pencil"])
 
     def test_group_answer_sheet_ink_strokes_by_row_preserves_blank_rows(self):
         grouped = _group_answer_sheet_ink_strokes_by_row(

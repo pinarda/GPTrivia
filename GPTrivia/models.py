@@ -240,6 +240,7 @@ class AnswerSheetEntry(models.Model):
     grade_rejections = jsonfield.JSONField(default=list, blank=True)
     grade_invalidated_questions = jsonfield.JSONField(default=list, blank=True)
     was_graded = models.BooleanField(default=False)
+    graded_input_mode = models.CharField(max_length=16, choices=INPUT_MODE_CHOICES, blank=True, default='')
     is_diverged = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
