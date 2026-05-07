@@ -59,7 +59,7 @@
             </div>
         </div>
         <div class="profile-summary-item profile-summary-item--biased-creators">
-            <span class="profile-summary-label">Creator Favoritism Toward {{ player_name }}</span>
+            <span class="profile-summary-label">Creator Favoritism Toward <a href="{% url 'player_profile' player_name=player_name %}" class="profile-heading-player-name">{{ player_name }}</a></span>
             <div class="profile-summary-pairs">
                 <span class="profile-summary-pair">
                     <span class="profile-summary-pair-name">Most</span>
@@ -84,7 +84,7 @@
             </div>
         </div>
         <div class="profile-summary-item profile-summary-item--creator-favoritism">
-            <span class="profile-summary-label">Players Favored by Creator {{ player_name }}</span>
+            <span class="profile-summary-label">Players Favored by Creator <a href="{% url 'player_profile' player_name=player_name %}" class="profile-heading-player-name">{{ player_name }}</a></span>
             <div class="profile-summary-pairs">
                 <span class="profile-summary-pair">
                     <span class="profile-summary-pair-name">Most</span>
