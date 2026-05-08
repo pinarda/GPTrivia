@@ -233,6 +233,7 @@
         const activeInkEraserMap = new Map();
         const activeInkEditedRowsMap = new Map();
         const editedInkRowsMap = new Map();
+        const deletedInkStrokeIdsMap = new Map();
         const inkToolStateMap = new Map();
         const recentFingerTapMap = new Map();
         const roundEntrySaveRequestMap = new Map();
@@ -487,6 +488,88 @@
                 .filter((stroke) => stroke.length > 0);
         }
 
+        function hashInkStrokeValue(value) {
+            let hash = 2166136261;
+            const text = String(value || '');
+            for (let index = 0; index < text.length; index += 1) {
+                hash ^= text.charCodeAt(index);
+                hash = Math.imul(hash, 16777619) >>> 0;
+            }
+            return `ink:${hash.toString(16).padStart(8, '0')}`;
+        }
+
+        function getInkStrokeId(stroke) {
+            const normalizedStroke = normalizeInkStrokes([stroke])[0] || [];
+            if (!normalizedStroke.length) {
+                return '';
+            }
+            const canonicalStroke = normalizedStroke.map((point) => {
+                const canonicalPoint = {
+                    x: Number(Number(point.x).toFixed(5)),
+                    y: Number(Number(point.y).toFixed(5)),
+                };
+                const pressure = clampInkCoordinate(point.p);
+                if (pressure !== null) {
+                    canonicalPoint.p = Number(pressure.toFixed(4));
+                }
+                return canonicalPoint;
+            });
+            return hashInkStrokeValue(JSON.stringify(canonicalStroke));
+        }
+
+        function normalizeDeletedInkStrokeIds(rawIds) {
+            if (!Array.isArray(rawIds)) {
+                return [];
+            }
+            const normalizedIds = [];
+            const seenIds = new Set();
+            rawIds.slice(0, 800).forEach((rawId) => {
+                const normalizedId = String(rawId || '').trim();
+                if (!/^ink:[0-9a-f]{8}$/.test(normalizedId) || seenIds.has(normalizedId)) {
+                    return;
+                }
+                seenIds.add(normalizedId);
+                normalizedIds.push(normalizedId);
+            });
+            return normalizedIds;
+        }
+
+        function getDeletedInkStrokeIds(roundId) {
+            return Array.from(deletedInkStrokeIdsMap.get(String(roundId || '')) || []);
+        }
+
+        function markDeletedInkStrokes(roundId, strokes) {
+            const roundKey = String(roundId || '');
+            const deletedIds = new Set(getDeletedInkStrokeIds(roundKey));
+            (strokes || []).forEach((stroke) => {
+                const strokeId = getInkStrokeId(stroke);
+                if (strokeId) {
+                    deletedIds.add(strokeId);
+                }
+            });
+            if (deletedIds.size) {
+                deletedInkStrokeIdsMap.set(roundKey, deletedIds);
+            }
+        }
+
+        function clearDeletedInkStrokeIds(roundId, deletedIds = null) {
+            const roundKey = String(roundId || '');
+            if (!deletedInkStrokeIdsMap.has(roundKey)) {
+                return;
+            }
+            if (!Array.isArray(deletedIds) || deletedIds.length === 0) {
+                deletedInkStrokeIdsMap.delete(roundKey);
+                return;
+            }
+            const nextIds = new Set(deletedInkStrokeIdsMap.get(roundKey));
+            normalizeDeletedInkStrokeIds(deletedIds).forEach((deletedId) => nextIds.delete(deletedId));
+            if (nextIds.size) {
+                deletedInkStrokeIdsMap.set(roundKey, nextIds);
+            } else {
+                deletedInkStrokeIdsMap.delete(roundKey);
+            }
+        }
+
         function enrichInkPointsWithLayout(roundId, strokes) {
             const lineMetrics = getRoundLineMetrics(roundId);
             if (!lineMetrics || !Array.isArray(strokes)) {
@@ -565,6 +648,27 @@
                 panel.dataset.inkStrokes = JSON.stringify(normalizedStrokes);
             }
             return normalizedStrokes;
+        }
+
+        function mergeRoundInkStrokes(roundId, rawStrokes, rawDeletedStrokeIds = []) {
+            const roundKey = String(roundId || '');
+            const deletedStrokeIds = new Set(normalizeDeletedInkStrokeIds(rawDeletedStrokeIds));
+            const mergedStrokes = [];
+            const seenStrokeIds = new Set();
+
+            const appendStroke = (stroke) => {
+                const strokeId = getInkStrokeId(stroke);
+                if (!strokeId || deletedStrokeIds.has(strokeId) || seenStrokeIds.has(strokeId)) {
+                    return;
+                }
+                seenStrokeIds.add(strokeId);
+                mergedStrokes.push(stroke);
+            };
+
+            getRoundInkStrokes(roundKey).forEach(appendStroke);
+            enrichInkPointsWithLayout(roundKey, normalizeInkStrokes(rawStrokes)).forEach(appendStroke);
+            setRoundInkStrokes(roundKey, mergedStrokes);
+            return mergedStrokes;
         }
 
         function getEditedInkRows(roundId) {
@@ -735,6 +839,7 @@
             const normalizedInkStrokes = Array.isArray(roundState.ink_strokes)
                 ? roundState.ink_strokes
                 : [];
+            const deletedInkStrokeIds = normalizeDeletedInkStrokeIds(roundState.deleted_ink_stroke_ids || []);
             const savedScoreValue = getSharedSavedScoreValue(roundState);
             setStoredGradePayloads(
                 roundId,
@@ -750,10 +855,13 @@
 
             if (!answersDirty) {
                 textarea.value = normalizedAnswers.join('\n');
-                setRoundInkStrokes(roundId, normalizedInkStrokes);
                 syncLineNumbers(textarea);
                 setRoundInputMode(roundId, roundState.input_mode || 'text');
                 setRoundAnswersDirty(roundId, false);
+            }
+            mergeRoundInkStrokes(roundId, normalizedInkStrokes, deletedInkStrokeIds);
+            if (getRoundInputMode(roundId) === 'pencil') {
+                renderInkCanvas(roundId);
             }
 
             if (!scoreDirty || forceSharedSaveState) {
@@ -1521,17 +1629,24 @@
             const normalizedInkStrokes = Array.isArray(payload?.ink_strokes)
                 ? payload.ink_strokes
                 : [];
-            textarea.value = normalizedAnswers.join('\n');
-            setRoundInkStrokes(roundId, normalizedInkStrokes);
-            syncLineNumbers(textarea);
-            setRoundInputMode(roundId, payload?.input_mode || 'text');
+            const deletedInkStrokeIds = normalizeDeletedInkStrokeIds(payload?.deleted_ink_stroke_ids || []);
+            const answersDirty = panel?.dataset.answersDirty === 'true';
+            if (!answersDirty) {
+                textarea.value = normalizedAnswers.join('\n');
+                syncLineNumbers(textarea);
+                setRoundInputMode(roundId, payload?.input_mode || 'text');
+                setRoundAnswersDirty(roundId, false);
+            }
+            mergeRoundInkStrokes(roundId, normalizedInkStrokes, deletedInkStrokeIds);
+            if (getRoundInputMode(roundId) === 'pencil') {
+                renderInkCanvas(roundId);
+            }
             setStoredGradePayloads(
                 roundId,
                 payload?.grade_payloads || {},
                 payload?.graded_input_mode || payload?.input_mode || 'text',
                 payload?.grade_payload || null
             );
-            setRoundAnswersDirty(roundId, false);
             if (scoreInput) {
                 applyStoredModeGradeState(roundId, textarea, scoreInput, {
                     preserveScoreState: true,
@@ -1607,8 +1722,14 @@
             if (divergeButton) {
                 divergeButton.textContent = incomingIsDiverged ? 'Merge' : 'Diverge';
             }
+            if (Array.isArray(payload?.ink_strokes)) {
+                mergeRoundInkStrokes(roundId, payload.ink_strokes, payload?.deleted_ink_stroke_ids || []);
+                if (getRoundInputMode(roundId) === 'pencil') {
+                    renderInkCanvas(roundId);
+                }
+            }
             const shouldApplyTextAnswers = (payload?.input_mode || getRoundInputMode(roundId)) !== 'pencil';
-            if (shouldApplyTextAnswers && Array.isArray(payload.answers)) {
+            if (shouldApplyTextAnswers && Array.isArray(payload.answers) && panel?.dataset.answersDirty !== 'true') {
                 textarea.value = payload.answers.map((answer) => String(answer || '')).join('\n');
                 syncLineNumbers(textarea);
                 setRoundAnswersDirty(roundId, false);
@@ -1778,18 +1899,27 @@
             }
             const eraseRadius = lineMetrics.lineHeight * 0.6;
             const currentStrokes = getRoundInkStrokes(roundId);
-            const nextStrokes = currentStrokes.filter((stroke) => !stroke.some((strokePoint) => {
-                const renderedPoint = getInkPointCanvasCoordinates(roundId, strokePoint, lineMetrics);
-                if (!renderedPoint) {
+            const removedStrokes = [];
+            const nextStrokes = currentStrokes.filter((stroke) => {
+                const shouldRemove = stroke.some((strokePoint) => {
+                    const renderedPoint = getInkPointCanvasCoordinates(roundId, strokePoint, lineMetrics);
+                    if (!renderedPoint) {
+                        return false;
+                    }
+                    const deltaX = renderedPoint.x - targetPoint.x;
+                    const deltaY = renderedPoint.y - targetPoint.y;
+                    return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY)) <= eraseRadius;
+                });
+                if (shouldRemove) {
+                    removedStrokes.push(stroke);
                     return false;
                 }
-                const deltaX = renderedPoint.x - targetPoint.x;
-                const deltaY = renderedPoint.y - targetPoint.y;
-                return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY)) <= eraseRadius;
-            }));
+                return true;
+            });
             if (nextStrokes.length === currentStrokes.length) {
                 return false;
             }
+            markDeletedInkStrokes(roundId, removedStrokes);
             setRoundInkStrokes(roundId, nextStrokes);
             return true;
         }
@@ -1856,6 +1986,7 @@
                 answers: getTextareaLines(textarea),
                 input_mode: getRoundInputMode(roundId),
                 ink_strokes: getRoundInkStrokes(roundId),
+                deleted_ink_stroke_ids: getDeletedInkStrokeIds(roundId),
             });
         }
 
@@ -1994,6 +2125,7 @@
                 answers: getTextareaLines(textarea),
                 input_mode: getRoundInputMode(roundId),
                 ink_strokes: getRoundInkStrokes(roundId),
+                deleted_ink_stroke_ids: getDeletedInkStrokeIds(roundId),
                 ink_stroke_rows: getRoundInputMode(roundId) === 'pencil' ? getRoundInkStrokeRows(roundId) : [],
                 edited_row_numbers: getRoundInputMode(roundId) === 'pencil' ? getEditedInkRows(roundId) : [],
                 client_id: localClientId,
@@ -2034,6 +2166,12 @@
                 if (buildRoundEntryStateSnapshot(roundId) !== requestStateSnapshot) {
                     return;
                 }
+                mergeRoundInkStrokes(
+                    roundId,
+                    responsePayload.ink_strokes || payload.ink_strokes || [],
+                    responsePayload.deleted_ink_stroke_ids || payload.deleted_ink_stroke_ids || [],
+                );
+                clearDeletedInkStrokeIds(roundId, payload.deleted_ink_stroke_ids);
                 setRoundAnswersDirty(roundId, false);
                 clearEditedInkRows(roundId, payload.edited_row_numbers);
                 if (textarea && scoreInput) {
@@ -2105,6 +2243,7 @@
                         answers: getTextareaLines(textarea),
                         input_mode: inputMode,
                         ink_strokes: inputMode === 'pencil' ? getRoundInkStrokes(roundId) : [],
+                        deleted_ink_stroke_ids: inputMode === 'pencil' ? getDeletedInkStrokeIds(roundId) : [],
                         ink_stroke_rows: inputMode === 'pencil' ? getRoundInkStrokeRows(roundId) : [],
                         row_count: Math.max(getMinimumVisibleRows(roundId), countLogicalLines(textarea.value)),
                         client_id: localClientId,
@@ -2118,6 +2257,10 @@
                 if (inputMode !== 'pencil' && Array.isArray(payload.answers)) {
                     textarea.value = payload.answers.map((answer) => String(answer || '')).join('\n');
                     syncLineNumbers(textarea);
+                }
+                if (inputMode === 'pencil') {
+                    mergeRoundInkStrokes(roundId, payload.ink_strokes || [], payload.deleted_ink_stroke_ids || []);
+                    clearDeletedInkStrokeIds(roundId, payload.deleted_ink_stroke_ids || []);
                 }
                 setStoredGradePayloads(
                     roundId,
@@ -2192,6 +2335,7 @@
                         answers: getTextareaLines(textarea),
                         input_mode: getRoundInputMode(roundId),
                         ink_strokes: getRoundInkStrokes(roundId),
+                        deleted_ink_stroke_ids: getDeletedInkStrokeIds(roundId),
                     }),
                 });
                 const payload = await response.json().catch(() => ({}));
@@ -2210,7 +2354,8 @@
                 if (divergeButton) {
                     divergeButton.textContent = 'Merge';
                 }
-                setRoundInkStrokes(roundId, payload.ink_strokes || getRoundInkStrokes(roundId));
+                mergeRoundInkStrokes(roundId, payload.ink_strokes || getRoundInkStrokes(roundId), payload.deleted_ink_stroke_ids || []);
+                clearDeletedInkStrokeIds(roundId, payload.deleted_ink_stroke_ids || []);
                 setRoundInputMode(roundId, payload.input_mode || getRoundInputMode(roundId));
                 setStoredGradePayloads(
                     roundId,
@@ -2260,6 +2405,7 @@
                 }
                 textarea.value = (payload.answers || []).map((answer) => String(answer || '')).join('\n');
                 setRoundInkStrokes(roundId, payload.ink_strokes || []);
+                clearDeletedInkStrokeIds(roundId);
                 syncLineNumbers(textarea);
                 setRoundInputMode(roundId, payload.input_mode || 'text');
                 setStoredGradePayloads(

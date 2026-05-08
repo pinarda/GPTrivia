@@ -236,6 +236,7 @@ class AnswerSheetEntry(models.Model):
     pencil_answers = jsonfield.JSONField(default=list, blank=True)
     input_mode = models.CharField(max_length=16, choices=INPUT_MODE_CHOICES, default=INPUT_MODE_TEXT)
     ink_strokes = jsonfield.JSONField(default=list, blank=True)
+    ink_deleted_stroke_ids = jsonfield.JSONField(default=list, blank=True)
     grade_overrides = jsonfield.JSONField(default=list, blank=True)
     grade_rejections = jsonfield.JSONField(default=list, blank=True)
     grade_invalidated_questions = jsonfield.JSONField(default=list, blank=True)

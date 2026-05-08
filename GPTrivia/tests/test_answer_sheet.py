@@ -15,7 +15,7 @@ from GPTrivia.models import (
     RoundQuestionAnalysisRun,
 )
 from GPTrivia.player_scores import get_round_score_map
-from GPTrivia.views import _group_answer_sheet_ink_strokes_by_row
+from GPTrivia.views import _answer_sheet_ink_stroke_id, _group_answer_sheet_ink_strokes_by_row
 
 
 class AnswerSheetTests(TestCase):
@@ -299,6 +299,87 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(entry.ink_strokes[0][1], {"x": 0.4, "y": 0.5, "p": 0.8, "r": 2, "ux": 3.75, "uy": 0.62})
         self.assertEqual(response.json()["input_mode"], "pencil")
         self.assertEqual(response.json()["ink_strokes"][1][0], {"x": 0.7, "y": 0.8, "r": 4, "ux": 5.4, "uy": 0.09})
+
+    def test_save_answer_sheet_entry_merges_pencil_strokes_from_stale_device(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Pencil Merge Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        existing_stroke = [{"x": 0.1, "y": 0.2}, {"x": 0.3, "y": 0.4}]
+        incoming_stroke = [{"x": 0.5, "y": 0.6}, {"x": 0.7, "y": 0.8}]
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=round_obj,
+            trivia_date=round_obj.date,
+            input_mode=AnswerSheetEntry.INPUT_MODE_PENCIL,
+            ink_strokes=[existing_stroke],
+        )
+
+        response = self.client.post(
+            reverse("save_answer_sheet_entry"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": [""] * 10,
+                "input_mode": "pencil",
+                "ink_strokes": [incoming_stroke],
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
+        self.assertEqual(entry.ink_strokes, [existing_stroke, incoming_stroke])
+        self.assertEqual(response.json()["ink_strokes"], [existing_stroke, incoming_stroke])
+
+    def test_save_answer_sheet_entry_removes_only_explicitly_erased_pencil_strokes(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Pencil Erase Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        erased_stroke = [{"x": 0.1, "y": 0.2}, {"x": 0.3, "y": 0.4}]
+        kept_stroke = [{"x": 0.5, "y": 0.6}, {"x": 0.7, "y": 0.8}]
+        erased_stroke_id = _answer_sheet_ink_stroke_id(erased_stroke)
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=round_obj,
+            trivia_date=round_obj.date,
+            input_mode=AnswerSheetEntry.INPUT_MODE_PENCIL,
+            ink_strokes=[erased_stroke, kept_stroke],
+        )
+
+        response = self.client.post(
+            reverse("save_answer_sheet_entry"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": [""] * 10,
+                "input_mode": "pencil",
+                "ink_strokes": [kept_stroke],
+                "deleted_ink_stroke_ids": [erased_stroke_id],
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
+        self.assertEqual(entry.ink_strokes, [kept_stroke])
+        self.assertEqual(entry.ink_deleted_stroke_ids, [erased_stroke_id])
+        self.assertEqual(response.json()["deleted_ink_stroke_ids"], [erased_stroke_id])
 
     def test_save_answer_sheet_entry_clears_grade_overrides_for_changed_rows(self):
         round_obj = GPTriviaRound.objects.create(

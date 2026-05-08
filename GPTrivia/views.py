@@ -1695,6 +1695,83 @@ def _normalize_answer_sheet_ink_strokes(raw_strokes):
     return normalized_strokes
 
 
+def _answer_sheet_fnv1a_hash(value):
+    hash_value = 2166136261
+    for character in str(value or ''):
+        hash_value ^= ord(character)
+        hash_value = (hash_value * 16777619) & 0xffffffff
+    return f"ink:{hash_value:08x}"
+
+
+def _answer_sheet_ink_stroke_id(stroke):
+    normalized_strokes = _normalize_answer_sheet_ink_strokes([stroke])
+    if not normalized_strokes:
+        return ''
+
+    canonical_points = []
+    for point in normalized_strokes[0]:
+        canonical_point = {
+            'x': point['x'],
+            'y': point['y'],
+        }
+        if 'p' in point:
+            canonical_point['p'] = point['p']
+        canonical_points.append(canonical_point)
+
+    return _answer_sheet_fnv1a_hash(json.dumps(canonical_points, separators=(',', ':')))
+
+
+def _normalize_answer_sheet_deleted_ink_stroke_ids(raw_ids):
+    if not isinstance(raw_ids, list):
+        return []
+
+    normalized_ids = []
+    seen_ids = set()
+    for raw_id in raw_ids[:800]:
+        normalized_id = str(raw_id or '').strip()
+        if not re.fullmatch(r'ink:[0-9a-f]{8}', normalized_id):
+            continue
+        if normalized_id in seen_ids:
+            continue
+        seen_ids.add(normalized_id)
+        normalized_ids.append(normalized_id)
+    return normalized_ids
+
+
+def _merge_answer_sheet_deleted_ink_stroke_ids(*raw_id_lists):
+    merged_ids = []
+    seen_ids = set()
+    for raw_ids in raw_id_lists:
+        for normalized_id in _normalize_answer_sheet_deleted_ink_stroke_ids(raw_ids):
+            if normalized_id in seen_ids:
+                continue
+            seen_ids.add(normalized_id)
+            merged_ids.append(normalized_id)
+            if len(merged_ids) >= 800:
+                return merged_ids
+    return merged_ids
+
+
+def _merge_answer_sheet_ink_strokes(existing_strokes, incoming_strokes, deleted_stroke_ids=None):
+    deleted_ids = set(_normalize_answer_sheet_deleted_ink_stroke_ids(deleted_stroke_ids or []))
+    merged_strokes = []
+    seen_stroke_ids = set()
+
+    for stroke in [
+        *_normalize_answer_sheet_ink_strokes(existing_strokes),
+        *_normalize_answer_sheet_ink_strokes(incoming_strokes),
+    ]:
+        stroke_id = _answer_sheet_ink_stroke_id(stroke)
+        if not stroke_id or stroke_id in deleted_ids or stroke_id in seen_stroke_ids:
+            continue
+        seen_stroke_ids.add(stroke_id)
+        merged_strokes.append(stroke)
+        if len(merged_strokes) >= 400:
+            break
+
+    return merged_strokes
+
+
 def _normalize_answer_sheet_ink_stroke_rows(raw_rows, *, stroke_count=0, row_count=10):
     normalized_rows = []
     if not isinstance(raw_rows, list):
@@ -1763,9 +1840,18 @@ def _group_answer_sheet_ink_strokes_by_row(ink_strokes, *, row_count=10, stroke_
         if explicit_row_number:
             row_index = explicit_row_number - 1
         else:
-            average_y = sum(point["y"] * image_height for point in stroke) / len(stroke)
-            row_index = int((average_y - ANSWER_SHEET_OCR_PADDING_TOP) / ANSWER_SHEET_OCR_ROW_HEIGHT)
-            row_index = max(0, min(row_count - 1, row_index))
+            point_rows = [
+                int(point.get("r"))
+                for point in stroke
+                if isinstance(point.get("r"), int) and int(point.get("r")) >= 1
+            ]
+            if point_rows:
+                row_index = max(set(point_rows), key=point_rows.count) - 1
+                row_index = max(0, min(row_count - 1, row_index))
+            else:
+                average_y = sum(point["y"] * image_height for point in stroke) / len(stroke)
+                row_index = int((average_y - ANSWER_SHEET_OCR_PADDING_TOP) / ANSWER_SHEET_OCR_ROW_HEIGHT)
+                row_index = max(0, min(row_count - 1, row_index))
         row_buckets[row_index].append(stroke)
 
     return row_buckets
@@ -1998,11 +2084,15 @@ def _serialize_answer_sheet_entry_state(answer_entry):
         return {
             'input_mode': AnswerSheetEntry.INPUT_MODE_TEXT,
             'ink_strokes': [],
+            'ink_deleted_stroke_ids': [],
             'pencil_answers': [''] * 10,
         }
     return {
         'input_mode': _normalize_answer_sheet_input_mode(getattr(answer_entry, 'input_mode', '')),
         'ink_strokes': _normalize_answer_sheet_ink_strokes(getattr(answer_entry, 'ink_strokes', [])),
+        'ink_deleted_stroke_ids': _normalize_answer_sheet_deleted_ink_stroke_ids(
+            getattr(answer_entry, 'ink_deleted_stroke_ids', [])
+        ),
         'pencil_answers': _normalize_answer_sheet_answers(getattr(answer_entry, 'pencil_answers', [])),
     }
 
@@ -2890,6 +2980,9 @@ def save_answer_sheet_entry(request):
         if 'ink_strokes' in payload
         else current_entry_state['ink_strokes']
     )
+    incoming_deleted_ink_stroke_ids = _normalize_answer_sheet_deleted_ink_stroke_ids(
+        payload.get('deleted_ink_stroke_ids', [])
+    )
     current_user_is_diverged = bool(current_entry.is_diverged) if current_entry else False
 
     target_users = [request.user]
@@ -2913,6 +3006,15 @@ def save_answer_sheet_entry(request):
             previous_answers = _normalize_answer_sheet_answers(previous_entry.answers if previous_entry else [])
             previous_pencil_answers = _normalize_answer_sheet_answers(
                 getattr(previous_entry, 'pencil_answers', []) if previous_entry else []
+            )
+            next_deleted_ink_stroke_ids = _merge_answer_sheet_deleted_ink_stroke_ids(
+                getattr(previous_entry, 'ink_deleted_stroke_ids', []) if previous_entry else [],
+                incoming_deleted_ink_stroke_ids,
+            )
+            next_ink_strokes = _merge_answer_sheet_ink_strokes(
+                getattr(previous_entry, 'ink_strokes', []) if previous_entry else [],
+                ink_strokes,
+                next_deleted_ink_stroke_ids,
             )
             previous_was_graded = bool(previous_entry.was_graded) if previous_entry else False
             previous_graded_input_mode = _get_answer_sheet_graded_input_mode(previous_entry)
@@ -2966,7 +3068,8 @@ def save_answer_sheet_entry(request):
                     'answers': next_answers,
                     'pencil_answers': next_pencil_answers,
                     'input_mode': input_mode,
-                    'ink_strokes': ink_strokes,
+                    'ink_strokes': next_ink_strokes,
+                    'ink_deleted_stroke_ids': next_deleted_ink_stroke_ids,
                     'grade_overrides': next_grade_overrides,
                     'grade_rejections': next_grade_rejections,
                     'grade_invalidated_questions': next_grade_invalidated_questions,
@@ -2994,7 +3097,10 @@ def save_answer_sheet_entry(request):
             'target_user_ids': [target_user.id for target_user in target_users],
             'answers': response_answers,
             'input_mode': response_input_mode,
-            'ink_strokes': ink_strokes,
+            'ink_strokes': _normalize_answer_sheet_ink_strokes(response_entry.ink_strokes),
+            'deleted_ink_stroke_ids': _normalize_answer_sheet_deleted_ink_stroke_ids(
+                getattr(response_entry, 'ink_deleted_stroke_ids', [])
+            ),
             'updated_at': response_entry.updated_at.isoformat() if response_entry.updated_at else '',
             'grade_payload': shared_grade_payload,
             'grade_payloads': {
@@ -3018,6 +3124,9 @@ def save_answer_sheet_entry(request):
         'answers': response_answers,
         'input_mode': response_input_mode,
         'ink_strokes': _normalize_answer_sheet_ink_strokes(response_entry.ink_strokes),
+        'deleted_ink_stroke_ids': _normalize_answer_sheet_deleted_ink_stroke_ids(
+            getattr(response_entry, 'ink_deleted_stroke_ids', [])
+        ),
         'grade_overrides': _normalize_answer_sheet_grade_overrides(response_entry.grade_overrides),
         'grade_rejections': _normalize_answer_sheet_grade_overrides(response_entry.grade_rejections),
         'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(response_entry.grade_invalidated_questions),
@@ -3075,6 +3184,15 @@ def diverge_answer_sheet_round(request):
         if 'ink_strokes' in payload
         else source_entry_state['ink_strokes']
     )
+    deleted_ink_stroke_ids = _merge_answer_sheet_deleted_ink_stroke_ids(
+        source_entry_state['ink_deleted_stroke_ids'],
+        payload.get('deleted_ink_stroke_ids', []),
+    )
+    merged_ink_strokes = _merge_answer_sheet_ink_strokes(
+        source_entry_state['ink_strokes'],
+        ink_strokes,
+        deleted_ink_stroke_ids,
+    )
     entry, _ = AnswerSheetEntry.objects.update_or_create(
         user=request.user,
         round=round_obj,
@@ -3083,7 +3201,8 @@ def diverge_answer_sheet_round(request):
             'answers': answers,
             'pencil_answers': source_entry_state['pencil_answers'],
             'input_mode': input_mode,
-            'ink_strokes': ink_strokes,
+            'ink_strokes': merged_ink_strokes,
+            'ink_deleted_stroke_ids': deleted_ink_stroke_ids,
             'grade_overrides': _normalize_answer_sheet_grade_overrides(
                 source_entry.grade_overrides if source_entry else []
             ),
@@ -3107,6 +3226,9 @@ def diverge_answer_sheet_round(request):
         'answers': _normalize_answer_sheet_answers(entry.answers),
         'input_mode': response_input_mode,
         'ink_strokes': _normalize_answer_sheet_ink_strokes(entry.ink_strokes),
+        'deleted_ink_stroke_ids': _normalize_answer_sheet_deleted_ink_stroke_ids(
+            getattr(entry, 'ink_deleted_stroke_ids', [])
+        ),
         'grade_overrides': _normalize_answer_sheet_grade_overrides(entry.grade_overrides),
         'grade_rejections': _normalize_answer_sheet_grade_overrides(entry.grade_rejections),
         'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(entry.grade_invalidated_questions),
@@ -3172,6 +3294,7 @@ def _serialize_answer_sheet_sync_round(round_obj, user, current_entry=None, curr
         'answers': current_answers,
         'input_mode': current_input_mode,
         'ink_strokes': source_entry_state['ink_strokes'],
+        'deleted_ink_stroke_ids': source_entry_state['ink_deleted_stroke_ids'],
         'score_value': _get_answer_sheet_display_score(round_obj, user, current_user_player_field=current_user_player_field),
         'is_diverged': bool(current_entry.is_diverged) if current_entry else False,
         'shared': bool(round_obj.cooperative and not (bool(current_entry.is_diverged) if current_entry else False)),
@@ -3250,6 +3373,7 @@ def merge_answer_sheet_round(request):
             pencil_answers=communal_entry_state['pencil_answers'],
             input_mode=communal_entry_state['input_mode'],
             ink_strokes=communal_entry_state['ink_strokes'],
+            ink_deleted_stroke_ids=communal_entry_state['ink_deleted_stroke_ids'],
             grade_overrides=communal_grade_overrides,
             grade_rejections=communal_grade_rejections,
             grade_invalidated_questions=communal_grade_invalidated_questions,
@@ -3266,6 +3390,9 @@ def merge_answer_sheet_round(request):
         'answers': _normalize_answer_sheet_answers(merged_entry.answers),
         'input_mode': response_input_mode,
         'ink_strokes': _normalize_answer_sheet_ink_strokes(merged_entry.ink_strokes),
+        'deleted_ink_stroke_ids': _normalize_answer_sheet_deleted_ink_stroke_ids(
+            getattr(merged_entry, 'ink_deleted_stroke_ids', [])
+        ),
         'grade_overrides': _normalize_answer_sheet_grade_overrides(merged_entry.grade_overrides),
         'grade_rejections': _normalize_answer_sheet_grade_overrides(merged_entry.grade_rejections),
         'grade_invalidated_questions': _normalize_answer_sheet_grade_overrides(merged_entry.grade_invalidated_questions),
@@ -3417,11 +3544,16 @@ def grade_answer_sheet_round(request):
     )
     raw_answers = payload.get('answers', [])
     row_count = _answer_sheet_row_count(payload.get('row_count'), raw_answers)
-    ink_stroke_rows = _normalize_answer_sheet_ink_stroke_rows(
-        payload.get('ink_stroke_rows', []),
-        stroke_count=len(ink_strokes),
-        row_count=row_count,
+    deleted_ink_stroke_ids = _merge_answer_sheet_deleted_ink_stroke_ids(
+        current_entry_state['ink_deleted_stroke_ids'],
+        payload.get('deleted_ink_stroke_ids', []),
     )
+    ink_strokes = _merge_answer_sheet_ink_strokes(
+        current_entry_state['ink_strokes'],
+        ink_strokes,
+        deleted_ink_stroke_ids,
+    )
+    ink_stroke_rows = []
     transcribed_from_ink = False
     typed_answers = _normalize_answer_sheet_answers(current_entry.answers if current_entry else [])
     if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL:
@@ -3463,9 +3595,12 @@ def grade_answer_sheet_round(request):
 
     if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL:
         present_row_numbers = {
-            row_number
-            for row_number in ink_stroke_rows
-            if isinstance(row_number, int) and row_number >= 1
+            row_index + 1
+            for row_index, row_strokes in _group_answer_sheet_ink_strokes_by_row(
+                ink_strokes,
+                row_count=row_count,
+            ).items()
+            if row_strokes
         }
         for row_result in grade_payload['row_results']:
             if (
@@ -3493,6 +3628,15 @@ def grade_answer_sheet_round(request):
             previous_pencil_answers = _normalize_answer_sheet_answers(
                 getattr(previous_entry, 'pencil_answers', []) if previous_entry else []
             )
+            next_deleted_ink_stroke_ids = _merge_answer_sheet_deleted_ink_stroke_ids(
+                getattr(previous_entry, 'ink_deleted_stroke_ids', []) if previous_entry else [],
+                deleted_ink_stroke_ids,
+            )
+            next_ink_strokes = _merge_answer_sheet_ink_strokes(
+                getattr(previous_entry, 'ink_strokes', []) if previous_entry else [],
+                ink_strokes,
+                next_deleted_ink_stroke_ids,
+            )
             previous_grade_answers = (
                 previous_pencil_answers
                 if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL
@@ -3518,7 +3662,8 @@ def grade_answer_sheet_round(request):
                     'answers': next_typed_answers,
                     'pencil_answers': next_pencil_answers,
                     'input_mode': input_mode,
-                    'ink_strokes': ink_strokes,
+                    'ink_strokes': next_ink_strokes,
+                    'ink_deleted_stroke_ids': next_deleted_ink_stroke_ids,
                     'grade_overrides': next_grade_overrides,
                     'grade_rejections': next_grade_rejections,
                     'grade_invalidated_questions': [],
@@ -3543,6 +3688,10 @@ def grade_answer_sheet_round(request):
             'target_user_ids': [target_user.id for target_user in target_users],
             'answers': typed_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else normalized_answers,
             'input_mode': input_mode,
+            'ink_strokes': _normalize_answer_sheet_ink_strokes(response_entry.ink_strokes),
+            'deleted_ink_stroke_ids': _normalize_answer_sheet_deleted_ink_stroke_ids(
+                getattr(response_entry, 'ink_deleted_stroke_ids', [])
+            ),
             'grade_payload': grade_payloads.get(input_mode),
             'grade_payloads': {
                 'text': grade_payloads[AnswerSheetEntry.INPUT_MODE_TEXT],
@@ -3561,6 +3710,10 @@ def grade_answer_sheet_round(request):
         'shared': bool(round_obj.cooperative and not current_user_is_diverged),
         'answers': typed_answers if input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL else normalized_answers,
         'input_mode': input_mode,
+        'ink_strokes': _normalize_answer_sheet_ink_strokes(response_entry.ink_strokes),
+        'deleted_ink_stroke_ids': _normalize_answer_sheet_deleted_ink_stroke_ids(
+            getattr(response_entry, 'ink_deleted_stroke_ids', [])
+        ),
         'grade_payload': grade_payloads.get(input_mode),
         'grade_payloads': {
             'text': grade_payloads[AnswerSheetEntry.INPUT_MODE_TEXT],
