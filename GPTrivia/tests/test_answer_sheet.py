@@ -185,6 +185,46 @@ class AnswerSheetTests(TestCase):
             self.assertEqual(message["input_mode"], "pencil")
             self.assertEqual(message["ink_strokes"], [[{"x": 0.2, "y": 0.3}, {"x": 0.4, "y": 0.5}]])
 
+    def test_save_answer_sheet_entry_keeps_competitive_answers_per_user(self):
+        megan = User.objects.create_user(username="Megan", password="pw")
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Private Competitive Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        AnswerSheetEntry.objects.create(
+            user=megan,
+            round=round_obj,
+            trivia_date=round_obj.date,
+            answers=["Megan private"] + [""] * 9,
+        )
+
+        response = self.client.post(
+            reverse("save_answer_sheet_entry"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": ["Alex private"] + [""] * 9,
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            AnswerSheetEntry.objects.get(user=self.user, round=round_obj).answers[0],
+            "Alex private",
+        )
+        self.assertEqual(
+            AnswerSheetEntry.objects.get(user=megan, round=round_obj).answers[0],
+            "Megan private",
+        )
+
     def test_save_answer_sheet_entry_preserves_rows_beyond_ten(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
@@ -630,6 +670,48 @@ class AnswerSheetTests(TestCase):
         self.assertFalse(solo_payload["shared"])
         self.assertFalse(solo_payload["is_diverged"])
         self.assertIsNone(solo_payload["grade_payload"])
+
+    def test_answer_sheet_sync_keeps_competitive_entries_per_user(self):
+        megan = User.objects.create_user(username="Megan", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Private Sync Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=round_obj,
+            trivia_date=trivia_date,
+            answers=["Alex answer"] + [""] * 9,
+        )
+        AnswerSheetEntry.objects.create(
+            user=megan,
+            round=round_obj,
+            trivia_date=trivia_date,
+            answers=["Megan answer"] + [""] * 9,
+        )
+
+        alex_response = self.client.get(reverse("answer_sheet_sync"), {"date": trivia_date.isoformat()})
+        self.client.logout()
+        self.client.force_login(megan)
+        megan_response = self.client.get(reverse("answer_sheet_sync"), {"date": trivia_date.isoformat()})
+
+        self.assertEqual(alex_response.status_code, 200)
+        self.assertEqual(megan_response.status_code, 200)
+        alex_round = alex_response.json()["rounds"][0]
+        megan_round = megan_response.json()["rounds"][0]
+        self.assertEqual(alex_round["answers"][0], "Alex answer")
+        self.assertEqual(megan_round["answers"][0], "Megan answer")
+        self.assertFalse(alex_round["shared"])
+        self.assertFalse(megan_round["shared"])
 
     def test_answer_sheet_sync_restores_saved_grade_state_without_manual_overrides(self):
         megan = User.objects.create_user(username="Megan", password="pw")
@@ -1093,6 +1175,45 @@ class AnswerSheetTests(TestCase):
         score_map = get_round_score_map(round_obj, include_null_fixed=False)
         self.assertIsNone(score_map.get("score_alex"))
 
+    def test_submit_answer_sheet_score_targets_current_user_for_competitive_round(self):
+        User.objects.create_user(username="Megan", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Competitive Submit Broadcast",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+
+        with patch("GPTrivia.views._broadcast_scoresheet_message") as broadcast:
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse("submit_answer_sheet_score"),
+                    data=json.dumps({
+                        "round_id": round_obj.id,
+                        "score": "9.5",
+                        "client_id": "alex-device-1",
+                    }),
+                    content_type="application/json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        broadcast.assert_called_once()
+        message = broadcast.call_args.args[0]
+        self.assertEqual(message["action"], "update")
+        self.assertEqual(message["event"], "answer_sheet_submit_score")
+        self.assertEqual(message["client_id"], "alex-device-1")
+        self.assertEqual(message["target_user_ids"], [self.user.id])
+        self.assertFalse(message["shared"])
+        self.assertFalse(message["is_diverged"])
+        self.assertEqual(message["round_updates"][0]["fields"], {"score_alex": 9.5})
+
     def test_submit_answer_sheet_score_promotes_manual_override_answer_to_possible_answers(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
@@ -1290,6 +1411,11 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(message["event"], "answer_sheet_submit_score")
         self.assertEqual(message["client_id"], "alex-device-1")
         self.assertEqual(message["selected_date"], trivia_date.isoformat())
+        megan = User.objects.get(username="Megan")
+        zach = User.objects.get(username="Zach")
+        self.assertEqual(message["target_user_ids"], [self.user.id, megan.id, zach.id])
+        self.assertTrue(message["shared"])
+        self.assertFalse(message["is_diverged"])
         self.assertEqual(len(message["round_updates"]), 1)
         self.assertEqual(message["round_updates"][0]["id"], round_obj.id)
         self.assertEqual(

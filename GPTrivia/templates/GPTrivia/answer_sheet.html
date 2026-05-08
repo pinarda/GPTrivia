@@ -266,14 +266,36 @@
             });
         }
 
-        function messageTargetsCurrentUser(message) {
-            const targetUserIds = Array.isArray(message?.target_user_ids)
-                ? message.target_user_ids.map((value) => String(value))
+        function getMessageTargetUserIds(message) {
+            return Array.isArray(message?.target_user_ids)
+                ? message.target_user_ids.map((value) => String(value)).filter(Boolean)
                 : [];
+        }
+
+        function messageTargetsCurrentUser(message) {
+            const targetUserIds = getMessageTargetUserIds(message);
             if (targetUserIds.length === 0) {
-                return true;
+                console.warn('[Answer Sheet] Ignoring untargeted realtime update', message);
+                return false;
             }
             return targetUserIds.includes(currentUserId);
+        }
+
+        function messageCanApplyToRound(roundId, message) {
+            if (!messageTargetsCurrentUser(message)) {
+                return false;
+            }
+            const panel = getRoundPanel(roundId);
+            if (!panel) {
+                return false;
+            }
+            const panelIsCooperative = panel.dataset.cooperative === 'true';
+            const messageIsShared = message?.shared === true || String(message?.shared || '').toLowerCase() === 'true';
+            if (!panelIsCooperative && messageIsShared) {
+                console.warn('[Answer Sheet] Ignoring shared realtime update for competitive round', message);
+                return false;
+            }
+            return true;
         }
 
         function setStatus(roundId, message, state) {
@@ -2823,7 +2845,8 @@
                         return;
                     }
                     if (message.action === 'answer_sheet') {
-                        if (!messageTargetsCurrentUser(message)) {
+                        const roundId = String(message.round_id || '');
+                        if (!messageCanApplyToRound(roundId, message)) {
                             return;
                         }
                         if (String(message.client_id || '') === localClientId) {
@@ -2831,16 +2854,19 @@
                         }
                         if (message.event === 'answer_sheet_save') {
                             logRemoteAnswerSheetUpdate('answer_sheet_save', message);
-                            applySharedAnswersUpdate(String(message.round_id || ''), message);
+                            applySharedAnswersUpdate(roundId, message);
                             return;
                         }
                         if (message.event === 'answer_sheet_grade') {
                             logRemoteAnswerSheetUpdate('answer_sheet_grade', message);
-                            applySharedGradeUpdate(String(message.round_id || ''), message);
+                            applySharedGradeUpdate(roundId, message);
                         }
                         return;
                     }
                     if (message.action === 'update' && message.event === 'answer_sheet_submit_score') {
+                        if (!messageTargetsCurrentUser(message)) {
+                            return;
+                        }
                         if (String(message.client_id || '') === localClientId) {
                             return;
                         }

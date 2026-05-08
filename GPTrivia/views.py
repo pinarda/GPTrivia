@@ -3315,6 +3315,8 @@ def submit_answer_sheet_score(request):
     round_obj = get_object_or_404(GPTriviaRound, id=round_id)
     current_entry = AnswerSheetEntry.objects.filter(user=request.user, round=round_obj).first()
     current_user_is_diverged = bool(current_entry.is_diverged) if current_entry else False
+    target_player_fields = [player_field]
+    target_users = [request.user]
 
     with transaction.atomic():
         score_map = get_round_score_map(round_obj)
@@ -3334,6 +3336,14 @@ def submit_answer_sheet_score(request):
             ]
             if not target_player_fields and player_field not in creator_fields:
                 target_player_fields = [player_field]
+            diverged_user_ids = _get_answer_sheet_diverged_user_ids(round_obj)
+            target_users = [
+                target_user
+                for target_user in _get_answer_sheet_shared_users(round_obj, current_user=request.user)
+                if target_user.id not in diverged_user_ids
+            ]
+            if not target_users:
+                target_users = [request.user]
             for target_field in target_player_fields:
                 score_map[target_field] = normalized_score
         else:
@@ -3348,14 +3358,15 @@ def submit_answer_sheet_score(request):
             'event': 'answer_sheet_submit_score',
             'client_id': client_id,
             'selected_date': round_obj.date.isoformat() if round_obj.date else '',
+            'target_user_ids': [target_user.id for target_user in target_users],
+            'shared': bool(round_obj.cooperative and not current_user_is_diverged),
+            'is_diverged': bool(current_user_is_diverged),
             'round_updates': [
                 {
                     'id': round_obj.id,
                     'fields': {
                         candidate_field: normalized_score
-                        for candidate_field in (
-                            target_player_fields if round_obj.cooperative else [player_field]
-                        )
+                        for candidate_field in target_player_fields
                     },
                 },
             ],
