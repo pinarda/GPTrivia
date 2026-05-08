@@ -721,6 +721,14 @@ class RoundAnalysisTests(TestCase):
         self.assertIn("KS", kings_speech_answers)
         self.assertIn("ks", kings_speech_answers)
 
+    def test_build_possible_answers_makes_parenthetical_text_optional(self):
+        zebra_answers = _build_possible_answers("A Zebra (African)")
+        self.assertIn("A Zebra (African)", zebra_answers)
+        self.assertIn("A Zebra", zebra_answers)
+        self.assertIn("a zebra", zebra_answers)
+        self.assertIn("Zebra", zebra_answers)
+        self.assertIn("zebra", zebra_answers)
+
     def test_build_possible_answers_expands_person_name_variants_with_question_context(self):
         franklin_answers = _build_possible_answers(
             "Benjamin Franklin",

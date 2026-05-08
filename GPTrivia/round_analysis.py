@@ -1476,6 +1476,23 @@ def _split_possible_answer_segments(answer_text):
         return []
 
     segments = [cleaned_answer]
+    parenthetical_variants = set()
+    pending_parenthetical_variants = [cleaned_answer]
+    seen_parenthetical_variants = {cleaned_answer.casefold()}
+    while pending_parenthetical_variants:
+        current_variant = pending_parenthetical_variants.pop()
+        for match in re.finditer(r'\s*\([^()]*\)', current_variant):
+            omitted_variant = _normalize_possible_answer_variant(
+                f"{current_variant[:match.start()]} {current_variant[match.end():]}"
+            )
+            omitted_key = omitted_variant.casefold()
+            if not omitted_variant or omitted_key in seen_parenthetical_variants:
+                continue
+            seen_parenthetical_variants.add(omitted_key)
+            parenthetical_variants.add(omitted_variant)
+            pending_parenthetical_variants.append(omitted_variant)
+    segments.extend(parenthetical_variants)
+
     colon_segments = [_normalize_possible_answer_variant(segment) for segment in re.split(r'\s*:\s*', cleaned_answer)]
     if len([segment for segment in colon_segments if segment]) > 1:
         segments.extend(segment for segment in colon_segments if segment)

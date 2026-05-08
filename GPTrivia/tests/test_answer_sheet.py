@@ -2092,6 +2092,51 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(payload["score"], 1)
         self.assertEqual(payload["row_results"][0]["state"], "correct")
 
+    def test_grade_answer_sheet_round_treats_parenthetical_answer_text_as_optional(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Parenthetical Answer Round",
+            major_category="Science",
+            minor_category1="Biology",
+            minor_category2="Animals",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        run = RoundQuestionAnalysisRun.objects.create(
+            round=round_obj,
+            status=RoundQuestionAnalysisRun.STATUS_COMPLETED,
+            round_type="text",
+        )
+        RoundQuestionAnalysisEntry.objects.create(
+            run=run,
+            round=round_obj,
+            round_name=round_obj.title,
+            round_date=round_obj.date,
+            question_number=1,
+            question_text="What striped animal is native to Africa?",
+            answer_text="A Zebra (African)",
+            possible_answers=[],
+            round_type="text",
+            player_correctness={"Alex": ""},
+        )
+
+        response = self.client.post(
+            reverse("grade_answer_sheet_round"),
+            data=json.dumps({
+                "round_id": round_obj.id,
+                "answers": "Zebra",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["score"], 1)
+        self.assertEqual(payload["row_results"][0]["state"], "correct")
+
     def test_grade_answer_sheet_round_accepts_multiple_choice_letters_without_stored_aliases(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",
