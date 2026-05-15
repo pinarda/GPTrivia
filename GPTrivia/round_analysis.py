@@ -2287,6 +2287,8 @@ def _build_possible_answers_with_aliases(answer_text, additional_candidates, *, 
 
 def _parse_openai_json_response(response_text):
     candidate = (response_text or '').strip()
+    if not candidate:
+        raise RuntimeError("GPT returned an empty response when JSON was required.")
     if candidate.startswith('```'):
         candidate = re.sub(r'^```(?:json)?\s*', '', candidate)
         candidate = re.sub(r'\s*```$', '', candidate)

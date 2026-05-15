@@ -6,7 +6,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
-from GPTrivia.models import GPTriviaRound, MergedPresentation, SubmittedRound
+from GPTrivia.models import GPTriviaRound, HomePresentationBuildJob, MergedPresentation, SubmittedRound
 
 
 class HomeRoundFeedTests(TestCase):
@@ -432,7 +432,8 @@ class HomeRoundFeedTests(TestCase):
             ["https://docs.google.com/presentation/d/presentation-generated/edit#slide=id.copied-round"],
         ),
     )
-    def test_generate_accepts_historical_round_selection_and_stores_copied_link(self, create_mock):
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
+    def test_generate_accepts_historical_round_selection_and_stores_copied_link(self, _worker_mock, create_mock):
         with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 3, 14)):
             response = self.client.post(
                 reverse("home"),
@@ -449,6 +450,13 @@ class HomeRoundFeedTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse("home"))
+        job = HomePresentationBuildJob.objects.get()
+        from GPTrivia.views import _run_home_presentation_build_job
+
+        with patch("GPTrivia.views._broadcast_home_build_state"):
+            with patch("GPTrivia.views._broadcast_home_presentation_refresh"):
+                with patch("GPTrivia.views._broadcast_home_build_result"):
+                    _run_home_presentation_build_job(job.id)
         self.assertEqual(
             create_mock.call_args.args[2],
             ["https://docs.google.com/presentation/d/source-merged/edit#slide=id.round-start"],

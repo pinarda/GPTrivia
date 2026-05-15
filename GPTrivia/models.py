@@ -221,6 +221,46 @@ class PresentationBuildState(models.Model):
         return f"{self.key}: {'active' if self.is_active else 'idle'}"
 
 
+class HomePresentationBuildJob(models.Model):
+    STATUS_PENDING = 'pending'
+    STATUS_RUNNING = 'running'
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_RUNNING, 'Running'),
+        (STATUS_COMPLETED, 'Completed'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+
+    ACTION_GENERATE = 'generate'
+    ACTION_UPDATE = 'update'
+    ACTION_CHOICES = [
+        (ACTION_GENERATE, 'Generate'),
+        (ACTION_UPDATE, 'Update'),
+    ]
+
+    action = models.CharField(max_length=16, choices=ACTION_CHOICES)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+    presentation_name = models.CharField(max_length=255)
+    presentation_id = models.CharField(max_length=255, blank=True, default='')
+    selected_presentation_id = models.CharField(max_length=255, blank=True, default='')
+    requested_by = models.CharField(max_length=100, blank=True, default='')
+    round_payload = jsonfield.JSONField(default=list, blank=True)
+    result_presentation_id = models.CharField(max_length=255, blank=True, default='')
+    error_message = models.TextField(blank=True, default='')
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at', 'id']
+
+    def __str__(self):
+        return f"{self.presentation_name} {self.action} ({self.status})"
+
+
 class AnswerSheetEntry(models.Model):
     INPUT_MODE_TEXT = 'text'
     INPUT_MODE_PENCIL = 'pencil'

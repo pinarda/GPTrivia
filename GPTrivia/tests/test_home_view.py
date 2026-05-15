@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from GPTrivia.mail import PresentationBuildError
-from GPTrivia.models import GPTriviaRound, MergedPresentation, PresentationBuildState, SubmittedRound
+from GPTrivia.models import GPTriviaRound, HomePresentationBuildJob, MergedPresentation, PresentationBuildState, SubmittedRound
 
 
 class HomeViewPresentationSelectionTests(TestCase):
@@ -172,9 +172,9 @@ class HomeViewPresentationSelectionTests(TestCase):
             },
         )
 
-    @patch("GPTrivia.views._schedule_home_presentation_refresh_broadcast")
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
     @patch("GPTrivia.views.create_presentation", return_value="presentation-generated")
-    def test_generate_ajax_returns_json_for_new_presentation(self, create_mock, refresh_broadcast_mock):
+    def test_generate_ajax_queues_new_presentation(self, create_mock, worker_mock):
         with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 6, 5)):
             response = self.client.post(
                 reverse("home"),
@@ -191,33 +191,24 @@ class HomeViewPresentationSelectionTests(TestCase):
                 HTTP_ACCEPT="application/json",
             )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            create_mock.call_args.kwargs["presentation_name"],
-            "6.05.2026",
-        )
-        self.assertEqual(
-            response.json(),
-            {
-                "presentation_id": "presentation-generated",
-                "presentation_name": "6.05.2026",
-                "presentation_url": "https://docs.google.com/presentation/d/presentation-generated/embed",
-                "selected_presentation_iso_date": "2026-06-05",
-                "calendar_entry": {
-                    "presentation_id": "presentation-generated",
-                    "name": "6.05.2026",
-                },
-            },
-        )
-        generated_presentation = MergedPresentation.objects.get(presentation_id="presentation-generated")
-        self.assertEqual(generated_presentation.notes, "")
-        self.assertEqual(generated_presentation.status, MergedPresentation.STATUS_READY)
-        refresh_broadcast_mock.assert_called_once()
-        self.assertEqual(refresh_broadcast_mock.call_args.kwargs["action"], "generate")
-        self.assertEqual(refresh_broadcast_mock.call_args.args[1], "presentation-generated")
+        self.assertEqual(response.status_code, 202)
+        payload = response.json()
+        self.assertTrue(payload["build_queued"])
+        self.assertTrue(payload["is_active"])
+        self.assertEqual(payload["action"], "generate")
+        self.assertEqual(payload["presentation_name"], "6.05.2026")
+        create_mock.assert_not_called()
+        worker_mock.assert_called_once()
+        queued_job = HomePresentationBuildJob.objects.get()
+        self.assertEqual(queued_job.action, HomePresentationBuildJob.ACTION_GENERATE)
+        self.assertEqual(queued_job.presentation_name, "6.05.2026")
+        self.assertEqual(queued_job.round_payload[0]["title"], "Round C")
 
+    @patch("GPTrivia.views._broadcast_home_build_result")
+    @patch("GPTrivia.views._broadcast_home_presentation_refresh")
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
     @patch("GPTrivia.views.create_presentation", return_value="presentation-generated")
-    def test_generate_marks_matching_submitted_round_consumed(self, create_mock):
+    def test_generate_marks_matching_submitted_round_consumed(self, create_mock, _worker_mock, _refresh_mock, _result_mock):
         submitted_round = SubmittedRound.objects.create(
             presentation_id="swoop-123",
             title="Round C",
@@ -242,10 +233,17 @@ class HomeViewPresentationSelectionTests(TestCase):
             )
 
         self.assertEqual(response.status_code, 302)
+        job = HomePresentationBuildJob.objects.get()
+        from GPTrivia.views import _run_home_presentation_build_job
+
+        _run_home_presentation_build_job(job.id)
         create_mock.assert_called_once()
         submitted_round.refresh_from_db()
         self.assertTrue(submitted_round.is_consumed)
 
+    @patch("GPTrivia.views._broadcast_home_build_result")
+    @patch("GPTrivia.views._broadcast_home_presentation_refresh")
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
     @patch(
         "GPTrivia.views.create_presentation",
         side_effect=PresentationBuildError(
@@ -256,7 +254,7 @@ class HomeViewPresentationSelectionTests(TestCase):
             round_links=["https://docs.google.com/presentation/d/presentation-partial/edit#slide=id.partial"],
         ),
     )
-    def test_generate_ajax_returns_partial_presentation_payload_on_failure(self, _create_mock):
+    def test_generate_job_records_partial_presentation_on_failure(self, _create_mock, _worker_mock, _refresh_mock, _result_mock):
         with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 6, 5)):
             response = self.client.post(
                 reverse("home"),
@@ -273,19 +271,14 @@ class HomeViewPresentationSelectionTests(TestCase):
                 HTTP_ACCEPT="application/json",
             )
 
-        self.assertEqual(response.status_code, 500)
-        self.assertEqual(
-            response.json(),
-            {
-                "presentation_id": "presentation-partial",
-                "presentation_name": "6.05.2026",
-                "presentation_url": "https://docs.google.com/presentation/d/presentation-partial/embed",
-                "selected_presentation_iso_date": "2026-06-05",
-                "calendar_entry": None,
-                "detail": "Slide generation stopped before completion: simulated failure",
-                "build_failed": True,
-            },
-        )
+        self.assertEqual(response.status_code, 202)
+        job = HomePresentationBuildJob.objects.get()
+        from GPTrivia.views import _run_home_presentation_build_job
+
+        with self.assertRaises(PresentationBuildError):
+            _run_home_presentation_build_job(job.id, raise_on_error=True)
+        job.refresh_from_db()
+        self.assertEqual(job.status, HomePresentationBuildJob.STATUS_FAILED)
         failed_presentation = MergedPresentation.objects.get(presentation_id="presentation-partial")
         self.assertEqual(failed_presentation.status, MergedPresentation.STATUS_FAILED)
         self.assertEqual(
@@ -293,9 +286,9 @@ class HomeViewPresentationSelectionTests(TestCase):
             "Slide generation stopped before completion: simulated failure",
         )
 
-    @patch("GPTrivia.views._schedule_home_presentation_refresh_broadcast")
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
     @patch("GPTrivia.views.update_merged_presentation", return_value=("presentation-old-updated", ["Jenny"], ["Round D"], ["https://example.com/round-d"]))
-    def test_update_ajax_returns_json_for_selected_presentation(self, update_mock, refresh_broadcast_mock):
+    def test_update_ajax_queues_selected_presentation(self, update_mock, worker_mock):
         response = self.client.post(
             reverse("home"),
             data={
@@ -312,29 +305,25 @@ class HomeViewPresentationSelectionTests(TestCase):
             HTTP_ACCEPT="application/json",
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(update_mock.call_args.args[0], self.older_presentation.presentation_id)
+        self.assertEqual(response.status_code, 202)
+        payload = response.json()
+        self.assertTrue(payload["build_queued"])
+        self.assertTrue(payload["is_active"])
+        self.assertEqual(payload["action"], "update")
+        self.assertEqual(payload["presentation_name"], "3.05.2026")
+        update_mock.assert_not_called()
+        worker_mock.assert_called_once()
+        queued_job = HomePresentationBuildJob.objects.get()
+        self.assertEqual(queued_job.action, HomePresentationBuildJob.ACTION_UPDATE)
+        self.assertEqual(queued_job.selected_presentation_id, self.older_presentation.presentation_id)
         self.older_presentation.refresh_from_db()
-        self.assertEqual(self.older_presentation.presentation_id, "presentation-old-updated")
-        self.assertEqual(
-            response.json(),
-            {
-                "presentation_id": "presentation-old-updated",
-                "presentation_name": "3.05.2026",
-                "presentation_url": "https://docs.google.com/presentation/d/presentation-old-updated/embed",
-                "selected_presentation_iso_date": "2026-03-05",
-                "calendar_entry": {
-                    "presentation_id": "presentation-old-updated",
-                    "name": "3.05.2026",
-                },
-            },
-        )
-        refresh_broadcast_mock.assert_called_once()
-        self.assertEqual(refresh_broadcast_mock.call_args.kwargs["action"], "update")
-        self.assertEqual(refresh_broadcast_mock.call_args.args[1], "presentation-old-updated")
+        self.assertEqual(self.older_presentation.presentation_id, "presentation-old")
 
+    @patch("GPTrivia.views._broadcast_home_build_result")
+    @patch("GPTrivia.views._broadcast_home_presentation_refresh")
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
     @patch("GPTrivia.views.update_merged_presentation", return_value=("presentation-old-updated", ["Jenny"], ["Round D"], ["https://example.com/round-d"]))
-    def test_update_marks_matching_submitted_round_consumed(self, update_mock):
+    def test_update_marks_matching_submitted_round_consumed(self, update_mock, _worker_mock, _refresh_mock, _result_mock):
         submitted_round = SubmittedRound.objects.create(
             presentation_id="swoop-123",
             title="Round C",
@@ -359,12 +348,17 @@ class HomeViewPresentationSelectionTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
+        job = HomePresentationBuildJob.objects.get()
+        from GPTrivia.views import _run_home_presentation_build_job
+
+        _run_home_presentation_build_job(job.id)
         update_mock.assert_called_once()
         submitted_round.refresh_from_db()
         self.assertTrue(submitted_round.is_consumed)
 
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
     @patch("GPTrivia.views.update_merged_presentation", return_value=("presentation-old", [], [], []))
-    def test_update_uses_selected_presentation_id(self, update_mock):
+    def test_update_uses_selected_presentation_id(self, update_mock, _worker_mock):
         response = self.client.post(
             reverse("home"),
             data={
@@ -380,15 +374,14 @@ class HomeViewPresentationSelectionTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(
-            response.url,
-            f"{reverse('home')}?presentation_id={self.older_presentation.presentation_id}",
-        )
-        self.assertEqual(update_mock.call_args.args[0], self.older_presentation.presentation_id)
-        self.assertEqual(update_mock.call_args.args[1], ["Alex"])
+        self.assertEqual(response.url, reverse("home"))
+        update_mock.assert_not_called()
+        queued_job = HomePresentationBuildJob.objects.get()
+        self.assertEqual(queued_job.selected_presentation_id, self.older_presentation.presentation_id)
 
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
     @patch("GPTrivia.views.create_presentation", return_value="presentation-generated")
-    def test_generate_non_ajax_keeps_redirect_fallback(self, _create_mock):
+    def test_generate_non_ajax_keeps_redirect_fallback(self, create_mock, _worker_mock):
         response = self.client.post(
             reverse("home"),
             data={
@@ -404,6 +397,8 @@ class HomeViewPresentationSelectionTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse("home"))
+        create_mock.assert_not_called()
+        self.assertEqual(HomePresentationBuildJob.objects.count(), 1)
 
     @patch("GPTrivia.views.create_presentation")
     def test_generate_ajax_rejects_when_build_is_already_in_progress(self, create_mock):

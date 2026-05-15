@@ -2,8 +2,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from .forms import GPTriviaRoundForm, ProfileIntroForm, ProfilePictureForm
 from .models import GPTriviaRound, MergedPresentation, PresentationBuildState, Profile
-from django.db import transaction
+from django.db import close_old_connections, transaction
 from django.db.models import Avg, F, FloatField, Case, When, Sum, Count, Q
+from django.db.utils import OperationalError, ProgrammingError
 from django.contrib.auth import views as auth_views
 from django.urls import reverse, reverse_lazy
 from django.shortcuts import render
@@ -42,6 +43,9 @@ import logging
 import requests
 from urllib.parse import urlencode
 import hashlib
+import threading
+import time
+import traceback
 from io import BytesIO
 from decimal import Decimal, InvalidOperation
 from PIL import Image, ImageDraw
@@ -63,7 +67,7 @@ from datetime import date
 from django.utils import timezone
 from django.http import FileResponse
 from django.core.cache import cache
-from .models import AnswerSheetEntry, JeopardyQuestion, JeopardyRound, PushSubscription, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun, SubmittedRound
+from .models import AnswerSheetEntry, HomePresentationBuildJob, JeopardyQuestion, JeopardyRound, PushSubscription, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun, SubmittedRound
 from .player_scores import (
     FIXED_SCORE_FIELDS,
     MIN_ANALYSIS_ROUNDS,
@@ -312,6 +316,46 @@ def _extract_openai_text_from_payload(payload):
     return ''.join(collected_chunks).strip()
 
 
+def _summarize_openai_response_object(response):
+    output_summary = []
+    for output in getattr(response, 'output', []) or []:
+        content_types = [
+            str(getattr(content, 'type', '') or '')
+            for content in getattr(output, 'content', []) or []
+        ]
+        output_summary.append({
+            'type': str(getattr(output, 'type', '') or ''),
+            'status': str(getattr(output, 'status', '') or ''),
+            'content_types': content_types,
+        })
+    return {
+        'id': str(getattr(response, 'id', '') or ''),
+        'status': str(getattr(response, 'status', '') or ''),
+        'incomplete_details': repr(getattr(response, 'incomplete_details', None)),
+        'output': output_summary,
+    }
+
+
+def _summarize_openai_response_payload(payload):
+    output_summary = []
+    for output in (payload or {}).get('output', []) or []:
+        content_types = [
+            str((content or {}).get('type') or '')
+            for content in (output or {}).get('content', []) or []
+        ]
+        output_summary.append({
+            'type': str((output or {}).get('type') or ''),
+            'status': str((output or {}).get('status') or ''),
+            'content_types': content_types,
+        })
+    return {
+        'id': str((payload or {}).get('id') or ''),
+        'status': str((payload or {}).get('status') or ''),
+        'incomplete_details': repr((payload or {}).get('incomplete_details')),
+        'output': output_summary,
+    }
+
+
 def _build_responses_input(messages):
     response_messages = []
     for message in messages:
@@ -344,17 +388,30 @@ def _create_openai_text_response_http(*, instructions, input_items, max_output_t
     if reasoning_effort:
         request_kwargs["reasoning"] = {"effort": reasoning_effort}
 
-    response = requests.post(
-        "https://api.openai.com/v1/responses",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json=request_kwargs,
-        timeout=60,
-    )
-    response.raise_for_status()
-    return _extract_openai_text_from_payload(response.json())
+    last_text = ''
+    for attempt in range(1, 3):
+        response = requests.post(
+            "https://api.openai.com/v1/responses",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json=request_kwargs,
+            timeout=60,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        last_text = _extract_openai_text_from_payload(payload)
+        if last_text:
+            return last_text
+        logger.warning(
+            "OpenAI HTTP response returned no text on attempt %s/2: %s",
+            attempt,
+            _summarize_openai_response_payload(payload),
+        )
+        if attempt < 2:
+            time.sleep(1)
+    return last_text
 
 
 def _create_openai_text_response(client, *, instructions, input_items, max_output_tokens=250, reasoning_effort="medium"):
@@ -369,8 +426,20 @@ def _create_openai_text_response(client, *, instructions, input_items, max_outpu
         if reasoning_effort:
             request_kwargs["reasoning"] = {"effort": reasoning_effort}
 
-        response = client.responses.create(**request_kwargs)
-        return _extract_openai_text(response)
+        last_text = ''
+        for attempt in range(1, 3):
+            response = client.responses.create(**request_kwargs)
+            last_text = _extract_openai_text(response)
+            if last_text:
+                return last_text
+            logger.warning(
+                "OpenAI SDK response returned no text on attempt %s/2: %s",
+                attempt,
+                _summarize_openai_response_object(response),
+            )
+            if attempt < 2:
+                time.sleep(1)
+        return last_text
 
     return _create_openai_text_response_http(
         instructions=instructions,
@@ -5960,9 +6029,12 @@ def _serialize_home_build_state(build_state=None):
 
 
 def _clear_stale_home_build_state(build_state):
-    if not build_state or not build_state.is_active or not build_state.started_at:
+    if not build_state or not build_state.is_active:
         return build_state
-    if build_state.started_at >= _stale_home_build_cutoff():
+    stale_reference = build_state.updated_at or build_state.started_at
+    if not stale_reference:
+        return build_state
+    if stale_reference >= _stale_home_build_cutoff():
         return build_state
 
     build_state.is_active = False
@@ -6027,6 +6099,20 @@ def _schedule_home_presentation_refresh_broadcast(selected_presentation, present
             presentation_id,
             action=action,
         )
+    )
+
+
+def _broadcast_home_build_result(result):
+    channel_layer = get_channel_layer()
+    if not channel_layer:
+        return
+
+    async_to_sync(channel_layer.group_send)(
+        HOME_BUILD_GROUP_NAME,
+        {
+            "type": "home_build_result_message",
+            "result": result,
+        },
     )
 
 
@@ -6189,12 +6275,520 @@ def _upsert_failed_presentation(
     )
     return failed_presentation
 
+
+HOME_PRESENTATION_BUILD_WORKER_IDLE_WAIT_SECONDS = 2
+HOME_PRESENTATION_BUILD_HEARTBEAT_SECONDS = 10
+HOME_PRESENTATION_BUILD_STALE_MINUTES = HOME_BUILD_STALE_MINUTES
+_HOME_PRESENTATION_BUILD_WORKER_LOCK = threading.Lock()
+_HOME_PRESENTATION_BUILD_WORKER_WAKE_EVENT = threading.Event()
+_HOME_PRESENTATION_BUILD_WORKER_THREAD = None
+
+
+def _get_ordered_rounds_from_home_request(request):
+    indices = {
+        key.rsplit("_", 1)[-1]
+        for key in request.POST
+        if key.startswith("round_title_")
+    }
+    round_order = {}
+    for idx in indices:
+        order_val = request.POST.get(f"round_order_{idx}")
+        if not order_val:
+            continue
+        order = int(order_val)
+        round_order[order] = {
+            "title": request.POST.get(f"round_title_{idx}"),
+            "creator": request.POST.get(f"round_creator_{idx}"),
+            "link": request.POST.get(f"round_link_{idx}"),
+            "old_link": request.POST.get(f"round_old_link_{idx}"),
+            "shared_date": request.POST.get(f"round_shared_date_{idx}"),
+            "coop": request.POST.get(f"round_coop_{idx}"),
+            "is_new": str(request.POST.get(f"round_is_new_{idx}") or '').strip().lower() in {'1', 'true', 'yes', 'on'},
+        }
+    return [round_order[key] for key in sorted(round_order.keys())]
+
+
+def _serialize_home_build_queued_response(job, build_state):
+    action_label = 'update' if job.action == HomePresentationBuildJob.ACTION_UPDATE else 'generation'
+    return {
+        "build_queued": True,
+        "job_id": job.id,
+        "detail": f"Slide {action_label} queued for {job.presentation_name}.",
+        **_serialize_home_build_state(build_state),
+    }
+
+
+def _queue_home_presentation_build_job(
+    *,
+    action,
+    presentation_name,
+    ordered_rounds,
+    selected_presentation_id='',
+    requested_by='',
+):
+    job = HomePresentationBuildJob.objects.create(
+        action=action,
+        status=HomePresentationBuildJob.STATUS_PENDING,
+        presentation_name=presentation_name,
+        presentation_id=selected_presentation_id or '',
+        selected_presentation_id=selected_presentation_id or '',
+        requested_by=requested_by or '',
+        round_payload=ordered_rounds,
+    )
+    logger.info(
+        "Queued home presentation %s job %s for %s with %s rounds",
+        action,
+        job.id,
+        presentation_name,
+        len(ordered_rounds or []),
+    )
+    ensure_home_presentation_build_worker_running()
+    return job
+
+
+def ensure_home_presentation_build_worker_running():
+    global _HOME_PRESENTATION_BUILD_WORKER_THREAD
+
+    with _HOME_PRESENTATION_BUILD_WORKER_LOCK:
+        worker_thread = _HOME_PRESENTATION_BUILD_WORKER_THREAD
+        if worker_thread and worker_thread.is_alive():
+            _HOME_PRESENTATION_BUILD_WORKER_WAKE_EVENT.set()
+            return False
+
+        _HOME_PRESENTATION_BUILD_WORKER_WAKE_EVENT.clear()
+        _HOME_PRESENTATION_BUILD_WORKER_THREAD = threading.Thread(
+            target=_home_presentation_build_worker_loop,
+            daemon=True,
+            name='home-presentation-build-worker',
+        )
+        _HOME_PRESENTATION_BUILD_WORKER_THREAD.start()
+        return True
+
+
+def ensure_home_presentation_build_worker_for_pending_jobs():
+    _recover_stale_home_presentation_build_jobs()
+    has_pending_jobs = HomePresentationBuildJob.objects.filter(
+        status=HomePresentationBuildJob.STATUS_PENDING,
+    ).exists()
+    if not has_pending_jobs:
+        return False
+    ensure_home_presentation_build_worker_running()
+    return True
+
+
+def _home_presentation_build_worker_loop():
+    close_old_connections()
+    try:
+        while True:
+            try:
+                processed_any = _claim_and_process_next_home_presentation_build_job()
+                if processed_any:
+                    continue
+
+                if not HomePresentationBuildJob.objects.filter(
+                    status__in=[
+                        HomePresentationBuildJob.STATUS_PENDING,
+                        HomePresentationBuildJob.STATUS_RUNNING,
+                    ],
+                ).exists():
+                    return
+
+                _HOME_PRESENTATION_BUILD_WORKER_WAKE_EVENT.wait(timeout=HOME_PRESENTATION_BUILD_WORKER_IDLE_WAIT_SECONDS)
+                _HOME_PRESENTATION_BUILD_WORKER_WAKE_EVENT.clear()
+            except (OperationalError, ProgrammingError):
+                logger.exception("Home presentation build worker could not access its tables yet.")
+                return
+    finally:
+        close_old_connections()
+        global _HOME_PRESENTATION_BUILD_WORKER_THREAD
+        with _HOME_PRESENTATION_BUILD_WORKER_LOCK:
+            if _HOME_PRESENTATION_BUILD_WORKER_THREAD is threading.current_thread():
+                _HOME_PRESENTATION_BUILD_WORKER_THREAD = None
+
+
+def _claim_and_process_next_home_presentation_build_job():
+    job_id = _claim_next_home_presentation_build_job_id()
+    if job_id is None:
+        return False
+
+    try:
+        _run_home_presentation_build_job(job_id)
+    except Exception:
+        logger.exception("Home presentation build job %s failed unexpectedly.", job_id)
+    return True
+
+
+def _claim_next_home_presentation_build_job_id():
+    with transaction.atomic():
+        _recover_stale_home_presentation_build_jobs()
+        if HomePresentationBuildJob.objects.filter(status=HomePresentationBuildJob.STATUS_RUNNING).exists():
+            return None
+
+        candidate_job = (
+            HomePresentationBuildJob.objects.filter(status=HomePresentationBuildJob.STATUS_PENDING)
+            .order_by('created_at', 'id')
+            .first()
+        )
+        if candidate_job is None:
+            return None
+
+        now = timezone.now()
+        updated = HomePresentationBuildJob.objects.filter(
+            id=candidate_job.id,
+            status=HomePresentationBuildJob.STATUS_PENDING,
+        ).update(
+            status=HomePresentationBuildJob.STATUS_RUNNING,
+            started_at=now,
+            completed_at=None,
+            error_message='',
+            updated_at=now,
+        )
+        if not updated:
+            return None
+
+        build_state, _ = PresentationBuildState.objects.select_for_update().get_or_create(
+            key=HOME_BUILD_STATE_KEY,
+        )
+        build_state.is_active = True
+        build_state.action = candidate_job.action
+        build_state.presentation_name = candidate_job.presentation_name
+        build_state.presentation_id = candidate_job.selected_presentation_id or ''
+        build_state.started_at = build_state.started_at or now
+        build_state.save(
+            update_fields=["is_active", "action", "presentation_name", "presentation_id", "started_at", "updated_at"]
+        )
+
+    _broadcast_home_build_state(_get_home_build_state())
+    return candidate_job.id
+
+
+def _recover_stale_home_presentation_build_jobs():
+    stale_cutoff = timezone.now() - datetime.timedelta(minutes=HOME_PRESENTATION_BUILD_STALE_MINUTES)
+    stale_jobs = list(
+        HomePresentationBuildJob.objects.filter(
+            status=HomePresentationBuildJob.STATUS_RUNNING,
+            updated_at__lt=stale_cutoff,
+        ).order_by('id')
+    )
+    if not stale_jobs:
+        return []
+
+    recovered_job_ids = []
+    for stale_job in stale_jobs:
+        error_parts = [
+            str(stale_job.error_message or '').strip(),
+            (
+                "Marked failed automatically after the presentation build worker stopped heartbeating. "
+                "This usually means the server restarted or the worker crashed."
+            ),
+        ]
+        stale_job.status = HomePresentationBuildJob.STATUS_FAILED
+        stale_job.completed_at = timezone.now()
+        stale_job.error_message = '\n\n'.join(part for part in error_parts if part)
+        stale_job.save(update_fields=['status', 'completed_at', 'error_message', 'updated_at'])
+        recovered_job_ids.append(stale_job.id)
+        logger.warning("Recovered stale home presentation build job %s", stale_job.id)
+
+    if not HomePresentationBuildJob.objects.filter(
+        status__in=[HomePresentationBuildJob.STATUS_PENDING, HomePresentationBuildJob.STATUS_RUNNING],
+    ).exists():
+        _release_home_build_lock()
+    return recovered_job_ids
+
+
+def _heartbeat_home_presentation_build_job(job_id, stop_event):
+    while not stop_event.wait(timeout=HOME_PRESENTATION_BUILD_HEARTBEAT_SECONDS):
+        now = timezone.now()
+        HomePresentationBuildJob.objects.filter(
+            id=job_id,
+            status=HomePresentationBuildJob.STATUS_RUNNING,
+        ).update(updated_at=now)
+        PresentationBuildState.objects.filter(
+            key=HOME_BUILD_STATE_KEY,
+            is_active=True,
+        ).update(updated_at=now)
+
+
+def _home_build_result_payload(job, *, ok, detail, presentation=None, presentation_id=None):
+    payload = {
+        "ok": bool(ok),
+        "job_id": job.id,
+        "action": job.action,
+        "detail": detail,
+    }
+    if presentation is not None:
+        payload["presentation"] = _serialize_home_presentation(
+            presentation,
+            presentation_id,
+            include_calendar_entry=(presentation.status == MergedPresentation.STATUS_READY),
+        )
+    return payload
+
+
+def _run_home_presentation_build_job(job_id, *, raise_on_error=False):
+    job = HomePresentationBuildJob.objects.get(id=job_id)
+    heartbeat_stop_event = threading.Event()
+    heartbeat_thread = threading.Thread(
+        target=_heartbeat_home_presentation_build_job,
+        args=(job.id, heartbeat_stop_event),
+        daemon=True,
+        name=f'home-presentation-build-heartbeat-{job.id}',
+    )
+    heartbeat_thread.start()
+
+    try:
+        if job.action == HomePresentationBuildJob.ACTION_UPDATE:
+            presentation, presentation_id = _execute_home_update_build_job(job)
+        else:
+            presentation, presentation_id = _execute_home_generate_build_job(job)
+
+        job.status = HomePresentationBuildJob.STATUS_COMPLETED
+        job.result_presentation_id = presentation_id or ''
+        job.completed_at = timezone.now()
+        job.error_message = ''
+        job.save(update_fields=['status', 'result_presentation_id', 'completed_at', 'error_message', 'updated_at'])
+
+        _broadcast_home_presentation_refresh(presentation, presentation_id, action=job.action)
+        _broadcast_home_build_result(
+            _home_build_result_payload(
+                job,
+                ok=True,
+                detail=f"Slide {job.action} completed for {job.presentation_name}.",
+                presentation=presentation,
+                presentation_id=presentation_id,
+            )
+        )
+    except Exception as exc:
+        job.status = HomePresentationBuildJob.STATUS_FAILED
+        job.completed_at = timezone.now()
+        job.error_message = f"{exc}\n\n{traceback.format_exc(limit=10)}"
+        job.save(update_fields=['status', 'completed_at', 'error_message', 'updated_at'])
+        _broadcast_home_build_result(
+            _home_build_result_payload(
+                job,
+                ok=False,
+                detail=f"Slide {job.action} failed for {job.presentation_name}: {exc}",
+            )
+        )
+        if raise_on_error:
+            raise
+    finally:
+        heartbeat_stop_event.set()
+        _release_home_build_lock()
+
+
+def _execute_home_generate_build_job(job):
+    ordered_rounds = list(job.round_payload or [])
+    ordered_titles = [round_data['title'] for round_data in ordered_rounds]
+    ordered_creators = [round_data['creator'] for round_data in ordered_rounds]
+    ordered_links = [round_data['link'] for round_data in ordered_rounds]
+    ordered_old_links = [round_data['old_link'] for round_data in ordered_rounds]
+    ordered_coop = [round_data['coop'] for round_data in ordered_rounds]
+
+    logger.info(
+        "Home background generate started for %s with %s rounds",
+        job.presentation_name,
+        len(ordered_titles),
+    )
+    try:
+        create_result = create_presentation(
+            ordered_titles,
+            ordered_creators,
+            ordered_links,
+            presentation_name=job.presentation_name,
+            old_links=ordered_old_links,
+            coops=ordered_coop,
+        )
+    except Exception as error:
+        PresentationBuildError = _get_presentation_build_error_class()
+        if isinstance(error, PresentationBuildError):
+            logger.exception(
+                "Home background generate failed during %s for %s (%s)",
+                error.step or "unknown step",
+                job.presentation_name,
+                error.presentation_id,
+            )
+            failed_presentation = _upsert_failed_presentation(
+                name=job.presentation_name,
+                presentation_id=error.presentation_id,
+                creator_list=error.creators or ordered_creators,
+                round_names=error.round_titles or ordered_titles,
+                error_message=str(error),
+            )
+            if failed_presentation is not None:
+                _broadcast_home_presentation_refresh(
+                    failed_presentation,
+                    error.presentation_id,
+                    action=job.action,
+                )
+        else:
+            logger.exception("Home background generate failed before completion for %s", job.presentation_name)
+        raise
+
+    if isinstance(create_result, tuple):
+        new_presentation_id, creators, round_titles, round_links = create_result
+    else:
+        new_presentation_id = create_result
+        round_titles = ordered_titles
+        creators = ordered_creators
+        round_links = ordered_links
+    logger.info(
+        "Home background generate completed for %s (%s)",
+        job.presentation_name,
+        new_presentation_id,
+    )
+
+    response_presentation = MergedPresentation.objects.create(
+        name=job.presentation_name,
+        presentation_id=new_presentation_id,
+        creator_list=creators,
+        round_names=round_titles,
+        player_list={},
+        host="Unknown",
+        scorekeeper="Unknown",
+        style_points={},
+        notes="",
+        tiebreak_winner="",
+    )
+
+    round_ids_for_analysis = []
+    for round_index in range(len(round_titles)):
+        new_round = GPTriviaRound()
+        new_round.creator = creators[round_index]
+        new_round.title = round_titles[round_index]
+        new_round.major_category = ""
+        new_round.minor_category1 = ""
+        new_round.minor_category2 = ""
+        new_round.date = datetime.datetime.strptime(job.presentation_name, "%m.%d.%Y").date().strftime('%Y-%m-%d')
+        new_round.round_number = round_index + 1
+        new_round.max_score = 10
+        set_round_score_map(new_round, {})
+        new_round.replay = 0
+        new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
+        new_round.link = round_links[round_index]
+        new_round.source_link = ordered_old_links[round_index] or ordered_links[round_index]
+        new_round.save()
+        if _should_auto_queue_round_analysis_for_round(
+            new_round,
+            ordered_rounds[round_index],
+            presentation_name=job.presentation_name,
+            action_name='generate',
+        ):
+            round_ids_for_analysis.append(new_round.id)
+
+    _mark_selected_submitted_rounds_consumed(ordered_rounds)
+    if round_ids_for_analysis:
+        from .round_analysis import schedule_auto_round_analysis_batch
+
+        schedule_auto_round_analysis_batch(
+            round_ids_for_analysis,
+            initiated_by=job.requested_by,
+            batch_label=f"new rounds from {job.presentation_name}",
+        )
+
+    return response_presentation, new_presentation_id
+
+
+def _execute_home_update_build_job(job):
+    ordered_rounds = list(job.round_payload or [])
+    ordered_titles = [round_data['title'] for round_data in ordered_rounds]
+    ordered_creators = [round_data['creator'] for round_data in ordered_rounds]
+    ordered_links = [round_data['link'] for round_data in ordered_rounds]
+    ordered_old_links = [round_data['old_link'] for round_data in ordered_rounds]
+    ordered_coop = [round_data['coop'] for round_data in ordered_rounds]
+
+    selected_presentation = MergedPresentation.objects.get(
+        presentation_id=job.selected_presentation_id
+    )
+    logger.info(
+        "Home background update started for %s using presentation %s with %s rounds",
+        job.presentation_name,
+        selected_presentation.presentation_id,
+        len(ordered_titles),
+    )
+
+    try:
+        updated_presentation_id, new_creators, round_titles, new_links = update_merged_presentation(
+            selected_presentation.presentation_id,
+            selected_presentation.creator_list,
+            ordered_titles,
+            ordered_creators,
+            ordered_links,
+            ordered_old_links,
+            coops=ordered_coop,
+        )
+    except Exception as error:
+        logger.exception(
+            "Home background update failed for %s (%s)",
+            job.presentation_name,
+            selected_presentation.presentation_id,
+        )
+        selected_presentation.status = MergedPresentation.STATUS_FAILED
+        selected_presentation.error_message = str(error)
+        selected_presentation.save(update_fields=["status", "error_message"])
+        raise
+
+    logger.info(
+        "Home background update completed for %s (%s)",
+        job.presentation_name,
+        updated_presentation_id,
+    )
+
+    selected_presentation = MergedPresentation.objects.get(
+        presentation_id=job.selected_presentation_id
+    )
+    selected_presentation.presentation_id = updated_presentation_id
+    selected_presentation.round_names.extend(round_titles)
+    selected_presentation.creator_list.extend(new_creators)
+    selected_presentation.status = MergedPresentation.STATUS_READY
+    selected_presentation.error_message = ""
+    selected_presentation.save()
+
+    round_ids_for_analysis = []
+    for round_index in range(len(round_titles)):
+        new_round = GPTriviaRound()
+        new_round.creator = new_creators[round_index]
+        new_round.title = round_titles[round_index]
+        new_round.major_category = ""
+        new_round.minor_category1 = ""
+        new_round.minor_category2 = ""
+        new_round.date = datetime.datetime.strptime(job.presentation_name, "%m.%d.%Y").date().strftime('%Y-%m-%d')
+        new_round.round_number = round_index + 1
+        new_round.max_score = 10
+        set_round_score_map(new_round, {})
+        new_round.replay = 0
+        new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
+        new_round.link = new_links[round_index]
+        new_round.source_link = ordered_old_links[round_index] or ordered_links[round_index]
+        new_round.save()
+        if _should_auto_queue_round_analysis_for_round(
+            new_round,
+            ordered_rounds[round_index],
+            presentation_name=job.presentation_name,
+            action_name='update',
+        ):
+            round_ids_for_analysis.append(new_round.id)
+
+    _mark_selected_submitted_rounds_consumed(ordered_rounds)
+    if round_ids_for_analysis:
+        from .round_analysis import schedule_auto_round_analysis_batch
+
+        schedule_auto_round_analysis_batch(
+            round_ids_for_analysis,
+            initiated_by=job.requested_by,
+            batch_label=f"new rounds from {job.presentation_name}",
+        )
+
+    return selected_presentation, updated_presentation_id
+
+
 @login_required
 @ensure_csrf_cookie
 def home(request):
     from .round_analysis import ensure_round_analysis_worker_for_pending_runs
 
     ensure_round_analysis_worker_for_pending_runs()
+    ensure_home_presentation_build_worker_for_pending_jobs()
     ajax_request = _is_ajax_home_request(request)
     selected_presentation_id = (
         request.GET.get("presentation_id") or request.POST.get("selected_presentation_id")
@@ -6210,34 +6804,10 @@ def home(request):
     presentation_name = datetime.date.strftime(_current_trivia_date(), '%-m.%d.%Y')
     if request.method == 'POST':
         action = request.POST.get('action')
-        response_presentation = None
-        response_presentation_id = None
-        indices = {
-            key.rsplit("_", 1)[-1]  # → "0", "1", …
-            for key in request.POST
-            if key.startswith("round_title_")
-        }
+        ordered_rounds = _get_ordered_rounds_from_home_request(request)
 
         if action == 'generate':
-
-            round_order = {}
-            for idx in indices:
-                order_val = request.POST.get(f"round_order_{idx}")
-                if not order_val:
-                    continue  # user didn’t pick this row
-                order = int(order_val)
-
-                round_order[order] = {
-                    "title": request.POST.get(f"round_title_{idx}"),
-                    "creator": request.POST.get(f"round_creator_{idx}"),
-                    "link": request.POST.get(f"round_link_{idx}"),
-                    "old_link": request.POST.get(f"round_old_link_{idx}"),
-                    "shared_date": request.POST.get(f"round_shared_date_{idx}"),
-                    "coop": request.POST.get(f"round_coop_{idx}"),
-                    "is_new": str(request.POST.get(f"round_is_new_{idx}") or '').strip().lower() in {'1', 'true', 'yes', 'on'},
-                }
-            # make sure there's at least one round, or else just return
-            if not round_order:
+            if not ordered_rounds:
                 if ajax_request:
                     return JsonResponse({"detail": "No rounds selected."}, status=400)
                 return render(request, "GPTrivia/home.html", home_context)
@@ -6254,166 +6824,34 @@ def home(request):
                     return JsonResponse(payload, status=409)
                 return render(request, "GPTrivia/home.html", home_context)
 
-            # Sort rounds by order
-            ordered_rounds = [round_order[key] for key in sorted(round_order.keys())]
-
-            # Extract ordered titles, creators, and links
-            ordered_titles = [round['title'] for round in ordered_rounds]
-            ordered_creators = [round['creator'] for round in ordered_rounds]
-            ordered_links = [round['link'] for round in ordered_rounds]
-            ordered_old_links = [round['old_link'] for round in ordered_rounds]
-            ordered_coop = [round['coop'] for round in ordered_rounds]
             logger.info(
-                "Home generate requested for %s with %s rounds",
+                "Home generate requested for %s with %s rounds; queuing background job",
                 presentation_name,
-                len(ordered_titles),
+                len(ordered_rounds),
             )
-
-            # Pass the ordered data to create_presentation
             try:
-                create_result = create_presentation(
-                    ordered_titles,
-                    ordered_creators,
-                    ordered_links,
+                job = _queue_home_presentation_build_job(
+                    action=HomePresentationBuildJob.ACTION_GENERATE,
                     presentation_name=presentation_name,
-                    old_links=ordered_old_links,
-                    coops=ordered_coop
+                    ordered_rounds=ordered_rounds,
+                    requested_by=request.user.username if request.user.is_authenticated else '',
                 )
             except Exception as error:
-                PresentationBuildError = _get_presentation_build_error_class()
-                if not isinstance(error, PresentationBuildError):
-                    logger.exception(
-                        "Home generate failed before completion for %s",
-                        presentation_name,
-                    )
-                    if ajax_request:
-                        return JsonResponse(
-                            {"detail": f"Slide generation failed before completion: {error}"},
-                            status=500,
-                        )
-                    raise
-
-                logger.error(
-                    "Home generate failed during %s for %s (%s)",
-                    error.step or "unknown step",
-                    presentation_name,
-                    error.presentation_id,
-                )
-                failed_presentation = _upsert_failed_presentation(
-                    name=presentation_name,
-                    presentation_id=error.presentation_id,
-                    creator_list=error.creators or ordered_creators,
-                    round_names=error.round_titles or ordered_titles,
-                    error_message=str(error),
-                )
-                if ajax_request:
-                    payload = _serialize_home_presentation(
-                        failed_presentation,
-                        error.presentation_id,
-                        include_calendar_entry=False,
-                    )
-                    payload["detail"] = str(error)
-                    payload["build_failed"] = True
-                    return JsonResponse(payload, status=500)
-                raise
-            finally:
+                logger.exception("Could not queue home generate job for %s", presentation_name)
                 _release_home_build_lock()
+                if ajax_request:
+                    return JsonResponse({"detail": f"Could not queue slide generation: {error}"}, status=500)
+                raise
 
-            if isinstance(create_result, tuple):
-                new_presentation_id, creators, round_titles, round_links = create_result
-            else:
-                new_presentation_id = create_result
-                round_titles = ordered_titles
-                creators = ordered_creators
-                round_links = ordered_links
-            logger.info(
-                "Home generate completed for %s (%s)",
-                presentation_name,
-                new_presentation_id,
-            )
-
-            # new_presentation_id, creators, round_titles, round_links = create_presentation()
-
-            response_presentation = MergedPresentation.objects.create(
-                name=presentation_name,
-                presentation_id=new_presentation_id,
-                creator_list=creators,
-                round_names=round_titles,
-                player_list={},
-                host="Unknown",
-                scorekeeper="Unknown",
-                style_points={},
-                notes="",
-                tiebreak_winner="",
-            )
-            response_presentation_id = new_presentation_id
-            _schedule_home_presentation_refresh_broadcast(
-                response_presentation,
-                response_presentation_id,
-                action="generate",
-            )
-            print (new_presentation_id, creators, round_titles)
-
-            round_ids_for_analysis = []
-            for round_index in range(len(round_titles)):
-                new_round = GPTriviaRound()
-                # Assign the round_data fields to the GPTriviaRound instance
-                new_round.creator = creators[round_index]
-                new_round.title = round_titles[round_index]
-                new_round.major_category = ""
-                new_round.minor_category1 = ""
-                new_round.minor_category2 = ""
-                new_round.date = datetime.datetime.strptime(presentation_name, "%m.%d.%Y").date().strftime('%Y-%m-%d')
-                new_round.round_number = round_index + 1
-                new_round.max_score = 10
-                set_round_score_map(new_round, {})
-                new_round.replay = 0
-                # round coop will be 0 if the checkbox is not checked, 1 if it is
-                new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
-                new_round.link = round_links[round_index]
-                new_round.source_link = ordered_old_links[round_index] or ordered_links[round_index]
-                new_round.save()
-                if _should_auto_queue_round_analysis_for_round(
-                    new_round,
-                    ordered_rounds[round_index],
-                    presentation_name=presentation_name,
-                    action_name='generate',
-                ):
-                    round_ids_for_analysis.append(new_round.id)
-
-            _mark_selected_submitted_rounds_consumed(ordered_rounds)
-            if round_ids_for_analysis:
-                from .round_analysis import schedule_auto_round_analysis_batch
-
-                transaction.on_commit(
-                    lambda queued_ids=list(round_ids_for_analysis), initiated_by=(request.user.username if request.user.is_authenticated else ''), label=f"new rounds from {presentation_name}": schedule_auto_round_analysis_batch(
-                        queued_ids,
-                        initiated_by=initiated_by,
-                        batch_label=label,
-                    )
+            if ajax_request:
+                return JsonResponse(
+                    _serialize_home_build_queued_response(job, _get_home_build_state()),
+                    status=202,
                 )
+            return redirect("home")
 
         elif action == 'update':
-
-            round_order = {}
-            for idx in indices:
-                order_val = request.POST.get(f"round_order_{idx}")
-                if not order_val:
-                    continue  # user didn’t pick this row
-                order = int(order_val)
-
-                round_order[order] = {
-                    "title": request.POST.get(f"round_title_{idx}"),
-                    "creator": request.POST.get(f"round_creator_{idx}"),
-                    "link": request.POST.get(f"round_link_{idx}"),
-                    "old_link": request.POST.get(f"round_old_link_{idx}"),
-                    "shared_date": request.POST.get(f"round_shared_date_{idx}"),
-                    "coop": request.POST.get(f"round_coop_{idx}"),
-                    "is_new": str(request.POST.get(f"round_is_new_{idx}") or '').strip().lower() in {'1', 'true', 'yes', 'on'},
-                }
-
-            if not round_order:
-                # nothing selected → render page without hitting Gmail
+            if not ordered_rounds:
                 if ajax_request:
                     return JsonResponse({"detail": "No rounds selected."}, status=400)
                 return render(request, "GPTrivia/home.html", home_context)
@@ -6436,137 +6874,36 @@ def home(request):
                     return JsonResponse(payload, status=409)
                 return render(request, "GPTrivia/home.html", home_context)
 
-            # Sort rounds by order
-            ordered_rounds = [round_order[key] for key in sorted(round_order.keys())]
-
-            # Extract ordered titles, creators, and links
-            ordered_titles = [round['title'] for round in ordered_rounds]
-            ordered_creators = [round['creator'] for round in ordered_rounds]
-            ordered_links = [round['link'] for round in ordered_rounds]
-            ordered_old_links = [round['old_link'] for round in ordered_rounds]
-            ordered_coop = [round['coop'] for round in ordered_rounds]
             logger.info(
-                "Home update requested for %s using presentation %s with %s rounds",
-                presentation_name,
+                "Home update requested for %s using presentation %s with %s rounds; queuing background job",
+                selected_presentation.name,
                 selected_presentation.presentation_id,
-                len(ordered_titles),
+                len(ordered_rounds),
             )
-
-
-            # Pass the ordered data to create_presentation
-            # new_presentation_id = create_presentation(
-            #     ordered_titles,
-            #     ordered_creators,
-            #     ordered_links,
-            #     presentation_name=presentation_name
-            # )
-
             try:
-                updated_presentation_id, new_creators, round_titles, new_links = update_merged_presentation(
-                    selected_presentation.presentation_id,
-                    selected_presentation.creator_list,
-                    ordered_titles,
-                    ordered_creators,
-                    ordered_links,
-                    ordered_old_links,
-                    coops=ordered_coop,
+                job = _queue_home_presentation_build_job(
+                    action=HomePresentationBuildJob.ACTION_UPDATE,
+                    presentation_name=selected_presentation.name,
+                    selected_presentation_id=selected_presentation.presentation_id,
+                    ordered_rounds=ordered_rounds,
+                    requested_by=request.user.username if request.user.is_authenticated else '',
                 )
             except Exception as error:
-                logger.exception(
-                    "Home update failed for %s (%s)",
-                    presentation_name,
-                    selected_presentation.presentation_id,
-                )
-                selected_presentation.status = MergedPresentation.STATUS_FAILED
-                selected_presentation.error_message = str(error)
-                selected_presentation.save(update_fields=["status", "error_message"])
-                if ajax_request:
-                    payload = _serialize_home_presentation(
-                        selected_presentation,
-                        selected_presentation.presentation_id,
-                        include_calendar_entry=False,
-                    )
-                    payload["detail"] = f"Slide update stopped before completion: {error}"
-                    payload["build_failed"] = True
-                    return JsonResponse(payload, status=500)
-                raise
-            finally:
+                logger.exception("Could not queue home update job for %s", selected_presentation.name)
                 _release_home_build_lock()
-            logger.info(
-                "Home update completed for %s (%s)",
-                presentation_name,
-                updated_presentation_id,
-            )
+                if ajax_request:
+                    return JsonResponse({"detail": f"Could not queue slide update: {error}"}, status=500)
+                raise
 
-            # update the MergedPresentation object that has the same presentation_id as the latest_presentation
-            # by appending the new creators to the creator_list and appending the new round titles to the round_names
-
-            selected_presentation = MergedPresentation.objects.get(
-                presentation_id=selected_presentation.presentation_id
-            )
-            selected_presentation.presentation_id = updated_presentation_id
-            selected_presentation.round_names.extend(round_titles)
-            selected_presentation.creator_list.extend(new_creators)
-            selected_presentation.status = MergedPresentation.STATUS_READY
-            selected_presentation.error_message = ""
-            selected_presentation.save()
-            _schedule_home_presentation_refresh_broadcast(
-                selected_presentation,
-                updated_presentation_id,
-                action="update",
-            )
-
-            print(updated_presentation_id, new_creators, round_titles)
-            response_presentation = selected_presentation
-            response_presentation_id = updated_presentation_id
-
-            round_ids_for_analysis = []
-            for round_index in range(len(round_titles)):
-                new_round = GPTriviaRound()
-                # Assign the round_data fields to the GPTriviaRound instance
-                new_round.creator = new_creators[round_index]
-                new_round.title = round_titles[round_index]
-                new_round.major_category = ""
-                new_round.minor_category1 = ""
-                new_round.minor_category2 = ""
-                new_round.date = datetime.datetime.strptime(presentation_name, "%m.%d.%Y").date().strftime('%Y-%m-%d')
-                new_round.round_number = round_index + 1
-                new_round.max_score = 10
-                set_round_score_map(new_round, {})
-                new_round.replay = 0
-                new_round.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
-                new_round.link = new_links[round_index]
-                new_round.source_link = ordered_old_links[round_index] or ordered_links[round_index]
-                new_round.save()
-                if _should_auto_queue_round_analysis_for_round(
-                    new_round,
-                    ordered_rounds[round_index],
-                    presentation_name=presentation_name,
-                    action_name='update',
-                ):
-                    round_ids_for_analysis.append(new_round.id)
-
-            _mark_selected_submitted_rounds_consumed(ordered_rounds)
-            if round_ids_for_analysis:
-                from .round_analysis import schedule_auto_round_analysis_batch
-
-                transaction.on_commit(
-                    lambda queued_ids=list(round_ids_for_analysis), initiated_by=(request.user.username if request.user.is_authenticated else ''), label=f"new rounds from {presentation_name}": schedule_auto_round_analysis_batch(
-                        queued_ids,
-                        initiated_by=initiated_by,
-                        batch_label=label,
-                    )
+            if ajax_request:
+                return JsonResponse(
+                    _serialize_home_build_queued_response(job, _get_home_build_state()),
+                    status=202,
                 )
+            return redirect("home")
 
-        if ajax_request and response_presentation is not None:
-            return JsonResponse(
-                _serialize_home_presentation(response_presentation, response_presentation_id)
-            )
-
-        if action == "update" and response_presentation is not None:
-            return redirect(
-                f"{reverse_lazy('home')}?presentation_id={response_presentation_id}"
-            )
+        if ajax_request:
+            return JsonResponse({"detail": "Unknown presentation action."}, status=400)
         return redirect("home")
 
     # return render(request, 'GPTrivia/home.html', {'presentation_url': presentation_url, 'pres_name': latest_presentation.name if latest_presentation else "None", 'avail_links': links, 'avail_titles': titles, 'avail_creators': creators, 'shared_dates': shared_dates, 'avail_coops': [0]*len(titles)})

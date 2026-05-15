@@ -287,10 +287,14 @@ def _get_shape_text_content(presentation, element_id):
     return None
 
 
-def _pop_is_coop(coop_values):
-    if not coop_values:
+def _is_coop_value(value):
+    return str(value or '').strip().lower() in {'on', '1', 'true', 'yes'}
+
+
+def _is_coop_at(coop_values, index):
+    if index < 0 or index >= len(coop_values or []):
         return False
-    return coop_values.pop(0) == 'on'
+    return _is_coop_value(coop_values[index])
 
 
 def _build_update_summary_entries(existing_round_count, titles, creator_keys, coops, max_slots=6):
@@ -305,7 +309,7 @@ def _build_update_summary_entries(existing_round_count, titles, creator_keys, co
                 "creator_placeholder": f"CREATOR{slot_index + 1}",
                 "title": title,
                 "creator_key": creator_key,
-                "coop": bool(coops[offset] == "on") if offset < len(coops) else False,
+                "coop": _is_coop_at(coops, offset),
                 "round_done": False,
                 "creator_done": False,
             }
@@ -1845,7 +1849,7 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
                                     content, creator_placeholder
                                 )
 
-                                if _pop_is_coop(summary_coops):
+                                if _is_coop_at(summary_coops, i):
                                     new_text = f"{new_text} - Co-op"
 
                                 print(f"creator_start_index: {creator_start_index}")

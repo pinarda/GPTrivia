@@ -1864,6 +1864,22 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                         refreshToken: data.refreshed_at || `${Date.now()}`,
                     });
                     loadAvailableRounds({ preserveSearch: true, showLoadingState: false });
+                    return;
+                }
+                if (data.type === 'build_result' && data.result) {
+                    const result = data.result;
+                    if (result.presentation) {
+                        applyPresentationSelection(result.presentation, {
+                            forceReload: true,
+                            refreshToken: `${Date.now()}`,
+                        });
+                    }
+                    loadAvailableRounds({ preserveSearch: true, showLoadingState: false });
+                    setStatusMessage(
+                        result.detail || (result.ok ? 'Slides are ready.' : 'Slide build failed.'),
+                        result.ok ? 'var(--home-table-text)' : '#ffb3b3',
+                        result.ok ? 'success' : 'error',
+                    );
                 }
             };
 
@@ -2302,9 +2318,19 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             return payload;
         })
         .then((payload) => {
+            homeFormSubmitInFlight = false;
+            if (payload.build_queued) {
+                setHomeBuildLockState(payload);
+                clearSelectedRoundOrders();
+                setStatusMessage(
+                    payload.detail || getHomeBuildLockMessage(),
+                    'var(--home-table-text)',
+                    'status',
+                );
+                return;
+            }
             applyPresentationSelection(payload);
             clearSelectedRoundOrders();
-            homeFormSubmitInFlight = false;
             enableButtons();
         })
         .catch((error) => {

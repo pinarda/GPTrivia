@@ -35,3 +35,10 @@ class GPTriviaConfig(AppConfig):
             ensure_round_analysis_worker_running()
         except Exception:
             logger.exception("Could not start the round analysis worker.")
+
+        try:
+            from .views import ensure_home_presentation_build_worker_for_pending_jobs
+
+            ensure_home_presentation_build_worker_for_pending_jobs()
+        except Exception:
+            logger.exception("Could not start the home presentation build worker.")

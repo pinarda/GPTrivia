@@ -162,6 +162,12 @@ class HomePageConsumer(AsyncWebsocketConsumer):
             'refreshed_at': event.get('refreshed_at', ''),
         }))
 
+    async def home_build_result_message(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'build_result',
+            'result': event.get('result') or {},
+        }))
+
 
 class ButtonPressConsumer(AsyncWebsocketConsumer):
     reset_task = None

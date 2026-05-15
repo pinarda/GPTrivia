@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 from PIL import Image
 
-from GPTrivia.models import GPTriviaRound, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun
+from GPTrivia.models import GPTriviaRound, HomePresentationBuildJob, RoundQuestionAnalysisEntry, RoundQuestionAnalysisRun
 from GPTrivia.round_analysis import (
     ROUND_ANALYSIS_AUTO_DELAY_SECONDS,
     ROUND_ANALYSIS_STALE_RUNNING_SECONDS,
@@ -58,7 +58,8 @@ class RoundAnalysisTests(TestCase):
         ),
     )
     @patch("GPTrivia.round_analysis.schedule_auto_round_analysis_batch")
-    def test_home_generate_auto_queues_only_new_rounds(self, queue_mock, create_mock):
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
+    def test_home_generate_auto_queues_only_new_rounds(self, _worker_mock, queue_mock, create_mock):
         with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 3, 20)):
             with patch("GPTrivia.views._broadcast_home_build_state"):
                 with patch("GPTrivia.views._broadcast_home_presentation_refresh"):
@@ -85,6 +86,13 @@ class RoundAnalysisTests(TestCase):
                         )
 
         self.assertEqual(response.status_code, 302)
+        job = HomePresentationBuildJob.objects.get()
+        from GPTrivia.views import _run_home_presentation_build_job
+
+        with patch("GPTrivia.views._broadcast_home_build_state"):
+            with patch("GPTrivia.views._broadcast_home_presentation_refresh"):
+                with patch("GPTrivia.views._broadcast_home_build_result"):
+                    _run_home_presentation_build_job(job.id)
         self.assertEqual(create_mock.call_count, 1)
         created_rounds = list(GPTriviaRound.objects.order_by("round_number", "id"))
         self.assertEqual([round_obj.title for round_obj in created_rounds], ["Fresh Round", "Historic Round"])
@@ -105,27 +113,35 @@ class RoundAnalysisTests(TestCase):
         ),
     )
     @patch("GPTrivia.round_analysis.schedule_auto_round_analysis_batch")
-    def test_home_generate_logs_creator_opt_in_skip_reason_for_auto_analysis(self, queue_mock, create_mock):
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
+    def test_home_generate_logs_creator_opt_in_skip_reason_for_auto_analysis(self, _worker_mock, queue_mock, create_mock):
         with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 3, 20)):
             with patch("GPTrivia.views._broadcast_home_build_state"):
                 with patch("GPTrivia.views._broadcast_home_presentation_refresh"):
                     with self.captureOnCommitCallbacks(execute=True):
-                        with self.assertLogs("GPTrivia.views", level="INFO") as captured_logs:
-                            response = self.client.post(
-                                reverse("home"),
-                                data={
-                                    "action": "generate",
-                                    "round_order_0": "1",
-                                    "round_title_0": "Fresh Round",
-                                    "round_creator_0": "Alex Smith",
-                                    "round_link_0": "https://docs.google.com/presentation/d/source-fresh/edit",
-                                    "round_old_link_0": "https://docs.google.com/presentation/d/source-fresh/edit",
-                                    "round_shared_date_0": "2026-03-19",
-                                    "round_is_new_0": "1",
-                                },
-                            )
+                        response = self.client.post(
+                            reverse("home"),
+                            data={
+                                "action": "generate",
+                                "round_order_0": "1",
+                                "round_title_0": "Fresh Round",
+                                "round_creator_0": "Alex Smith",
+                                "round_link_0": "https://docs.google.com/presentation/d/source-fresh/edit",
+                                "round_old_link_0": "https://docs.google.com/presentation/d/source-fresh/edit",
+                                "round_shared_date_0": "2026-03-19",
+                                "round_is_new_0": "1",
+                            },
+                        )
 
         self.assertEqual(response.status_code, 302)
+        job = HomePresentationBuildJob.objects.get()
+        from GPTrivia.views import _run_home_presentation_build_job
+
+        with self.assertLogs("GPTrivia.views", level="INFO") as captured_logs:
+            with patch("GPTrivia.views._broadcast_home_build_state"):
+                with patch("GPTrivia.views._broadcast_home_presentation_refresh"):
+                    with patch("GPTrivia.views._broadcast_home_build_result"):
+                        _run_home_presentation_build_job(job.id)
         self.assertEqual(create_mock.call_count, 1)
         queue_mock.assert_not_called()
         joined_logs = "\n".join(captured_logs.output)

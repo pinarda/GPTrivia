@@ -15,8 +15,8 @@ from GPTrivia.mail import (
     _format_pacific_timestamp,
     _get_shape_text_content,
     _infer_historical_round_slide_range,
+    _is_coop_at,
     _prepare_update_round_sources,
-    _pop_is_coop,
     _sanitize_slides_text,
     _utf16_code_units,
     _utf16_placeholder_range,
@@ -295,13 +295,14 @@ class MailHelpersTests(SimpleTestCase):
             "Current Round",
         )
 
-    def test_pop_is_coop_consumes_values_sequentially(self):
-        coop_values = ["on", "", "on"]
+    def test_is_coop_at_uses_placeholder_index_without_consuming_values(self):
+        coop_values = ["", "on", ""]
 
-        self.assertTrue(_pop_is_coop(coop_values))
-        self.assertFalse(_pop_is_coop(coop_values))
-        self.assertTrue(_pop_is_coop(coop_values))
-        self.assertFalse(_pop_is_coop(coop_values))
+        self.assertTrue(_is_coop_at(coop_values, 1))
+        self.assertFalse(_is_coop_at(coop_values, 0))
+        self.assertTrue(_is_coop_at(coop_values, 1))
+        self.assertFalse(_is_coop_at(coop_values, 2))
+        self.assertFalse(_is_coop_at(coop_values, 3))
 
     def test_build_update_summary_entries_starts_after_existing_rounds(self):
         entries = _build_update_summary_entries(
