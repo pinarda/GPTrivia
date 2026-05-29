@@ -794,6 +794,45 @@ class AnswerSheetTests(TestCase):
         self.assertFalse(alex_round["shared"])
         self.assertFalse(megan_round["shared"])
 
+    def test_answer_sheet_sync_does_not_fall_back_to_other_player_for_competitive_round(self):
+        megan = User.objects.create_user(username="Megan", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Private Empty Sync Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        AnswerSheetEntry.objects.create(
+            user=megan,
+            round=round_obj,
+            trivia_date=trivia_date,
+            answers=["Megan private answer"] + [""] * 9,
+            input_mode=AnswerSheetEntry.INPUT_MODE_PENCIL,
+            ink_strokes=[[{"x": 0.2, "y": 0.3}, {"x": 0.4, "y": 0.5}]],
+        )
+
+        sync_response = self.client.get(reverse("answer_sheet_sync"), {"date": trivia_date.isoformat()})
+        page_response = self.client.get(reverse("answer_sheet"), {"date": trivia_date.isoformat()})
+
+        self.assertEqual(sync_response.status_code, 200)
+        self.assertEqual(page_response.status_code, 200)
+        sync_round = sync_response.json()["rounds"][0]
+        page_round = page_response.context["round_pages"][0]
+        self.assertEqual(sync_round["answers"], [""] * 10)
+        self.assertEqual(sync_round["input_mode"], AnswerSheetEntry.INPUT_MODE_TEXT)
+        self.assertEqual(sync_round["ink_strokes"], [])
+        self.assertFalse(sync_round["shared"])
+        self.assertEqual(page_round["answers"], [""] * 10)
+        self.assertEqual(page_round["input_mode"], AnswerSheetEntry.INPUT_MODE_TEXT)
+        self.assertEqual(page_round["ink_strokes"], [])
+
     def test_answer_sheet_sync_restores_saved_grade_state_without_manual_overrides(self):
         megan = User.objects.create_user(username="Megan", password="pw")
         trivia_date = datetime.date(2026, 4, 17)

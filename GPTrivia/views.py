@@ -3333,6 +3333,9 @@ def _get_answer_sheet_communal_answers(round_obj, current_user=None):
 
 
 def _get_answer_sheet_communal_entry(round_obj, current_user=None):
+    if not round_obj or not round_obj.cooperative:
+        return None
+
     diverged_user_ids = _get_answer_sheet_diverged_user_ids(round_obj)
     communal_users = [
         target_user
