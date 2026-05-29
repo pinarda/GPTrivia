@@ -6,6 +6,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
+from GPTrivia import views
 from GPTrivia.models import GPTriviaRound, HomePresentationBuildJob, MergedPresentation, SubmittedRound
 
 
@@ -382,6 +383,78 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual(first_response.status_code, 200)
         self.assertEqual(refresh_response.status_code, 200)
         self.assertEqual(mock_get_round_titles_and_links.call_count, 2)
+
+    @patch("GPTrivia.views.ensure_available_rounds_refresh_worker_running", return_value=True)
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_background_returns_cached_rounds_without_waiting_for_gmail(
+        self,
+        mock_get_round_titles_and_links,
+        mock_ensure_refresh_worker,
+    ):
+        SubmittedRound.objects.create(
+            presentation_id="cached-123",
+            title="Cached New Round",
+            source_title="Cached New Round",
+            creator="Alex",
+            shared_date=datetime.date(2026, 3, 20),
+            cooperative=True,
+            link="https://docs.google.com/presentation/d/cached-123/edit",
+        )
+        GPTriviaRound.objects.create(
+            creator="Megan",
+            title="Historic Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 3, 1),
+            round_number=1,
+            max_score=10,
+            link="https://example.com/historic-round",
+        )
+
+        response = self.client.get(reverse("collect_rounds_api"), {"background": "1"})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["refreshing"])
+        self.assertEqual([round_data["title"] for round_data in payload["rounds"]], ["Cached New Round", "Historic Round"])
+        self.assertTrue(payload["rounds"][0]["is_new"])
+        self.assertTrue(payload["rounds"][0]["coop"])
+        mock_get_round_titles_and_links.assert_not_called()
+        mock_ensure_refresh_worker.assert_called_once()
+
+    @patch("GPTrivia.views._broadcast_home_available_rounds_refresh")
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_available_rounds_background_refresh_persists_email_rounds_and_broadcasts_sorted_payload(
+        self,
+        mock_get_round_titles_and_links,
+        mock_broadcast,
+    ):
+        mock_get_round_titles_and_links.return_value = (
+            [
+                "https://docs.google.com/presentation/d/older-round/edit",
+                "https://docs.google.com/presentation/d/newer-round/edit",
+            ],
+            ["Older Round", "Newer Round"],
+            ["Alex", "Megan"],
+            [
+                "https://docs.google.com/presentation/d/older-round/edit",
+                "https://docs.google.com/presentation/d/newer-round/edit",
+            ],
+            ["2026-03-14", "2026-03-21"],
+        )
+
+        data = views._refresh_available_rounds_from_email()
+
+        self.assertIsNotNone(data)
+        self.assertEqual(
+            list(SubmittedRound.objects.order_by("shared_date").values_list("title", "is_consumed")),
+            [("Older Round", False), ("Newer Round", False)],
+        )
+        self.assertEqual([round_data["title"] for round_data in data[:2]], ["Newer Round", "Older Round"])
+        mock_broadcast.assert_called_once()
+        broadcast_rounds = mock_broadcast.call_args.args[0]
+        self.assertEqual([round_data["title"] for round_data in broadcast_rounds[:2]], ["Newer Round", "Older Round"])
 
     def test_save_available_round_metadata_uses_shared_date_in_persistence_for_linkless_rounds(self):
         first_response = self.client.post(

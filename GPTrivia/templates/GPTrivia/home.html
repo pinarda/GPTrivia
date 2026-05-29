@@ -144,6 +144,21 @@ body.site-shell[data-profile-theme="light"] {
     min-width: 0;
 }
 
+#msg.home-status-with-progress {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.home-status-progress-icon {
+    width: 26px;
+    height: 26px;
+    flex: 0 0 auto;
+    object-fit: contain;
+    animation: spin 1.8s linear infinite;
+}
+
 .round-selection-title-picker {
     min-width: 260px;
     max-width: min(100%, 380px);
@@ -1087,6 +1102,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
         const homeRoundSaveDebounceMs = 450;
         const homeNavigationEntry = performance.getEntriesByType('navigation')[0];
         const homeForceRefresh = Boolean(homeNavigationEntry && homeNavigationEntry.type === 'reload');
+        const homeProgressIconSrc = "{% static 'GPTrivia/css/ouroboros.png' %}";
 
         function profileUrlForName(name) {
             return profileUrlTemplate.replace('__PROFILE_NAME__', encodeURIComponent(name || ''));
@@ -1681,6 +1697,38 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             syncSelectedOrdersFromRounds();
         }
 
+        function applyAvailableRounds(rounds, options = {}) {
+            const { preserveSearch = true } = options;
+            const roundSearchInput = document.getElementById('round-search-input');
+            const previousSearch = preserveSearch && roundSearchInput ? roundSearchInput.value : '';
+            const previousSpotlightCreator = preserveSearch ? (homeRoundState.spotlightCreator || '') : '';
+
+            hydrateRounds(rounds);
+
+            const spotlightStillExists = previousSpotlightCreator
+                && homeRoundState.rounds.some(
+                    (round) => (round.creator || '').trim() === previousSpotlightCreator
+                );
+
+            if (spotlightStillExists) {
+                homeRoundState.spotlightCreator = previousSpotlightCreator;
+                const spotlightSelect = document.getElementById('round-player-spotlight');
+                if (spotlightSelect) {
+                    spotlightSelect.value = previousSpotlightCreator;
+                }
+                syncCreatorSpotlightPicker();
+                showRandomRoundForCreator(previousSpotlightCreator);
+            } else {
+                homeRoundState.spotlightCreator = '';
+                const spotlightSelect = document.getElementById('round-player-spotlight');
+                if (spotlightSelect) {
+                    spotlightSelect.value = '';
+                }
+                syncCreatorSpotlightPicker();
+                filterRounds(previousSearch);
+            }
+        }
+
         function loadAvailableRounds(options = {}) {
             if (homeRoundsLoadInFlight) {
                 return Promise.resolve();
@@ -1691,14 +1739,11 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 showLoadingState = false,
             } = options;
 
-            const roundSearchInput = document.getElementById('round-search-input');
             const placeholder = document.getElementById('rounds-placeholder');
             const placeholderText = placeholder
                 ? placeholder.querySelector('#rounds-loading-text')
                 : null;
             const roundsSpinner = document.getElementById('rounds-spinner');
-            const previousSearch = preserveSearch && roundSearchInput ? roundSearchInput.value : '';
-            const previousSpotlightCreator = homeRoundState.spotlightCreator || '';
 
             homeRoundsLoadInFlight = true;
 
@@ -1718,6 +1763,9 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             if (homeForceRefresh) {
                 roundsUrl.searchParams.set('refresh', '1');
             }
+            if (options.background) {
+                roundsUrl.searchParams.set('background', '1');
+            }
 
             return flushPendingAvailableRoundSaves()
                 .then(() => fetch(roundsUrl.toString(), {credentials: "same-origin"}))
@@ -1730,30 +1778,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                         roundsSpinner.style.display = 'none';
                     }
 
-                    hydrateRounds(rounds);
-
-                    const spotlightStillExists = previousSpotlightCreator
-                        && homeRoundState.rounds.some(
-                            (round) => (round.creator || '').trim() === previousSpotlightCreator
-                        );
-
-                    if (spotlightStillExists) {
-                        homeRoundState.spotlightCreator = previousSpotlightCreator;
-                        const spotlightSelect = document.getElementById('round-player-spotlight');
-                        if (spotlightSelect) {
-                            spotlightSelect.value = previousSpotlightCreator;
-                        }
-                        syncCreatorSpotlightPicker();
-                        showRandomRoundForCreator(previousSpotlightCreator);
-                    } else {
-                        homeRoundState.spotlightCreator = '';
-                        const spotlightSelect = document.getElementById('round-player-spotlight');
-                        if (spotlightSelect) {
-                            spotlightSelect.value = '';
-                        }
-                        syncCreatorSpotlightPicker();
-                        filterRounds(previousSearch);
-                    }
+                    applyAvailableRounds(rounds, { preserveSearch });
                 })
                 .catch((err) => {
                     console.error("Failed to load rounds:", err);
@@ -1770,15 +1795,31 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 });
         }
 
-        function setStatusMessage(text, color = 'white', mode = 'status') {
+        function setStatusMessage(text, color = 'white', mode = 'status', options = {}) {
             const messageElement = document.getElementById('msg');
             if (!messageElement) {
                 return;
             }
+            const showProgressIcon = Boolean(options.showProgressIcon && text);
             messageElement.dataset.mode = mode;
-            messageElement.textContent = text;
             messageElement.style.color = color;
-            messageElement.style.display = text ? 'block' : 'none';
+            messageElement.classList.toggle('home-status-with-progress', showProgressIcon);
+            messageElement.replaceChildren();
+
+            if (showProgressIcon) {
+                const progressIcon = document.createElement('img');
+                progressIcon.className = 'home-status-progress-icon';
+                progressIcon.src = homeProgressIconSrc;
+                progressIcon.alt = '';
+                progressIcon.setAttribute('aria-hidden', 'true');
+                const progressText = document.createElement('span');
+                progressText.textContent = text;
+                messageElement.append(progressIcon, progressText);
+            } else {
+                messageElement.textContent = text;
+            }
+
+            messageElement.style.display = text ? (showProgressIcon ? 'flex' : 'block') : 'none';
         }
 
         function getHomeBuildLockMessage() {
@@ -1816,7 +1857,12 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 if (spinner) {
                     spinner.style.display = 'inline';
                 }
-                setStatusMessage('Working... This may take a few minutes.');
+                setStatusMessage(
+                    'Working... This may take a few minutes.',
+                    'var(--home-table-text)',
+                    'status',
+                    { showProgressIcon: true },
+                );
                 return;
             }
 
@@ -1825,7 +1871,12 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             }
 
             if (homeBuildLockState.is_active) {
-                setStatusMessage(getHomeBuildLockMessage());
+                setStatusMessage(
+                    getHomeBuildLockMessage(),
+                    'var(--home-table-text)',
+                    'status',
+                    { showProgressIcon: true },
+                );
                 return;
             }
 
@@ -1880,6 +1931,15 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                         result.ok ? 'var(--home-table-text)' : '#ffb3b3',
                         result.ok ? 'success' : 'error',
                     );
+                    return;
+                }
+                if (data.type === 'available_rounds_refresh' && Array.isArray(data.rounds)) {
+                    if (homeRoundSaveTimers.size) {
+                        flushPendingAvailableRoundSaves()
+                            .then(() => loadAvailableRounds({ preserveSearch: true, showLoadingState: false }));
+                        return;
+                    }
+                    applyAvailableRounds(data.rounds, { preserveSearch: true });
                 }
             };
 
@@ -1960,7 +2020,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
               }
           });
 
-          loadAvailableRounds({ preserveSearch: false, showLoadingState: true });
+          loadAvailableRounds({ preserveSearch: false, showLoadingState: true, background: true });
         });
 
         function initializePresentationCalendar() {
@@ -2269,18 +2329,22 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
         }
 
         if (homeBuildLockState.is_active) {
-            setStatusMessage(getHomeBuildLockMessage());
+            setStatusMessage(
+                getHomeBuildLockMessage(),
+                'var(--home-table-text)',
+                'status',
+                { showProgressIcon: true },
+            );
             return;
         }
 
         const selectedRounds = getSelectedRoundsSnapshot();
         if (!selectedRounds.length) {
-            const messageElement = document.getElementById('msg');
-            if (messageElement) {
-                messageElement.textContent = 'Select at least one round before generating slides.';
-                messageElement.style.color = '#ffb3b3';
-                messageElement.style.display = 'block';
-            }
+            setStatusMessage(
+                'Select at least one round before generating slides.',
+                '#ffb3b3',
+                'error',
+            );
             return;
         }
 
@@ -2326,6 +2390,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                     payload.detail || getHomeBuildLockMessage(),
                     'var(--home-table-text)',
                     'status',
+                    { showProgressIcon: true },
                 );
                 return;
             }

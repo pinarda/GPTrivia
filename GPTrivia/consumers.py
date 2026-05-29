@@ -168,6 +168,13 @@ class HomePageConsumer(AsyncWebsocketConsumer):
             'result': event.get('result') or {},
         }))
 
+    async def home_available_rounds_message(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'available_rounds_refresh',
+            'rounds': event.get('rounds') or [],
+            'refreshed_at': event.get('refreshed_at', ''),
+        }))
+
 
 class ButtonPressConsumer(AsyncWebsocketConsumer):
     reset_task = None

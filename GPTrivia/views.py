@@ -116,6 +116,8 @@ logger = logging.getLogger(__name__)
 HOME_BUILD_GROUP_NAME = 'home_build_updates'
 HOME_BUILD_STATE_KEY = 'home_page'
 HOME_BUILD_STALE_MINUTES = 30
+AVAILABLE_ROUNDS_REFRESH_LOCK_CACHE_KEY = 'available_rounds_email_refresh_lock'
+AVAILABLE_ROUNDS_REFRESH_LOCK_SECONDS = 120
 SWOOP_MODEL = "gpt-5.4"
 ANSWER_SHEET_OCR_IMAGE_WIDTH = 1400
 ANSWER_SHEET_OCR_ROW_HEIGHT = 84
@@ -684,14 +686,15 @@ def _build_available_round_persistence_id(link='', old_link='', title='', creato
     return ''
 
 
-def _save_available_round_metadata(data, *, user=None):
+def _save_available_round_metadata(data, *, user=None, is_consumed=None):
     title = str(data.get('title') or '').strip()
     creator = str(data.get('creator') or '').strip()
     link = _normalize_round_link(data.get('link'))
     old_link = _normalize_round_link(data.get('old_link'))
     source_title = str(data.get('source_title') or title).strip()
     shared_date = _parse_available_round_shared_date(data.get('shared_date'))
-    cooperative = bool(data.get('coop'))
+    raw_coop = data.get('coop')
+    cooperative = raw_coop if isinstance(raw_coop, bool) else _is_truthy_form_value(raw_coop)
 
     if not title:
         return None, 'Round title is required.'
@@ -731,7 +734,11 @@ def _save_available_round_metadata(data, *, user=None):
         'shared_date': shared_date or (submitted_round.shared_date if submitted_round else None),
         'cooperative': cooperative,
         'link': link_to_store,
-        'is_consumed': submitted_round.is_consumed if submitted_round else False,
+        'is_consumed': (
+            bool(is_consumed)
+            if is_consumed is not None
+            else (submitted_round.is_consumed if submitted_round else False)
+        ),
         'submitted_by': (
             user
             if getattr(user, 'is_authenticated', False)
@@ -5742,8 +5749,71 @@ def player_profile_creator_panels(request, player_name):
     })
 
 
-@sync_to_async          # runs blocking code in a thread-pool
-def _collect_rounds():
+def _serialize_submitted_round_for_available_feed(submitted_round):
+    round_link = submitted_round.link or _build_submitted_round_link(submitted_round.presentation_id)
+    return {
+        "title": submitted_round.title,
+        "source_title": submitted_round.source_title or submitted_round.title,
+        "creator": submitted_round.creator,
+        "link": round_link,
+        "old_link": round_link,
+        "presentation_id": submitted_round.presentation_id,
+        "shared_date": (
+            submitted_round.shared_date.isoformat()
+            if submitted_round.shared_date
+            else (
+                submitted_round.submitted_at.date().isoformat()
+                if submitted_round.submitted_at
+                else ""
+            )
+        ),
+        "coop": bool(submitted_round.cooperative),
+        "is_new": True,
+    }
+
+
+def _serialize_historical_round_for_available_feed(trivia_round):
+    return {
+        "title": trivia_round.title,
+        "source_title": trivia_round.title,
+        "creator": trivia_round.creator,
+        "link": trivia_round.link,
+        "old_link": trivia_round.source_link or trivia_round.link,
+        "presentation_id": _extract_google_presentation_id(trivia_round.link),
+        "shared_date": trivia_round.date.isoformat() if trivia_round.date else "",
+        "coop": bool(trivia_round.cooperative),
+        "is_new": False,
+    }
+
+
+def _sort_new_available_round_payloads(rounds):
+    def sort_key(round_data):
+        shared_date = _normalize_round_shared_date(round_data.get("shared_date")) or "0000-00-00"
+        title = str(round_data.get("title") or "").casefold()
+        creator = str(round_data.get("creator") or "").casefold()
+        return shared_date, title, creator
+
+    return sorted(rounds or [], key=sort_key, reverse=True)
+
+
+def _build_cached_available_rounds_payload():
+    new_rounds = [
+        _serialize_submitted_round_for_available_feed(submitted_round)
+        for submitted_round in SubmittedRound.objects.filter(is_consumed=False).order_by(
+            '-shared_date',
+            '-updated_at',
+            '-submitted_at',
+            'title',
+        )
+    ]
+    historical_rounds = [
+        _serialize_historical_round_for_available_feed(trivia_round)
+        for trivia_round in GPTriviaRound.objects.order_by('-date', 'round_number', 'title')
+    ]
+    return _sort_new_available_round_payloads(new_rounds) + historical_rounds
+
+
+def _collect_rounds_sync(*, persist_available_rounds=False):
     links, titles, creators, old_links, shared_dates = get_round_titles_and_links()
     submitted_rounds = list(SubmittedRound.objects.order_by('-submitted_at'))
     submitted_round_lookup = _build_submitted_round_lookup(submitted_rounds)
@@ -5775,11 +5845,49 @@ def _collect_rounds():
             if submitted_round and submitted_round.source_title
             else title
         )
+        display_creator = submitted_round.creator if submitted_round and submitted_round.creator else creator
+        display_shared_date = shared_date or (
+            submitted_round.shared_date.isoformat()
+            if submitted_round and submitted_round.shared_date
+            else (
+                submitted_round.submitted_at.date().isoformat()
+                if submitted_round and submitted_round.submitted_at
+                else ""
+            )
+        )
+        coop_to_store = bool(submitted_round.cooperative) if submitted_round else False
+        if persist_available_rounds:
+            saved_round, error_message = _save_available_round_metadata(
+                {
+                    "title": display_title,
+                    "source_title": source_title,
+                    "creator": display_creator,
+                    "link": link,
+                    "old_link": old_link,
+                    "shared_date": display_shared_date,
+                    "coop": coop_to_store,
+                },
+                is_consumed=False,
+            )
+            if saved_round:
+                submitted_round = saved_round
+                display_title = saved_round.title
+                source_title = saved_round.source_title or saved_round.title
+                display_creator = saved_round.creator
+                display_shared_date = (
+                    saved_round.shared_date.isoformat()
+                    if saved_round.shared_date
+                    else display_shared_date
+                )
+                coop_to_store = bool(saved_round.cooperative)
+            elif error_message:
+                logger.warning("Could not persist available round from email refresh: %s", error_message)
+
         new_rounds.append(
             {
                 "title": display_title,
                 "source_title": source_title,
-                "creator": submitted_round.creator if submitted_round and submitted_round.creator else creator,
+                "creator": display_creator,
                 "link": link,
                 "old_link": old_link,
                 "presentation_id": (
@@ -5787,39 +5895,92 @@ def _collect_rounds():
                     or _extract_google_presentation_id(link)
                     or _extract_google_presentation_id(old_link)
                 ),
-                "shared_date": shared_date
-                or (
-                    submitted_round.shared_date.isoformat()
-                    if submitted_round and submitted_round.shared_date
-                    else (
-                        submitted_round.submitted_at.date().isoformat()
-                        if submitted_round and submitted_round.submitted_at
-                        else ""
-                    )
-                ),
-                "coop": bool(submitted_round.cooperative) if submitted_round else False,
+                "shared_date": display_shared_date,
+                "coop": coop_to_store,
                 "is_new": True,
             }
         )
     historical_rounds = [
-        {
-            "title": trivia_round.title,
-            "source_title": trivia_round.title,
-            "creator": trivia_round.creator,
-            "link": trivia_round.link,
-            "old_link": trivia_round.source_link or trivia_round.link,
-            "presentation_id": _extract_google_presentation_id(trivia_round.link),
-            "shared_date": trivia_round.date.isoformat() if trivia_round.date else "",
-            "coop": bool(trivia_round.cooperative),
-            "is_new": False,
-        }
+        _serialize_historical_round_for_available_feed(trivia_round)
         for trivia_round in GPTriviaRound.objects.order_by('-date', 'round_number', 'title')
     ]
-    return new_rounds + historical_rounds
+    return _sort_new_available_round_payloads(new_rounds) + historical_rounds
+
+
+@sync_to_async          # runs blocking code in a thread-pool
+def _collect_rounds():
+    return _collect_rounds_sync()
+
+
+@sync_to_async
+def _collect_cached_available_rounds():
+    return _build_cached_available_rounds_payload()
+
+
+_AVAILABLE_ROUNDS_REFRESH_WORKER_LOCK = threading.Lock()
+_AVAILABLE_ROUNDS_REFRESH_WORKER_THREAD = None
+
+
+def ensure_available_rounds_refresh_worker_running():
+    global _AVAILABLE_ROUNDS_REFRESH_WORKER_THREAD
+
+    with _AVAILABLE_ROUNDS_REFRESH_WORKER_LOCK:
+        worker_thread = _AVAILABLE_ROUNDS_REFRESH_WORKER_THREAD
+        if worker_thread and worker_thread.is_alive():
+            return False
+
+        if not cache.add(
+            AVAILABLE_ROUNDS_REFRESH_LOCK_CACHE_KEY,
+            timezone.now().isoformat(),
+            AVAILABLE_ROUNDS_REFRESH_LOCK_SECONDS,
+        ):
+            return False
+
+        _AVAILABLE_ROUNDS_REFRESH_WORKER_THREAD = threading.Thread(
+            target=_available_rounds_refresh_worker,
+            daemon=True,
+            name='available-rounds-email-refresh-worker',
+        )
+        _AVAILABLE_ROUNDS_REFRESH_WORKER_THREAD.start()
+        return True
+
+
+def _available_rounds_refresh_worker():
+    close_old_connections()
+    try:
+        _refresh_available_rounds_from_email()
+    finally:
+        cache.delete(AVAILABLE_ROUNDS_REFRESH_LOCK_CACHE_KEY)
+        close_old_connections()
+        global _AVAILABLE_ROUNDS_REFRESH_WORKER_THREAD
+        with _AVAILABLE_ROUNDS_REFRESH_WORKER_LOCK:
+            if _AVAILABLE_ROUNDS_REFRESH_WORKER_THREAD is threading.current_thread():
+                _AVAILABLE_ROUNDS_REFRESH_WORKER_THREAD = None
+
+
+def _refresh_available_rounds_from_email():
+    try:
+        _collect_rounds_sync(persist_available_rounds=True)
+        data = _build_cached_available_rounds_payload()
+        cache.set(
+            f'collect_rounds_api:v{_get_site_data_cache_version()}',
+            data,
+            HOME_ROUNDS_CACHE_TTL_SECONDS,
+        )
+        _broadcast_home_available_rounds_refresh(data)
+        return data
+    except Exception:
+        logger.exception("Available rounds email refresh failed.")
+        return None
 
 async def collect_rounds_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
+    if str(request.GET.get('background') or '').strip().lower() in {'1', 'true', 'yes'}:
+        data = await _collect_cached_available_rounds()
+        refresh_started = ensure_available_rounds_refresh_worker_running()
+        return JsonResponse({"rounds": data, "refreshing": refresh_started})
+
     cache_key = f'collect_rounds_api:v{_get_site_data_cache_version()}'
     data = None if _request_wants_fresh_cache(request) else cache.get(cache_key)
     if data is None:
@@ -6112,6 +6273,21 @@ def _broadcast_home_build_result(result):
         {
             "type": "home_build_result_message",
             "result": result,
+        },
+    )
+
+
+def _broadcast_home_available_rounds_refresh(rounds):
+    channel_layer = get_channel_layer()
+    if not channel_layer:
+        return
+
+    async_to_sync(channel_layer.group_send)(
+        HOME_BUILD_GROUP_NAME,
+        {
+            "type": "home_available_rounds_message",
+            "rounds": rounds or [],
+            "refreshed_at": timezone.now().isoformat(),
         },
     )
 
