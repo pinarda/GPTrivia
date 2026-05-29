@@ -5793,16 +5793,16 @@ def _sort_new_available_round_payloads(rounds):
         creator = str(round_data.get("creator") or "").casefold()
         return shared_date, title, creator
 
-    return sorted(rounds or [], key=sort_key, reverse=True)
+    return sorted(rounds or [], key=sort_key)
 
 
 def _build_cached_available_rounds_payload():
     new_rounds = [
         _serialize_submitted_round_for_available_feed(submitted_round)
         for submitted_round in SubmittedRound.objects.filter(is_consumed=False).order_by(
-            '-shared_date',
-            '-updated_at',
-            '-submitted_at',
+            'shared_date',
+            'updated_at',
+            'submitted_at',
             'title',
         )
     ]

@@ -1116,6 +1116,32 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             return `${scoresheetBaseUrl}?date=${encodeURIComponent(trimmedDate)}`;
         }
 
+        function parseRoundDateParts(dateString) {
+            const match = String(dateString || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!match) {
+                return null;
+            }
+            const year = Number(match[1]);
+            const month = Number(match[2]);
+            const day = Number(match[3]);
+            if (!year || month < 1 || month > 12 || day < 1 || day > 31) {
+                return null;
+            }
+            return { year, month, day };
+        }
+
+        function formatRoundDateForDisplay(dateString) {
+            const dateParts = parseRoundDateParts(dateString);
+            if (!dateParts) {
+                return String(dateString || '').trim();
+            }
+            return new Date(dateParts.year, dateParts.month - 1, dateParts.day).toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+            });
+        }
+
         function syncSelectedOrdersFromRounds() {
             homeRoundState.selectedOrders = {};
             homeRoundState.rounds.forEach((round) => {
@@ -1467,16 +1493,17 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 const dateCell = document.createElement('div');
                 dateCell.className = 'round-selection-table-cell wrap-text date_cell';
                 const dateText = round.shared_date || '';
+                const dateDisplayText = formatRoundDateForDisplay(dateText);
                 if (!round.is_new && dateText) {
                     const dateLink = document.createElement('a');
                     dateLink.className = 'historical-text home-date-link';
-                    dateLink.textContent = dateText;
+                    dateLink.textContent = dateDisplayText;
                     dateLink.href = scoresheetUrlForDate(dateText);
                     dateCell.appendChild(dateLink);
                 } else {
                     const dateSpan = document.createElement('span');
                     dateSpan.className = round.is_new ? 'editable-cell' : 'historical-text';
-                    dateSpan.textContent = dateText;
+                    dateSpan.textContent = dateDisplayText;
                     dateCell.appendChild(dateSpan);
                 }
 

@@ -451,10 +451,10 @@ class HomeRoundFeedTests(TestCase):
             list(SubmittedRound.objects.order_by("shared_date").values_list("title", "is_consumed")),
             [("Older Round", False), ("Newer Round", False)],
         )
-        self.assertEqual([round_data["title"] for round_data in data[:2]], ["Newer Round", "Older Round"])
+        self.assertEqual([round_data["title"] for round_data in data[:2]], ["Older Round", "Newer Round"])
         mock_broadcast.assert_called_once()
         broadcast_rounds = mock_broadcast.call_args.args[0]
-        self.assertEqual([round_data["title"] for round_data in broadcast_rounds[:2]], ["Newer Round", "Older Round"])
+        self.assertEqual([round_data["title"] for round_data in broadcast_rounds[:2]], ["Older Round", "Newer Round"])
 
     def test_save_available_round_metadata_uses_shared_date_in_persistence_for_linkless_rounds(self):
         first_response = self.client.post(
