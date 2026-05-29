@@ -399,6 +399,16 @@ class HomeRoundFeedTests(TestCase):
             shared_date=datetime.date(2026, 3, 20),
             cooperative=True,
             link="https://docs.google.com/presentation/d/cached-123/edit",
+            is_currently_available=True,
+        )
+        SubmittedRound.objects.create(
+            presentation_id="stale-123",
+            title="Stale Saved Metadata",
+            source_title="Stale Saved Metadata",
+            creator="Alex",
+            shared_date=datetime.date(2026, 3, 13),
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/stale-123/edit",
         )
         GPTriviaRound.objects.create(
             creator="Megan",
@@ -420,6 +430,7 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual([round_data["title"] for round_data in payload["rounds"]], ["Cached New Round", "Historic Round"])
         self.assertTrue(payload["rounds"][0]["is_new"])
         self.assertTrue(payload["rounds"][0]["coop"])
+        self.assertNotIn("Stale Saved Metadata", [round_data["title"] for round_data in payload["rounds"]])
         mock_get_round_titles_and_links.assert_not_called()
         mock_ensure_refresh_worker.assert_called_once()
 
@@ -443,13 +454,27 @@ class HomeRoundFeedTests(TestCase):
             ],
             ["2026-03-14", "2026-03-21"],
         )
+        SubmittedRound.objects.create(
+            presentation_id="stale-round",
+            title="Stale Round",
+            source_title="Stale Round",
+            creator="Debi",
+            shared_date=datetime.date(2026, 3, 7),
+            cooperative=False,
+            link="https://docs.google.com/presentation/d/stale-round/edit",
+            is_currently_available=True,
+        )
 
         data = views._refresh_available_rounds_from_email()
 
         self.assertIsNotNone(data)
         self.assertEqual(
-            list(SubmittedRound.objects.order_by("shared_date").values_list("title", "is_consumed")),
-            [("Older Round", False), ("Newer Round", False)],
+            list(SubmittedRound.objects.order_by("shared_date").values_list("title", "is_consumed", "is_currently_available")),
+            [
+                ("Stale Round", False, False),
+                ("Older Round", False, True),
+                ("Newer Round", False, True),
+            ],
         )
         self.assertEqual([round_data["title"] for round_data in data[:2]], ["Older Round", "Newer Round"])
         mock_broadcast.assert_called_once()

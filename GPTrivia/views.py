@@ -686,7 +686,7 @@ def _build_available_round_persistence_id(link='', old_link='', title='', creato
     return ''
 
 
-def _save_available_round_metadata(data, *, user=None, is_consumed=None):
+def _save_available_round_metadata(data, *, user=None, is_consumed=None, is_currently_available=None):
     title = str(data.get('title') or '').strip()
     creator = str(data.get('creator') or '').strip()
     link = _normalize_round_link(data.get('link'))
@@ -738,6 +738,11 @@ def _save_available_round_metadata(data, *, user=None, is_consumed=None):
             bool(is_consumed)
             if is_consumed is not None
             else (submitted_round.is_consumed if submitted_round else False)
+        ),
+        'is_currently_available': (
+            bool(is_currently_available)
+            if is_currently_available is not None
+            else (submitted_round.is_currently_available if submitted_round else False)
         ),
         'submitted_by': (
             user
@@ -5799,7 +5804,10 @@ def _sort_new_available_round_payloads(rounds):
 def _build_cached_available_rounds_payload():
     new_rounds = [
         _serialize_submitted_round_for_available_feed(submitted_round)
-        for submitted_round in SubmittedRound.objects.filter(is_consumed=False).order_by(
+        for submitted_round in SubmittedRound.objects.filter(
+            is_consumed=False,
+            is_currently_available=True,
+        ).order_by(
             'shared_date',
             'updated_at',
             'submitted_at',
@@ -5815,6 +5823,8 @@ def _build_cached_available_rounds_payload():
 
 def _collect_rounds_sync(*, persist_available_rounds=False):
     links, titles, creators, old_links, shared_dates = get_round_titles_and_links()
+    if persist_available_rounds:
+        SubmittedRound.objects.filter(is_currently_available=True).update(is_currently_available=False)
     submitted_rounds = list(SubmittedRound.objects.order_by('-submitted_at'))
     submitted_round_lookup = _build_submitted_round_lookup(submitted_rounds)
     creator_opt_in_map = _build_round_analysis_opt_in_map(creators)
@@ -5868,6 +5878,7 @@ def _collect_rounds_sync(*, persist_available_rounds=False):
                     "coop": coop_to_store,
                 },
                 is_consumed=False,
+                is_currently_available=True,
             )
             if saved_round:
                 submitted_round = saved_round

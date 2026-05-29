@@ -200,6 +200,7 @@ class SubmittedRound(models.Model):
     cooperative = models.BooleanField(default=False)
     link = models.CharField(max_length=255, blank=True, default='')
     is_consumed = models.BooleanField(default=False)
+    is_currently_available = models.BooleanField(default=False, db_index=True)
     submitted_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
     submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
