@@ -13,6 +13,33 @@ background-image: linear-gradient(62deg, #3a3d40 0%, #181719 100%);
     min-height: 5vh;
 }
 
+@media (min-width: 751px) {
+    body.site-shell {
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    body.site-shell .page-body,
+    body.site-shell .content-container,
+    body.site-shell main {
+        flex: 1 0 auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    body.site-shell footer {
+        margin-top: auto;
+        flex-shrink: 0;
+    }
+
+    body.site-shell .footer-container {
+        position: static !important;
+        bottom: auto !important;
+    }
+}
+
 h1 {
   color: #eee;
 }
