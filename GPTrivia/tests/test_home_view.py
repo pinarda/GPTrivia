@@ -356,6 +356,48 @@ class HomeViewPresentationSelectionTests(TestCase):
         submitted_round.refresh_from_db()
         self.assertTrue(submitted_round.is_consumed)
 
+    @patch("GPTrivia.views._broadcast_home_build_result")
+    @patch("GPTrivia.views._broadcast_home_presentation_refresh")
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
+    @patch("GPTrivia.views.update_merged_presentation", return_value=("presentation-old-updated", ["Jenny"], ["Round D"], ["https://example.com/round-d"]))
+    def test_update_appends_new_round_after_existing_scoresheet_rounds(self, _update_mock, _worker_mock, _refresh_mock, _result_mock):
+        presentation_date = datetime.date(2026, 3, 5)
+        self._create_round(date=presentation_date, round_number=2, title="Round B", creator="Megan")
+        self._create_round(date=presentation_date, round_number=3, title="Round C", creator="Zach")
+        self.older_presentation.round_names = ["Round A", "Round B", "Round C"]
+        self.older_presentation.creator_list = ["Alex", "Megan", "Zach"]
+        self.older_presentation.save(update_fields=["round_names", "creator_list"])
+
+        response = self.client.post(
+            reverse("home"),
+            data={
+                "action": "update",
+                "selected_presentation_id": self.older_presentation.presentation_id,
+                "round_order_0": "1",
+                "round_title_0": "Round D",
+                "round_creator_0": "Jenny",
+                "round_link_0": "https://example.com/round-d",
+                "round_old_link_0": "https://example.com/round-d/edit",
+                "round_shared_date_0": "03.12.2026",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        job = HomePresentationBuildJob.objects.get()
+        from GPTrivia.views import _run_home_presentation_build_job
+
+        _run_home_presentation_build_job(job.id)
+        new_round = GPTriviaRound.objects.get(title="Round D", date=presentation_date)
+        self.assertEqual(new_round.round_number, 4)
+        self.assertEqual(
+            list(
+                GPTriviaRound.objects.filter(date=presentation_date)
+                .order_by("round_number")
+                .values_list("title", flat=True)
+            ),
+            ["Round A", "Round B", "Round C", "Round D"],
+        )
+
     @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
     @patch("GPTrivia.views.update_merged_presentation", return_value=("presentation-old", [], [], []))
     def test_update_uses_selected_presentation_id(self, update_mock, _worker_mock):

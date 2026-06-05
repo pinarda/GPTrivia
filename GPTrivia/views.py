@@ -3,7 +3,7 @@ from django.template.loader import render_to_string
 from .forms import GPTriviaRoundForm, ProfileIntroForm, ProfilePictureForm
 from .models import GPTriviaRound, MergedPresentation, PresentationBuildState, Profile
 from django.db import close_old_connections, transaction
-from django.db.models import Avg, F, FloatField, Case, When, Sum, Count, Q
+from django.db.models import Avg, F, FloatField, Case, When, Sum, Count, Q, Max
 from django.db.utils import OperationalError, ProgrammingError
 from django.contrib.auth import views as auth_views
 from django.urls import reverse, reverse_lazy
@@ -6890,6 +6890,7 @@ def _execute_home_update_build_job(job):
     selected_presentation = MergedPresentation.objects.get(
         presentation_id=job.selected_presentation_id
     )
+    presentation_date = datetime.datetime.strptime(job.presentation_name, "%m.%d.%Y").date()
     logger.info(
         "Home background update started for %s using presentation %s with %s rounds",
         job.presentation_name,
@@ -6927,6 +6928,13 @@ def _execute_home_update_build_job(job):
     selected_presentation = MergedPresentation.objects.get(
         presentation_id=job.selected_presentation_id
     )
+    existing_presentation_round_count = len(selected_presentation.round_names or [])
+    existing_max_round_number = (
+        GPTriviaRound.objects.filter(date=presentation_date)
+        .aggregate(Max('round_number'))['round_number__max']
+        or 0
+    )
+    next_round_number_base = max(existing_presentation_round_count, existing_max_round_number)
     selected_presentation.presentation_id = updated_presentation_id
     selected_presentation.round_names.extend(round_titles)
     selected_presentation.creator_list.extend(new_creators)
@@ -6942,8 +6950,8 @@ def _execute_home_update_build_job(job):
         new_round.major_category = ""
         new_round.minor_category1 = ""
         new_round.minor_category2 = ""
-        new_round.date = datetime.datetime.strptime(job.presentation_name, "%m.%d.%Y").date().strftime('%Y-%m-%d')
-        new_round.round_number = round_index + 1
+        new_round.date = presentation_date.strftime('%Y-%m-%d')
+        new_round.round_number = next_round_number_base + round_index + 1
         new_round.max_score = 10
         set_round_score_map(new_round, {})
         new_round.replay = 0
