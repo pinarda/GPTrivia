@@ -39,7 +39,7 @@ self.addEventListener('push', function(event) {
   const title = data.title || 'Hail Science Trivia';
   const options = {
     body: data.body,
-    icon: '/static/favicon.ico'
+    icon: '/static/img/favicon.ico'
   };
 
   event.waitUntil(self.registration.showNotification(title, options));

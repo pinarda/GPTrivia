@@ -18,6 +18,11 @@ if [[ ! -d "${REPO_DIR}" ]]; then
   exit 1
 fi
 
+STATIC_RELEASES_DIR="${REPO_DIR}/.static-releases"
+STATIC_RELEASE_ID="release-$(date -u +%Y%m%d%H%M%S)-$$"
+STATIC_RELEASE_DIR="${STATIC_RELEASES_DIR}/${STATIC_RELEASE_ID}"
+STATIC_LINK="${REPO_DIR}/static"
+
 if [[ -f "${CONDA_SH}" ]]; then
   # shellcheck disable=SC1090
   source "${CONDA_SH}"
@@ -36,7 +41,32 @@ if [[ "${SKIP_GIT_PULL}" != "1" ]]; then
 fi
 
 python manage.py migrate
-python manage.py collectstatic --noinput
+
+mkdir -p "${STATIC_RELEASE_DIR}"
+
+cleanup_failed_static_release() {
+  if [[ ! -L "${STATIC_LINK}" ]] || [[ "$(readlink "${STATIC_LINK}")" != "${STATIC_RELEASE_DIR}" ]]; then
+    rm -rf "${STATIC_RELEASE_DIR}"
+  fi
+}
+trap cleanup_failed_static_release EXIT
+
+GPTRIVIA_STATIC_ROOT="${STATIC_RELEASE_DIR}" python manage.py collectstatic --noinput
+
+if [[ -e "${STATIC_LINK}" && ! -L "${STATIC_LINK}" ]]; then
+  mv "${STATIC_LINK}" "${STATIC_RELEASES_DIR}/legacy-${STATIC_RELEASE_ID}"
+fi
+ln -sfn "${STATIC_RELEASE_DIR}" "${STATIC_LINK}"
+
+# Keep the active release and two quick rollback candidates.
+mapfile -t static_releases < <(
+  find "${STATIC_RELEASES_DIR}" -mindepth 1 -maxdepth 1 -type d -name 'release-*' -print | sort -r
+)
+for ((index = 3; index < ${#static_releases[@]}; index++)); do
+  rm -rf "${static_releases[$index]}"
+done
+
+trap - EXIT
 
 restart_daphne_services() {
   local ports=()
