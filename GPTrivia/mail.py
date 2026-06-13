@@ -93,6 +93,21 @@ def _format_pacific_timestamp(timestamp_ms):
     return datetime.datetime.fromtimestamp(int(timestamp_ms) / 1000, tz=pst).strftime("%B %d, %Y")
 
 
+def _presentation_link_id(link_value):
+    match = GOOGLE_SLIDES_PRESENTATION_PATTERN.search(str(link_value or ''))
+    return match.group(1) if match else ''
+
+
+def _presentation_link_is_selected(presentation_url, selected_links, old_links):
+    source_id = _presentation_link_id(presentation_url)
+    for candidate_link in list(selected_links or []) + list(old_links or []):
+        if source_id and _presentation_link_id(candidate_link) == source_id:
+            return True
+        if str(candidate_link or '').strip() == str(presentation_url or '').strip():
+            return True
+    return False
+
+
 def _sanitize_slides_text(text):
     if text is None:
         return ''
@@ -723,33 +738,37 @@ def find_shared_presentations(credentials, processed_senders=[], selected_links=
                 sender = sender.split()[0]
                 sender = sender[1:]
 
-                if sender == "Alex" or sender == "Hail" or sender not in processed_senders:
-                    # print(f"1: Found new presentation from {sender}")
+                should_add_sender = sender == "Alex" or sender == "Hail" or sender not in processed_senders
+                msg = gmail_service.users().messages().get(userId='me', id=msg_id, format='full').execute()
+
+                parts = msg['payload'].get('parts', [])
+                data = None
+                for part in parts:
+                    if part.get('mimeType') == 'text/plain':
+                        data = part.get('body', {}).get('data')
+                        break
+
+                if data is None:
+                    continue
+
+                msg_str = base64.urlsafe_b64decode(data.encode('ASCII'))
+                url_match = URL_PATTERN.search(msg_str.decode('utf-8'))
+                if not url_match:
+                    continue
+
+                presentation_url = url_match.group(1)
+                new_presentation_url = convert_shared_presentation(presentation_url, credentials)
+                if (
+                    _presentation_link_is_selected(presentation_url, selected_links, old_links)
+                    or _presentation_link_is_selected(new_presentation_url, selected_links, old_links)
+                ):
+                    mark_as_read(gmail_service, msg_id)
+
+                if should_add_sender:
                     print("found new sender")
                     new_senders.append(sender)
                     processed_senders.append(sender)
-                    msg = gmail_service.users().messages().get(userId='me', id=msg_id, format='full').execute()
-
-                    parts = msg['payload']['parts']
-                    data = None
-
-                    for part in parts:
-                        if part['mimeType'] == 'text/plain':
-                            data = part['body']['data']
-                            break
-                    if data is not None:
-                        msg_str = base64.urlsafe_b64decode(data.encode('ASCII'))
-
-                        url_pattern = r'(https?://docs\.google\.com/presentation/d/[^\s]+)'
-                        url_match = re.search(url_pattern, msg_str.decode('utf-8'))
-
-                        if url_match:
-                            # print(f"3: Found presentation URL: {url_match.group(1)}")
-                            presentation_url = url_match.group(1)
-                            new_presentation_url = convert_shared_presentation(presentation_url, credentials)
-                            presentation_urls.append(new_presentation_url)
-                        if presentation_url in (selected_links + old_links):
-                            mark_as_read(gmail_service, msg_id)
+                    presentation_urls.append(new_presentation_url)
 
         print(f"Found {len(presentation_urls)} new presentations from creators: {processed_senders}")
 

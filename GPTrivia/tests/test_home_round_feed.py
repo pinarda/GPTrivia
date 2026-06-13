@@ -90,6 +90,33 @@ class HomeRoundFeedTests(TestCase):
         self.assertTrue(round_payload["coop"])
         self.assertEqual(round_payload["presentation_id"], "swoop-123")
 
+    @patch("GPTrivia.views._broadcast_home_available_rounds_refresh")
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_cached_converted_pptx_round_preserves_original_email_link(
+        self,
+        mock_get_round_titles_and_links,
+        _broadcast_mock,
+    ):
+        converted_link = "https://docs.google.com/presentation/d/converted-pptx/edit"
+        source_link = "https://docs.google.com/presentation/d/original-pptx/edit?usp=drive_web"
+        mock_get_round_titles_and_links.return_value = (
+            [converted_link],
+            ["Converted PowerPoint Round"],
+            ["Alex"],
+            [source_link],
+            ["2026-06-13"],
+        )
+
+        views._refresh_available_rounds_from_email()
+
+        saved_round = SubmittedRound.objects.get(presentation_id="converted-pptx")
+        self.assertEqual(saved_round.link, converted_link)
+        self.assertEqual(saved_round.source_link, source_link)
+
+        cached_payload = views._build_cached_available_rounds_payload()[0]
+        self.assertEqual(cached_payload["link"], converted_link)
+        self.assertEqual(cached_payload["old_link"], source_link)
+
     @patch("GPTrivia.views.get_round_titles_and_links")
     def test_save_available_round_metadata_persists_across_gmail_refresh(self, mock_get_round_titles_and_links):
         mock_get_round_titles_and_links.return_value = (

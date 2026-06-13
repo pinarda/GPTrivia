@@ -246,6 +246,61 @@ class HomeViewPresentationSelectionTests(TestCase):
     @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
     @patch(
         "GPTrivia.views.create_presentation",
+        return_value=(
+            "presentation-generated",
+            ["Alex"],
+            ["Converted PowerPoint Round"],
+            ["https://docs.google.com/presentation/d/presentation-generated/edit#slide=id.round"],
+        ),
+    )
+    def test_generate_passes_original_pptx_link_to_email_read_marker(
+        self,
+        create_mock,
+        _worker_mock,
+        _refresh_mock,
+        _result_mock,
+    ):
+        converted_link = "https://docs.google.com/presentation/d/converted-pptx/edit"
+        source_link = "https://docs.google.com/presentation/d/original-pptx/edit?usp=drive_web"
+        submitted_round = SubmittedRound.objects.create(
+            presentation_id="converted-pptx",
+            title="Converted PowerPoint Round",
+            source_title="Converted PowerPoint Round",
+            creator="Alex",
+            link=converted_link,
+            source_link=source_link,
+            is_consumed=False,
+            is_currently_available=True,
+        )
+
+        response = self.client.post(
+            reverse("home"),
+            data={
+                "action": "generate",
+                "round_order_0": "1",
+                "round_title_0": submitted_round.title,
+                "round_creator_0": submitted_round.creator,
+                "round_link_0": converted_link,
+                "round_old_link_0": source_link,
+                "round_shared_date_0": "06.13.2026",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        job = HomePresentationBuildJob.objects.get()
+        from GPTrivia.views import _run_home_presentation_build_job
+
+        _run_home_presentation_build_job(job.id)
+
+        self.assertEqual(create_mock.call_args.kwargs["old_links"], [source_link])
+        submitted_round.refresh_from_db()
+        self.assertTrue(submitted_round.is_consumed)
+
+    @patch("GPTrivia.views._broadcast_home_build_result")
+    @patch("GPTrivia.views._broadcast_home_presentation_refresh")
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
+    @patch(
+        "GPTrivia.views.create_presentation",
         side_effect=PresentationBuildError(
             "Slide generation stopped before completion: simulated failure",
             presentation_id="presentation-partial",

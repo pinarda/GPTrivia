@@ -559,9 +559,10 @@ def _build_submitted_round_lookup(submitted_rounds):
         submitted_rounds_by_title_creator_date[identity_key] = submitted_round
 
     for submitted_round in submitted_rounds:
-        normalized_link = _normalize_round_link(submitted_round.link)
-        if normalized_link:
-            submitted_rounds_by_link[normalized_link] = submitted_round
+        for candidate_link in (submitted_round.link, submitted_round.source_link):
+            normalized_link = _normalize_round_link(candidate_link)
+            if normalized_link:
+                submitted_rounds_by_link[normalized_link] = submitted_round
 
         add_title_key(submitted_round.title, submitted_round)
         add_title_key(submitted_round.source_title, submitted_round)
@@ -734,6 +735,7 @@ def _save_available_round_metadata(data, *, user=None, is_consumed=None, is_curr
         'shared_date': shared_date or (submitted_round.shared_date if submitted_round else None),
         'cooperative': cooperative,
         'link': link_to_store,
+        'source_link': old_link or (submitted_round.source_link if submitted_round else '') or link_to_store,
         'is_consumed': (
             bool(is_consumed)
             if is_consumed is not None
@@ -5764,7 +5766,7 @@ def _serialize_submitted_round_for_available_feed(submitted_round):
         "source_title": submitted_round.source_title or submitted_round.title,
         "creator": submitted_round.creator,
         "link": round_link,
-        "old_link": round_link,
+        "old_link": submitted_round.source_link or round_link,
         "presentation_id": submitted_round.presentation_id,
         "shared_date": (
             submitted_round.shared_date.isoformat()

@@ -1,3 +1,4 @@
+import base64
 import datetime
 from unittest.mock import Mock, patch
 
@@ -17,15 +18,100 @@ from GPTrivia.mail import (
     _infer_historical_round_slide_range,
     _is_coop_at,
     _prepare_update_round_sources,
+    _presentation_link_is_selected,
     _sanitize_slides_text,
     _utf16_code_units,
     _utf16_placeholder_range,
     convert_shared_presentation,
+    find_shared_presentations,
     update_merged_presentation,
 )
 
 
 class MailHelpersTests(SimpleTestCase):
+    def test_presentation_link_selection_ignores_url_suffix_differences(self):
+        self.assertTrue(
+            _presentation_link_is_selected(
+                "https://docs.google.com/presentation/d/source-file-id/edit?usp=drive_web",
+                ["https://docs.google.com/presentation/d/converted-file-id/edit"],
+                ["https://docs.google.com/presentation/d/source-file-id/edit"],
+            )
+        )
+
+    def test_presentation_link_selection_does_not_match_converted_id_alone(self):
+        self.assertFalse(
+            _presentation_link_is_selected(
+                "https://docs.google.com/presentation/d/source-file-id/edit",
+                ["https://docs.google.com/presentation/d/converted-file-id/edit"],
+                [],
+            )
+        )
+
+    @patch("GPTrivia.mail.convert_shared_presentation")
+    @patch("GPTrivia.mail.build")
+    def test_find_shared_presentations_marks_selected_message_from_repeated_sender(
+        self,
+        build_mock,
+        convert_mock,
+    ):
+        gmail_service = Mock()
+        messages_resource = gmail_service.users.return_value.messages.return_value
+        messages_resource.list.return_value.execute.return_value = {
+            "messages": [{"id": "message-1"}, {"id": "message-2"}],
+        }
+
+        message_urls = {
+            "message-1": "https://docs.google.com/presentation/d/source-one/edit",
+            "message-2": "https://docs.google.com/presentation/d/source-two/edit?usp=drive_web",
+        }
+
+        def get_message(*, userId, id, format, metadataHeaders=None):
+            response = Mock()
+            if format == "metadata":
+                response.execute.return_value = {
+                    "id": id,
+                    "internalDate": "1" if id == "message-1" else "2",
+                    "payload": {
+                        "headers": [{"name": "From", "value": '"Megan <megan@example.com>'}],
+                    },
+                }
+            else:
+                encoded_body = base64.urlsafe_b64encode(message_urls[id].encode("utf-8")).decode("ascii")
+                response.execute.return_value = {
+                    "id": id,
+                    "payload": {
+                        "headers": [{"name": "From", "value": '"Megan <megan@example.com>'}],
+                        "parts": [
+                            {
+                                "mimeType": "text/plain",
+                                "body": {"data": encoded_body},
+                            }
+                        ],
+                    },
+                }
+            return response
+
+        messages_resource.get.side_effect = get_message
+        messages_resource.modify.return_value.execute.return_value = {}
+        build_mock.return_value = gmail_service
+        convert_mock.side_effect = [
+            "https://docs.google.com/presentation/d/converted-one/edit",
+            "https://docs.google.com/presentation/d/converted-two/edit",
+        ]
+
+        find_shared_presentations(
+            Mock(),
+            processed_senders=[],
+            selected_links=["https://docs.google.com/presentation/d/converted-two/edit"],
+            old_links=[],
+        )
+
+        messages_resource.modify.assert_called_once_with(
+            userId="me",
+            id="message-2",
+            body={"removeLabelIds": ["UNREAD"]},
+        )
+
     def test_classify_round_source_link_detects_whole_presentations(self):
         link_info = _classify_round_source_link(
             "https://docs.google.com/presentation/d/source-presentation-id/edit"
