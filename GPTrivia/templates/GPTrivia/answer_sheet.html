@@ -25,7 +25,7 @@
     {% if round_pages %}
         <div class="answer-sheet-track" id="answer-sheet-track">
             {% for page in round_pages %}
-                <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}" data-round-title="{{ page.round_title }}" data-round-creator-color="{{ page.round_creator_color }}" data-cooperative="{% if page.cooperative %}true{% else %}false{% endif %}" data-diverged="{% if page.is_diverged %}true{% else %}false{% endif %}" data-pencil-grade-view="false" data-answers-dirty="false" data-score-dirty="false" data-input-mode="{{ page.input_mode }}" data-ink-strokes="{{ page.ink_strokes_json|escape }}">
+                <section class="answer-sheet-round-panel" data-round-index="{{ forloop.counter0 }}" data-round-id="{{ page.round_id }}" data-round-title="{{ page.round_title }}" data-round-creator-color="{{ page.round_creator_color }}" data-cooperative="{% if page.cooperative %}true{% else %}false{% endif %}" data-user-is-round-creator="{% if page.user_is_round_creator %}true{% else %}false{% endif %}" data-diverged="{% if page.is_diverged %}true{% else %}false{% endif %}" data-pencil-grade-view="false" data-answers-dirty="false" data-score-dirty="false" data-input-mode="{{ page.input_mode }}" data-ink-strokes="{{ page.ink_strokes_json|escape }}">
                     <div class="answer-sheet-round-header">
                         <div class="answer-sheet-round-meta">
                             <div class="answer-sheet-round-kicker">
@@ -126,11 +126,12 @@
                             data-check-answers-for="{{ page.round_id }}"
                         ><span class="answer-sheet-check-label-full">Check Answers</span><span class="answer-sheet-check-label-short">Check</span></button>
                     </div>
-                    {% if page.show_diverge %}
+                    {% if not page.user_is_round_creator %}
                         <button
                             class="answer-sheet-action-button answer-sheet-diverge-button"
                             type="button"
                             data-diverge-round-for="{{ page.round_id }}"
+                            {% if not page.show_diverge %}hidden{% endif %}
                         >{% if page.is_diverged %}Merge{% else %}Diverge{% endif %}</button>
                     {% endif %}
                     <div class="answer-sheet-button-message" data-button-message-for="{{ page.round_id }}" aria-live="polite"></div>
@@ -250,6 +251,7 @@
         let reconnectTimeoutRef = null;
         let isUnloading = false;
         let syncRequestRef = null;
+        let syncRequestQueued = false;
         let skipUnsavedChangesPrompt = false;
         let identityReloadRequested = false;
         const forcedSharedSaveRoundIds = new Set();
@@ -341,6 +343,50 @@
 
         function getRoundInkCanvas(roundId) {
             return pageRoot.querySelector(`.answer-sheet-ink-canvas[data-round-id="${roundId}"]`);
+        }
+
+        function updateRoundCooperativeUi(roundId, cooperative, roundState = {}) {
+            const panel = getRoundPanel(roundId);
+            if (!panel) {
+                return;
+            }
+            const isCooperative = cooperative === true || String(cooperative).toLowerCase() === 'true';
+            const isDiverged = roundState.is_diverged === true || String(roundState.is_diverged).toLowerCase() === 'true';
+            const userIsRoundCreator = (
+                typeof roundState.user_is_round_creator !== 'undefined'
+                    ? roundState.user_is_round_creator === true || String(roundState.user_is_round_creator).toLowerCase() === 'true'
+                    : panel.dataset.userIsRoundCreator === 'true'
+            );
+            const kicker = panel.querySelector('.answer-sheet-round-kicker');
+            let coopLabel = kicker ? kicker.querySelector('.answer-sheet-round-coop') : null;
+            const divergeButton = pageRoot.querySelector(`[data-diverge-round-for="${roundId}"]`);
+            const submitButton = getRoundSubmitButton(roundId);
+
+            panel.dataset.cooperative = isCooperative ? 'true' : 'false';
+            panel.dataset.userIsRoundCreator = userIsRoundCreator ? 'true' : 'false';
+            panel.dataset.diverged = isCooperative && isDiverged ? 'true' : 'false';
+
+            if (isCooperative && kicker && !coopLabel) {
+                coopLabel = document.createElement('span');
+                coopLabel.className = 'answer-sheet-round-coop';
+                coopLabel.textContent = 'CO-OP';
+                kicker.appendChild(coopLabel);
+            } else if (!isCooperative && coopLabel) {
+                coopLabel.remove();
+            }
+
+            if (divergeButton) {
+                divergeButton.hidden = !isCooperative || userIsRoundCreator;
+                divergeButton.textContent = isDiverged ? 'Merge' : 'Diverge';
+            }
+            if (submitButton) {
+                const requiresConfirmation = (
+                    typeof roundState.submit_requires_confirmation !== 'undefined'
+                        ? Boolean(roundState.submit_requires_confirmation)
+                        : isCooperative && !isDiverged && !userIsRoundCreator
+                );
+                submitButton.dataset.submitRequiresConfirmation = requiresConfirmation ? 'true' : 'false';
+            }
         }
 
         function getRoundInputMode(roundId) {
@@ -849,10 +895,7 @@
                 roundState.grade_payload || null
             );
 
-            panel.dataset.diverged = isDiverged ? 'true' : 'false';
-            if (divergeButton) {
-                divergeButton.textContent = isDiverged ? 'Merge' : 'Diverge';
-            }
+            updateRoundCooperativeUi(roundId, roundState.cooperative, roundState);
 
             if (!answersDirty) {
                 textarea.value = normalizedAnswers.join('\n');
@@ -884,7 +927,11 @@
         }
 
         async function syncSharedAnswerSheetState() {
-            if (!hasRealtimeRounds || !syncUrl || syncRequestRef) {
+            if (!hasRealtimeRounds || !syncUrl) {
+                return syncRequestRef;
+            }
+            if (syncRequestRef) {
+                syncRequestQueued = true;
                 return syncRequestRef;
             }
 
@@ -930,6 +977,10 @@
                 .finally(() => {
                     syncRequestRef = null;
                     forcedSharedSaveRoundIds.clear();
+                    if (syncRequestQueued) {
+                        syncRequestQueued = false;
+                        syncSharedAnswerSheetState();
+                    }
                 });
 
             syncRequestRef = syncPromise;
@@ -3021,6 +3072,28 @@
                         if (message.event === 'answer_sheet_grade') {
                             logRemoteAnswerSheetUpdate('answer_sheet_grade', message);
                             applySharedGradeUpdate(roundId, message);
+                        }
+                        return;
+                    }
+                    if (message.action === 'update' && message.event === 'save_scores') {
+                        let cooperativeStatusChanged = false;
+                        (message.round_updates || []).forEach((roundUpdate) => {
+                            const roundId = String(roundUpdate.id || '');
+                            const fields = roundUpdate.fields || {};
+                            if (
+                                !roundId
+                                || !Object.prototype.hasOwnProperty.call(fields, 'cooperative')
+                                || !getRoundPanel(roundId)
+                            ) {
+                                return;
+                            }
+                            cooperativeStatusChanged = true;
+                            updateRoundCooperativeUi(roundId, fields.cooperative, {
+                                is_diverged: false,
+                            });
+                        });
+                        if (cooperativeStatusChanged) {
+                            syncSharedAnswerSheetState();
                         }
                         return;
                     }

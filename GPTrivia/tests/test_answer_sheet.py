@@ -737,22 +737,26 @@ class AnswerSheetTests(TestCase):
         rounds_by_id = {round_payload["round_id"]: round_payload for round_payload in payload["rounds"]}
 
         cooperative_payload = rounds_by_id[cooperative_round.id]
+        self.assertTrue(cooperative_payload["cooperative"])
         self.assertEqual(cooperative_payload["answers"][0], "Zebra")
         self.assertEqual(cooperative_payload["input_mode"], "text")
         self.assertEqual(cooperative_payload["ink_strokes"], [])
         self.assertEqual(cooperative_payload["score_value"], "6.5")
         self.assertTrue(cooperative_payload["shared"])
         self.assertFalse(cooperative_payload["is_diverged"])
+        self.assertTrue(cooperative_payload["submit_requires_confirmation"])
         self.assertEqual(cooperative_payload["grade_payload"]["score"], 1)
         self.assertEqual(cooperative_payload["grade_payload"]["row_results"][0]["state"], "correct")
 
         solo_payload = rounds_by_id[solo_round.id]
+        self.assertFalse(solo_payload["cooperative"])
         self.assertEqual(solo_payload["answers"][0], "Solo answer")
         self.assertEqual(solo_payload["input_mode"], "pencil")
         self.assertEqual(solo_payload["ink_strokes"], [[{"x": 0.15, "y": 0.25}, {"x": 0.45, "y": 0.55}]])
         self.assertEqual(solo_payload["score_value"], "")
         self.assertFalse(solo_payload["shared"])
         self.assertFalse(solo_payload["is_diverged"])
+        self.assertFalse(solo_payload["submit_requires_confirmation"])
         self.assertIsNone(solo_payload["grade_payload"])
 
     def test_answer_sheet_sync_keeps_competitive_entries_per_user(self):
@@ -796,6 +800,90 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(megan_round["answers"][0], "Megan answer")
         self.assertFalse(alex_round["shared"])
         self.assertFalse(megan_round["shared"])
+
+    def test_scoresheet_coop_toggle_changes_live_sync_between_private_and_communal_entries(self):
+        megan = User.objects.create_user(username="Megan", password="pw")
+        trivia_date = datetime.date(2026, 4, 17)
+        round_obj = GPTriviaRound.objects.create(
+            creator="Jenny",
+            title="Live Co-op Toggle Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=trivia_date,
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        presentation = MergedPresentation.objects.create(
+            name=trivia_date.strftime("%m.%d.%Y"),
+            presentation_id="live-coop-toggle",
+            player_list={
+                "score_alex": "score_alex",
+                "score_megan": "score_megan",
+            },
+        )
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=round_obj,
+            trivia_date=trivia_date,
+            answers=["Alex private"] + [""] * 9,
+        )
+        AnswerSheetEntry.objects.create(
+            user=megan,
+            round=round_obj,
+            trivia_date=trivia_date,
+            answers=["Megan newest private"] + [""] * 9,
+        )
+
+        enable_response = self.client.post(
+            reverse("save_scores"),
+            data=json.dumps({
+                "presentation_id": presentation.presentation_id,
+                "selected_date": trivia_date.isoformat(),
+                "round_updates": [{
+                    "id": round_obj.id,
+                    "fields": {"cooperative": True},
+                }],
+                "presentation_updates": {},
+            }),
+            content_type="application/json",
+        )
+        communal_sync = self.client.get(
+            reverse("answer_sheet_sync"),
+            {"date": trivia_date.isoformat()},
+        )
+
+        self.assertEqual(enable_response.status_code, 200)
+        communal_round = communal_sync.json()["rounds"][0]
+        self.assertTrue(communal_round["cooperative"])
+        self.assertTrue(communal_round["shared"])
+        self.assertEqual(communal_round["answers"][0], "Megan newest private")
+
+        disable_response = self.client.post(
+            reverse("save_scores"),
+            data=json.dumps({
+                "presentation_id": presentation.presentation_id,
+                "selected_date": trivia_date.isoformat(),
+                "round_updates": [{
+                    "id": round_obj.id,
+                    "fields": {"cooperative": False},
+                }],
+                "presentation_updates": {},
+            }),
+            content_type="application/json",
+        )
+        private_sync = self.client.get(
+            reverse("answer_sheet_sync"),
+            {"date": trivia_date.isoformat()},
+        )
+
+        self.assertEqual(disable_response.status_code, 200)
+        private_round = private_sync.json()["rounds"][0]
+        self.assertFalse(private_round["cooperative"])
+        self.assertFalse(private_round["shared"])
+        self.assertEqual(private_round["answers"][0], "Alex private")
 
     def test_answer_sheet_sync_does_not_fall_back_to_other_player_for_competitive_round(self):
         megan = User.objects.create_user(username="Megan", password="pw")
@@ -1256,6 +1344,19 @@ class AnswerSheetTests(TestCase):
         self.assertFalse(round_pages[coop_creator_round.id]["submit_requires_confirmation"])
         self.assertTrue(round_pages[coop_other_round.id]["submit_requires_confirmation"])
         self.assertFalse(round_pages[solo_other_round.id]["submit_requires_confirmation"])
+        response_html = response.content.decode("utf-8")
+        self.assertNotIn(
+            f'data-diverge-round-for="{coop_creator_round.id}"',
+            response_html,
+        )
+        self.assertIn(
+            f'data-diverge-round-for="{coop_other_round.id}"',
+            response_html,
+        )
+        self.assertRegex(
+            response_html,
+            rf'data-diverge-round-for="{solo_other_round.id}"\s+hidden',
+        )
 
     def test_submit_answer_sheet_score_updates_scoresheet_score(self):
         round_obj = GPTriviaRound.objects.create(

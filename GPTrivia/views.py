@@ -2945,6 +2945,7 @@ def _build_answer_sheet_context(user, requested_date=''):
             'round_creator_profile_url': round_creator_profile_url,
             'round_creator_color': get_player_color(round_creator_display),
             'cooperative': bool(round_obj.cooperative),
+            'user_is_round_creator': user_is_round_creator,
             'is_diverged': bool(round_state['is_diverged']),
             'submit_requires_confirmation': bool(
                 round_obj.cooperative
@@ -3380,15 +3381,24 @@ def _serialize_answer_sheet_sync_round(round_obj, user, current_entry=None, curr
     current_answers = _normalize_answer_sheet_answers(source_entry.answers if source_entry else [])
     text_grade_payload = grade_payloads[AnswerSheetEntry.INPUT_MODE_TEXT]
     pencil_grade_payload = grade_payloads[AnswerSheetEntry.INPUT_MODE_PENCIL]
+    user_is_round_creator = _answer_sheet_user_is_round_creator(user, round_obj)
+    is_diverged = bool(current_entry.is_diverged) if current_entry else False
     response_payload = {
         'round_id': round_obj.id,
+        'cooperative': bool(round_obj.cooperative),
         'answers': current_answers,
         'input_mode': current_input_mode,
         'ink_strokes': source_entry_state['ink_strokes'],
         'deleted_ink_stroke_ids': source_entry_state['ink_deleted_stroke_ids'],
         'score_value': _get_answer_sheet_display_score(round_obj, user, current_user_player_field=current_user_player_field),
-        'is_diverged': bool(current_entry.is_diverged) if current_entry else False,
-        'shared': bool(round_obj.cooperative and not (bool(current_entry.is_diverged) if current_entry else False)),
+        'is_diverged': is_diverged,
+        'shared': bool(round_obj.cooperative and not is_diverged),
+        'user_is_round_creator': user_is_round_creator,
+        'submit_requires_confirmation': bool(
+            round_obj.cooperative
+            and not is_diverged
+            and not user_is_round_creator
+        ),
         'grade_payload': (
             pencil_grade_payload
             if current_input_mode == AnswerSheetEntry.INPUT_MODE_PENCIL
@@ -7355,6 +7365,7 @@ def _save_scores_patch(data):
             dirty_fields = []
             score_fields_updated = False
             score_map = get_round_score_map(round_obj)
+            cooperative_status_changed = False
 
             for field, value in fields.items():
                 if field not in SCORESHEET_ROUND_FIELDS:
@@ -7376,6 +7387,9 @@ def _save_scores_patch(data):
                     score_map.update(replacement_scores)
                     score_fields_updated = True
                     continue
+                if field == 'cooperative':
+                    value = value if isinstance(value, bool) else _is_truthy_form_value(value)
+                    cooperative_status_changed = bool(round_obj.cooperative) != value
                 setattr(round_obj, field, value)
                 dirty_fields.append(field)
 
@@ -7385,6 +7399,8 @@ def _save_scores_patch(data):
 
             if dirty_fields:
                 round_obj.save(update_fields=dirty_fields)
+            if cooperative_status_changed:
+                AnswerSheetEntry.objects.filter(round=round_obj, is_diverged=True).update(is_diverged=False)
 
         presentation = _get_scoresheet_presentation(
             presentation_id=presentation_id,

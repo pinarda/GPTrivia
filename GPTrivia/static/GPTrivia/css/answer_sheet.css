@@ -805,6 +805,10 @@ body.site-shell .answer-sheet-page input.answer-sheet-score-input[type="text"] {
     margin-top: 8px;
 }
 
+.answer-sheet-diverge-button[hidden] {
+    display: none;
+}
+
 .answer-sheet-button-message[data-visible="true"] {
     opacity: 1;
 }

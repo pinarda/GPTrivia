@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from GPTrivia.models import GPTriviaRound, MergedPresentation
+from GPTrivia.models import AnswerSheetEntry, GPTriviaRound, MergedPresentation
 from GPTrivia.player_scores import get_round_score_map
 
 
@@ -46,6 +46,13 @@ class ScoresheetSyncTests(TestCase):
         )
 
     def test_patch_save_updates_only_changed_fields_and_broadcasts_after_commit(self):
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=self.round,
+            trivia_date=self.round.date,
+            answers=["Private answer"],
+            is_diverged=True,
+        )
         payload = {
             "presentation_id": self.presentation.presentation_id,
             "selected_date": "2026-03-12",
@@ -84,6 +91,9 @@ class ScoresheetSyncTests(TestCase):
 
             self.assertEqual(self.round.score_alex, 8.5)
             self.assertTrue(self.round.cooperative)
+            self.assertFalse(
+                AnswerSheetEntry.objects.get(user=self.user, round=self.round).is_diverged
+            )
             self.assertEqual(self.round.title, "Round 1")
             self.assertEqual(self.round.notes, "Original notes")
 
