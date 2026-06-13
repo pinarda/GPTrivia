@@ -33,6 +33,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import PasswordChangeDoneView as BasePasswordChangeDoneView
+from django.views.decorators.cache import never_cache
 # import QuerySet
 from django.db.models.query import QuerySet
 # import json
@@ -2984,6 +2985,7 @@ def _build_answer_sheet_context(user, requested_date=''):
 
 @login_required
 @ensure_csrf_cookie
+@never_cache
 def answer_sheet(request):
     requested_date = (request.GET.get('date') or '').strip()
     return render(
@@ -2994,6 +2996,7 @@ def answer_sheet(request):
 
 
 @login_required
+@never_cache
 def answer_sheet_sync(request):
     requested_date = (request.GET.get('date') or '').strip()
     if requested_date and not _parse_scoresheet_date(requested_date):
@@ -3017,6 +3020,8 @@ def answer_sheet_sync(request):
 
     return JsonResponse({
         'ok': True,
+        'current_user_id': request.user.id,
+        'current_username': request.user.username,
         'selected_date': selected_date,
         'rounds': [
             _serialize_answer_sheet_sync_round(

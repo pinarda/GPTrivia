@@ -251,6 +251,7 @@
         let isUnloading = false;
         let syncRequestRef = null;
         let skipUnsavedChangesPrompt = false;
+        let identityReloadRequested = false;
         const forcedSharedSaveRoundIds = new Set();
         document.body.classList.add('answer-sheet-shell');
 
@@ -892,6 +893,7 @@
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 credentials: 'same-origin',
+                cache: 'no-store',
             })
                 .then(async (response) => {
                     const payload = await response.json().catch(() => ({}));
@@ -901,6 +903,19 @@
                     return payload;
                 })
                 .then((payload) => {
+                    const responseUserId = String(payload.current_user_id || '');
+                    if (!responseUserId || responseUserId !== currentUserId) {
+                        console.warn('[Answer Sheet] Session identity changed; reloading before applying sync data', {
+                            pageUserId: currentUserId,
+                            responseUserId,
+                            responseUsername: payload.current_username || '',
+                        });
+                        if (!identityReloadRequested) {
+                            identityReloadRequested = true;
+                            window.location.reload();
+                        }
+                        return;
+                    }
                     (payload.rounds || []).forEach((roundState) => {
                         const roundId = String(roundState.round_id || '');
                         applySyncedRoundState(roundState, {

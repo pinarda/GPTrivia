@@ -729,7 +729,10 @@ class AnswerSheetTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
+        self.assertEqual(payload["current_user_id"], self.user.id)
+        self.assertEqual(payload["current_username"], self.user.username)
         self.assertEqual(payload["selected_date"], trivia_date.isoformat())
+        self.assertIn("no-store", response["Cache-Control"])
         self.assertEqual(len(payload["rounds"]), 2)
         rounds_by_id = {round_payload["round_id"]: round_payload for round_payload in payload["rounds"]}
 
@@ -823,6 +826,8 @@ class AnswerSheetTests(TestCase):
 
         self.assertEqual(sync_response.status_code, 200)
         self.assertEqual(page_response.status_code, 200)
+        self.assertIn("no-store", sync_response["Cache-Control"])
+        self.assertIn("no-store", page_response["Cache-Control"])
         sync_round = sync_response.json()["rounds"][0]
         page_round = page_response.context["round_pages"][0]
         self.assertEqual(sync_round["answers"], [""] * 10)

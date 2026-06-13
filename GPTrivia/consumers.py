@@ -121,6 +121,26 @@ class ScoresheetConsumer(AsyncWebsocketConsumer):
     # Receive message from room group
     async def scoresheet_message(self, event):
         message = event['message']
+        is_answer_sheet_message = (
+            message.get('action') == 'answer_sheet'
+            or (
+                message.get('action') == 'update'
+                and message.get('event') == 'answer_sheet_submit_score'
+            )
+        )
+        if is_answer_sheet_message:
+            user = self.scope.get('user')
+            target_user_ids = {
+                str(user_id)
+                for user_id in message.get('target_user_ids', [])
+                if user_id is not None
+            }
+            if (
+                not user
+                or not getattr(user, 'is_authenticated', False)
+                or str(user.id) not in target_user_ids
+            ):
+                return
 
         # Send message to WebSocket
         await self.send(text_data=json.dumps({
