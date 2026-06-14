@@ -1984,7 +1984,18 @@ URL_PATTERN = re.compile(r'(https?://docs\.google\.com/presentation/d/[^\s]+)')
 #     # Add more mappings as needed
 # }
 
-def get_round_titles_and_links(processed_senders=[]):
+def _pair_full_messages_with_internal_dates(messages_with_date, full_messages_by_id):
+    paired_messages = []
+    for metadata, internal_date in messages_with_date:
+        message_id = str(metadata.get('id') or '').strip()
+        full_message = full_messages_by_id.get(message_id)
+        if full_message:
+            paired_messages.append((full_message, internal_date))
+    return paired_messages
+
+
+def get_round_titles_and_links(processed_senders=None):
+    processed_senders = processed_senders or []
     credentials = None
     # Check if the token.pickle file exists
     if os.path.exists(token_file_path):
@@ -2023,6 +2034,8 @@ def get_round_titles_and_links(processed_senders=[]):
         presentation_urls = []
         old_urls = []
         round_titles = []
+        newdates = []
+        messages_with_date = []
 
         gmail_service = build('gmail', 'v1', credentials=credentials)
         query = 'subject:"Presentation shared with you:.*" is:unread'
@@ -2030,8 +2043,6 @@ def get_round_titles_and_links(processed_senders=[]):
 
         if 'messages' in response:
             messages = response['messages']
-            messages_with_date = []
-
             # Function to handle batch responses for metadata
             def metadata_callback(request_id, response, exception):
                 if exception is not None:
@@ -2058,12 +2069,14 @@ def get_round_titles_and_links(processed_senders=[]):
             # Sort messages by internalDate
             messages_with_date.sort(key=lambda x: x[1])
 
-            # Function to handle batch responses for full messages
+            full_messages_by_id = {}
+
+            # Batch callbacks can arrive out of order, so retain message identity.
             def fullmsg_callback(request_id, response, exception):
                 if exception is not None:
                     print(f"Error fetching full message for ID {request_id}: {exception}")
                 else:
-                    process_full_message(response)
+                    full_messages_by_id[str(request_id)] = response
 
             # Function to process each full message
             def process_full_message(msg):
@@ -2075,8 +2088,6 @@ def get_round_titles_and_links(processed_senders=[]):
                     sender = sender.split()[0][1:]
                 except StopIteration:
                     sender = "Unknown"
-
-                new_senders.append(sender)
 
                 parts = msg['payload'].get('parts', [])
 
@@ -2094,20 +2105,22 @@ def get_round_titles_and_links(processed_senders=[]):
                             if url_match:
                                 presentation_url = url_match.group(1)
                                 new_presentation_url = convert_shared_presentation(presentation_url, credentials)
-                                presentation_urls.append(new_presentation_url)
-                                old_urls.append(presentation_url)
+                                if not new_presentation_url:
+                                    return None
 
-                                shared_presentation_id = new_presentation_url.split('/')[-2]
+                                shared_presentation_id = _presentation_link_id(new_presentation_url)
+                                if not shared_presentation_id:
+                                    return None
                                 try:
                                     shared_presentation = slides_service.presentations().get(presentationId=shared_presentation_id).execute()
                                 except HttpError as e:
                                     print(f"Failed to fetch presentation {shared_presentation_id}: {e}")
-                                    continue
+                                    return None
 
                                 slides = shared_presentation.get('slides', [])
                                 if not slides:
                                     print(f"No slides found in presentation {shared_presentation_id}")
-                                    continue
+                                    return None
 
                                 first_slide = slides[0]
 
@@ -2124,7 +2137,13 @@ def get_round_titles_and_links(processed_senders=[]):
                                         break
 
                                 title_text = re.sub(r'\s+', ' ', title_text).strip()
-                                round_titles.append(title_text)
+                                return {
+                                    'sender': sender,
+                                    'presentation_url': new_presentation_url,
+                                    'old_url': presentation_url,
+                                    'title': title_text,
+                                }
+                return None
 
             # Create a batch request for fetching full messages
             fullmsg_batch = gmail_service.new_batch_http_request(callback=fullmsg_callback)
@@ -2140,22 +2159,29 @@ def get_round_titles_and_links(processed_senders=[]):
             # Execute the batch request for full messages
             fullmsg_batch.execute()
 
+            for full_message, internal_date in _pair_full_messages_with_internal_dates(
+                messages_with_date,
+                full_messages_by_id,
+            ):
+                round_data = process_full_message(full_message)
+                if not round_data:
+                    continue
+                new_senders.append(round_data['sender'])
+                presentation_urls.append(round_data['presentation_url'])
+                old_urls.append(round_data['old_url'])
+                round_titles.append(round_data['title'])
+                newdates.append(_format_pacific_timestamp(internal_date))
+
         # Replace the sender using MAIL_NAME_MAP
         new_senders = [MAIL_NAME_MAP.get(sender, "Unknown") for sender in new_senders]
 
         print(presentation_urls, round_titles, new_senders, old_urls)
 
-        # convert the messages_with_date dates from a string containing a unix timestamp to a string with the month, day and year
-        newdates = []
-        for i in range(len(messages_with_date)):
-            newdates.append(_format_pacific_timestamp(messages_with_date[i][1]))
-
-
         return presentation_urls, round_titles, new_senders, old_urls, newdates
 
     except HttpError as error:
         print(f"An error occurred: {error}")
-        return None, None, None, None
+        return None, None, None, None, None
 
 # def get_round_titles_and_links(processed_senders=[]):
 #     credentials = None

@@ -17,6 +17,7 @@ from GPTrivia.mail import (
     _get_shape_text_content,
     _infer_historical_round_slide_range,
     _is_coop_at,
+    _pair_full_messages_with_internal_dates,
     _prepare_update_round_sources,
     _presentation_link_is_selected,
     _sanitize_slides_text,
@@ -29,6 +30,32 @@ from GPTrivia.mail import (
 
 
 class MailHelpersTests(SimpleTestCase):
+    def test_pair_full_messages_with_dates_preserves_metadata_order(self):
+        messages_with_date = [
+            ({"id": "older-message"}, "1748296800000"),
+            ({"id": "newer-message"}, "1774044000000"),
+        ]
+        full_messages_by_id = {
+            "newer-message": {"id": "newer-message", "title": "Newer Round"},
+            "older-message": {"id": "older-message", "title": "Older Round"},
+        }
+
+        paired_messages = _pair_full_messages_with_internal_dates(
+            messages_with_date,
+            full_messages_by_id,
+        )
+
+        self.assertEqual(
+            [
+                (message["id"], internal_date)
+                for message, internal_date in paired_messages
+            ],
+            [
+                ("older-message", "1748296800000"),
+                ("newer-message", "1774044000000"),
+            ],
+        )
+
     def test_presentation_link_selection_ignores_url_suffix_differences(self):
         self.assertTrue(
             _presentation_link_is_selected(
