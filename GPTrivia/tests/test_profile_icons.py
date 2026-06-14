@@ -78,7 +78,7 @@ class ProfileIconTests(TestCase):
             self.assertEqual(icon_image.size, (50, 50))
             self.assertEqual(icon_image.mode, 'RGBA')
 
-    def test_scoresheet_view_embeds_generated_player_icon_map(self):
+    def test_scoresheet_view_uses_profile_picture_without_generating_missing_icon(self):
         user = User.objects.create_user(username='Alex', password='pw')
         profile = user.profile
         profile.profile_picture = self._make_uploaded_image(color=(20, 120, 220))
@@ -87,11 +87,14 @@ class ProfileIconTests(TestCase):
         # Simulate an older uploaded profile that predates the icon field being populated.
         profile.profile_icon.delete(save=False)
         type(profile).objects.filter(pk=profile.pk).update(profile_icon='')
+        profile.refresh_from_db()
 
         self.client.force_login(user)
-        response = self.client.get(reverse('scoresheet_new'))
+        with patch.object(Profile, 'ensure_profile_icon') as ensure_profile_icon:
+            response = self.client.get(reverse('scoresheet_new'))
 
         self.assertEqual(response.status_code, 200)
+        ensure_profile_icon.assert_not_called()
         self.assertContains(response, 'scoresheet-player-icons')
         self.assertContains(response, get_profile_avatar_url(profile))
         self.assertContains(response, 'Alex')
@@ -105,9 +108,10 @@ class ProfileIconTests(TestCase):
         type(profile).objects.filter(pk=profile.pk).update(profile_icon='')
         profile.refresh_from_db()
 
-        with patch.object(Profile, 'ensure_profile_icon', return_value=False):
+        with patch.object(Profile, 'ensure_profile_icon') as ensure_profile_icon:
             icon_map = _build_player_icon_map()
 
+        ensure_profile_icon.assert_not_called()
         self.assertIn('Alex', icon_map)
         self.assertEqual(icon_map['Alex'], get_profile_avatar_url(profile))
 

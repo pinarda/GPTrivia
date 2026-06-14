@@ -4426,9 +4426,6 @@ def _build_player_icon_map():
         if not profile.user_id:
             continue
 
-        if profile.has_custom_profile_picture():
-            profile.ensure_profile_icon()
-
         icon_url = get_profile_avatar_url(profile, include_default=False)
         if not icon_url:
             continue
