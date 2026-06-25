@@ -416,6 +416,46 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(entry.answers[:2], ["New 1", "Old 2"])
         self.assertEqual(entry.grade_overrides, [2])
 
+    def test_save_answer_sheet_entry_tolerates_stale_grade_payload_rebuild_errors(self):
+        round_obj = GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Stale Grade Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=False,
+        )
+        AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=round_obj,
+            trivia_date=round_obj.date,
+            answers=["Old answer"] + [""] * 9,
+            was_graded=True,
+            graded_input_mode=AnswerSheetEntry.INPUT_MODE_TEXT,
+        )
+
+        with patch("GPTrivia.views._grade_answer_sheet_answers", side_effect=RuntimeError("stale analysis")):
+            with patch("GPTrivia.views.logger.exception") as log_exception:
+                response = self.client.post(
+                    reverse("save_answer_sheet_entry"),
+                    data=json.dumps({
+                        "round_id": round_obj.id,
+                        "answers": ["New answer"] + [""] * 9,
+                    }),
+                    content_type="application/json",
+                )
+
+        log_exception.assert_called_once()
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIsNone(payload["grade_payload"])
+        entry = AnswerSheetEntry.objects.get(user=self.user, round=round_obj)
+        self.assertEqual(entry.answers[0], "New answer")
+
     def test_save_answer_sheet_entry_shares_cooperative_answers_across_players_for_night(self):
         megan = User.objects.create_user(username="Megan", password="pw")
         jenny = User.objects.create_user(username="Jenny", password="pw")

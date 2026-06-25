@@ -2522,6 +2522,14 @@ def _build_saved_answer_sheet_grade_payload(round_obj, answer_entry, input_mode=
         )
     except ValueError:
         return None
+    except Exception:
+        logger.exception(
+            "Unable to rebuild saved answer sheet grade payload for round_id=%s entry_id=%s input_mode=%s",
+            getattr(round_obj, 'id', ''),
+            getattr(answer_entry, 'id', ''),
+            normalized_mode,
+        )
+        return None
 
 
 def _build_saved_answer_sheet_grade_payloads(round_obj, answer_entry):
