@@ -105,7 +105,32 @@
     {{ player_icon_map|json_script:"scoresheet-player-icons" }}
     {{ player_color_map|json_script:"scoresheet-player-colors" }}
 
-    <script src="{% static 'scoresheet/build/static/js/main.ce94552c.js' %}"></script>
+    <script>
+      function retryScoresheetBundleLoad() {
+        const retryKey = 'scoresheet-bundle-reload-attempts';
+        const attempts = Number.parseInt(sessionStorage.getItem(retryKey) || '0', 10);
+        if (attempts >= 3) {
+          console.error('Scoresheet bundle remained unavailable after three reload attempts.');
+          return;
+        }
+
+        sessionStorage.setItem(retryKey, String(attempts + 1));
+        window.setTimeout(() => {
+          const reloadUrl = new URL(window.location.href);
+          reloadUrl.searchParams.set('_scoresheet_bundle_reload', String(Date.now()));
+          window.location.replace(reloadUrl.toString());
+        }, 1000);
+      }
+
+      function markScoresheetBundleLoaded() {
+        sessionStorage.removeItem('scoresheet-bundle-reload-attempts');
+      }
+    </script>
+    <script
+      src="{% static 'scoresheet/build/static/js/main.ce94552c.js' %}"
+      onload="markScoresheetBundleLoaded()"
+      onerror="retryScoresheetBundleLoad()"
+    ></script>
     <audio id="snake-hiss" src="/static/img/snake-hissing-6092.mp3" preload="auto"></audio>
 
     <div id="star-overlay"></div>

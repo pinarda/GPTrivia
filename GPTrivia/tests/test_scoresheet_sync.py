@@ -57,6 +57,7 @@ class ScoresheetSyncTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("no-store", response.headers.get("Cache-Control", ""))
         self.assertContains(response, f"scoresheet/build/{javascript_bundle}")
+        self.assertContains(response, "onerror=\"retryScoresheetBundleLoad()\"")
         self.assertContains(
             response,
             "/static/jquery-tabledit-1.2.3/jquery.tabledit.min.js",
