@@ -123,6 +123,8 @@ class AnswerSheetTests(TestCase):
         self.assertContains(response, "SYNC_REQUEST_TIMEOUT_MS")
         self.assertContains(response, "Realtime lifecycle initializing")
         self.assertContains(response, "window.setTimeout(initializeAnswerSheetRealtime, 0);")
+        self.assertContains(response, "moveCaretToNextExistingLine(textarea)")
+        self.assertContains(response, "textarea.addEventListener('keydown'")
         self.assertContains(response, "const socket = new WebSocket(websocketUrl);")
         self.assertContains(response, "if (wsRef !== socket)")
         self.assertContains(response, "window.addEventListener('pagehide'")
