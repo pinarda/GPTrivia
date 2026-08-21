@@ -246,7 +246,6 @@
         const SOCKET_STALE_AFTER_MS = 75000;
         const SOCKET_WATCHDOG_INTERVAL_MS = 5000;
         const REALTIME_RECONCILE_INTERVAL_MS = 30000;
-        const SOCKET_SYNC_TIMEOUT_MS = 10000;
         const SYNC_REQUEST_TIMEOUT_MS = 15000;
         const localClientId = (
             window.crypto && typeof window.crypto.randomUUID === 'function'
@@ -266,8 +265,6 @@
         let syncRequestQueued = false;
         let syncFailureCount = 0;
         let nextHttpSyncAllowedAt = 0;
-        let socketSyncRequestId = '';
-        let socketSyncTimeoutRef = null;
         let skipUnsavedChangesPrompt = false;
         let identityReloadRequested = false;
         const forcedSharedSaveRoundIds = new Set();
@@ -942,19 +939,19 @@
             refreshRoundStatus(roundId);
         }
 
-        function applyAnswerSheetSyncPayload(payload, options = {}) {
+        function applyAnswerSheetSyncPayload(payload) {
             const responseUserId = String(payload.current_user_id || '');
             if (!responseUserId || responseUserId !== currentUserId) {
-                console.warn('[Answer Sheet] Session identity mismatch; refusing to apply sync data', {
+                console.warn('[Answer Sheet] Session identity changed; reloading before applying sync data', {
                     pageUserId: currentUserId,
                     responseUserId,
                     responseUsername: payload.current_username || '',
                 });
-                if (options.reloadOnIdentityMismatch !== false && !identityReloadRequested) {
+                if (!identityReloadRequested) {
                     identityReloadRequested = true;
                     window.location.reload();
                 }
-                return false;
+                return;
             }
             (payload.rounds || []).forEach((roundState) => {
                 const roundId = String(roundState.round_id || '');
@@ -963,7 +960,6 @@
                 });
                 forcedSharedSaveRoundIds.delete(roundId);
             });
-            return true;
         }
 
         async function syncSharedAnswerSheetState() {
@@ -3102,54 +3098,6 @@
         if (hasRealtimeRounds && typeof WebSocket !== 'undefined') {
             const websocketUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/scoresheet/`;
 
-            function clearAnswerSheetSocketSync() {
-                if (socketSyncTimeoutRef) {
-                    window.clearTimeout(socketSyncTimeoutRef);
-                    socketSyncTimeoutRef = null;
-                }
-                socketSyncRequestId = '';
-            }
-
-            function requestAnswerSheetSocketSync() {
-                if (!wsRef || wsRef.readyState !== WebSocket.OPEN) {
-                    return false;
-                }
-                if (socketSyncRequestId) {
-                    return true;
-                }
-
-                const requestId = `${localClientId}-sync-${Date.now()}`;
-                try {
-                    wsRef.send(JSON.stringify({
-                        type: 'answer_sheet_sync',
-                        request_id: requestId,
-                        selected_date: selectedDate,
-                    }));
-                } catch (error) {
-                    console.warn('[Answer Sheet] Unable to request realtime state', {
-                        message: error?.message || String(error),
-                    });
-                    return false;
-                }
-
-                socketSyncRequestId = requestId;
-                socketSyncTimeoutRef = window.setTimeout(() => {
-                    if (socketSyncRequestId !== requestId) {
-                        return;
-                    }
-                    clearAnswerSheetSocketSync();
-                    console.warn('[Answer Sheet] Realtime state request timed out; trying HTTP fallback');
-                    syncSharedAnswerSheetState();
-                }, SOCKET_SYNC_TIMEOUT_MS);
-                return true;
-            }
-
-            function reconcileAnswerSheetState() {
-                if (!requestAnswerSheetSocketSync()) {
-                    syncSharedAnswerSheetState();
-                }
-            }
-
             function scheduleAnswerSheetReconnect() {
                 if (isUnloading || reconnectTimeoutRef || document.visibilityState === 'hidden') {
                     return;
@@ -3195,31 +3143,6 @@
             function processAnswerSheetSocketMessage(event) {
                 try {
                     const data = JSON.parse(event.data);
-                    if (data.type === 'answer_sheet_sync') {
-                        if (
-                            socketSyncRequestId
-                            && (!data.request_id || String(data.request_id) === socketSyncRequestId)
-                        ) {
-                            clearAnswerSheetSocketSync();
-                        }
-                        const payloadApplied = applyAnswerSheetSyncPayload(data.payload || {}, {
-                            reloadOnIdentityMismatch: false,
-                        });
-                        if (!payloadApplied) {
-                            closeAnswerSheetSocket();
-                            syncSharedAnswerSheetState();
-                            scheduleAnswerSheetReconnect();
-                        }
-                        return;
-                    }
-                    if (data.type === 'answer_sheet_sync_error') {
-                        clearAnswerSheetSocketSync();
-                        console.warn('[Answer Sheet] Realtime state sync failed; trying HTTP fallback', {
-                            detail: data.detail || '',
-                        });
-                        syncSharedAnswerSheetState();
-                        return;
-                    }
                     if (data.type === 'pong' || !data.message) {
                         return;
                     }
@@ -3274,7 +3197,7 @@
                         });
                         if (sawRelevantRoundUpdate) {
                             logRemoteAnswerSheetUpdate('scoresheet_save', message);
-                            reconcileAnswerSheetState();
+                            syncSharedAnswerSheetState();
                         }
                         return;
                     }
@@ -3322,7 +3245,7 @@
                             applySharedScoreUpdate(roundId, nextScore);
                         });
                         if (!syncRequestRef || sawImmediateRoundUpdate || (message.round_updates || []).length > 0) {
-                            reconcileAnswerSheetState();
+                            syncSharedAnswerSheetState();
                         }
                     }
                 } catch (error) {
@@ -3386,7 +3309,10 @@
                             socket.close();
                         }
                     }, SOCKET_PING_INTERVAL_MS);
-                    reconcileAnswerSheetState();
+                    console.info('[Answer Sheet] Reconciling with the server', {
+                        reason: 'websocket opened',
+                    });
+                    syncSharedAnswerSheetState();
                 };
                 socket.onmessage = (event) => {
                     if (wsRef !== socket) {
@@ -3410,7 +3336,6 @@
                         return;
                     }
                     clearAnswerSheetPing();
-                    clearAnswerSheetSocketSync();
                     wsRef = null;
                     lastSocketActivityAt = 0;
                     console.info('[Answer Sheet] Realtime connection closed', {
@@ -3427,7 +3352,7 @@
                 }
                 connectAnswerSheetWebSocket();
                 if (forceSync) {
-                    reconcileAnswerSheetState();
+                    syncSharedAnswerSheetState();
                 }
             }
 
@@ -3481,7 +3406,6 @@
                 clearAnswerSheetPing();
                 clearAnswerSheetReconcile();
                 clearAnswerSheetSocketWatchdog();
-                clearAnswerSheetSocketSync();
                 if (syncAbortControllerRef) {
                     syncAbortControllerRef.abort();
                     syncAbortControllerRef = null;

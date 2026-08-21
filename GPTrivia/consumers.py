@@ -1,23 +1,10 @@
 # consumers.py
 from channels.generic.websocket import AsyncWebsocketConsumer
-from channels.db import database_sync_to_async
 from collections import deque
 import asyncio
 import json
-import logging
 import math
 import uuid
-
-
-logger = logging.getLogger(__name__)
-
-
-@database_sync_to_async
-def _get_answer_sheet_sync_payload(user, selected_date):
-    # Import lazily to avoid loading views while ASGI routing is initialized.
-    from .views import _build_answer_sheet_sync_payload
-
-    return _build_answer_sheet_sync_payload(user, selected_date)
 
 
 def _normalize_button_reaction_ms(value):
@@ -133,39 +120,6 @@ class ScoresheetConsumer(AsyncWebsocketConsumer):
         message_type = text_data_json.get('type')
         if message_type == 'ping':
             await self.send(text_data=json.dumps({'type': 'pong'}))
-            return
-
-        if message_type == 'answer_sheet_sync':
-            user = self.scope.get('user')
-            if not user or not getattr(user, 'is_authenticated', False):
-                await self.send(text_data=json.dumps({
-                    'type': 'answer_sheet_sync_error',
-                    'request_id': text_data_json.get('request_id'),
-                    'detail': 'Authentication is required.',
-                }))
-                return
-
-            selected_date = str(text_data_json.get('selected_date') or '').strip()
-            try:
-                payload = await _get_answer_sheet_sync_payload(user, selected_date)
-            except Exception:
-                logger.exception(
-                    'Unable to build answer sheet WebSocket sync payload for user %s and date %s.',
-                    getattr(user, 'id', None),
-                    selected_date,
-                )
-                await self.send(text_data=json.dumps({
-                    'type': 'answer_sheet_sync_error',
-                    'request_id': text_data_json.get('request_id'),
-                    'detail': 'Unable to synchronize answer sheet state.',
-                }))
-                return
-
-            await self.send(text_data=json.dumps({
-                'type': 'answer_sheet_sync',
-                'request_id': text_data_json.get('request_id'),
-                'payload': payload,
-            }))
 
     # Receive message from room group
     async def scoresheet_message(self, event):
