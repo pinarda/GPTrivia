@@ -76,6 +76,15 @@ restart_daphne_services() {
   read -r -a ports <<< "${DAPHNE_INSTANCE_PORTS}"
 
   if systemctl list-unit-files 'daphne@*.service' --no-legend 2>/dev/null | grep -q '^daphne@'; then
+    if systemctl is-active --quiet daphne.service; then
+      echo "Stopping legacy daphne.service to prevent it from sharing port 8000"
+      sudo systemctl stop daphne.service
+    fi
+    if systemctl is-enabled --quiet daphne.service; then
+      echo "Disabling legacy daphne.service"
+      sudo systemctl disable daphne.service
+    fi
+
     for port in "${ports[@]}"; do
       services+=("daphne@${port}")
     done
