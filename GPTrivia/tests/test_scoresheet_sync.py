@@ -130,6 +130,11 @@ class ScoresheetSyncTests(TestCase):
             self.assertEqual(message["client_id"], "client-1")
             self.assertEqual(message["mutation_id"], "mutation-1")
             self.assertEqual(message["round_updates"], payload["round_updates"])
+            self.assertEqual(message["cooperative_updates"], [{
+                "id": self.round.id,
+                "cooperative": True,
+                "selected_date": "2026-03-12",
+            }])
             self.assertEqual(message["presentation_updates"], payload["presentation_updates"])
 
     def test_patch_save_rejects_invalid_round_field(self):
@@ -160,6 +165,36 @@ class ScoresheetSyncTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(callbacks, [])
         broadcast.assert_not_called()
+
+    def test_cooperative_broadcast_uses_canonical_round_date_when_client_date_is_blank(self):
+        payload = {
+            "presentation_id": self.presentation.presentation_id,
+            "selected_date": "",
+            "client_id": "client-coop-toggle",
+            "mutation_id": "mutation-coop-toggle",
+            "round_updates": [{
+                "id": self.round.id,
+                "fields": {"cooperative": True},
+            }],
+            "presentation_updates": {},
+        }
+
+        with patch("GPTrivia.views._broadcast_scoresheet_message") as broadcast:
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse("save_scores"),
+                    data=json.dumps(payload),
+                    content_type="application/json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        message = broadcast.call_args.args[0]
+        self.assertEqual(message["selected_date"], "")
+        self.assertEqual(message["cooperative_updates"], [{
+            "id": self.round.id,
+            "cooperative": True,
+            "selected_date": self.round.date.isoformat(),
+        }])
 
     def test_patch_save_persists_dynamic_player_scores_in_extra_scores(self):
         payload = {

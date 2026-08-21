@@ -125,6 +125,12 @@ class AnswerSheetTests(TestCase):
         self.assertContains(response, "window.addEventListener('pagehide'")
         self.assertContains(response, "startAnswerSheetReconcile();")
         self.assertContains(response, "isUnloading = false;")
+        response_html = response.content.decode("utf-8")
+        self.assertIn("message.cooperative_updates", response_html)
+        self.assertLess(
+            response_html.index("message.event === 'save_scores'"),
+            response_html.index("String(message.selected_date || '')"),
+        )
 
     def test_save_answer_sheet_entry_creates_and_updates_answers(self):
         round_obj = GPTriviaRound.objects.create(

@@ -7623,6 +7623,7 @@ def _save_scores_patch(data):
     presentation_id = data.get('presentation_id')
     client_id = data.get('client_id')
     mutation_id = data.get('mutation_id')
+    cooperative_updates = []
 
     with transaction.atomic():
         for update in round_updates:
@@ -7668,6 +7669,12 @@ def _save_scores_patch(data):
                 round_obj.save(update_fields=dirty_fields)
             if cooperative_status_changed:
                 AnswerSheetEntry.objects.filter(round=round_obj, is_diverged=True).update(is_diverged=False)
+            if 'cooperative' in fields:
+                cooperative_updates.append({
+                    'id': round_obj.id,
+                    'cooperative': bool(round_obj.cooperative),
+                    'selected_date': round_obj.date.isoformat() if round_obj.date else '',
+                })
 
         presentation = _get_scoresheet_presentation(
             presentation_id=presentation_id,
@@ -7713,6 +7720,7 @@ def _save_scores_patch(data):
             'presentation_id': presentation.presentation_id,
             'selected_date': selected_date,
             'round_updates': round_updates,
+            'cooperative_updates': cooperative_updates,
             'presentation_updates': presentation_updates,
         }
         _schedule_scoresheet_broadcast(message)

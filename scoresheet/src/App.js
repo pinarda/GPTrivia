@@ -2778,10 +2778,17 @@ const PlayerTable = () => {
     const handleCooperativeChange = (roundTitle, isChecked) => {
         const confirmChange = confirmPastChange()
         if (!confirmChange) return;
-      setCooperativeStatus(prevState => ({
-        ...prevState,
+      const nextCooperativeStatus = {
+        ...cooperativeStatus,
         [roundTitle]: isChecked,
-      }));
+      };
+      if (latestStateRef.current) {
+        latestStateRef.current = {
+          ...latestStateRef.current,
+          cooperativeStatus: nextCooperativeStatus,
+        };
+      }
+      setCooperativeStatus(nextCooperativeStatus);
       markDirty();
     };
 

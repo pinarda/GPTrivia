@@ -3112,6 +3112,36 @@
                         return;
                     }
                     const message = data.message || {};
+                    if (message.action === 'update' && message.event === 'save_scores') {
+                        const cooperativeUpdates = Array.isArray(message.cooperative_updates)
+                            ? message.cooperative_updates
+                            : (message.round_updates || []).flatMap((roundUpdate) => {
+                                const fields = roundUpdate.fields || {};
+                                if (!Object.prototype.hasOwnProperty.call(fields, 'cooperative')) {
+                                    return [];
+                                }
+                                return [{
+                                    id: roundUpdate.id,
+                                    cooperative: fields.cooperative,
+                                }];
+                            });
+                        let cooperativeStatusChanged = false;
+                        cooperativeUpdates.forEach((roundUpdate) => {
+                            const roundId = String(roundUpdate.id || '');
+                            if (!roundId || !getRoundPanel(roundId)) {
+                                return;
+                            }
+                            cooperativeStatusChanged = true;
+                            updateRoundCooperativeUi(roundId, roundUpdate.cooperative, {
+                                is_diverged: false,
+                            });
+                            logRemoteAnswerSheetUpdate('round_cooperative_status', roundUpdate);
+                        });
+                        if (cooperativeStatusChanged) {
+                            syncSharedAnswerSheetState();
+                        }
+                        return;
+                    }
                     if (String(message.selected_date || '') !== String(selectedDate || '')) {
                         return;
                     }
@@ -3131,28 +3161,6 @@
                         if (message.event === 'answer_sheet_grade') {
                             logRemoteAnswerSheetUpdate('answer_sheet_grade', message);
                             applySharedGradeUpdate(roundId, message);
-                        }
-                        return;
-                    }
-                    if (message.action === 'update' && message.event === 'save_scores') {
-                        let cooperativeStatusChanged = false;
-                        (message.round_updates || []).forEach((roundUpdate) => {
-                            const roundId = String(roundUpdate.id || '');
-                            const fields = roundUpdate.fields || {};
-                            if (
-                                !roundId
-                                || !Object.prototype.hasOwnProperty.call(fields, 'cooperative')
-                                || !getRoundPanel(roundId)
-                            ) {
-                                return;
-                            }
-                            cooperativeStatusChanged = true;
-                            updateRoundCooperativeUi(roundId, fields.cooperative, {
-                                is_diverged: false,
-                            });
-                        });
-                        if (cooperativeStatusChanged) {
-                            syncSharedAnswerSheetState();
                         }
                         return;
                     }
