@@ -125,8 +125,11 @@ class AnswerSheetTests(TestCase):
         self.assertContains(response, "window.addEventListener('pagehide'")
         self.assertContains(response, "startAnswerSheetReconcile();")
         self.assertContains(response, "isUnloading = false;")
+        self.assertContains(response, "const REALTIME_RECONCILE_INTERVAL_MS = 5000;")
         response_html = response.content.decode("utf-8")
         self.assertIn("message.cooperative_updates", response_html)
+        self.assertIn("applySharedScoreUpdate(roundId, fields[currentUserPlayerField])", response_html)
+        self.assertIn("logRemoteAnswerSheetUpdate('scoresheet_save', message)", response_html)
         self.assertLess(
             response_html.index("message.event === 'save_scores'"),
             response_html.index("String(message.selected_date || '')"),
@@ -916,7 +919,10 @@ class AnswerSheetTests(TestCase):
                 "selected_date": trivia_date.isoformat(),
                 "round_updates": [{
                     "id": round_obj.id,
-                    "fields": {"cooperative": True},
+                    "fields": {
+                        "cooperative": True,
+                        "score_alex": 8.5,
+                    },
                 }],
                 "presentation_updates": {},
             }),
@@ -932,6 +938,7 @@ class AnswerSheetTests(TestCase):
         self.assertTrue(communal_round["cooperative"])
         self.assertTrue(communal_round["shared"])
         self.assertEqual(communal_round["answers"][0], "Megan newest private")
+        self.assertEqual(communal_round["score_value"], "8.5")
 
         disable_response = self.client.post(
             reverse("save_scores"),
