@@ -265,7 +265,6 @@
         let syncFailureCount = 0;
         let nextHttpSyncAllowedAt = 0;
         let skipUnsavedChangesPrompt = false;
-        let identityReloadRequested = false;
         const forcedSharedSaveRoundIds = new Set();
         document.body.classList.add('answer-sheet-shell');
         console.info('[Answer Sheet] Realtime lifecycle initializing', {
@@ -946,15 +945,11 @@
         function applyAnswerSheetSyncPayload(payload) {
             const responseUserId = String(payload.current_user_id || '');
             if (!responseUserId || responseUserId !== currentUserId) {
-                console.warn('[Answer Sheet] Session identity changed; reloading before applying sync data', {
+                console.warn('[Answer Sheet] Ignoring sync data with an unexpected session identity', {
                     pageUserId: currentUserId,
                     responseUserId,
                     responseUsername: payload.current_username || '',
                 });
-                if (!identityReloadRequested) {
-                    identityReloadRequested = true;
-                    window.location.reload();
-                }
                 return;
             }
             (payload.rounds || []).forEach((roundState) => {
@@ -3366,7 +3361,6 @@
 
             window.addEventListener('pageshow', () => {
                 isUnloading = false;
-                identityReloadRequested = false;
                 startAnswerSheetReconcile();
                 startAnswerSheetSocketWatchdog();
                 ensureAnswerSheetRealtime(true);

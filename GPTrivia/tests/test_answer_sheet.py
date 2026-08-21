@@ -132,6 +132,7 @@ class AnswerSheetTests(TestCase):
         self.assertContains(response, "const REALTIME_RECONCILE_INTERVAL_MS = 30000;")
         response_html = response.content.decode("utf-8")
         self.assertNotIn("if (hasRealtimeRounds", response_html)
+        self.assertNotIn("window.location.reload()", response_html)
         self.assertIn("reason: 'websocket opened'", response_html)
         self.assertNotIn("type: 'answer_sheet_sync'", response_html)
         self.assertIn("message.cooperative_updates", response_html)
