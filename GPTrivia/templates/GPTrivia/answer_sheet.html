@@ -213,7 +213,6 @@
         const currentUserPlayerField = pageRoot.dataset.currentUserPlayerField || '';
         const currentUserId = String(pageRoot.dataset.currentUserId || '');
         const hasCooperativeRounds = pageRoot.dataset.hasCooperativeRounds === 'true';
-        const hasRealtimeRounds = textareas.length > 0;
         const dateValuesElement = document.getElementById('answer-sheet-date-values');
         const availableAnswerSheetDates = dateValuesElement ? JSON.parse(dateValuesElement.textContent || '[]') : [];
         const calendarButton = document.getElementById('answer-sheet-calendar-button');
@@ -269,6 +268,11 @@
         let identityReloadRequested = false;
         const forcedSharedSaveRoundIds = new Set();
         document.body.classList.add('answer-sheet-shell');
+        console.info('[Answer Sheet] Realtime lifecycle initializing', {
+            selectedDate,
+            roundCount: roundPanels.length,
+        });
+        window.setTimeout(initializeAnswerSheetRealtime, 0);
 
         function getCsrfToken() {
             const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
@@ -963,7 +967,7 @@
         }
 
         async function syncSharedAnswerSheetState() {
-            if (!hasRealtimeRounds || !syncUrl || isUnloading) {
+            if (!syncUrl || isUnloading) {
                 return syncRequestRef;
             }
             if (syncRequestRef) {
@@ -3095,7 +3099,11 @@
             });
         });
 
-        if (hasRealtimeRounds && typeof WebSocket !== 'undefined') {
+        function initializeAnswerSheetRealtime() {
+            if (typeof WebSocket === 'undefined') {
+                console.warn('[Answer Sheet] Realtime unavailable because this browser does not support WebSockets');
+                return;
+            }
             const websocketUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/scoresheet/`;
 
             function scheduleAnswerSheetReconnect() {
@@ -3347,7 +3355,7 @@
             }
 
             function ensureAnswerSheetRealtime(forceSync) {
-                if (!hasRealtimeRounds || isUnloading || document.visibilityState === 'hidden') {
+                if (isUnloading || document.visibilityState === 'hidden') {
                     return;
                 }
                 connectAnswerSheetWebSocket();
