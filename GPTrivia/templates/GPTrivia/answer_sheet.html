@@ -2589,7 +2589,6 @@
             setRoundInputMode(roundId, panel?.dataset.inputMode || 'text');
             syncOverlayScroll(textarea);
             setRoundAnswersDirty(roundId, false);
-            let ignoreNextLineBreakBeforeInput = false;
             textarea.addEventListener('keydown', (event) => {
                 if (
                     event.key !== 'Enter'
@@ -2599,31 +2598,6 @@
                     || event.altKey
                     || event.isComposing
                 ) {
-                    return;
-                }
-                if (moveCaretToNextExistingLine(textarea)) {
-                    event.preventDefault();
-                    ignoreNextLineBreakBeforeInput = true;
-                    window.setTimeout(() => {
-                        ignoreNextLineBreakBeforeInput = false;
-                    }, 0);
-                }
-            });
-            textarea.addEventListener('beforeinput', (event) => {
-                const isLineBreakInput = (
-                    event.inputType === 'insertLineBreak'
-                    || event.inputType === 'insertParagraph'
-                    || (
-                        event.inputType === 'insertText'
-                        && (event.data === '\n' || event.data === '\r')
-                    )
-                );
-                if (!isLineBreakInput || event.isComposing) {
-                    return;
-                }
-                if (ignoreNextLineBreakBeforeInput) {
-                    event.preventDefault();
-                    ignoreNextLineBreakBeforeInput = false;
                     return;
                 }
                 if (moveCaretToNextExistingLine(textarea)) {
