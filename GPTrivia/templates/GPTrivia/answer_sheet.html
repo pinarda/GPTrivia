@@ -244,7 +244,8 @@
         const SOCKET_CONNECT_TIMEOUT_MS = 15000;
         const SOCKET_PING_INTERVAL_MS = 30000;
         const SOCKET_STALE_AFTER_MS = 75000;
-        const REALTIME_RECONCILE_INTERVAL_MS = 5000;
+        const REALTIME_RECONCILE_INTERVAL_MS = 30000;
+        const SOCKET_SYNC_TIMEOUT_MS = 10000;
         const SYNC_REQUEST_TIMEOUT_MS = 15000;
         const localClientId = (
             window.crypto && typeof window.crypto.randomUUID === 'function'
@@ -261,6 +262,10 @@
         let syncAbortControllerRef = null;
         let syncRequestTimeoutRef = null;
         let syncRequestQueued = false;
+        let syncFailureCount = 0;
+        let nextHttpSyncAllowedAt = 0;
+        let socketSyncRequestId = '';
+        let socketSyncTimeoutRef = null;
         let skipUnsavedChangesPrompt = false;
         let identityReloadRequested = false;
         const forcedSharedSaveRoundIds = new Set();
@@ -935,6 +940,29 @@
             refreshRoundStatus(roundId);
         }
 
+        function applyAnswerSheetSyncPayload(payload) {
+            const responseUserId = String(payload.current_user_id || '');
+            if (!responseUserId || responseUserId !== currentUserId) {
+                console.warn('[Answer Sheet] Session identity changed; reloading before applying sync data', {
+                    pageUserId: currentUserId,
+                    responseUserId,
+                    responseUsername: payload.current_username || '',
+                });
+                if (!identityReloadRequested) {
+                    identityReloadRequested = true;
+                    window.location.reload();
+                }
+                return;
+            }
+            (payload.rounds || []).forEach((roundState) => {
+                const roundId = String(roundState.round_id || '');
+                applySyncedRoundState(roundState, {
+                    forceSharedSaveState: forcedSharedSaveRoundIds.has(roundId),
+                });
+                forcedSharedSaveRoundIds.delete(roundId);
+            });
+        }
+
         async function syncSharedAnswerSheetState() {
             if (!hasRealtimeRounds || !syncUrl || isUnloading) {
                 return syncRequestRef;
@@ -942,6 +970,9 @@
             if (syncRequestRef) {
                 syncRequestQueued = true;
                 return syncRequestRef;
+            }
+            if (Date.now() < nextHttpSyncAllowedAt) {
+                return Promise.resolve();
             }
 
             const abortController = typeof AbortController !== 'undefined'
@@ -974,32 +1005,21 @@
                     return payload;
                 })
                 .then((payload) => {
-                    const responseUserId = String(payload.current_user_id || '');
-                    if (!responseUserId || responseUserId !== currentUserId) {
-                        console.warn('[Answer Sheet] Session identity changed; reloading before applying sync data', {
-                            pageUserId: currentUserId,
-                            responseUserId,
-                            responseUsername: payload.current_username || '',
-                        });
-                        if (!identityReloadRequested) {
-                            identityReloadRequested = true;
-                            window.location.reload();
-                        }
-                        return;
-                    }
-                    (payload.rounds || []).forEach((roundState) => {
-                        const roundId = String(roundState.round_id || '');
-                        applySyncedRoundState(roundState, {
-                            forceSharedSaveState: forcedSharedSaveRoundIds.has(roundId),
-                        });
-                        forcedSharedSaveRoundIds.delete(roundId);
-                    });
+                    syncFailureCount = 0;
+                    nextHttpSyncAllowedAt = 0;
+                    applyAnswerSheetSyncPayload(payload);
                 })
                 .catch((error) => {
                     if (error && error.name === 'AbortError') {
                         return;
                     }
-                    console.error('Error syncing answer sheet state:', error);
+                    syncFailureCount += 1;
+                    const retryDelayMs = Math.min(60000, 5000 * (2 ** (syncFailureCount - 1)));
+                    nextHttpSyncAllowedAt = Date.now() + retryDelayMs;
+                    console.warn('[Answer Sheet] HTTP sync unavailable; realtime sync remains active', {
+                        message: error?.message || String(error),
+                        retryDelayMs,
+                    });
                 })
                 .finally(() => {
                     if (syncAbortControllerRef === abortController) {
@@ -3079,6 +3099,54 @@
         if (hasRealtimeRounds && typeof WebSocket !== 'undefined') {
             const websocketUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/scoresheet/`;
 
+            function clearAnswerSheetSocketSync() {
+                if (socketSyncTimeoutRef) {
+                    window.clearTimeout(socketSyncTimeoutRef);
+                    socketSyncTimeoutRef = null;
+                }
+                socketSyncRequestId = '';
+            }
+
+            function requestAnswerSheetSocketSync() {
+                if (!wsRef || wsRef.readyState !== WebSocket.OPEN) {
+                    return false;
+                }
+                if (socketSyncRequestId) {
+                    return true;
+                }
+
+                const requestId = `${localClientId}-sync-${Date.now()}`;
+                try {
+                    wsRef.send(JSON.stringify({
+                        type: 'answer_sheet_sync',
+                        request_id: requestId,
+                        selected_date: selectedDate,
+                    }));
+                } catch (error) {
+                    console.warn('[Answer Sheet] Unable to request realtime state', {
+                        message: error?.message || String(error),
+                    });
+                    return false;
+                }
+
+                socketSyncRequestId = requestId;
+                socketSyncTimeoutRef = window.setTimeout(() => {
+                    if (socketSyncRequestId !== requestId) {
+                        return;
+                    }
+                    clearAnswerSheetSocketSync();
+                    console.warn('[Answer Sheet] Realtime state request timed out; trying HTTP fallback');
+                    syncSharedAnswerSheetState();
+                }, SOCKET_SYNC_TIMEOUT_MS);
+                return true;
+            }
+
+            function reconcileAnswerSheetState() {
+                if (!requestAnswerSheetSocketSync()) {
+                    syncSharedAnswerSheetState();
+                }
+            }
+
             function scheduleAnswerSheetReconnect() {
                 if (isUnloading || reconnectTimeoutRef || document.visibilityState === 'hidden') {
                     return;
@@ -3108,6 +3176,24 @@
             function processAnswerSheetSocketMessage(event) {
                 try {
                     const data = JSON.parse(event.data);
+                    if (data.type === 'answer_sheet_sync') {
+                        if (
+                            socketSyncRequestId
+                            && (!data.request_id || String(data.request_id) === socketSyncRequestId)
+                        ) {
+                            clearAnswerSheetSocketSync();
+                        }
+                        applyAnswerSheetSyncPayload(data.payload || {});
+                        return;
+                    }
+                    if (data.type === 'answer_sheet_sync_error') {
+                        clearAnswerSheetSocketSync();
+                        console.warn('[Answer Sheet] Realtime state sync failed; trying HTTP fallback', {
+                            detail: data.detail || '',
+                        });
+                        syncSharedAnswerSheetState();
+                        return;
+                    }
                     if (data.type === 'pong' || !data.message) {
                         return;
                     }
@@ -3162,7 +3248,7 @@
                         });
                         if (sawRelevantRoundUpdate) {
                             logRemoteAnswerSheetUpdate('scoresheet_save', message);
-                            syncSharedAnswerSheetState();
+                            reconcileAnswerSheetState();
                         }
                         return;
                     }
@@ -3210,7 +3296,7 @@
                             applySharedScoreUpdate(roundId, nextScore);
                         });
                         if (!syncRequestRef || sawImmediateRoundUpdate || (message.round_updates || []).length > 0) {
-                            syncSharedAnswerSheetState();
+                            reconcileAnswerSheetState();
                         }
                     }
                 } catch (error) {
@@ -3274,7 +3360,7 @@
                             socket.close();
                         }
                     }, SOCKET_PING_INTERVAL_MS);
-                    syncSharedAnswerSheetState();
+                    reconcileAnswerSheetState();
                 };
                 socket.onmessage = (event) => {
                     if (wsRef !== socket) {
@@ -3297,6 +3383,7 @@
                         return;
                     }
                     clearAnswerSheetPing();
+                    clearAnswerSheetSocketSync();
                     wsRef = null;
                     lastSocketActivityAt = 0;
                     console.info('[Answer Sheet] Realtime connection closed', {
@@ -3311,10 +3398,10 @@
                 if (!hasRealtimeRounds || isUnloading || document.visibilityState === 'hidden') {
                     return;
                 }
-                if (forceSync) {
-                    syncSharedAnswerSheetState();
-                }
                 connectAnswerSheetWebSocket();
+                if (forceSync) {
+                    reconcileAnswerSheetState();
+                }
             }
 
             window.addEventListener('pageshow', () => {
@@ -3361,6 +3448,7 @@
                 clearAnswerSheetReconnect();
                 clearAnswerSheetPing();
                 clearAnswerSheetReconcile();
+                clearAnswerSheetSocketSync();
                 if (syncAbortControllerRef) {
                     syncAbortControllerRef.abort();
                     syncAbortControllerRef = null;

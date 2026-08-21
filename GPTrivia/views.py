@@ -3104,6 +3104,10 @@ def answer_sheet_sync(request):
     if requested_date and not _parse_scoresheet_date(requested_date):
         return JsonResponse({'detail': 'date must be a valid YYYY-MM-DD value.'}, status=400)
 
+    return JsonResponse(_build_answer_sheet_sync_payload(request.user, requested_date))
+
+
+def _build_answer_sheet_sync_payload(user, requested_date=''):
     date_values = _get_answer_sheet_date_values()
     selected_date_obj = (
         _parse_scoresheet_date(requested_date)
@@ -3116,25 +3120,25 @@ def answer_sheet_sync(request):
     ) if selected_date else []
     saved_entries = {
         entry.round_id: entry
-        for entry in AnswerSheetEntry.objects.filter(user=request.user, round_id__in=[round_obj.id for round_obj in selected_rounds])
+        for entry in AnswerSheetEntry.objects.filter(user=user, round_id__in=[round_obj.id for round_obj in selected_rounds])
     }
-    current_user_player_field = player_field_for_name(getattr(request.user, 'username', ''))
+    current_user_player_field = player_field_for_name(getattr(user, 'username', ''))
 
-    return JsonResponse({
+    return {
         'ok': True,
-        'current_user_id': request.user.id,
-        'current_username': request.user.username,
+        'current_user_id': user.id,
+        'current_username': user.username,
         'selected_date': selected_date,
         'rounds': [
             _serialize_answer_sheet_sync_round(
                 round_obj,
-                request.user,
+                user,
                 current_entry=saved_entries.get(round_obj.id),
                 current_user_player_field=current_user_player_field,
             )
             for round_obj in selected_rounds
         ],
-    })
+    }
 
 
 @login_required
