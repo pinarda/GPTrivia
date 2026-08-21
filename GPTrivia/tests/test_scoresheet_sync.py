@@ -55,6 +55,7 @@ class ScoresheetSyncTests(TestCase):
         response = self.client.get(reverse("scoresheet_new"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertIn("no-store", response.headers.get("Cache-Control", ""))
         self.assertContains(response, f"scoresheet/build/{javascript_bundle}")
         self.assertContains(
             response,

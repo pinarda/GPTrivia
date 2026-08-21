@@ -51,6 +51,39 @@ cleanup_failed_static_release() {
 }
 trap cleanup_failed_static_release EXIT
 
+# Keep the two previous React entry bundles available for tabs that loaded before
+# deployment. The HTML shell is not cached, but an already-open page can still
+# request its original hashed bundle while the static release changes.
+mapfile -t previous_static_releases < <(
+  find "${STATIC_RELEASES_DIR}" -mindepth 1 -maxdepth 1 -type d -name 'release-*' \
+    ! -path "${STATIC_RELEASE_DIR}" -print | sort -r | head -n 2
+)
+for previous_release in "${previous_static_releases[@]}"; do
+  previous_bundle_dir="${previous_release}/scoresheet/build/static/js"
+  previous_asset_manifest="${previous_release}/scoresheet/build/asset-manifest.json"
+  if [[ ! -d "${previous_bundle_dir}" ]] || [[ ! -f "${previous_asset_manifest}" ]]; then
+    continue
+  fi
+
+  previous_bundle_name="$(python - "${previous_asset_manifest}" <<'PY'
+import json
+import os
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as manifest_file:
+    manifest = json.load(manifest_file)
+print(os.path.basename(manifest["files"]["main.js"]))
+PY
+)"
+  mkdir -p "${STATIC_RELEASE_DIR}/scoresheet/build/static/js"
+  for bundle_suffix in '' '.LICENSE.txt' '.map'; do
+    previous_bundle="${previous_bundle_dir}/${previous_bundle_name}${bundle_suffix}"
+    if [[ -f "${previous_bundle}" ]]; then
+      cp -p "${previous_bundle}" "${STATIC_RELEASE_DIR}/scoresheet/build/static/js/"
+    fi
+  done
+done
+
 GPTRIVIA_STATIC_ROOT="${STATIC_RELEASE_DIR}" python manage.py collectstatic --noinput
 
 if [[ -e "${STATIC_LINK}" && ! -L "${STATIC_LINK}" ]]; then

@@ -7404,6 +7404,7 @@ def buzzer_page(request):
     context = {'username': username}
     return render(request, 'GPTrivia/buzzer_page.html', context)
 
+@never_cache
 @login_required
 def scoresheet_new(request):
     return render(request, 'GPTrivia/scoresheet_new.html', {
