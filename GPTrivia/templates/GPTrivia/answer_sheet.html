@@ -244,6 +244,7 @@
         const SOCKET_CONNECT_TIMEOUT_MS = 15000;
         const SOCKET_PING_INTERVAL_MS = 30000;
         const SOCKET_STALE_AFTER_MS = 75000;
+        const SOCKET_WATCHDOG_INTERVAL_MS = 5000;
         const REALTIME_RECONCILE_INTERVAL_MS = 30000;
         const SOCKET_SYNC_TIMEOUT_MS = 10000;
         const SYNC_REQUEST_TIMEOUT_MS = 15000;
@@ -256,6 +257,7 @@
         let pingIntervalRef = null;
         let reconnectTimeoutRef = null;
         let reconcileIntervalRef = null;
+        let socketWatchdogIntervalRef = null;
         let lastSocketActivityAt = 0;
         let isUnloading = false;
         let syncRequestRef = null;
@@ -940,19 +942,19 @@
             refreshRoundStatus(roundId);
         }
 
-        function applyAnswerSheetSyncPayload(payload) {
+        function applyAnswerSheetSyncPayload(payload, options = {}) {
             const responseUserId = String(payload.current_user_id || '');
             if (!responseUserId || responseUserId !== currentUserId) {
-                console.warn('[Answer Sheet] Session identity changed; reloading before applying sync data', {
+                console.warn('[Answer Sheet] Session identity mismatch; refusing to apply sync data', {
                     pageUserId: currentUserId,
                     responseUserId,
                     responseUsername: payload.current_username || '',
                 });
-                if (!identityReloadRequested) {
+                if (options.reloadOnIdentityMismatch !== false && !identityReloadRequested) {
                     identityReloadRequested = true;
                     window.location.reload();
                 }
-                return;
+                return false;
             }
             (payload.rounds || []).forEach((roundState) => {
                 const roundId = String(roundState.round_id || '');
@@ -961,6 +963,7 @@
                 });
                 forcedSharedSaveRoundIds.delete(roundId);
             });
+            return true;
         }
 
         async function syncSharedAnswerSheetState() {
@@ -3164,6 +3167,22 @@
                 }
             }
 
+            function clearAnswerSheetSocketWatchdog() {
+                if (socketWatchdogIntervalRef) {
+                    window.clearInterval(socketWatchdogIntervalRef);
+                    socketWatchdogIntervalRef = null;
+                }
+            }
+
+            function startAnswerSheetSocketWatchdog() {
+                if (socketWatchdogIntervalRef || isUnloading || document.visibilityState === 'hidden') {
+                    return;
+                }
+                socketWatchdogIntervalRef = window.setInterval(() => {
+                    connectAnswerSheetWebSocket();
+                }, SOCKET_WATCHDOG_INTERVAL_MS);
+            }
+
             function startAnswerSheetReconcile() {
                 if (reconcileIntervalRef || isUnloading || document.visibilityState === 'hidden') {
                     return;
@@ -3183,7 +3202,14 @@
                         ) {
                             clearAnswerSheetSocketSync();
                         }
-                        applyAnswerSheetSyncPayload(data.payload || {});
+                        const payloadApplied = applyAnswerSheetSyncPayload(data.payload || {}, {
+                            reloadOnIdentityMismatch: false,
+                        });
+                        if (!payloadApplied) {
+                            closeAnswerSheetSocket();
+                            syncSharedAnswerSheetState();
+                            scheduleAnswerSheetReconnect();
+                        }
                         return;
                     }
                     if (data.type === 'answer_sheet_sync_error') {
@@ -3373,6 +3399,7 @@
                     if (wsRef !== socket) {
                         return;
                     }
+                    console.warn('[Answer Sheet] Realtime connection error');
                     if (socket.readyState !== WebSocket.CLOSING && socket.readyState !== WebSocket.CLOSED) {
                         socket.close();
                     }
@@ -3408,29 +3435,34 @@
                 isUnloading = false;
                 identityReloadRequested = false;
                 startAnswerSheetReconcile();
+                startAnswerSheetSocketWatchdog();
                 ensureAnswerSheetRealtime(true);
             });
 
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden') {
                     clearAnswerSheetReconcile();
+                    clearAnswerSheetSocketWatchdog();
                     flushPendingAnswerSaves();
                     return;
                 }
                 isUnloading = false;
                 startAnswerSheetReconcile();
+                startAnswerSheetSocketWatchdog();
                 ensureAnswerSheetRealtime(true);
             });
 
             window.addEventListener('online', () => {
                 isUnloading = false;
                 startAnswerSheetReconcile();
+                startAnswerSheetSocketWatchdog();
                 ensureAnswerSheetRealtime(true);
             });
 
             window.addEventListener('focus', () => {
                 isUnloading = false;
                 startAnswerSheetReconcile();
+                startAnswerSheetSocketWatchdog();
                 ensureAnswerSheetRealtime(true);
             });
 
@@ -3448,6 +3480,7 @@
                 clearAnswerSheetReconnect();
                 clearAnswerSheetPing();
                 clearAnswerSheetReconcile();
+                clearAnswerSheetSocketWatchdog();
                 clearAnswerSheetSocketSync();
                 if (syncAbortControllerRef) {
                     syncAbortControllerRef.abort();
@@ -3457,6 +3490,7 @@
             });
 
             startAnswerSheetReconcile();
+            startAnswerSheetSocketWatchdog();
             ensureAnswerSheetRealtime(true);
         }
 
