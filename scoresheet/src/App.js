@@ -117,6 +117,12 @@ import {
 
     let activePlayerColorMapping = basePlayerColorMapping;
 
+    const REALTIME_CONNECT_TIMEOUT_MS = 15000;
+    const REALTIME_PING_INTERVAL_MS = 30000;
+    const REALTIME_RECONNECT_DELAY_MS = 3000;
+    const REALTIME_RECONCILE_INTERVAL_MS = 30000;
+    const REALTIME_STALE_AFTER_MS = 75000;
+
     function resolvePlayerColor(playerField) {
       return getPlayerColor(playerField, activePlayerColorMapping);
     }
@@ -1425,8 +1431,10 @@ const PlayerTable = () => {
 
     const wsRef = useRef(null);
     const pingIntervalRef = useRef(null);
+    const lastSocketActivityAtRef = useRef(0);
     const clientIdRef = useRef(createClientId());
     const pendingMutationIdsRef = useRef(new Set());
+    const isSavedRef = useRef(isSaved);
     const serverRoundSnapshotRef = useRef({});
     const serverPresentationSnapshotRef = useRef(makePresentationSnapshot(null));
     const stylePointAnchorRefs = useRef({});
@@ -1436,6 +1444,7 @@ const PlayerTable = () => {
     const jokerRouletteTimeoutsRef = useRef({});
     const saveInFlightRef = useRef(false);
     const saveQueuedRef = useRef(false);
+    const refreshQueuedRef = useRef(false);
     const latestStateRef = useRef(null);
     const presentationHydrationKeyRef = useRef('');
     const prevUpdateFlagRef = useRef(0);
@@ -1467,6 +1476,7 @@ const PlayerTable = () => {
     }, [tempLinks.length]);
 
     const markDirty = useCallback(() => {
+      isSavedRef.current = false;
       setIsSaved(false);
       setSaveRequestCount(prev => prev + 1);
     }, []);
@@ -1707,6 +1717,17 @@ const PlayerTable = () => {
                 setPlayers(defaultPlayers);
                 setLoadedRoundsDate('');
                 return;
+            }
+
+            const isRefreshingLoadedDate =
+              lastHydratedRoundsDateRef.current === effectiveSelectedDate;
+            if (
+              isRefreshingLoadedDate
+              && (!isSavedRef.current || saveInFlightRef.current)
+            ) {
+              refreshQueuedRef.current = true;
+              console.info('[Scoresheet] Deferring in-flight server response until the local save completes');
+              return;
             }
 
             if (selectedDate !== effectiveSelectedDate) {
@@ -1985,11 +2006,22 @@ const PlayerTable = () => {
       }
     }, [dates, isDatesInitialized, requestedDate, sortedDates]);
 
-    const isSavedRef = useRef(isSaved);
-
     useEffect(() => {
        isSavedRef.current = isSaved;
     }, [isSaved]);
+
+    const requestScoresheetRefresh = useCallback((reason, force = false) => {
+      if (!force && (saveInFlightRef.current || !isSavedRef.current)) {
+        refreshQueuedRef.current = true;
+        console.info('[Scoresheet] Deferring server reconciliation until the local save completes', { reason });
+        return false;
+      }
+
+      refreshQueuedRef.current = false;
+      console.info('[Scoresheet] Reconciling with the server', { reason });
+      setUpdateFlag(prev => prev + 1);
+      return true;
+    }, []);
 
     useEffect(() => {
       latestStateRef.current = {
@@ -2073,76 +2105,209 @@ const PlayerTable = () => {
     }, []);
 
     useEffect(() => {
-        if (isVisible) {
-            if ( !wsRef.current || wsRef.current.readyState === WebSocket.CLOSED ){
-                setUpdateFlag(prev => prev + 1); // Increment the flag to trigger re-fetch
-            }
-            if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
-                wsRef.current = new WebSocket(websocketUrl);
+      if (!isVisible || typeof WebSocket === 'undefined') {
+        return undefined;
+      }
 
-                wsRef.current.onopen = () => {
-                    console.log('Connected to the WebSocket');
-                    if (pingIntervalRef.current) {
-                        clearInterval(pingIntervalRef.current);
-                    }
-                    pingIntervalRef.current = setInterval(() => {
-                        if (wsRef.current.readyState === WebSocket.OPEN) {
-                            wsRef.current.send(JSON.stringify({type: 'ping'}));
-                        }
-                    }, 30000);
-                };
+      let disposed = false;
+      let reconnectTimeoutId = null;
+      let reconcileIntervalId = null;
 
-                wsRef.current.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'pong') {
-                        return;
-                    }
-
-                    if (!data.message) {
-                        console.log('WebSocket message received with no payload:', data);
-                        return;
-                    }
-
-                    console.log('WebSocket message received:', data.message);
-
-                    if (shouldIgnoreScoresheetMessage(data.message, clientIdRef.current, pendingMutationIdsRef.current)) {
-                        pendingMutationIdsRef.current.delete(data.message.mutation_id);
-                        return;
-                    }
-
-                    if (data.message && data.message.action === 'update') {
-                        console.log('Received update message')
-                        setUpdateFlag(prev => prev + 1); // Increment the flag to trigger re-fetch
-                        console.log('Update flag incremented');
-                    }
-                };
-
-                wsRef.current.onerror = (error) => {
-                    console.error('WebSocket error:', error);
-                };
-
-                wsRef.current.onclose = () => {
-                    console.log('Disconnected from the WebSocket');
-                    if (pingIntervalRef.current) {
-                        clearInterval(pingIntervalRef.current);
-                        pingIntervalRef.current = null;
-                    }
-                };
-
-                // Cleanup function for WebSocket
-                return () => {
-                    if (pingIntervalRef.current) {
-                        clearInterval(pingIntervalRef.current);
-                        pingIntervalRef.current = null;
-                    }
-                    if (wsRef.current) {
-                        wsRef.current.close();
-                        wsRef.current = null;
-                    }
-                };
-            }
+      const clearPing = () => {
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+          pingIntervalRef.current = null;
         }
-    }, [isVisible, websocketUrl]);
+      };
+
+      const clearReconnect = () => {
+        if (reconnectTimeoutId) {
+          clearTimeout(reconnectTimeoutId);
+          reconnectTimeoutId = null;
+        }
+      };
+
+      const closeSocket = (socketToClose = wsRef.current) => {
+        if (!socketToClose) {
+          return;
+        }
+        if (wsRef.current === socketToClose) {
+          wsRef.current = null;
+          lastSocketActivityAtRef.current = 0;
+          clearPing();
+        }
+        if (
+          socketToClose.readyState !== WebSocket.CLOSING
+          && socketToClose.readyState !== WebSocket.CLOSED
+        ) {
+          socketToClose.close();
+        }
+      };
+
+      const scheduleReconnect = () => {
+        if (disposed || reconnectTimeoutId || document.hidden) {
+          return;
+        }
+        reconnectTimeoutId = setTimeout(() => {
+          reconnectTimeoutId = null;
+          connect();
+          requestScoresheetRefresh('websocket reconnect');
+        }, REALTIME_RECONNECT_DELAY_MS);
+      };
+
+      const connect = () => {
+        if (disposed || document.hidden) {
+          return;
+        }
+
+        const existingSocket = wsRef.current;
+        if (existingSocket?.readyState === WebSocket.OPEN) {
+          const inactiveForMs = Date.now() - lastSocketActivityAtRef.current;
+          if (lastSocketActivityAtRef.current && inactiveForMs <= REALTIME_STALE_AFTER_MS) {
+            return;
+          }
+          console.warn('[Scoresheet] Replacing an unresponsive realtime connection', { inactiveForMs });
+          closeSocket(existingSocket);
+        } else if (existingSocket?.readyState === WebSocket.CONNECTING) {
+          return;
+        } else if (existingSocket) {
+          closeSocket(existingSocket);
+        }
+
+        clearReconnect();
+        const socket = new WebSocket(websocketUrl);
+        wsRef.current = socket;
+        lastSocketActivityAtRef.current = Date.now();
+
+        const connectionTimeoutId = setTimeout(() => {
+          if (wsRef.current === socket && socket.readyState === WebSocket.CONNECTING) {
+            console.warn('[Scoresheet] Realtime connection attempt timed out');
+            socket.close();
+          }
+        }, REALTIME_CONNECT_TIMEOUT_MS);
+
+        socket.onopen = () => {
+          clearTimeout(connectionTimeoutId);
+          if (disposed || wsRef.current !== socket) {
+            closeSocket(socket);
+            return;
+          }
+          clearReconnect();
+          clearPing();
+          lastSocketActivityAtRef.current = Date.now();
+          console.info('[Scoresheet] Realtime connection opened');
+          pingIntervalRef.current = setInterval(() => {
+            if (wsRef.current !== socket || socket.readyState !== WebSocket.OPEN) {
+              return;
+            }
+            const inactiveForMs = Date.now() - lastSocketActivityAtRef.current;
+            if (inactiveForMs > REALTIME_STALE_AFTER_MS) {
+              console.warn('[Scoresheet] Realtime heartbeat timed out', { inactiveForMs });
+              socket.close();
+              return;
+            }
+            try {
+              socket.send(JSON.stringify({ type: 'ping' }));
+            } catch (error) {
+              console.error('[Scoresheet] Unable to send realtime heartbeat:', error);
+              socket.close();
+            }
+          }, REALTIME_PING_INTERVAL_MS);
+          requestScoresheetRefresh('websocket opened');
+        };
+
+        socket.onmessage = (event) => {
+          if (disposed || wsRef.current !== socket) {
+            return;
+          }
+          lastSocketActivityAtRef.current = Date.now();
+
+          let data;
+          try {
+            data = JSON.parse(event.data);
+          } catch (error) {
+            console.error('[Scoresheet] Invalid realtime message:', error);
+            return;
+          }
+          if (data.type === 'pong') {
+            return;
+          }
+          if (!data.message) {
+            console.info('[Scoresheet] Realtime message received with no payload', data);
+            return;
+          }
+
+          console.info('[Scoresheet] Realtime update received', data.message);
+          if (shouldIgnoreScoresheetMessage(data.message, clientIdRef.current, pendingMutationIdsRef.current)) {
+            pendingMutationIdsRef.current.delete(data.message.mutation_id);
+            return;
+          }
+          if (data.message.action === 'update') {
+            requestScoresheetRefresh(`realtime ${data.message.event || 'update'}`);
+          }
+        };
+
+        socket.onerror = (error) => {
+          if (disposed || wsRef.current !== socket) {
+            return;
+          }
+          console.error('[Scoresheet] Realtime connection error:', error);
+          if (socket.readyState !== WebSocket.CLOSING && socket.readyState !== WebSocket.CLOSED) {
+            socket.close();
+          }
+        };
+
+        socket.onclose = (event) => {
+          clearTimeout(connectionTimeoutId);
+          if (disposed || wsRef.current !== socket) {
+            return;
+          }
+          wsRef.current = null;
+          lastSocketActivityAtRef.current = 0;
+          clearPing();
+          console.info('[Scoresheet] Realtime connection closed', {
+            code: event.code,
+            reason: event.reason || '',
+          });
+          scheduleReconnect();
+        };
+      };
+
+      const reconcileAndConnect = (reason) => {
+        if (disposed || document.hidden) {
+          return;
+        }
+        requestScoresheetRefresh(reason);
+        connect();
+      };
+
+      const handlePageShow = () => reconcileAndConnect('page restored');
+      const handleFocus = () => reconcileAndConnect('window focused');
+      const handleOnline = () => reconcileAndConnect('network online');
+
+      window.addEventListener('pageshow', handlePageShow);
+      window.addEventListener('focus', handleFocus);
+      window.addEventListener('online', handleOnline);
+
+      connect();
+      requestScoresheetRefresh('realtime lifecycle started');
+      reconcileIntervalId = setInterval(() => {
+        reconcileAndConnect('periodic reconciliation');
+      }, REALTIME_RECONCILE_INTERVAL_MS);
+
+      return () => {
+        disposed = true;
+        window.removeEventListener('pageshow', handlePageShow);
+        window.removeEventListener('focus', handleFocus);
+        window.removeEventListener('online', handleOnline);
+        clearReconnect();
+        if (reconcileIntervalId) {
+          clearInterval(reconcileIntervalId);
+        }
+        clearPing();
+        closeSocket();
+      };
+    }, [isVisible, requestScoresheetRefresh, websocketUrl]);
 
     const handleScoreChange = (event, player, roundTitle, round) => {
         const confirmChange = confirmPastChange()
@@ -2972,6 +3137,7 @@ const PlayerTable = () => {
         const { patch, payload } = saveRequest;
 
         const mutationId = payload.mutation_id;
+        let saveSucceeded = false;
         saveInFlightRef.current = true;
         pendingMutationIdsRef.current.add(mutationId);
 
@@ -2992,6 +3158,7 @@ const PlayerTable = () => {
           return response.json();
         })
         .then(data => {
+          saveSucceeded = true;
           console.log('Success:', data);
           serverRoundSnapshotRef.current = applyPatchToRoundSnapshot(
             serverRoundSnapshotRef.current,
@@ -3023,9 +3190,11 @@ const PlayerTable = () => {
           if (saveQueuedRef.current) {
             saveQueuedRef.current = false;
             saveData();
+          } else if (refreshQueuedRef.current && saveSucceeded) {
+            requestScoresheetRefresh('deferred refresh after save', true);
           }
         });
-    }, [buildCurrentSavePayload, csrfToken, getApiHeaders, url]);
+    }, [buildCurrentSavePayload, csrfToken, getApiHeaders, requestScoresheetRefresh, url]);
 
     useEffect(() => {
       const flushPendingSave = () => {

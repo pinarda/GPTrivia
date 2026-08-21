@@ -100,6 +100,32 @@ class AnswerSheetTests(TestCase):
         self.assertEqual(response.context["selected_date"], "2026-04-10")
         self.assertEqual([page["round_id"] for page in response.context["round_pages"]], [older_round.id])
 
+    def test_answer_sheet_template_recovers_stale_realtime_connections(self):
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Realtime Recovery Round",
+            major_category="Science",
+            minor_category1="Physics",
+            minor_category2="Space",
+            date=datetime.date(2026, 4, 17),
+            round_number=1,
+            max_score=10,
+            replay=False,
+            cooperative=True,
+        )
+
+        response = self.client.get(reverse("answer_sheet"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "SOCKET_STALE_AFTER_MS")
+        self.assertContains(response, "REALTIME_RECONCILE_INTERVAL_MS")
+        self.assertContains(response, "SYNC_REQUEST_TIMEOUT_MS")
+        self.assertContains(response, "const socket = new WebSocket(websocketUrl);")
+        self.assertContains(response, "if (wsRef !== socket)")
+        self.assertContains(response, "window.addEventListener('pagehide'")
+        self.assertContains(response, "startAnswerSheetReconcile();")
+        self.assertContains(response, "isUnloading = false;")
+
     def test_save_answer_sheet_entry_creates_and_updates_answers(self):
         round_obj = GPTriviaRound.objects.create(
             creator="Alex",

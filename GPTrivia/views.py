@@ -119,6 +119,7 @@ HOME_BUILD_STATE_KEY = 'home_page'
 HOME_BUILD_STALE_MINUTES = 30
 AVAILABLE_ROUNDS_REFRESH_LOCK_CACHE_KEY = 'available_rounds_email_refresh_lock'
 AVAILABLE_ROUNDS_REFRESH_LOCK_SECONDS = 120
+AVAILABLE_ROUNDS_REFRESH_HEARTBEAT_SECONDS = 30
 SWOOP_MODEL = "gpt-5.4"
 ANSWER_SHEET_OCR_IMAGE_WIDTH = 1400
 ANSWER_SHEET_OCR_ROW_HEIGHT = 84
@@ -530,6 +531,11 @@ def _build_submitted_round_lookup(submitted_rounds):
         submitted_round.presentation_id: submitted_round
         for submitted_round in submitted_rounds
     }
+    submitted_rounds_by_gmail_message_id = {
+        submitted_round.gmail_message_id: submitted_round
+        for submitted_round in submitted_rounds
+        if submitted_round.gmail_message_id
+    }
     submitted_rounds_by_link = {}
     submitted_rounds_by_title = {}
     submitted_rounds_by_title_creator_date = {}
@@ -546,9 +552,9 @@ def _build_submitted_round_lookup(submitted_rounds):
             return
         submitted_rounds_by_title[title_key] = submitted_round
 
-    def add_title_creator_date_key(candidate_title, submitted_round):
+    def add_title_creator_date_key(candidate_title, candidate_creator, submitted_round):
         title_key = _normalize_round_title(candidate_title)
-        creator_key = _normalize_round_creator(submitted_round.creator)
+        creator_key = _normalize_round_creator(candidate_creator)
         shared_date_key = _normalize_round_shared_date(submitted_round.shared_date)
         if not title_key or not creator_key or not shared_date_key:
             return
@@ -567,8 +573,12 @@ def _build_submitted_round_lookup(submitted_rounds):
 
         add_title_key(submitted_round.title, submitted_round)
         add_title_key(submitted_round.source_title, submitted_round)
-        add_title_creator_date_key(submitted_round.title, submitted_round)
-        add_title_creator_date_key(submitted_round.source_title, submitted_round)
+        add_title_creator_date_key(submitted_round.title, submitted_round.creator, submitted_round)
+        add_title_creator_date_key(
+            submitted_round.source_title,
+            submitted_round.source_creator or submitted_round.creator,
+            submitted_round,
+        )
 
     return (
         submitted_rounds_by_presentation_id,
@@ -577,10 +587,20 @@ def _build_submitted_round_lookup(submitted_rounds):
         submitted_rounds_by_title_creator_date,
         duplicate_title_keys,
         duplicate_title_creator_date_keys,
+        submitted_rounds_by_gmail_message_id,
     )
 
 
-def _find_matching_submitted_round(title, creator, link, old_link, submitted_round_lookup, shared_date=''):
+def _find_matching_submitted_round(
+    title,
+    creator,
+    link,
+    old_link,
+    submitted_round_lookup,
+    shared_date='',
+    presentation_id='',
+    gmail_message_id='',
+):
     (
         submitted_rounds_by_presentation_id,
         submitted_rounds_by_link,
@@ -588,6 +608,7 @@ def _find_matching_submitted_round(title, creator, link, old_link, submitted_rou
         submitted_rounds_by_title_creator_date,
         duplicate_title_keys,
         duplicate_title_creator_date_keys,
+        submitted_rounds_by_gmail_message_id,
     ) = submitted_round_lookup
 
     title_key = _normalize_round_title(title)
@@ -604,9 +625,18 @@ def _find_matching_submitted_round(title, creator, link, old_link, submitted_rou
             return not require_date
         return candidate_date_key == shared_date_key
 
-    submitted_round = submitted_rounds_by_presentation_id.get(
-        _extract_google_presentation_id(link) or _extract_google_presentation_id(old_link)
-    )
+    submitted_round = submitted_rounds_by_gmail_message_id.get(str(gmail_message_id or '').strip())
+    if submitted_round:
+        return submitted_round
+
+    submitted_round = submitted_rounds_by_presentation_id.get(str(presentation_id or '').strip())
+    if submitted_round:
+        return submitted_round
+
+    if not submitted_round:
+        submitted_round = submitted_rounds_by_presentation_id.get(
+            _extract_google_presentation_id(link) or _extract_google_presentation_id(old_link)
+        )
     if submitted_round and not shared_date_matches(submitted_round):
         submitted_round = None
     if not submitted_round:
@@ -626,9 +656,13 @@ def _find_matching_submitted_round(title, creator, link, old_link, submitted_rou
     if not submitted_round and title_key and title_key not in duplicate_title_keys:
         candidate_round = submitted_rounds_by_title.get(title_key)
         if candidate_round:
-            candidate_creator_key = _normalize_round_creator(candidate_round.creator)
+            candidate_creator_keys = {
+                _normalize_round_creator(candidate_round.creator),
+                _normalize_round_creator(candidate_round.source_creator),
+            }
+            candidate_creator_keys.discard('')
             if _creator_allows_title_fallback(creator) or (
-                creator_key and creator_key == candidate_creator_key
+                creator_key and creator_key in candidate_creator_keys
             ):
                 requires_exact_date = bool(shared_date_key and not _creator_allows_title_fallback(creator))
                 if shared_date_matches(candidate_round, require_date=requires_exact_date):
@@ -649,12 +683,18 @@ def _mark_selected_submitted_rounds_consumed(rounds):
             round_data.get("old_link"),
             submitted_round_lookup,
             shared_date=round_data.get("shared_date"),
+            presentation_id=round_data.get("presentation_id"),
+            gmail_message_id=round_data.get("gmail_message_id"),
         )
         if submitted_round:
             matched_ids.append(submitted_round.id)
 
     if matched_ids:
-        SubmittedRound.objects.filter(id__in=set(matched_ids)).update(is_consumed=True)
+        SubmittedRound.objects.filter(id__in=set(matched_ids)).update(
+            is_consumed=True,
+            is_currently_available=False,
+        )
+        _bump_site_data_cache_version()
 
 
 def _build_submitted_round_link(presentation_id):
@@ -693,7 +733,10 @@ def _save_available_round_metadata(data, *, user=None, is_consumed=None, is_curr
     creator = str(data.get('creator') or '').strip()
     link = _normalize_round_link(data.get('link'))
     old_link = _normalize_round_link(data.get('old_link'))
-    source_title = str(data.get('source_title') or title).strip()
+    requested_source_title = str(data.get('source_title') or '').strip()
+    requested_source_creator = str(data.get('source_creator') or '').strip()
+    requested_presentation_id = str(data.get('presentation_id') or '').strip()
+    gmail_message_id = str(data.get('gmail_message_id') or '').strip()
     shared_date = _parse_available_round_shared_date(data.get('shared_date'))
     raw_coop = data.get('coop')
     cooperative = raw_coop if isinstance(raw_coop, bool) else _is_truthy_form_value(raw_coop)
@@ -706,18 +749,41 @@ def _save_available_round_metadata(data, *, user=None, is_consumed=None, is_curr
     submitted_rounds = list(SubmittedRound.objects.order_by('-updated_at', '-submitted_at'))
     submitted_round_lookup = _build_submitted_round_lookup(submitted_rounds)
     submitted_round = _find_matching_submitted_round(
-        source_title or title,
-        creator,
+        requested_source_title or title,
+        requested_source_creator or creator,
         link,
         old_link,
         submitted_round_lookup,
         shared_date=shared_date,
+        presentation_id=requested_presentation_id,
+        gmail_message_id=gmail_message_id,
+    )
+
+    has_new_gmail_identity = bool(
+        submitted_round
+        and gmail_message_id
+        and submitted_round.gmail_message_id
+        and submitted_round.gmail_message_id != gmail_message_id
+    )
+    preserve_existing_source_identity = bool(
+        submitted_round and not has_new_gmail_identity
+    )
+    source_title = (
+        (submitted_round.source_title if preserve_existing_source_identity else '')
+        or requested_source_title
+        or title
+    )
+    source_creator = (
+        (submitted_round.source_creator if preserve_existing_source_identity else '')
+        or requested_source_creator
+        or (submitted_round.creator if preserve_existing_source_identity else '')
+        or creator
     )
 
     persistence_id = (
         submitted_round.presentation_id
         if submitted_round
-        else _build_available_round_persistence_id(
+        else requested_presentation_id or _build_available_round_persistence_id(
             link,
             old_link,
             source_title or title,
@@ -729,24 +795,51 @@ def _save_available_round_metadata(data, *, user=None, is_consumed=None, is_curr
         return None, 'Could not identify this round.'
 
     link_to_store = link or old_link or (submitted_round.link if submitted_round else '') or _build_submitted_round_link(persistence_id)
-    defaults = {
-        'title': title,
-        'source_title': source_title or title,
-        'creator': creator,
-        'shared_date': shared_date or (submitted_round.shared_date if submitted_round else None),
-        'cooperative': cooperative,
-        'link': link_to_store,
-        'source_link': old_link or (submitted_round.source_link if submitted_round else '') or link_to_store,
-        'is_consumed': (
+    same_consumed_gmail_message = bool(
+        submitted_round
+        and submitted_round.is_consumed
+        and gmail_message_id
+        and submitted_round.gmail_message_id == gmail_message_id
+    )
+    resolved_is_consumed = (
+        True
+        if same_consumed_gmail_message
+        else (
             bool(is_consumed)
             if is_consumed is not None
             else (submitted_round.is_consumed if submitted_round else False)
-        ),
-        'is_currently_available': (
+        )
+    )
+    resolved_is_currently_available = (
+        False
+        if resolved_is_consumed
+        else (
             bool(is_currently_available)
             if is_currently_available is not None
             else (submitted_round.is_currently_available if submitted_round else False)
+        )
+    )
+    defaults = {
+        'gmail_message_id': gmail_message_id or (submitted_round.gmail_message_id if submitted_round else ''),
+        'title': title,
+        'source_title': source_title or title,
+        'creator': creator,
+        'source_creator': source_creator,
+        'shared_date': (
+            submitted_round.shared_date
+            if preserve_existing_source_identity and submitted_round.shared_date
+            else shared_date or (submitted_round.shared_date if submitted_round else None)
         ),
+        'cooperative': cooperative,
+        'link': link_to_store,
+        'source_link': (
+            (submitted_round.source_link if preserve_existing_source_identity else '')
+            or old_link
+            or (submitted_round.source_link if submitted_round else '')
+            or link_to_store
+        ),
+        'is_consumed': resolved_is_consumed,
+        'is_currently_available': resolved_is_currently_available,
         'submitted_by': (
             user
             if getattr(user, 'is_authenticated', False)
@@ -5785,9 +5878,11 @@ def _serialize_submitted_round_for_available_feed(submitted_round):
         "title": submitted_round.title,
         "source_title": submitted_round.source_title or submitted_round.title,
         "creator": submitted_round.creator,
+        "source_creator": submitted_round.source_creator or submitted_round.creator,
         "link": round_link,
         "old_link": submitted_round.source_link or round_link,
         "presentation_id": submitted_round.presentation_id,
+        "gmail_message_id": submitted_round.gmail_message_id,
         "shared_date": (
             submitted_round.shared_date.isoformat()
             if submitted_round.shared_date
@@ -5807,9 +5902,11 @@ def _serialize_historical_round_for_available_feed(trivia_round):
         "title": trivia_round.title,
         "source_title": trivia_round.title,
         "creator": trivia_round.creator,
+        "source_creator": trivia_round.creator,
         "link": trivia_round.link,
         "old_link": trivia_round.source_link or trivia_round.link,
         "presentation_id": _extract_google_presentation_id(trivia_round.link),
+        "gmail_message_id": "",
         "shared_date": trivia_round.date.isoformat() if trivia_round.date else "",
         "coop": bool(trivia_round.cooperative),
         "is_new": False,
@@ -5846,15 +5943,47 @@ def _build_cached_available_rounds_payload():
     return _sort_new_available_round_payloads(new_rounds) + historical_rounds
 
 
-def _collect_rounds_sync(*, persist_available_rounds=False):
-    links, titles, creators, old_links, shared_dates = get_round_titles_and_links()
-    if persist_available_rounds:
-        SubmittedRound.objects.filter(is_currently_available=True).update(is_currently_available=False)
+def _normalize_available_round_email_result(email_result):
+    if not isinstance(email_result, (list, tuple)) or len(email_result) not in {5, 6}:
+        raise RuntimeError("Gmail round scan returned an unexpected payload.")
+
+    links, titles, creators, old_links, shared_dates = email_result[:5]
+    gmail_message_ids = email_result[5] if len(email_result) == 6 else None
+    required_columns = [links, titles, creators, old_links, shared_dates]
+    if any(column is None for column in required_columns):
+        raise RuntimeError("Gmail round scan did not complete successfully.")
+
+    gmail_message_ids = gmail_message_ids if gmail_message_ids is not None else [''] * len(links)
+    columns = [links, titles, creators, old_links, shared_dates, gmail_message_ids]
+    if len({len(column) for column in columns}) != 1:
+        raise RuntimeError("Gmail round scan returned mismatched round metadata.")
+
+    return [
+        {
+            "link": link,
+            "title": title,
+            "creator": creator,
+            "old_link": old_link,
+            "shared_date": shared_date,
+            "gmail_message_id": str(gmail_message_id or '').strip(),
+        }
+        for link, title, creator, old_link, shared_date, gmail_message_id in zip(*columns)
+    ]
+
+
+def _build_available_email_round_payloads(email_rounds, *, persist_available_rounds=False):
+    creators = [round_data["creator"] for round_data in email_rounds]
     submitted_rounds = list(SubmittedRound.objects.order_by('-submitted_at'))
     submitted_round_lookup = _build_submitted_round_lookup(submitted_rounds)
     creator_opt_in_map = _build_round_analysis_opt_in_map(creators)
     new_rounds = []
-    for title, creator, link, old_link, shared_date in zip(titles, creators, links, old_links, shared_dates):
+    for email_round in email_rounds:
+        title = email_round["title"]
+        creator = email_round["creator"]
+        link = email_round["link"]
+        old_link = email_round["old_link"]
+        shared_date = email_round["shared_date"]
+        gmail_message_id = email_round["gmail_message_id"]
         submitted_round = _find_matching_submitted_round(
             title,
             creator,
@@ -5862,7 +5991,15 @@ def _collect_rounds_sync(*, persist_available_rounds=False):
             old_link,
             submitted_round_lookup,
             shared_date=shared_date,
+            gmail_message_id=gmail_message_id,
         )
+        if (
+            submitted_round
+            and submitted_round.is_consumed
+            and gmail_message_id
+            and submitted_round.gmail_message_id == gmail_message_id
+        ):
+            continue
         if creator_opt_in_map.get(str(creator or '').strip()) and (
             not submitted_round or not str(submitted_round.source_title or '').strip()
         ):
@@ -5881,6 +6018,20 @@ def _collect_rounds_sync(*, persist_available_rounds=False):
             else title
         )
         display_creator = submitted_round.creator if submitted_round and submitted_round.creator else creator
+        display_source_creator = (
+            submitted_round.source_creator
+            if submitted_round and submitted_round.source_creator
+            else creator
+        )
+        is_new_gmail_share = bool(
+            submitted_round
+            and gmail_message_id
+            and submitted_round.gmail_message_id
+            and submitted_round.gmail_message_id != gmail_message_id
+        )
+        if is_new_gmail_share:
+            source_title = title
+            display_source_creator = creator
         display_shared_date = shared_date or (
             submitted_round.shared_date.isoformat()
             if submitted_round and submitted_round.shared_date
@@ -5897,19 +6048,24 @@ def _collect_rounds_sync(*, persist_available_rounds=False):
                     "title": display_title,
                     "source_title": source_title,
                     "creator": display_creator,
+                    "source_creator": creator,
                     "link": link,
                     "old_link": old_link,
                     "shared_date": display_shared_date,
                     "coop": coop_to_store,
+                    "gmail_message_id": gmail_message_id,
                 },
                 is_consumed=False,
                 is_currently_available=True,
             )
             if saved_round:
                 submitted_round = saved_round
+                if saved_round.is_consumed:
+                    continue
                 display_title = saved_round.title
                 source_title = saved_round.source_title or saved_round.title
                 display_creator = saved_round.creator
+                display_source_creator = saved_round.source_creator or saved_round.creator
                 display_shared_date = (
                     saved_round.shared_date.isoformat()
                     if saved_round.shared_date
@@ -5924,6 +6080,7 @@ def _collect_rounds_sync(*, persist_available_rounds=False):
                 "title": display_title,
                 "source_title": source_title,
                 "creator": display_creator,
+                "source_creator": display_source_creator,
                 "link": link,
                 "old_link": old_link,
                 "presentation_id": (
@@ -5931,16 +6088,45 @@ def _collect_rounds_sync(*, persist_available_rounds=False):
                     or _extract_google_presentation_id(link)
                     or _extract_google_presentation_id(old_link)
                 ),
+                "gmail_message_id": gmail_message_id,
                 "shared_date": display_shared_date,
                 "coop": coop_to_store,
                 "is_new": True,
             }
         )
+    return _sort_new_available_round_payloads(new_rounds)
+
+
+def _collect_rounds_sync(*, persist_available_rounds=False):
+    consumed_message_ids = list(
+        SubmittedRound.objects.filter(
+            is_consumed=True,
+        ).exclude(
+            gmail_message_id='',
+        ).values_list('gmail_message_id', flat=True)
+    )
+    email_result = get_round_titles_and_links(
+        consumed_message_ids=consumed_message_ids,
+    )
+    email_rounds = _normalize_available_round_email_result(email_result)
+
+    if persist_available_rounds:
+        with transaction.atomic():
+            SubmittedRound.objects.filter(is_currently_available=True).update(
+                is_currently_available=False,
+            )
+            new_rounds = _build_available_email_round_payloads(
+                email_rounds,
+                persist_available_rounds=True,
+            )
+    else:
+        new_rounds = _build_available_email_round_payloads(email_rounds)
+
     historical_rounds = [
         _serialize_historical_round_for_available_feed(trivia_round)
         for trivia_round in GPTriviaRound.objects.order_by('-date', 'round_number', 'title')
     ]
-    return _sort_new_available_round_payloads(new_rounds) + historical_rounds
+    return new_rounds + historical_rounds
 
 
 @sync_to_async          # runs blocking code in a thread-pool
@@ -5955,6 +6141,14 @@ def _collect_cached_available_rounds():
 
 _AVAILABLE_ROUNDS_REFRESH_WORKER_LOCK = threading.Lock()
 _AVAILABLE_ROUNDS_REFRESH_WORKER_THREAD = None
+
+
+def is_available_rounds_refresh_running():
+    worker_thread = _AVAILABLE_ROUNDS_REFRESH_WORKER_THREAD
+    return bool(
+        (worker_thread and worker_thread.is_alive())
+        or cache.get(AVAILABLE_ROUNDS_REFRESH_LOCK_CACHE_KEY)
+    )
 
 
 def ensure_available_rounds_refresh_worker_running():
@@ -5981,12 +6175,39 @@ def ensure_available_rounds_refresh_worker_running():
         return True
 
 
+def _heartbeat_available_rounds_refresh(stop_event):
+    while not stop_event.wait(AVAILABLE_ROUNDS_REFRESH_HEARTBEAT_SECONDS):
+        cache.set(
+            AVAILABLE_ROUNDS_REFRESH_LOCK_CACHE_KEY,
+            timezone.now().isoformat(),
+            AVAILABLE_ROUNDS_REFRESH_LOCK_SECONDS,
+        )
+
+
 def _available_rounds_refresh_worker():
     close_old_connections()
+    heartbeat_stop_event = threading.Event()
+    heartbeat_thread = threading.Thread(
+        target=_heartbeat_available_rounds_refresh,
+        args=(heartbeat_stop_event,),
+        daemon=True,
+        name='available-rounds-email-refresh-heartbeat',
+    )
+    heartbeat_thread.start()
+    try:
+        _broadcast_home_available_rounds_scan_state(True)
+    except Exception:
+        logger.exception("Could not broadcast that the available-round Gmail scan started.")
     try:
         _refresh_available_rounds_from_email()
     finally:
+        heartbeat_stop_event.set()
+        heartbeat_thread.join(timeout=1)
         cache.delete(AVAILABLE_ROUNDS_REFRESH_LOCK_CACHE_KEY)
+        try:
+            _broadcast_home_available_rounds_scan_state(False)
+        except Exception:
+            logger.exception("Could not broadcast that the available-round Gmail scan finished.")
         close_old_connections()
         global _AVAILABLE_ROUNDS_REFRESH_WORKER_THREAD
         with _AVAILABLE_ROUNDS_REFRESH_WORKER_LOCK:
@@ -6003,26 +6224,42 @@ def _refresh_available_rounds_from_email():
             data,
             HOME_ROUNDS_CACHE_TTL_SECONDS,
         )
-        _broadcast_home_available_rounds_refresh(data)
-        return data
     except Exception:
         logger.exception("Available rounds email refresh failed.")
         return None
 
+    try:
+        _broadcast_home_available_rounds_refresh(data)
+    except Exception:
+        logger.exception("Available rounds refreshed, but the live table broadcast failed.")
+    return data
+
 async def collect_rounds_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
+    if str(request.GET.get('cached') or '').strip().lower() in {'1', 'true', 'yes'}:
+        data = await _collect_cached_available_rounds()
+        return JsonResponse({
+            "rounds": data,
+            "refreshing": is_available_rounds_refresh_running(),
+        })
     if str(request.GET.get('background') or '').strip().lower() in {'1', 'true', 'yes'}:
         data = await _collect_cached_available_rounds()
         refresh_started = ensure_available_rounds_refresh_worker_running()
-        return JsonResponse({"rounds": data, "refreshing": refresh_started})
+        return JsonResponse({
+            "rounds": data,
+            "refreshing": refresh_started or is_available_rounds_refresh_running(),
+        })
 
     cache_key = f'collect_rounds_api:v{_get_site_data_cache_version()}'
     data = None if _request_wants_fresh_cache(request) else cache.get(cache_key)
     if data is None:
         data = await _collect_rounds()
         cache.set(cache_key, data, HOME_ROUNDS_CACHE_TTL_SECONDS)
-    return JsonResponse({"rounds": data})
+    return JsonResponse({
+        "rounds": data,
+        "refreshing": is_available_rounds_refresh_running(),
+    })
 
 
 def save_available_round_metadata(request):
@@ -6046,8 +6283,10 @@ def save_available_round_metadata(request):
         "title": saved_round.title,
         "source_title": saved_round.source_title or saved_round.title,
         "creator": saved_round.creator,
+        "source_creator": saved_round.source_creator or saved_round.creator,
         "shared_date": saved_round.shared_date.isoformat() if saved_round.shared_date else '',
         "coop": bool(saved_round.cooperative),
+        "gmail_message_id": saved_round.gmail_message_id,
     })
 
 
@@ -6328,6 +6567,20 @@ def _broadcast_home_available_rounds_refresh(rounds):
     )
 
 
+def _broadcast_home_available_rounds_scan_state(refreshing):
+    channel_layer = get_channel_layer()
+    if not channel_layer:
+        return
+
+    async_to_sync(channel_layer.group_send)(
+        HOME_BUILD_GROUP_NAME,
+        {
+            "type": "home_available_rounds_scan_state_message",
+            "refreshing": bool(refreshing),
+        },
+    )
+
+
 def _acquire_home_build_lock(action, *, presentation_name="", presentation_id=""):
     with transaction.atomic():
         build_state, _ = PresentationBuildState.objects.select_for_update().get_or_create(
@@ -6510,9 +6763,13 @@ def _get_ordered_rounds_from_home_request(request):
         order = int(order_val)
         round_order[order] = {
             "title": request.POST.get(f"round_title_{idx}"),
+            "source_title": request.POST.get(f"round_source_title_{idx}"),
             "creator": request.POST.get(f"round_creator_{idx}"),
+            "source_creator": request.POST.get(f"round_source_creator_{idx}"),
             "link": request.POST.get(f"round_link_{idx}"),
             "old_link": request.POST.get(f"round_old_link_{idx}"),
+            "presentation_id": request.POST.get(f"round_presentation_id_{idx}"),
+            "gmail_message_id": request.POST.get(f"round_gmail_message_id_{idx}"),
             "shared_date": request.POST.get(f"round_shared_date_{idx}"),
             "coop": request.POST.get(f"round_coop_{idx}"),
             "is_new": str(request.POST.get(f"round_is_new_{idx}") or '').strip().lower() in {'1', 'true', 'yes', 'on'},
@@ -6796,6 +7053,7 @@ def _execute_home_generate_build_job(job):
     ordered_links = [round_data['link'] for round_data in ordered_rounds]
     ordered_old_links = [round_data['old_link'] for round_data in ordered_rounds]
     ordered_coop = [round_data['coop'] for round_data in ordered_rounds]
+    ordered_gmail_message_ids = [round_data.get('gmail_message_id') or '' for round_data in ordered_rounds]
 
     logger.info(
         "Home background generate started for %s with %s rounds",
@@ -6810,6 +7068,7 @@ def _execute_home_generate_build_job(job):
             presentation_name=job.presentation_name,
             old_links=ordered_old_links,
             coops=ordered_coop,
+            gmail_message_ids=ordered_gmail_message_ids,
         )
     except Exception as error:
         PresentationBuildError = _get_presentation_build_error_class()
@@ -6908,6 +7167,7 @@ def _execute_home_update_build_job(job):
     ordered_links = [round_data['link'] for round_data in ordered_rounds]
     ordered_old_links = [round_data['old_link'] for round_data in ordered_rounds]
     ordered_coop = [round_data['coop'] for round_data in ordered_rounds]
+    ordered_gmail_message_ids = [round_data.get('gmail_message_id') or '' for round_data in ordered_rounds]
 
     selected_presentation = MergedPresentation.objects.get(
         presentation_id=job.selected_presentation_id
@@ -6929,6 +7189,7 @@ def _execute_home_update_build_job(job):
             ordered_links,
             ordered_old_links,
             coops=ordered_coop,
+            gmail_message_ids=ordered_gmail_message_ids,
         )
     except Exception as error:
         logger.exception(

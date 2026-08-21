@@ -309,6 +309,33 @@ body.site-shell[data-profile-theme="light"] {
     padding: 18px 10px;
 }
 
+.gmail-round-scan-row[hidden] {
+    display: none;
+}
+
+.gmail-round-scan-cell {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 7px 10px;
+    color: var(--home-table-text);
+    background: var(--home-control-bg);
+    background: color-mix(in srgb, var(--home-control-bg) 88%, #0073cc 12%);
+    border-bottom: 1px solid var(--home-control-border);
+    box-sizing: border-box;
+    font-size: 0.92rem;
+}
+
+.gmail-round-scan-spinner {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 auto;
+    object-fit: contain;
+}
+
 .round-selection-table-row .round-selection-table-cell,
 .round-selection-table-row .editable-cell,
 .round-selection-table-row .creator-input,
@@ -1020,6 +1047,24 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                         <div class="round-selection-table-cell coop_cell">Co-op</div>
                     </div>
 
+                    <div
+                        id="gmail-round-scan-status"
+                        class="round-selection-table-row gmail-round-scan-row"
+                        role="status"
+                        aria-live="polite"
+                        hidden
+                    >
+                        <div class="gmail-round-scan-cell">
+                            <img
+                                src="{% static 'GPTrivia/css/ouroboros.png' %}"
+                                class="loading-inline-spinner gmail-round-scan-spinner"
+                                alt=""
+                                aria-hidden="true"
+                            >
+                            <span>Checking Gmail for unread rounds…</span>
+                        </div>
+                    </div>
+
                     <div id="rounds-placeholder" class="round-selection-table-row">
                       <div class="round-selection-table-cell loading-cell" colspan="6">
                           <span id="rounds-loading-text">Loading rounds…</span>
@@ -1100,9 +1145,18 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
         const homeRoundSaveTimers = new Map();
         const homeRoundSaveControllers = new Map();
         const homeRoundSaveDebounceMs = 450;
+        const homeRoundsReconcileIntervalMs = 30000;
         const homeNavigationEntry = performance.getEntriesByType('navigation')[0];
         const homeForceRefresh = Boolean(homeNavigationEntry && homeNavigationEntry.type === 'reload');
         const homeProgressIconSrc = "{% static 'GPTrivia/css/ouroboros.png' %}";
+
+        function setGmailRoundScanStatus(refreshing) {
+            const scanStatus = document.getElementById('gmail-round-scan-status');
+            if (!scanStatus) {
+                return;
+            }
+            scanStatus.hidden = !Boolean(refreshing);
+        }
 
         function profileUrlForName(name) {
             return profileUrlTemplate.replace('__PROFILE_NAME__', encodeURIComponent(name || ''));
@@ -1524,9 +1578,13 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 .map((round) => ({
                     order: round.order,
                     title: round.title || '',
+                    source_title: round.source_title || round.title || '',
                     creator: round.creator || '',
+                    source_creator: round.source_creator || round.creator || '',
                     link: round.link || '',
                     old_link: round.old_link || '',
+                    presentation_id: round.presentation_id || '',
+                    gmail_message_id: round.gmail_message_id || '',
                     shared_date: round.shared_date || '',
                     coop: Boolean(round.coop),
                     is_new: Boolean(round.is_new),
@@ -1544,9 +1602,13 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 const fields = {
                     [`round_order_${index}`]: round.order || '',
                     [`round_title_${index}`]: round.title || '',
+                    [`round_source_title_${index}`]: round.source_title || round.title || '',
                     [`round_creator_${index}`]: round.creator || '',
+                    [`round_source_creator_${index}`]: round.source_creator || round.creator || '',
                     [`round_link_${index}`]: round.link || '',
                     [`round_old_link_${index}`]: round.old_link || '',
+                    [`round_presentation_id_${index}`]: round.presentation_id || '',
+                    [`round_gmail_message_id_${index}`]: round.gmail_message_id || '',
                     [`round_shared_date_${index}`]: round.shared_date || '',
                     [`round_is_new_${index}`]: round.is_new ? '1' : '0',
                 };
@@ -1584,7 +1646,8 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             if (!round) {
                 return '';
             }
-            return round.presentation_id
+            return round.gmail_message_id
+                || round.presentation_id
                 || round.link
                 || round.old_link
                 || round.client_save_key
@@ -1612,8 +1675,11 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 title: (round.title || '').trim(),
                 source_title: (round.source_title || round.title || '').trim(),
                 creator: (round.creator || '').trim(),
+                source_creator: (round.source_creator || round.creator || '').trim(),
                 link: round.link || '',
                 old_link: round.old_link || '',
+                presentation_id: round.presentation_id || '',
+                gmail_message_id: round.gmail_message_id || '',
                 shared_date: round.shared_date || '',
                 coop: Boolean(round.coop),
             };
@@ -1656,6 +1722,8 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                         round.shared_date = body.shared_date;
                     }
                     round.source_title = body.source_title || payload.source_title || payload.title;
+                    round.source_creator = body.source_creator || payload.source_creator || payload.creator;
+                    round.gmail_message_id = body.gmail_message_id || payload.gmail_message_id || '';
                 })
                 .catch((error) => {
                     if (error && error.name === 'AbortError') {
@@ -1706,20 +1774,45 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
         }
 
         function hydrateRounds(rounds) {
-            homeRoundState.rounds = (rounds || []).map((round, index) => ({
-                rowId: index,
-                client_save_key: `round-${index}`,
-                title: round.title || '',
-                source_title: round.source_title || round.title || '',
-                creator: round.creator || '',
-                link: round.link || '',
-                old_link: round.old_link || '',
-                presentation_id: round.presentation_id || '',
-                shared_date: round.shared_date || '',
-                coop: Boolean(round.coop),
-                is_new: Boolean(round.is_new),
-                order: null,
-            }));
+            const previousRoundsByIdentity = new Map(
+                homeRoundState.rounds.map((round) => [getAvailableRoundSaveKey(round), round])
+            );
+            homeRoundState.rounds = (rounds || []).map((round, index) => {
+                const hydratedRound = {
+                    rowId: index,
+                    client_save_key: `round-${index}`,
+                    title: round.title || '',
+                    source_title: round.source_title || round.title || '',
+                    creator: round.creator || '',
+                    source_creator: round.source_creator || round.creator || '',
+                    link: round.link || '',
+                    old_link: round.old_link || '',
+                    presentation_id: round.presentation_id || '',
+                    gmail_message_id: round.gmail_message_id || '',
+                    shared_date: round.shared_date || '',
+                    coop: Boolean(round.coop),
+                    is_new: Boolean(round.is_new),
+                    order: null,
+                };
+                const previousRound = previousRoundsByIdentity.get(
+                    getAvailableRoundSaveKey(hydratedRound)
+                );
+                if (!previousRound) {
+                    return hydratedRound;
+                }
+
+                hydratedRound.order = previousRound.order || null;
+                const previousSaveKey = getAvailableRoundSaveKey(previousRound);
+                if (
+                    homeRoundSaveTimers.has(previousSaveKey)
+                    || homeRoundSaveControllers.has(previousSaveKey)
+                ) {
+                    hydratedRound.title = previousRound.title;
+                    hydratedRound.creator = previousRound.creator;
+                    hydratedRound.coop = previousRound.coop;
+                }
+                return hydratedRound;
+            });
             populateCreatorSpotlightOptions();
             syncSelectedOrdersFromRounds();
         }
@@ -1793,11 +1886,17 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             if (options.background) {
                 roundsUrl.searchParams.set('background', '1');
             }
+            if (options.cached) {
+                roundsUrl.searchParams.set('cached', '1');
+            }
+            if (options.background) {
+                setGmailRoundScanStatus(true);
+            }
 
             return flushPendingAvailableRoundSaves()
                 .then(() => fetch(roundsUrl.toString(), {credentials: "same-origin"}))
                 .then((response) => (response.ok ? response.json() : Promise.reject(response.statusText)))
-                .then(({rounds}) => {
+                .then(({rounds, refreshing}) => {
                     if (placeholder) {
                         placeholder.style.display = 'none';
                     }
@@ -1806,6 +1905,9 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                     }
 
                     applyAvailableRounds(rounds, { preserveSearch });
+                    if (typeof refreshing === 'boolean') {
+                        setGmailRoundScanStatus(refreshing);
+                    }
                 })
                 .catch((err) => {
                     console.error("Failed to load rounds:", err);
@@ -1941,7 +2043,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                         forceReload: true,
                         refreshToken: data.refreshed_at || `${Date.now()}`,
                     });
-                    loadAvailableRounds({ preserveSearch: true, showLoadingState: false });
+                    loadAvailableRounds({ preserveSearch: true, showLoadingState: false, cached: true });
                     return;
                 }
                 if (data.type === 'build_result' && data.result) {
@@ -1952,7 +2054,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                             refreshToken: `${Date.now()}`,
                         });
                     }
-                    loadAvailableRounds({ preserveSearch: true, showLoadingState: false });
+                    loadAvailableRounds({ preserveSearch: true, showLoadingState: false, cached: true });
                     setStatusMessage(
                         result.detail || (result.ok ? 'Slides are ready.' : 'Slide build failed.'),
                         result.ok ? 'var(--home-table-text)' : '#ffb3b3',
@@ -1961,12 +2063,17 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                     return;
                 }
                 if (data.type === 'available_rounds_refresh' && Array.isArray(data.rounds)) {
+                    setGmailRoundScanStatus(false);
                     if (homeRoundSaveTimers.size) {
                         flushPendingAvailableRoundSaves()
-                            .then(() => loadAvailableRounds({ preserveSearch: true, showLoadingState: false }));
+                            .then(() => loadAvailableRounds({ preserveSearch: true, showLoadingState: false, cached: true }));
                         return;
                     }
                     applyAvailableRounds(data.rounds, { preserveSearch: true });
+                    return;
+                }
+                if (data.type === 'available_rounds_scan_state') {
+                    setGmailRoundScanStatus(Boolean(data.refreshing));
                 }
             };
 
@@ -2046,6 +2153,18 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                   renderRoundsTable();
               }
           });
+
+          const reconcileAvailableRounds = () => {
+              if (document.visibilityState === 'hidden') {
+                  return;
+              }
+              loadAvailableRounds({ preserveSearch: true, showLoadingState: false, cached: true });
+          };
+
+          window.addEventListener('pageshow', reconcileAvailableRounds);
+          window.addEventListener('focus', reconcileAvailableRounds);
+          window.addEventListener('online', reconcileAvailableRounds);
+          window.setInterval(reconcileAvailableRounds, homeRoundsReconcileIntervalMs);
 
           loadAvailableRounds({ preserveSearch: false, showLoadingState: true, background: true });
         });

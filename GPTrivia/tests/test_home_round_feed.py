@@ -62,6 +62,11 @@ class HomeRoundFeedTests(TestCase):
         self.assertContains(response, "const scoresheetBaseUrl")
         self.assertContains(response, "home-date-link")
         self.assertContains(response, "is_new: Boolean(round.is_new)")
+        self.assertContains(response, "round_gmail_message_id_")
+        self.assertContains(response, "cached: true")
+        self.assertContains(response, 'id="gmail-round-scan-status"')
+        self.assertContains(response, "Checking Gmail for unread rounds")
+        self.assertContains(response, "setGmailRoundScanStatus")
 
     @patch("GPTrivia.views.get_round_titles_and_links")
     def test_collect_rounds_api_overlays_submitted_round_metadata_on_gmail_rounds(self, mock_get_round_titles_and_links):
@@ -155,6 +160,169 @@ class HomeRoundFeedTests(TestCase):
         self.assertEqual(round_payload["source_title"], "Shared Deck Title")
         self.assertEqual(round_payload["creator"], "Alex")
         self.assertTrue(round_payload["coop"])
+
+    def test_available_round_edits_preserve_original_gmail_identity(self):
+        submitted_round = SubmittedRound.objects.create(
+            presentation_id="hodgepodge-deck",
+            gmail_message_id="gmail-hodgepodge-1",
+            title="🎲 Hodgepodge Round",
+            source_title="🎲 Hodgepodge Round",
+            creator="Zach",
+            source_creator="Zach",
+            shared_date=datetime.date(2026, 6, 13),
+            link="https://docs.google.com/presentation/d/hodgepodge-deck/edit",
+            source_link="https://docs.google.com/presentation/d/hodgepodge-source/edit",
+            is_currently_available=True,
+        )
+
+        response = self.client.post(
+            reverse("save_available_round_metadata"),
+            data={
+                "title": "Edited Dice Round",
+                "source_title": "🎲 Hodgepodge Round",
+                "creator": "Alex",
+                "source_creator": "Zach",
+                "link": submitted_round.link,
+                "old_link": submitted_round.source_link,
+                "presentation_id": submitted_round.presentation_id,
+                "gmail_message_id": submitted_round.gmail_message_id,
+                "shared_date": "2026-06-13",
+                "coop": True,
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        submitted_round.refresh_from_db()
+        self.assertEqual(submitted_round.title, "Edited Dice Round")
+        self.assertEqual(submitted_round.creator, "Alex")
+        self.assertEqual(submitted_round.source_title, "🎲 Hodgepodge Round")
+        self.assertEqual(submitted_round.source_creator, "Zach")
+        self.assertEqual(submitted_round.gmail_message_id, "gmail-hodgepodge-1")
+
+        views._save_available_round_metadata(
+            {
+                "title": submitted_round.title,
+                "source_title": "Incorrect Later Scan Title",
+                "creator": submitted_round.creator,
+                "source_creator": "Unknown",
+                "link": submitted_round.link,
+                "old_link": "https://docs.google.com/presentation/d/different-source/edit",
+                "presentation_id": submitted_round.presentation_id,
+                "gmail_message_id": submitted_round.gmail_message_id,
+                "shared_date": "2026-06-14",
+                "coop": submitted_round.cooperative,
+            },
+            is_currently_available=True,
+        )
+
+        submitted_round.refresh_from_db()
+        self.assertEqual(submitted_round.source_title, "🎲 Hodgepodge Round")
+        self.assertEqual(submitted_round.source_creator, "Zach")
+        self.assertEqual(submitted_round.shared_date, datetime.date(2026, 6, 13))
+        self.assertEqual(
+            submitted_round.source_link,
+            "https://docs.google.com/presentation/d/hodgepodge-source/edit",
+        )
+
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_consumed_gmail_message_cannot_reappear_from_cached_metadata(self, mock_get_round_titles_and_links):
+        mock_get_round_titles_and_links.return_value = (
+            ["https://docs.google.com/presentation/d/hodgepodge-deck/edit"],
+            ["🎲 Hodgepodge Round"],
+            ["Zach"],
+            ["https://docs.google.com/presentation/d/hodgepodge-source/edit"],
+            ["2026-06-13"],
+            ["gmail-hodgepodge-1"],
+        )
+        SubmittedRound.objects.create(
+            presentation_id="hodgepodge-deck",
+            gmail_message_id="gmail-hodgepodge-1",
+            title="Edited Dice Round",
+            source_title="🎲 Hodgepodge Round",
+            creator="Alex",
+            source_creator="Zach",
+            shared_date=datetime.date(2026, 6, 13),
+            link="https://docs.google.com/presentation/d/hodgepodge-deck/edit",
+            source_link="https://docs.google.com/presentation/d/hodgepodge-source/edit",
+            is_consumed=True,
+            is_currently_available=False,
+        )
+
+        response = self.client.get(reverse("collect_rounds_api"), {"refresh": "1"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["rounds"], [])
+        mock_get_round_titles_and_links.assert_called_once_with(
+            consumed_message_ids=["gmail-hodgepodge-1"],
+        )
+
+    def test_stale_refresh_write_cannot_reactivate_same_consumed_gmail_message(self):
+        submitted_round = SubmittedRound.objects.create(
+            presentation_id="consumed-deck",
+            gmail_message_id="gmail-consumed",
+            title="Consumed Round",
+            source_title="Consumed Round",
+            creator="Zach",
+            source_creator="Zach",
+            link="https://docs.google.com/presentation/d/consumed-deck/edit",
+            is_consumed=True,
+            is_currently_available=False,
+        )
+
+        views._save_available_round_metadata(
+            {
+                "title": submitted_round.title,
+                "source_title": submitted_round.source_title,
+                "creator": submitted_round.creator,
+                "source_creator": submitted_round.source_creator,
+                "link": submitted_round.link,
+                "presentation_id": submitted_round.presentation_id,
+                "gmail_message_id": submitted_round.gmail_message_id,
+            },
+            is_consumed=False,
+            is_currently_available=True,
+        )
+
+        submitted_round.refresh_from_db()
+        self.assertTrue(submitted_round.is_consumed)
+        self.assertFalse(submitted_round.is_currently_available)
+
+    @patch("GPTrivia.views._broadcast_home_available_rounds_refresh")
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_new_gmail_message_can_reshare_a_previously_consumed_deck(
+        self,
+        mock_get_round_titles_and_links,
+        _broadcast_mock,
+    ):
+        mock_get_round_titles_and_links.return_value = (
+            ["https://docs.google.com/presentation/d/shared-deck/edit"],
+            ["Shared Deck"],
+            ["Zach"],
+            ["https://docs.google.com/presentation/d/shared-deck/edit"],
+            ["2026-06-20"],
+            ["gmail-new-share"],
+        )
+        SubmittedRound.objects.create(
+            presentation_id="shared-deck",
+            gmail_message_id="gmail-old-share",
+            title="Shared Deck",
+            source_title="Shared Deck",
+            creator="Zach",
+            source_creator="Zach",
+            shared_date=datetime.date(2026, 6, 13),
+            link="https://docs.google.com/presentation/d/shared-deck/edit",
+            is_consumed=True,
+            is_currently_available=False,
+        )
+
+        data = views._refresh_available_rounds_from_email()
+
+        self.assertEqual(data[0]["gmail_message_id"], "gmail-new-share")
+        saved_round = SubmittedRound.objects.get(presentation_id="shared-deck")
+        self.assertEqual(saved_round.gmail_message_id, "gmail-new-share")
+        self.assertFalse(saved_round.is_consumed)
+        self.assertTrue(saved_round.is_currently_available)
 
     @patch("GPTrivia.views._infer_available_round_title_from_first_slide", return_value="GPT Identified Title")
     @patch("GPTrivia.views.get_round_titles_and_links")
@@ -460,6 +628,78 @@ class HomeRoundFeedTests(TestCase):
         self.assertNotIn("Stale Saved Metadata", [round_data["title"] for round_data in payload["rounds"]])
         mock_get_round_titles_and_links.assert_not_called()
         mock_ensure_refresh_worker.assert_called_once()
+
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_cached_reconciliation_never_calls_gmail(self, mock_get_round_titles_and_links):
+        SubmittedRound.objects.create(
+            presentation_id="cached-only",
+            title="Cached Round",
+            source_title="Cached Round",
+            creator="Alex",
+            source_creator="Alex",
+            is_currently_available=True,
+        )
+
+        response = self.client.get(reverse("collect_rounds_api"), {"cached": "1"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["rounds"][0]["title"], "Cached Round")
+        self.assertFalse(response.json()["refreshing"])
+        mock_get_round_titles_and_links.assert_not_called()
+
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_collect_rounds_api_cached_reconciliation_reports_active_gmail_scan(self, mock_get_round_titles_and_links):
+        cache.set(
+            views.AVAILABLE_ROUNDS_REFRESH_LOCK_CACHE_KEY,
+            "active",
+            views.AVAILABLE_ROUNDS_REFRESH_LOCK_SECONDS,
+        )
+
+        response = self.client.get(reverse("collect_rounds_api"), {"cached": "1"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["refreshing"])
+        mock_get_round_titles_and_links.assert_not_called()
+
+    @patch("GPTrivia.views._broadcast_home_available_rounds_scan_state")
+    @patch("GPTrivia.views._refresh_available_rounds_from_email")
+    def test_available_rounds_worker_broadcasts_scan_start_and_finish(
+        self,
+        mock_refresh,
+        mock_broadcast_scan_state,
+    ):
+        cache.set(
+            views.AVAILABLE_ROUNDS_REFRESH_LOCK_CACHE_KEY,
+            "active",
+            views.AVAILABLE_ROUNDS_REFRESH_LOCK_SECONDS,
+        )
+
+        views._available_rounds_refresh_worker()
+
+        mock_refresh.assert_called_once_with()
+        self.assertEqual(
+            [call.args[0] for call in mock_broadcast_scan_state.call_args_list],
+            [True, False],
+        )
+        self.assertIsNone(cache.get(views.AVAILABLE_ROUNDS_REFRESH_LOCK_CACHE_KEY))
+
+    @patch("GPTrivia.views.get_round_titles_and_links")
+    def test_failed_gmail_scan_does_not_clear_last_known_available_state(self, mock_get_round_titles_and_links):
+        mock_get_round_titles_and_links.return_value = (None, None, None, None, None, None)
+        submitted_round = SubmittedRound.objects.create(
+            presentation_id="known-available",
+            title="Known Available Round",
+            source_title="Known Available Round",
+            creator="Alex",
+            source_creator="Alex",
+            is_currently_available=True,
+        )
+
+        data = views._refresh_available_rounds_from_email()
+
+        self.assertIsNone(data)
+        submitted_round.refresh_from_db()
+        self.assertTrue(submitted_round.is_currently_available)
 
     @patch("GPTrivia.views._broadcast_home_available_rounds_refresh")
     @patch("GPTrivia.views.get_round_titles_and_links")

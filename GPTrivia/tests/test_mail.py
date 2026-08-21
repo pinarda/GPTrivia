@@ -139,6 +139,43 @@ class MailHelpersTests(SimpleTestCase):
             body={"removeLabelIds": ["UNREAD"]},
         )
 
+    @patch("GPTrivia.mail.build")
+    def test_find_shared_presentations_marks_exact_gmail_message_without_link_matching(self, build_mock):
+        gmail_service = Mock()
+        messages_resource = gmail_service.users.return_value.messages.return_value
+        messages_resource.list.return_value.execute.return_value = {
+            "messages": [{"id": "message-exact"}],
+        }
+
+        def get_message(*, userId, id, format, metadataHeaders=None):
+            response = Mock()
+            response.execute.return_value = {
+                "id": id,
+                "internalDate": "1",
+                "payload": {
+                    "headers": [{"name": "From", "value": '"Zach <zach@example.com>'}],
+                    "parts": [],
+                },
+            }
+            return response
+
+        messages_resource.get.side_effect = get_message
+        messages_resource.modify.return_value.execute.return_value = {}
+        build_mock.return_value = gmail_service
+
+        find_shared_presentations(
+            Mock(),
+            selected_links=[],
+            old_links=[],
+            gmail_message_ids=["message-exact"],
+        )
+
+        messages_resource.modify.assert_called_once_with(
+            userId="me",
+            id="message-exact",
+            body={"removeLabelIds": ["UNREAD"]},
+        )
+
     def test_classify_round_source_link_detects_whole_presentations(self):
         link_info = _classify_round_source_link(
             "https://docs.google.com/presentation/d/source-presentation-id/edit"

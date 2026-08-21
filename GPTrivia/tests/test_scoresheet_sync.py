@@ -1,7 +1,9 @@
 import datetime
 import json
+from pathlib import Path
 from unittest.mock import patch
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
@@ -44,6 +46,21 @@ class ScoresheetSyncTests(TestCase):
             tiebreak_winner="Alex",
             crowned_winner="Jenny",
         )
+
+    def test_scoresheet_template_references_current_built_bundle(self):
+        build_directory = Path(settings.BASE_DIR) / "scoresheet" / "build"
+        manifest = json.loads((build_directory / "asset-manifest.json").read_text())
+        javascript_bundle = manifest["files"]["main.js"].lstrip("/")
+
+        response = self.client.get(reverse("scoresheet_new"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f"scoresheet/build/{javascript_bundle}")
+        self.assertContains(
+            response,
+            "/static/jquery-tabledit-1.2.3/jquery.tabledit.min.js",
+        )
+        self.assertTrue((build_directory / javascript_bundle).is_file())
 
     def test_patch_save_updates_only_changed_fields_and_broadcasts_after_commit(self):
         AnswerSheetEntry.objects.create(

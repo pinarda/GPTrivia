@@ -264,9 +264,11 @@ class HomeViewPresentationSelectionTests(TestCase):
         source_link = "https://docs.google.com/presentation/d/original-pptx/edit?usp=drive_web"
         submitted_round = SubmittedRound.objects.create(
             presentation_id="converted-pptx",
+            gmail_message_id="gmail-converted-pptx",
             title="Converted PowerPoint Round",
             source_title="Converted PowerPoint Round",
             creator="Alex",
+            source_creator="Zach",
             link=converted_link,
             source_link=source_link,
             is_consumed=False,
@@ -278,10 +280,14 @@ class HomeViewPresentationSelectionTests(TestCase):
             data={
                 "action": "generate",
                 "round_order_0": "1",
-                "round_title_0": submitted_round.title,
-                "round_creator_0": submitted_round.creator,
+                "round_title_0": "Edited PowerPoint Round",
+                "round_source_title_0": submitted_round.source_title,
+                "round_creator_0": "Megan",
+                "round_source_creator_0": submitted_round.source_creator,
                 "round_link_0": converted_link,
                 "round_old_link_0": source_link,
+                "round_presentation_id_0": submitted_round.presentation_id,
+                "round_gmail_message_id_0": submitted_round.gmail_message_id,
                 "round_shared_date_0": "06.13.2026",
             },
         )
@@ -293,8 +299,13 @@ class HomeViewPresentationSelectionTests(TestCase):
         _run_home_presentation_build_job(job.id)
 
         self.assertEqual(create_mock.call_args.kwargs["old_links"], [source_link])
+        self.assertEqual(
+            create_mock.call_args.kwargs["gmail_message_ids"],
+            ["gmail-converted-pptx"],
+        )
         submitted_round.refresh_from_db()
         self.assertTrue(submitted_round.is_consumed)
+        self.assertFalse(submitted_round.is_currently_available)
 
     @patch("GPTrivia.views._broadcast_home_build_result")
     @patch("GPTrivia.views._broadcast_home_presentation_refresh")

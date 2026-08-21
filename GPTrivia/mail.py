@@ -707,15 +707,31 @@ def new_presentation(credentials):
         return None
 
 
-def find_shared_presentations(credentials, processed_senders=[], selected_links=[], old_links=[]):
+def find_shared_presentations(
+    credentials,
+    processed_senders=[],
+    selected_links=[],
+    old_links=[],
+    gmail_message_ids=None,
+):
     print(processed_senders)
     try:
         new_senders = []
         presentation_urls = []
+        selected_message_ids = {
+            str(message_id).strip()
+            for message_id in (gmail_message_ids or [])
+            if str(message_id).strip()
+        }
+        marked_message_ids = set()
 
         gmail_service = build('gmail', 'v1', credentials=credentials)
         query = 'subject:"Presentation shared with you:.*" is:unread'
-        response = gmail_service.users().messages().list(userId='me', q=query).execute()
+        response = gmail_service.users().messages().list(
+            userId='me',
+            q=query,
+            maxResults=500,
+        ).execute()
 
         if 'messages' in response:
             # Fetch messages with their internalDate and sort them
@@ -730,6 +746,11 @@ def find_shared_presentations(credentials, processed_senders=[], selected_links=
 
             for msg, _ in messages_with_date:
                 msg_id = msg['id']
+
+                if msg_id in selected_message_ids:
+                    mark_as_read(gmail_service, msg_id)
+                    marked_message_ids.add(msg_id)
+                    continue
 
                 # Get sender's email address
                 headers = msg['payload']['headers']
@@ -761,8 +782,9 @@ def find_shared_presentations(credentials, processed_senders=[], selected_links=
                 if (
                     _presentation_link_is_selected(presentation_url, selected_links, old_links)
                     or _presentation_link_is_selected(new_presentation_url, selected_links, old_links)
-                ):
+                ) and msg_id not in marked_message_ids:
                     mark_as_read(gmail_service, msg_id)
+                    marked_message_ids.add(msg_id)
 
                 if should_add_sender:
                     print("found new sender")
@@ -909,7 +931,16 @@ def remove_first_slide(credentials, presentation_id):
     slides_service.presentations().batchUpdate(presentationId=presentation_id, body={'requests': [delete_request]}).execute()
 
 
-def update_merged_presentation(merged_presentation_id, merged_creators, titles, creators, links, old_links, coops):
+def update_merged_presentation(
+    merged_presentation_id,
+    merged_creators,
+    titles,
+    creators,
+    links,
+    old_links,
+    coops,
+    gmail_message_ids=None,
+):
     credentials = None
     # Check if the token.pickle file exists
     if os.path.exists(token_file_path):
@@ -957,9 +988,6 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
     slides_service.presentations().batchUpdate(presentationId=merged_presentation_id, body={'requests': [delete_slide_request]}).execute()
 
     # Append any new shared slides from new creators
-    print("finding shared presentations for shared presentation...")
-    # shared_urls, creators = find_shared_presentations(credentials, merged_creators)
-    find_shared_presentations(credentials, list(merged_creators), prepared_shared_urls, old_links)
     shared_urls = prepared_shared_urls
 
     script_service = build('script', 'v1', credentials=credentials)
@@ -1123,6 +1151,20 @@ def update_merged_presentation(merged_presentation_id, merged_creators, titles, 
     # add the outro slide
     outro_id = '1BSOudw2JxjVcHxfHX-yfJqmuh0Pp4iKMmYY5klW5zLI'
     _copy_presentation_via_apps_script(script_service, outro_id, merged_presentation_id)
+
+    # Only consume source mail after every slide operation has succeeded.
+    gmail_identity_kwargs = (
+        {'gmail_message_ids': gmail_message_ids}
+        if gmail_message_ids
+        else {}
+    )
+    find_shared_presentations(
+        credentials,
+        list(merged_creators),
+        links,
+        old_links,
+        **gmail_identity_kwargs,
+    )
 
     return (
         merged_presentation_id,
@@ -1649,7 +1691,15 @@ def share_slides(presId):
 
 
 
-def create_presentation(titles, creators, links, presentation_name, old_links, coops):
+def create_presentation(
+    titles,
+    creators,
+    links,
+    presentation_name,
+    old_links,
+    coops,
+    gmail_message_ids=None,
+):
     credentials = None
     new_presentation_id = None
     copied_links = []
@@ -1703,9 +1753,6 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
             new_presentation_id,
             presentation_name,
         )
-        current_step = "finding shared presentations"
-        print("finding shared presentations for new presentation...")
-        find_shared_presentations(credentials, [], links, old_links)
         shared_urls = links
         http = httplib2.Http(timeout=300)
         authorized_http = AuthorizedHttp(credentials, http=http)
@@ -1910,6 +1957,20 @@ def create_presentation(titles, creators, links, presentation_name, old_links, c
             new_presentation_id,
         )
 
+        current_step = "marking source Gmail messages read"
+        gmail_identity_kwargs = (
+            {'gmail_message_ids': gmail_message_ids}
+            if gmail_message_ids
+            else {}
+        )
+        find_shared_presentations(
+            credentials,
+            [],
+            links,
+            old_links,
+            **gmail_identity_kwargs,
+        )
+
         return (
             new_presentation_id,
             creator_names_for_return,
@@ -1994,8 +2055,13 @@ def _pair_full_messages_with_internal_dates(messages_with_date, full_messages_by
     return paired_messages
 
 
-def get_round_titles_and_links(processed_senders=None):
+def get_round_titles_and_links(processed_senders=None, consumed_message_ids=None):
     processed_senders = processed_senders or []
+    consumed_message_ids = {
+        str(message_id).strip()
+        for message_id in (consumed_message_ids or [])
+        if str(message_id).strip()
+    }
     credentials = None
     # Check if the token.pickle file exists
     if os.path.exists(token_file_path):
@@ -2035,6 +2101,7 @@ def get_round_titles_and_links(processed_senders=None):
         old_urls = []
         round_titles = []
         newdates = []
+        gmail_message_ids = []
         messages_with_date = []
 
         gmail_service = build('gmail', 'v1', credentials=credentials)
@@ -2163,6 +2230,10 @@ def get_round_titles_and_links(processed_senders=None):
                 messages_with_date,
                 full_messages_by_id,
             ):
+                message_id = str(full_message.get('id') or '').strip()
+                if message_id and message_id in consumed_message_ids:
+                    mark_as_read(gmail_service, message_id)
+                    continue
                 round_data = process_full_message(full_message)
                 if not round_data:
                     continue
@@ -2171,17 +2242,18 @@ def get_round_titles_and_links(processed_senders=None):
                 old_urls.append(round_data['old_url'])
                 round_titles.append(round_data['title'])
                 newdates.append(_format_pacific_timestamp(internal_date))
+                gmail_message_ids.append(message_id)
 
         # Replace the sender using MAIL_NAME_MAP
         new_senders = [MAIL_NAME_MAP.get(sender, "Unknown") for sender in new_senders]
 
         print(presentation_urls, round_titles, new_senders, old_urls)
 
-        return presentation_urls, round_titles, new_senders, old_urls, newdates
+        return presentation_urls, round_titles, new_senders, old_urls, newdates, gmail_message_ids
 
     except HttpError as error:
         print(f"An error occurred: {error}")
-        return None, None, None, None, None
+        return None, None, None, None, None, None
 
 # def get_round_titles_and_links(processed_senders=[]):
 #     credentials = None
