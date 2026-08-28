@@ -1394,6 +1394,20 @@
             return true;
         }
 
+        function moveCaretToPreviousExistingLine(textarea) {
+            if (
+                typeof textarea.selectionStart !== 'number'
+                || textarea.selectionStart !== textarea.selectionEnd
+                || textarea.selectionStart <= 0
+                || textarea.value[textarea.selectionStart - 1] !== '\n'
+            ) {
+                return false;
+            }
+            const previousLineEnd = textarea.selectionStart - 1;
+            textarea.setSelectionRange(previousLineEnd, previousLineEnd);
+            return true;
+        }
+
         function configureInkCanvas(canvas) {
             if (!canvas) {
                 return null;
@@ -2591,13 +2605,21 @@
             setRoundAnswersDirty(roundId, false);
             textarea.addEventListener('keydown', (event) => {
                 if (
-                    event.key !== 'Enter'
-                    || event.shiftKey
+                    event.shiftKey
                     || event.ctrlKey
                     || event.metaKey
                     || event.altKey
                     || event.isComposing
                 ) {
+                    return;
+                }
+                if (event.key === 'Backspace') {
+                    if (moveCaretToPreviousExistingLine(textarea)) {
+                        event.preventDefault();
+                    }
+                    return;
+                }
+                if (event.key !== 'Enter') {
                     return;
                 }
                 if (moveCaretToNextExistingLine(textarea)) {
