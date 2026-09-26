@@ -1776,5 +1776,14 @@ class PlayerAnalysisViewTests(TestCase):
         signature = inspect.signature(create_presentation)
         self.assertEqual(
             list(signature.parameters.keys()),
-            ['titles', 'creators', 'links', 'presentation_name', 'old_links', 'coops'],
+            [
+                'titles',
+                'creators',
+                'links',
+                'presentation_name',
+                'old_links',
+                'coops',
+                'gmail_message_ids',
+                'consume_source_mail',
+            ],
         )

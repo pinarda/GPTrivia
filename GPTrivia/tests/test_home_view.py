@@ -1,12 +1,12 @@
 import datetime
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
 from GPTrivia.mail import PresentationBuildError
-from GPTrivia.models import GPTriviaRound, HomePresentationBuildJob, MergedPresentation, PresentationBuildState, SubmittedRound
+from GPTrivia.models import AnswerSheetEntry, GPTriviaRound, HomePresentationBuildJob, MergedPresentation, PresentationBuildState, SubmittedRound
 
 
 class HomeViewPresentationSelectionTests(TestCase):
@@ -80,6 +80,16 @@ class HomeViewPresentationSelectionTests(TestCase):
             },
         )
         self.assertContains(response, 'id="calendar-button"')
+        self.assertContains(response, 'id="replace-button"')
+        self.assertContains(response, 'id="selected-presentation-round-ids"')
+
+    def test_home_replaces_create_button_when_current_date_already_has_presentation(self):
+        with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 3, 12)):
+            response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'id="gen-button"')
+        self.assertContains(response, 'id="replace-button"')
 
     def test_home_uses_requested_presentation_id_for_embed(self):
         response = self.client.get(
@@ -203,6 +213,28 @@ class HomeViewPresentationSelectionTests(TestCase):
         self.assertEqual(queued_job.action, HomePresentationBuildJob.ACTION_GENERATE)
         self.assertEqual(queued_job.presentation_name, "6.05.2026")
         self.assertEqual(queued_job.round_payload[0]["title"], "Round C")
+
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
+    def test_generate_ajax_rejects_duplicate_current_date_presentation(self, worker_mock):
+        with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 3, 12)):
+            response = self.client.post(
+                reverse("home"),
+                data={
+                    "action": "generate",
+                    "round_order_0": "1",
+                    "round_title_0": "Round C",
+                    "round_creator_0": "Alex",
+                    "round_link_0": "https://example.com/round-c",
+                    "round_old_link_0": "https://example.com/round-c/edit",
+                },
+                HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+                HTTP_ACCEPT="application/json",
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("Replace it instead", response.json()["detail"])
+        self.assertFalse(HomePresentationBuildJob.objects.exists())
+        worker_mock.assert_not_called()
 
     @patch("GPTrivia.views._broadcast_home_build_result")
     @patch("GPTrivia.views._broadcast_home_presentation_refresh")
@@ -486,6 +518,215 @@ class HomeViewPresentationSelectionTests(TestCase):
         update_mock.assert_not_called()
         queued_job = HomePresentationBuildJob.objects.get()
         self.assertEqual(queued_job.selected_presentation_id, self.older_presentation.presentation_id)
+
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
+    def test_replace_ajax_requires_confirmation(self, worker_mock):
+        response = self.client.post(
+            reverse("home"),
+            data={
+                "action": "replace",
+                "selected_presentation_id": self.older_presentation.presentation_id,
+                "round_order_0": "1",
+                "round_title_0": "Round A",
+                "round_creator_0": "Alex",
+                "round_link_0": "https://example.com/round-a",
+                "round_old_link_0": "https://example.com/round-a",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+            HTTP_ACCEPT="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["detail"], "Presentation replacement was not confirmed.")
+        self.assertFalse(HomePresentationBuildJob.objects.exists())
+        worker_mock.assert_not_called()
+
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
+    def test_replace_ajax_queues_selected_presentation(self, worker_mock):
+        response = self.client.post(
+            reverse("home"),
+            data={
+                "action": "replace",
+                "replace_confirmed": "1",
+                "selected_presentation_id": self.older_presentation.presentation_id,
+                "round_order_0": "1",
+                "round_title_0": "Round A",
+                "round_creator_0": "Alex",
+                "round_link_0": "https://example.com/round-a",
+                "round_old_link_0": "https://example.com/round-a",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+            HTTP_ACCEPT="application/json",
+        )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json()["action"], "replace")
+        queued_job = HomePresentationBuildJob.objects.get()
+        self.assertEqual(queued_job.action, HomePresentationBuildJob.ACTION_REPLACE)
+        self.assertEqual(queued_job.selected_presentation_id, self.older_presentation.presentation_id)
+        worker_mock.assert_called_once()
+
+    @patch("GPTrivia.views._schedule_scoresheet_broadcast")
+    @patch("GPTrivia.views._broadcast_home_build_result")
+    @patch("GPTrivia.views._broadcast_home_presentation_refresh")
+    @patch("GPTrivia.views.trash_google_presentation")
+    @patch("GPTrivia.views.set_gmail_messages_read_state")
+    @patch("GPTrivia.views.create_presentation")
+    @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
+    def test_replace_swaps_presentation_and_preserves_only_retained_round_data(
+        self,
+        _worker_mock,
+        create_mock,
+        gmail_state_mock,
+        trash_mock,
+        _refresh_mock,
+        _result_mock,
+        scoresheet_broadcast_mock,
+    ):
+        presentation_date = datetime.date(2026, 3, 5)
+        retained_round = GPTriviaRound.objects.get(date=presentation_date, title="Round A")
+        retained_round.source_link = "https://docs.google.com/presentation/d/source-a/edit"
+        retained_round.score_alex = 7
+        retained_round.save(update_fields=["source_link", "score_alex"])
+        removed_round = self._create_round(
+            date=presentation_date,
+            round_number=2,
+            title="Round B",
+            creator="Megan",
+        )
+        removed_round.source_link = "https://docs.google.com/presentation/d/source-b/edit"
+        removed_round.save(update_fields=["source_link"])
+        retained_answer = AnswerSheetEntry.objects.create(
+            user=self.user,
+            round=retained_round,
+            trivia_date=presentation_date,
+            answers=["retained answer"],
+        )
+        AnswerSheetEntry.objects.create(
+            user=User.objects.create_user(username="megan", password="pw"),
+            round=removed_round,
+            trivia_date=presentation_date,
+            answers=["removed answer"],
+        )
+
+        source_a = SubmittedRound.objects.create(
+            presentation_id="source-a",
+            gmail_message_id="gmail-a",
+            title="Round A",
+            creator="Alex",
+            link="https://docs.google.com/presentation/d/source-a/edit",
+            is_consumed=True,
+        )
+        source_b = SubmittedRound.objects.create(
+            presentation_id="source-b",
+            gmail_message_id="gmail-b",
+            title="Round B",
+            creator="Megan",
+            link="https://docs.google.com/presentation/d/source-b/edit",
+            is_consumed=True,
+        )
+        source_c = SubmittedRound.objects.create(
+            presentation_id="source-c",
+            gmail_message_id="gmail-c",
+            title="Round C",
+            creator="Jenny",
+            link="https://docs.google.com/presentation/d/source-c/edit",
+            is_consumed=False,
+            is_currently_available=True,
+        )
+        self.older_presentation.round_names = ["Round A", "Round B"]
+        self.older_presentation.creator_list = ["Alex", "Megan"]
+        self.older_presentation.source_round_ids = [source_a.id, source_b.id]
+        self.older_presentation.save(
+            update_fields=["round_names", "creator_list", "source_round_ids"]
+        )
+        duplicate_presentation = self._create_presentation(
+            name="03.05.2026",
+            presentation_id="presentation-duplicate",
+            round_names=["Duplicate"],
+            creator_list=["Zach"],
+        )
+
+        create_mock.return_value = (
+            "presentation-replacement",
+            ["Alex", "Jenny"],
+            ["Round A", "Round C"],
+            [
+                "https://docs.google.com/presentation/d/presentation-replacement/edit#slide=id.a",
+                "https://docs.google.com/presentation/d/presentation-replacement/edit#slide=id.c",
+            ],
+        )
+        response = self.client.post(
+            reverse("home"),
+            data={
+                "action": "replace",
+                "replace_confirmed": "1",
+                "selected_presentation_id": self.older_presentation.presentation_id,
+                "round_order_0": "1",
+                "round_title_0": "Round A",
+                "round_creator_0": "Alex",
+                "round_link_0": retained_round.link,
+                "round_old_link_0": retained_round.source_link,
+                "round_presentation_id_0": source_a.presentation_id,
+                "round_submitted_round_id_0": str(source_a.id),
+                "round_id_0": str(retained_round.id),
+                "round_gmail_message_id_0": source_a.gmail_message_id,
+                "round_order_1": "2",
+                "round_title_1": "Round C",
+                "round_creator_1": "Jenny",
+                "round_link_1": source_c.link,
+                "round_old_link_1": source_c.link,
+                "round_presentation_id_1": source_c.presentation_id,
+                "round_submitted_round_id_1": str(source_c.id),
+                "round_gmail_message_id_1": source_c.gmail_message_id,
+                "round_is_new_1": "1",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+
+        job = HomePresentationBuildJob.objects.get()
+        from GPTrivia.views import _run_home_presentation_build_job
+
+        _run_home_presentation_build_job(job.id)
+
+        self.older_presentation.refresh_from_db()
+        self.assertEqual(self.older_presentation.presentation_id, "presentation-replacement")
+        self.assertEqual(self.older_presentation.round_names, ["Round A", "Round C"])
+        self.assertEqual(self.older_presentation.source_round_ids, [source_a.id, source_c.id])
+        self.assertFalse(MergedPresentation.objects.filter(id=duplicate_presentation.id).exists())
+
+        replacement_rounds = list(
+            GPTriviaRound.objects.filter(date=presentation_date).order_by("round_number")
+        )
+        self.assertEqual([round_obj.title for round_obj in replacement_rounds], ["Round A", "Round C"])
+        self.assertEqual(replacement_rounds[0].id, retained_round.id)
+        self.assertEqual(replacement_rounds[0].score_alex, 7)
+        self.assertTrue(AnswerSheetEntry.objects.filter(id=retained_answer.id).exists())
+        self.assertFalse(AnswerSheetEntry.objects.filter(round_id=removed_round.id).exists())
+
+        source_a.refresh_from_db()
+        source_b.refresh_from_db()
+        source_c.refresh_from_db()
+        self.assertTrue(source_a.is_consumed)
+        self.assertTrue(source_c.is_consumed)
+        self.assertFalse(source_c.is_currently_available)
+        self.assertFalse(source_b.is_consumed)
+        self.assertTrue(source_b.is_currently_available)
+
+        create_mock.assert_called_once()
+        self.assertFalse(create_mock.call_args.kwargs["consume_source_mail"])
+        self.assertEqual(
+            gmail_state_mock.call_args_list,
+            [
+                call(["gmail-b"], unread=True),
+                call(["gmail-a", "gmail-c"], unread=False),
+            ],
+        )
+        self.assertEqual(
+            {args.args[0] for args in trash_mock.call_args_list},
+            {"presentation-old", "presentation-duplicate"},
+        )
+        scoresheet_broadcast_mock.assert_called_once()
 
     @patch("GPTrivia.views.ensure_home_presentation_build_worker_running")
     @patch("GPTrivia.views.create_presentation", return_value="presentation-generated")

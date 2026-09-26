@@ -1,6 +1,6 @@
 import base64
 import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 from django.test import SimpleTestCase
 
@@ -25,11 +25,49 @@ from GPTrivia.mail import (
     _utf16_placeholder_range,
     convert_shared_presentation,
     find_shared_presentations,
+    set_gmail_messages_read_state,
+    trash_google_presentation,
     update_merged_presentation,
 )
 
 
 class MailHelpersTests(SimpleTestCase):
+    @patch("GPTrivia.mail._load_google_credentials")
+    @patch("GPTrivia.mail.build")
+    def test_set_gmail_messages_read_state_adds_unread_label(self, build_mock, credentials_mock):
+        credentials = Mock()
+        credentials_mock.return_value = credentials
+        gmail_service = Mock()
+        build_mock.return_value = gmail_service
+
+        set_gmail_messages_read_state(["message-1", "message-1", "message-2"], unread=True)
+
+        build_mock.assert_called_once_with("gmail", "v1", credentials=credentials)
+        messages_resource = gmail_service.users.return_value.messages.return_value
+        self.assertEqual(
+            messages_resource.modify.call_args_list,
+            [
+                call(userId="me", id="message-1", body={"addLabelIds": ["UNREAD"]}),
+                call(userId="me", id="message-2", body={"addLabelIds": ["UNREAD"]}),
+            ],
+        )
+
+    @patch("GPTrivia.mail._load_google_credentials")
+    @patch("GPTrivia.mail.build")
+    def test_trash_google_presentation_moves_drive_file_to_trash(self, build_mock, credentials_mock):
+        credentials = Mock()
+        credentials_mock.return_value = credentials
+        drive_service = Mock()
+        build_mock.return_value = drive_service
+
+        trash_google_presentation("presentation-old")
+
+        build_mock.assert_called_once_with("drive", "v3", credentials=credentials)
+        drive_service.files.return_value.update.assert_called_once_with(
+            fileId="presentation-old",
+            body={"trashed": True},
+        )
+
     def test_pair_full_messages_with_dates_preserves_metadata_order(self):
         messages_with_date = [
             ({"id": "older-message"}, "1748296800000"),

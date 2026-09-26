@@ -93,6 +93,29 @@ def _format_pacific_timestamp(timestamp_ms):
     return datetime.datetime.fromtimestamp(int(timestamp_ms) / 1000, tz=pst).strftime("%B %d, %Y")
 
 
+def _load_google_credentials():
+    credentials = None
+    if os.path.exists(token_file_path):
+        with open(token_file_path, 'rb') as token:
+            credentials = pickle.load(token)
+
+    if credentials and credentials.expired and credentials.refresh_token:
+        try:
+            credentials.refresh(Request())
+        except Exception:
+            logger.exception("Failed to refresh stored Google credentials; requesting new credentials.")
+            credentials = build_credentials()
+        with open(token_file_path, 'wb') as token:
+            pickle.dump(credentials, token)
+
+    if not credentials or not credentials.valid:
+        credentials = build_credentials()
+        with open(token_file_path, 'wb') as token:
+            pickle.dump(credentials, token)
+
+    return credentials
+
+
 def _presentation_link_id(link_value):
     match = GOOGLE_SLIDES_PRESENTATION_PATTERN.search(str(link_value or ''))
     return match.group(1) if match else ''
@@ -915,6 +938,37 @@ def mark_as_read(gmail_service, msg_id):
         body={'removeLabelIds': ['UNREAD']}
     ).execute()
 
+
+def set_gmail_messages_read_state(message_ids, *, unread):
+    normalized_message_ids = list(dict.fromkeys(
+        str(message_id).strip()
+        for message_id in (message_ids or [])
+        if str(message_id).strip()
+    ))
+    if not normalized_message_ids:
+        return
+
+    gmail_service = build('gmail', 'v1', credentials=_load_google_credentials())
+    body = {'addLabelIds': ['UNREAD']} if unread else {'removeLabelIds': ['UNREAD']}
+    for message_id in normalized_message_ids:
+        gmail_service.users().messages().modify(
+            userId='me',
+            id=message_id,
+            body=body,
+        ).execute()
+
+
+def trash_google_presentation(presentation_id):
+    presentation_id = str(presentation_id or '').strip()
+    if not presentation_id:
+        return
+
+    drive_service = build('drive', 'v3', credentials=_load_google_credentials())
+    drive_service.files().update(
+        fileId=presentation_id,
+        body={'trashed': True},
+    ).execute()
+
 def remove_first_slide(credentials, presentation_id):
     slides_service = build('slides', 'v1', credentials=credentials)
 
@@ -1699,6 +1753,7 @@ def create_presentation(
     old_links,
     coops,
     gmail_message_ids=None,
+    consume_source_mail=True,
 ):
     credentials = None
     new_presentation_id = None
@@ -1786,7 +1841,11 @@ def create_presentation(
                             len_date_text = len(date_text)
                             break
 
-        date_text = _current_pacific_date().strftime("%B %d, %Y")
+        try:
+            presentation_date = datetime.datetime.strptime(presentation_name, "%m.%d.%Y").date()
+        except (TypeError, ValueError):
+            presentation_date = _current_pacific_date()
+        date_text = presentation_date.strftime("%B %d, %Y")
 
         delete_text_request = {
             'deleteText': {
@@ -1957,19 +2016,20 @@ def create_presentation(
             new_presentation_id,
         )
 
-        current_step = "marking source Gmail messages read"
-        gmail_identity_kwargs = (
-            {'gmail_message_ids': gmail_message_ids}
-            if gmail_message_ids
-            else {}
-        )
-        find_shared_presentations(
-            credentials,
-            [],
-            links,
-            old_links,
-            **gmail_identity_kwargs,
-        )
+        if consume_source_mail:
+            current_step = "marking source Gmail messages read"
+            gmail_identity_kwargs = (
+                {'gmail_message_ids': gmail_message_ids}
+                if gmail_message_ids
+                else {}
+            )
+            find_shared_presentations(
+                credentials,
+                [],
+                links,
+                old_links,
+                **gmail_identity_kwargs,
+            )
 
         return (
             new_presentation_id,

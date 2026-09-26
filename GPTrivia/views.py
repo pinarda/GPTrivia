@@ -260,6 +260,18 @@ def update_merged_presentation(*args, **kwargs):
     return mail_update_merged_presentation(*args, **kwargs)
 
 
+def set_gmail_messages_read_state(*args, **kwargs):
+    from .mail import set_gmail_messages_read_state as mail_set_gmail_messages_read_state
+
+    return mail_set_gmail_messages_read_state(*args, **kwargs)
+
+
+def trash_google_presentation(*args, **kwargs):
+    from .mail import trash_google_presentation as mail_trash_google_presentation
+
+    return mail_trash_google_presentation(*args, **kwargs)
+
+
 def copy_template(*args, **kwargs):
     from .mail import copy_template as mail_copy_template
 
@@ -671,23 +683,9 @@ def _find_matching_submitted_round(
 
 
 def _mark_selected_submitted_rounds_consumed(rounds):
-    submitted_rounds = list(SubmittedRound.objects.filter(is_consumed=False))
-    submitted_round_lookup = _build_submitted_round_lookup(submitted_rounds)
-    matched_ids = []
-
-    for round_data in rounds or []:
-        submitted_round = _find_matching_submitted_round(
-            round_data.get("title"),
-            round_data.get("creator"),
-            round_data.get("link"),
-            round_data.get("old_link"),
-            submitted_round_lookup,
-            shared_date=round_data.get("shared_date"),
-            presentation_id=round_data.get("presentation_id"),
-            gmail_message_id=round_data.get("gmail_message_id"),
-        )
-        if submitted_round:
-            matched_ids.append(submitted_round.id)
+    submitted_rounds = list(SubmittedRound.objects.all())
+    resolved_rounds = _resolve_submitted_rounds_for_payload(rounds, submitted_rounds=submitted_rounds)
+    matched_ids = [submitted_round.id for submitted_round in resolved_rounds if submitted_round]
 
     if matched_ids:
         SubmittedRound.objects.filter(id__in=set(matched_ids)).update(
@@ -695,6 +693,120 @@ def _mark_selected_submitted_rounds_consumed(rounds):
             is_currently_available=False,
         )
         _bump_site_data_cache_version()
+    return matched_ids
+
+
+def _resolve_submitted_rounds_for_payload(rounds, *, submitted_rounds=None):
+    submitted_rounds = list(submitted_rounds if submitted_rounds is not None else SubmittedRound.objects.all())
+    submitted_round_lookup = _build_submitted_round_lookup(submitted_rounds)
+    submitted_rounds_by_id = {submitted_round.id: submitted_round for submitted_round in submitted_rounds}
+    resolved_rounds = []
+
+    for round_data in rounds or []:
+        try:
+            submitted_round_id = int(round_data.get("submitted_round_id") or 0)
+        except (TypeError, ValueError):
+            submitted_round_id = 0
+        submitted_round = submitted_rounds_by_id.get(submitted_round_id)
+        if not submitted_round:
+            submitted_round = _find_matching_submitted_round(
+                round_data.get("title"),
+                round_data.get("creator"),
+                round_data.get("link"),
+                round_data.get("old_link"),
+                submitted_round_lookup,
+                shared_date=round_data.get("shared_date"),
+                presentation_id=round_data.get("presentation_id"),
+                gmail_message_id=round_data.get("gmail_message_id"),
+            )
+        resolved_rounds.append(submitted_round)
+
+    return resolved_rounds
+
+
+def _resolve_submitted_rounds_for_trivia_rounds(trivia_rounds, *, submitted_rounds=None):
+    submitted_rounds = list(submitted_rounds if submitted_rounds is not None else SubmittedRound.objects.all())
+    submitted_rounds_by_link = {}
+    submitted_rounds_by_presentation_id = {}
+    for submitted_round in submitted_rounds:
+        if submitted_round.presentation_id:
+            submitted_rounds_by_presentation_id[submitted_round.presentation_id] = submitted_round
+        for link in (submitted_round.link, submitted_round.source_link):
+            normalized_link = _normalize_round_link(link)
+            if normalized_link:
+                submitted_rounds_by_link[normalized_link] = submitted_round
+
+    resolved_rounds = []
+    for trivia_round in trivia_rounds:
+        candidate_links = [trivia_round.source_link, trivia_round.link]
+        submitted_round = next(
+            (
+                submitted_rounds_by_link.get(_normalize_round_link(link))
+                for link in candidate_links
+                if _normalize_round_link(link) in submitted_rounds_by_link
+            ),
+            None,
+        )
+        if not submitted_round:
+            submitted_round = next(
+                (
+                    submitted_rounds_by_presentation_id.get(_extract_google_presentation_id(link))
+                    for link in candidate_links
+                    if _extract_google_presentation_id(link) in submitted_rounds_by_presentation_id
+                ),
+                None,
+            )
+        resolved_rounds.append(submitted_round)
+    return resolved_rounds
+
+
+def _source_round_ids_for_payload(rounds):
+    return [
+        submitted_round.id if submitted_round else None
+        for submitted_round in _resolve_submitted_rounds_for_payload(rounds)
+    ]
+
+
+def _source_round_ids_used_outside_presentation(source_round_ids, *, presentation, presentation_date):
+    candidate_ids = {int(round_id) for round_id in source_round_ids or [] if round_id}
+    if not candidate_ids:
+        return set()
+
+    used_ids = set()
+    for other_presentation in MergedPresentation.objects.exclude(id=presentation.id).only('source_round_ids'):
+        used_ids.update(candidate_ids.intersection({
+            int(round_id)
+            for round_id in (other_presentation.source_round_ids or [])
+            if round_id
+        }))
+
+    if used_ids == candidate_ids:
+        return used_ids
+
+    candidate_submitted_rounds = list(SubmittedRound.objects.filter(id__in=candidate_ids))
+    for trivia_round in GPTriviaRound.objects.exclude(date=presentation_date):
+        round_links = {
+            _normalize_round_link(trivia_round.link),
+            _normalize_round_link(trivia_round.source_link),
+        }
+        round_links.discard('')
+        round_presentation_ids = {
+            _extract_google_presentation_id(link)
+            for link in round_links
+            if _extract_google_presentation_id(link)
+        }
+        for submitted_round in candidate_submitted_rounds:
+            submitted_links = {
+                _normalize_round_link(submitted_round.link),
+                _normalize_round_link(submitted_round.source_link),
+            }
+            submitted_links.discard('')
+            if round_links.intersection(submitted_links) or (
+                submitted_round.presentation_id
+                and submitted_round.presentation_id in round_presentation_ids
+            ):
+                used_ids.add(submitted_round.id)
+    return used_ids
 
 
 def _build_submitted_round_link(presentation_id):
@@ -5886,6 +5998,8 @@ def _serialize_submitted_round_for_available_feed(submitted_round):
         "link": round_link,
         "old_link": submitted_round.source_link or round_link,
         "presentation_id": submitted_round.presentation_id,
+        "submitted_round_id": submitted_round.id,
+        "round_id": None,
         "gmail_message_id": submitted_round.gmail_message_id,
         "shared_date": (
             submitted_round.shared_date.isoformat()
@@ -5897,24 +6011,55 @@ def _serialize_submitted_round_for_available_feed(submitted_round):
             )
         ),
         "coop": bool(submitted_round.cooperative),
+        "played_date": "",
+        "round_number": None,
         "is_new": True,
     }
 
 
-def _serialize_historical_round_for_available_feed(trivia_round):
+def _serialize_historical_round_for_available_feed(trivia_round, submitted_round=None):
     return {
         "title": trivia_round.title,
-        "source_title": trivia_round.title,
+        "source_title": (
+            submitted_round.source_title or submitted_round.title
+            if submitted_round
+            else trivia_round.title
+        ),
         "creator": trivia_round.creator,
-        "source_creator": trivia_round.creator,
+        "source_creator": (
+            submitted_round.source_creator or submitted_round.creator
+            if submitted_round
+            else trivia_round.creator
+        ),
         "link": trivia_round.link,
         "old_link": trivia_round.source_link or trivia_round.link,
-        "presentation_id": _extract_google_presentation_id(trivia_round.link),
-        "gmail_message_id": "",
+        "presentation_id": (
+            submitted_round.presentation_id
+            if submitted_round
+            else _extract_google_presentation_id(trivia_round.link)
+        ),
+        "submitted_round_id": submitted_round.id if submitted_round else None,
+        "round_id": trivia_round.id,
+        "gmail_message_id": submitted_round.gmail_message_id if submitted_round else "",
         "shared_date": trivia_round.date.isoformat() if trivia_round.date else "",
         "coop": bool(trivia_round.cooperative),
+        "played_date": trivia_round.date.isoformat() if trivia_round.date else "",
+        "round_number": trivia_round.round_number,
         "is_new": False,
     }
+
+
+def _build_historical_available_round_payloads():
+    submitted_rounds = list(SubmittedRound.objects.all())
+    trivia_rounds = list(GPTriviaRound.objects.order_by('-date', 'round_number', 'title'))
+    resolved_submitted_rounds = _resolve_submitted_rounds_for_trivia_rounds(
+        trivia_rounds,
+        submitted_rounds=submitted_rounds,
+    )
+    return [
+        _serialize_historical_round_for_available_feed(trivia_round, submitted_round)
+        for trivia_round, submitted_round in zip(trivia_rounds, resolved_submitted_rounds)
+    ]
 
 
 def _sort_new_available_round_payloads(rounds):
@@ -5940,10 +6085,7 @@ def _build_cached_available_rounds_payload():
             'title',
         )
     ]
-    historical_rounds = [
-        _serialize_historical_round_for_available_feed(trivia_round)
-        for trivia_round in GPTriviaRound.objects.order_by('-date', 'round_number', 'title')
-    ]
+    historical_rounds = _build_historical_available_round_payloads()
     return _sort_new_available_round_payloads(new_rounds) + historical_rounds
 
 
@@ -6092,9 +6234,13 @@ def _build_available_email_round_payloads(email_rounds, *, persist_available_rou
                     or _extract_google_presentation_id(link)
                     or _extract_google_presentation_id(old_link)
                 ),
+                "submitted_round_id": submitted_round.id if submitted_round else None,
+                "round_id": None,
                 "gmail_message_id": gmail_message_id,
                 "shared_date": display_shared_date,
                 "coop": coop_to_store,
+                "played_date": "",
+                "round_number": None,
                 "is_new": True,
             }
         )
@@ -6126,10 +6272,7 @@ def _collect_rounds_sync(*, persist_available_rounds=False):
     else:
         new_rounds = _build_available_email_round_payloads(email_rounds)
 
-    historical_rounds = [
-        _serialize_historical_round_for_available_feed(trivia_round)
-        for trivia_round in GPTriviaRound.objects.order_by('-date', 'round_number', 'title')
-    ]
+    historical_rounds = _build_historical_available_round_payloads()
     return new_rounds + historical_rounds
 
 
@@ -6284,6 +6427,7 @@ def save_available_round_metadata(request):
     return JsonResponse({
         "ok": True,
         "presentation_id": saved_round.presentation_id,
+        "submitted_round_id": saved_round.id,
         "title": saved_round.title,
         "source_title": saved_round.source_title or saved_round.title,
         "creator": saved_round.creator,
@@ -6639,6 +6783,16 @@ def _build_home_context(selected_presentation, presentation_calendar, build_stat
             f"https://docs.google.com/presentation/d/{selected_presentation.presentation_id}/embed"
         )
 
+    current_trivia_date = _current_trivia_date()
+    current_date_presentation = next(
+        (
+            presentation
+            for presentation in reversed(_home_visible_presentations())
+            if _parse_presentation_name_date(presentation.name) == current_trivia_date
+        ),
+        None,
+    )
+
     return {
         "presentation_url": presentation_url,
         "pres_name": selected_presentation.name if selected_presentation else "None",
@@ -6648,11 +6802,77 @@ def _build_home_context(selected_presentation, presentation_calendar, build_stat
         "selected_presentation_iso_date": (
             selected_presentation_date.isoformat() if selected_presentation_date else ""
         ),
+        "selected_presentation_round_ids": _get_presentation_round_ids(selected_presentation),
+        "has_selected_presentation": selected_presentation is not None,
+        "has_current_date_presentation": current_date_presentation is not None,
         "presentation_calendar": presentation_calendar,
         "home_build_state": _serialize_home_build_state(build_state),
         "playerColorMapping": build_player_color_mapping(profileable_player_names),
         "profileable_player_names": profileable_player_names,
     }
+
+
+def _get_presentation_round_ids(selected_presentation):
+    if selected_presentation is None:
+        return []
+    presentation_date = _parse_presentation_name_date(selected_presentation.name)
+    if presentation_date is None:
+        return []
+
+    candidates = list(
+        GPTriviaRound.objects.filter(date=presentation_date).order_by('round_number', 'id')
+    )
+    selected_ids = []
+    used_ids = set()
+    round_names = list(selected_presentation.round_names or [])
+    creator_names = list(selected_presentation.creator_list or [])
+    for index, round_name in enumerate(round_names):
+        expected_creator = creator_names[index] if index < len(creator_names) else ''
+        matches = [
+            candidate
+            for candidate in candidates
+            if candidate.id not in used_ids
+            and candidate.round_number == index + 1
+            and _normalize_round_title(candidate.title) == _normalize_round_title(round_name)
+            and (
+                not expected_creator
+                or _normalize_round_creator(candidate.creator) == _normalize_round_creator(expected_creator)
+            )
+        ]
+        if not matches:
+            matches = [
+                candidate
+                for candidate in candidates
+                if candidate.id not in used_ids
+                and _normalize_round_title(candidate.title) == _normalize_round_title(round_name)
+                and (
+                    not expected_creator
+                    or _normalize_round_creator(candidate.creator) == _normalize_round_creator(expected_creator)
+                )
+            ]
+        if not matches:
+            matches = [
+                candidate
+                for candidate in candidates
+                if candidate.id not in used_ids
+                and candidate.round_number == index + 1
+                and _normalize_round_title(candidate.title) == _normalize_round_title(round_name)
+            ]
+        if not matches:
+            matches = [
+                candidate
+                for candidate in candidates
+                if candidate.id not in used_ids
+                and _normalize_round_title(candidate.title) == _normalize_round_title(round_name)
+            ]
+        if not matches:
+            continue
+        selected_round = max(matches, key=lambda candidate: candidate.id)
+        selected_ids.append(selected_round.id)
+        used_ids.add(selected_round.id)
+    if len(selected_ids) != len(round_names) and len(candidates) == len(round_names):
+        return [candidate.id for candidate in candidates]
+    return selected_ids
 
 
 def _serialize_home_presentation(selected_presentation, presentation_id=None, include_calendar_entry=None):
@@ -6662,6 +6882,7 @@ def _serialize_home_presentation(selected_presentation, presentation_id=None, in
             "presentation_name": "",
             "presentation_url": "",
             "selected_presentation_iso_date": "",
+            "selected_presentation_round_ids": [],
             "calendar_entry": None,
         }
 
@@ -6682,6 +6903,7 @@ def _serialize_home_presentation(selected_presentation, presentation_id=None, in
         "selected_presentation_iso_date": (
             selected_presentation_date.isoformat() if selected_presentation_date else ""
         ),
+        "selected_presentation_round_ids": _get_presentation_round_ids(selected_presentation),
         "calendar_entry": (
             {
                 "presentation_id": resolved_presentation_id,
@@ -6773,6 +6995,8 @@ def _get_ordered_rounds_from_home_request(request):
             "link": request.POST.get(f"round_link_{idx}"),
             "old_link": request.POST.get(f"round_old_link_{idx}"),
             "presentation_id": request.POST.get(f"round_presentation_id_{idx}"),
+            "submitted_round_id": request.POST.get(f"round_submitted_round_id_{idx}"),
+            "round_id": request.POST.get(f"round_id_{idx}"),
             "gmail_message_id": request.POST.get(f"round_gmail_message_id_{idx}"),
             "shared_date": request.POST.get(f"round_shared_date_{idx}"),
             "coop": request.POST.get(f"round_coop_{idx}"),
@@ -6782,7 +7006,10 @@ def _get_ordered_rounds_from_home_request(request):
 
 
 def _serialize_home_build_queued_response(job, build_state):
-    action_label = 'update' if job.action == HomePresentationBuildJob.ACTION_UPDATE else 'generation'
+    action_label = {
+        HomePresentationBuildJob.ACTION_UPDATE: 'update',
+        HomePresentationBuildJob.ACTION_REPLACE: 'replacement',
+    }.get(job.action, 'generation')
     return {
         "build_queued": True,
         "job_id": job.id,
@@ -7010,7 +7237,9 @@ def _run_home_presentation_build_job(job_id, *, raise_on_error=False):
     heartbeat_thread.start()
 
     try:
-        if job.action == HomePresentationBuildJob.ACTION_UPDATE:
+        if job.action == HomePresentationBuildJob.ACTION_REPLACE:
+            presentation, presentation_id = _execute_home_replace_build_job(job)
+        elif job.action == HomePresentationBuildJob.ACTION_UPDATE:
             presentation, presentation_id = _execute_home_update_build_job(job)
         else:
             presentation, presentation_id = _execute_home_generate_build_job(job)
@@ -7021,16 +7250,23 @@ def _run_home_presentation_build_job(job_id, *, raise_on_error=False):
         job.error_message = ''
         job.save(update_fields=['status', 'result_presentation_id', 'completed_at', 'error_message', 'updated_at'])
 
-        _broadcast_home_presentation_refresh(presentation, presentation_id, action=job.action)
-        _broadcast_home_build_result(
-            _home_build_result_payload(
-                job,
-                ok=True,
-                detail=f"Slide {job.action} completed for {job.presentation_name}.",
-                presentation=presentation,
-                presentation_id=presentation_id,
+        try:
+            _broadcast_home_presentation_refresh(presentation, presentation_id, action=job.action)
+            _broadcast_home_build_result(
+                _home_build_result_payload(
+                    job,
+                    ok=True,
+                    detail=f"Slide {job.action} completed for {job.presentation_name}.",
+                    presentation=presentation,
+                    presentation_id=presentation_id,
+                )
             )
-        )
+        except Exception:
+            logger.exception(
+                "Home presentation %s job %s completed, but its browser refresh could not be broadcast.",
+                job.action,
+                job.id,
+            )
     except Exception as exc:
         job.status = HomePresentationBuildJob.STATUS_FAILED
         job.completed_at = timezone.now()
@@ -7058,6 +7294,7 @@ def _execute_home_generate_build_job(job):
     ordered_old_links = [round_data['old_link'] for round_data in ordered_rounds]
     ordered_coop = [round_data['coop'] for round_data in ordered_rounds]
     ordered_gmail_message_ids = [round_data.get('gmail_message_id') or '' for round_data in ordered_rounds]
+    source_round_ids = _source_round_ids_for_payload(ordered_rounds)
 
     logger.info(
         "Home background generate started for %s with %s rounds",
@@ -7118,6 +7355,7 @@ def _execute_home_generate_build_job(job):
         presentation_id=new_presentation_id,
         creator_list=creators,
         round_names=round_titles,
+        source_round_ids=source_round_ids,
         player_list={},
         host="Unknown",
         scorekeeper="Unknown",
@@ -7172,6 +7410,7 @@ def _execute_home_update_build_job(job):
     ordered_old_links = [round_data['old_link'] for round_data in ordered_rounds]
     ordered_coop = [round_data['coop'] for round_data in ordered_rounds]
     ordered_gmail_message_ids = [round_data.get('gmail_message_id') or '' for round_data in ordered_rounds]
+    source_round_ids = _source_round_ids_for_payload(ordered_rounds)
 
     selected_presentation = MergedPresentation.objects.get(
         presentation_id=job.selected_presentation_id
@@ -7225,6 +7464,7 @@ def _execute_home_update_build_job(job):
     selected_presentation.presentation_id = updated_presentation_id
     selected_presentation.round_names.extend(round_titles)
     selected_presentation.creator_list.extend(new_creators)
+    selected_presentation.source_round_ids = list(selected_presentation.source_round_ids or []) + source_round_ids
     selected_presentation.status = MergedPresentation.STATUS_READY
     selected_presentation.error_message = ""
     selected_presentation.save()
@@ -7267,6 +7507,253 @@ def _execute_home_update_build_job(job):
     return selected_presentation, updated_presentation_id
 
 
+def _execute_home_replace_build_job(job):
+    ordered_rounds = list(job.round_payload or [])
+    ordered_titles = [round_data['title'] for round_data in ordered_rounds]
+    ordered_creators = [round_data['creator'] for round_data in ordered_rounds]
+    ordered_links = [round_data['link'] for round_data in ordered_rounds]
+    ordered_old_links = [round_data['old_link'] for round_data in ordered_rounds]
+    ordered_coop = [round_data['coop'] for round_data in ordered_rounds]
+    ordered_gmail_message_ids = [round_data.get('gmail_message_id') or '' for round_data in ordered_rounds]
+    source_round_ids = _source_round_ids_for_payload(ordered_rounds)
+
+    selected_presentation = MergedPresentation.objects.get(
+        presentation_id=job.selected_presentation_id
+    )
+    presentation_date = _parse_presentation_name_date(selected_presentation.name)
+    if presentation_date is None:
+        raise ValueError(f"Could not determine a date for presentation {selected_presentation.name}.")
+
+    old_presentation_id = selected_presentation.presentation_id
+    old_rounds = list(GPTriviaRound.objects.filter(date=presentation_date).order_by('round_number', 'id'))
+    old_source_round_ids = {
+        int(round_id)
+        for round_id in (selected_presentation.source_round_ids or [])
+        if round_id
+    }
+    if not old_source_round_ids:
+        old_source_round_ids = {
+            submitted_round.id
+            for submitted_round in _resolve_submitted_rounds_for_trivia_rounds(old_rounds)
+            if submitted_round
+        }
+    selected_source_round_ids = {int(round_id) for round_id in source_round_ids if round_id}
+    removed_source_round_ids = old_source_round_ids - selected_source_round_ids
+    source_ids_used_elsewhere = _source_round_ids_used_outside_presentation(
+        removed_source_round_ids,
+        presentation=selected_presentation,
+        presentation_date=presentation_date,
+    )
+    restorable_source_round_ids = removed_source_round_ids - source_ids_used_elsewhere
+    removed_gmail_message_ids = list(
+        SubmittedRound.objects.filter(id__in=restorable_source_round_ids)
+        .exclude(gmail_message_id='')
+        .values_list('gmail_message_id', flat=True)
+    )
+
+    logger.info(
+        "Home background replacement started for %s using presentation %s with %s rounds",
+        selected_presentation.name,
+        old_presentation_id,
+        len(ordered_titles),
+    )
+    try:
+        create_result = create_presentation(
+            ordered_titles,
+            ordered_creators,
+            ordered_links,
+            presentation_name=selected_presentation.name,
+            old_links=ordered_old_links,
+            coops=ordered_coop,
+            gmail_message_ids=ordered_gmail_message_ids,
+            consume_source_mail=False,
+        )
+    except Exception as error:
+        PresentationBuildError = _get_presentation_build_error_class()
+        partial_presentation_id = error.presentation_id if isinstance(error, PresentationBuildError) else ''
+        if partial_presentation_id:
+            try:
+                trash_google_presentation(partial_presentation_id)
+            except Exception:
+                logger.exception("Could not trash failed replacement presentation %s", partial_presentation_id)
+        raise
+    if isinstance(create_result, tuple):
+        new_presentation_id, returned_creators, returned_titles, new_links = create_result
+    else:
+        new_presentation_id = create_result
+        returned_creators = ordered_creators
+        returned_titles = ordered_titles
+        new_links = ordered_links
+
+    if len(new_links) != len(ordered_rounds):
+        try:
+            trash_google_presentation(new_presentation_id)
+        except Exception:
+            logger.exception("Could not trash incomplete replacement presentation %s", new_presentation_id)
+        raise ValueError("Replacement presentation did not return one copied link for every selected round.")
+
+    effective_creators = (
+        list(returned_creators)
+        if len(returned_creators) == len(ordered_rounds)
+        else ordered_creators
+    )
+    effective_titles = (
+        list(returned_titles)
+        if len(returned_titles) == len(ordered_rounds)
+        else ordered_titles
+    )
+
+    duplicate_presentations = [
+        presentation
+        for presentation in MergedPresentation.objects.exclude(id=selected_presentation.id)
+        if _parse_presentation_name_date(presentation.name) == presentation_date
+    ]
+    duplicate_presentation_ids = [
+        presentation.presentation_id
+        for presentation in duplicate_presentations
+        if presentation.presentation_id
+    ]
+    new_round_ids_for_analysis = []
+
+    try:
+        with transaction.atomic():
+            selected_presentation = MergedPresentation.objects.select_for_update().get(
+                id=selected_presentation.id,
+                presentation_id=old_presentation_id,
+            )
+            current_rounds = list(
+                GPTriviaRound.objects.select_for_update()
+                .filter(date=presentation_date)
+                .order_by('round_number', 'id')
+            )
+            current_rounds_by_id = {round_obj.id: round_obj for round_obj in current_rounds}
+            retained_round_ids = set()
+            payload_round_ids = []
+            for round_data in ordered_rounds:
+                try:
+                    round_id = int(round_data.get('round_id') or 0)
+                except (TypeError, ValueError):
+                    round_id = 0
+                if round_id not in current_rounds_by_id:
+                    round_id = 0
+                payload_round_ids.append(round_id)
+                if round_id:
+                    retained_round_ids.add(round_id)
+
+            GPTriviaRound.objects.filter(date=presentation_date).exclude(
+                id__in=retained_round_ids
+            ).delete()
+
+            for round_index, round_data in enumerate(ordered_rounds):
+                round_id = payload_round_ids[round_index]
+                is_new_round = not bool(round_id)
+                round_obj = current_rounds_by_id.get(round_id) if round_id else GPTriviaRound()
+                round_obj.creator = effective_creators[round_index]
+                round_obj.title = effective_titles[round_index]
+                round_obj.date = presentation_date
+                round_obj.round_number = round_index + 1
+                if is_new_round:
+                    round_obj.major_category = ""
+                    round_obj.minor_category1 = ""
+                    round_obj.minor_category2 = ""
+                    round_obj.max_score = 10
+                    set_round_score_map(round_obj, {})
+                    round_obj.replay = 0
+                round_obj.cooperative = 1 if ordered_coop[round_index] == 'on' else 0
+                round_obj.link = new_links[round_index]
+                round_obj.source_link = ordered_old_links[round_index] or ordered_links[round_index]
+                round_obj.save()
+                if is_new_round and _should_auto_queue_round_analysis_for_round(
+                    round_obj,
+                    round_data,
+                    presentation_name=selected_presentation.name,
+                    action_name='replace',
+                ):
+                    new_round_ids_for_analysis.append(round_obj.id)
+
+            selected_presentation.presentation_id = new_presentation_id
+            selected_presentation.round_names = effective_titles
+            selected_presentation.creator_list = effective_creators
+            selected_presentation.source_round_ids = source_round_ids
+            selected_presentation.status = MergedPresentation.STATUS_READY
+            selected_presentation.error_message = ""
+            selected_presentation.save()
+
+            if duplicate_presentations:
+                MergedPresentation.objects.filter(
+                    id__in=[presentation.id for presentation in duplicate_presentations]
+                ).delete()
+            if selected_source_round_ids:
+                SubmittedRound.objects.filter(id__in=selected_source_round_ids).update(
+                    is_consumed=True,
+                    is_currently_available=False,
+                )
+            if restorable_source_round_ids:
+                SubmittedRound.objects.filter(id__in=restorable_source_round_ids).update(
+                    is_consumed=False,
+                    is_currently_available=True,
+                )
+    except Exception:
+        try:
+            trash_google_presentation(new_presentation_id)
+        except Exception:
+            logger.exception("Could not trash replacement presentation %s after database cutover failed", new_presentation_id)
+        raise
+
+    try:
+        set_gmail_messages_read_state(removed_gmail_message_ids, unread=True)
+    except Exception:
+        logger.exception("Replacement succeeded, but removed source Gmail messages could not be marked unread.")
+
+    selected_gmail_message_ids = list(
+        SubmittedRound.objects.filter(id__in=selected_source_round_ids)
+        .exclude(gmail_message_id='')
+        .values_list('gmail_message_id', flat=True)
+    )
+    try:
+        set_gmail_messages_read_state(selected_gmail_message_ids, unread=False)
+    except Exception:
+        logger.exception("Replacement succeeded, but selected source Gmail messages could not be marked read.")
+
+    for obsolete_presentation_id in dict.fromkeys([old_presentation_id, *duplicate_presentation_ids]):
+        if not obsolete_presentation_id or obsolete_presentation_id == new_presentation_id:
+            continue
+        try:
+            trash_google_presentation(obsolete_presentation_id)
+        except Exception:
+            logger.exception("Replacement succeeded, but old presentation %s could not be trashed.", obsolete_presentation_id)
+
+    _bump_site_data_cache_version()
+    try:
+        _schedule_scoresheet_broadcast({
+            'action': 'update',
+            'event': 'presentation_replaced',
+            'selected_date': presentation_date.isoformat(),
+            'presentation_id': new_presentation_id,
+        })
+    except Exception:
+        logger.exception("Replacement succeeded, but the scoresheet refresh could not be broadcast.")
+    if new_round_ids_for_analysis:
+        try:
+            from .round_analysis import schedule_auto_round_analysis_batch
+
+            schedule_auto_round_analysis_batch(
+                new_round_ids_for_analysis,
+                initiated_by=job.requested_by,
+                batch_label=f"replacement rounds from {selected_presentation.name}",
+            )
+        except Exception:
+            logger.exception("Replacement succeeded, but analysis for its new rounds could not be queued.")
+
+    logger.info(
+        "Home background replacement completed for %s (%s replaces %s)",
+        selected_presentation.name,
+        new_presentation_id,
+        old_presentation_id,
+    )
+    return selected_presentation, new_presentation_id
+
+
 @login_required
 @ensure_csrf_cookie
 def home(request):
@@ -7295,6 +7782,22 @@ def home(request):
             if not ordered_rounds:
                 if ajax_request:
                     return JsonResponse({"detail": "No rounds selected."}, status=400)
+                return render(request, "GPTrivia/home.html", home_context)
+
+            existing_presentation = next(
+                (
+                    presentation
+                    for presentation in _ready_presentations_queryset(include_blank_ids=True)
+                    if _parse_presentation_name_date(presentation.name)
+                    == _parse_presentation_name_date(presentation_name)
+                ),
+                None,
+            )
+            if existing_presentation is not None:
+                detail = "A presentation already exists for this date. Replace it instead of creating a duplicate."
+                if ajax_request:
+                    return JsonResponse({"detail": detail}, status=409)
+                messages.error(request, detail)
                 return render(request, "GPTrivia/home.html", home_context)
 
             lock_acquired, active_build_state = _acquire_home_build_lock(
@@ -7326,6 +7829,66 @@ def home(request):
                 _release_home_build_lock()
                 if ajax_request:
                     return JsonResponse({"detail": f"Could not queue slide generation: {error}"}, status=500)
+                raise
+
+            if ajax_request:
+                return JsonResponse(
+                    _serialize_home_build_queued_response(job, _get_home_build_state()),
+                    status=202,
+                )
+            return redirect("home")
+
+        elif action == 'replace':
+            if not ordered_rounds:
+                if ajax_request:
+                    return JsonResponse({"detail": "No rounds selected."}, status=400)
+                return render(request, "GPTrivia/home.html", home_context)
+
+            if selected_presentation is None:
+                if ajax_request:
+                    return JsonResponse({"detail": "No presentation selected."}, status=400)
+                return render(request, "GPTrivia/home.html", home_context)
+
+            if str(request.POST.get('replace_confirmed') or '').strip().lower() not in {'1', 'true', 'yes', 'on'}:
+                if ajax_request:
+                    return JsonResponse(
+                        {"detail": "Presentation replacement was not confirmed."},
+                        status=400,
+                    )
+                return render(request, "GPTrivia/home.html", home_context)
+
+            lock_acquired, active_build_state = _acquire_home_build_lock(
+                "replace",
+                presentation_name=selected_presentation.name,
+                presentation_id=selected_presentation.presentation_id,
+            )
+            if not lock_acquired:
+                detail = "Another presentation build is already in progress."
+                if ajax_request:
+                    payload = {"detail": detail, "build_in_progress": True}
+                    payload.update(_serialize_home_build_state(active_build_state))
+                    return JsonResponse(payload, status=409)
+                return render(request, "GPTrivia/home.html", home_context)
+
+            logger.info(
+                "Home replacement requested for %s using presentation %s with %s rounds; queuing background job",
+                selected_presentation.name,
+                selected_presentation.presentation_id,
+                len(ordered_rounds),
+            )
+            try:
+                job = _queue_home_presentation_build_job(
+                    action=HomePresentationBuildJob.ACTION_REPLACE,
+                    presentation_name=selected_presentation.name,
+                    selected_presentation_id=selected_presentation.presentation_id,
+                    ordered_rounds=ordered_rounds,
+                    requested_by=request.user.username if request.user.is_authenticated else '',
+                )
+            except Exception as error:
+                logger.exception("Could not queue home replacement job for %s", selected_presentation.name)
+                _release_home_build_lock()
+                if ajax_request:
+                    return JsonResponse({"detail": f"Could not queue slide replacement: {error}"}, status=500)
                 raise
 
             if ajax_request:

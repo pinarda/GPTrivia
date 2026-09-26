@@ -175,6 +175,7 @@ class MergedPresentation(models.Model):
     presentation_id = models.CharField(max_length=255)
     round_names = jsonfield.JSONField(default=list)
     creator_list = jsonfield.JSONField(default=list)
+    source_round_ids = jsonfield.JSONField(default=list, blank=True)
     joker_round_indices = jsonfield.JSONField(null=True, blank=True)
     player_list = jsonfield.JSONField(null=True, blank=True)
     host = models.CharField(max_length=100, default='Alex')
@@ -239,9 +240,11 @@ class HomePresentationBuildJob(models.Model):
 
     ACTION_GENERATE = 'generate'
     ACTION_UPDATE = 'update'
+    ACTION_REPLACE = 'replace'
     ACTION_CHOICES = [
         (ACTION_GENERATE, 'Generate'),
         (ACTION_UPDATE, 'Update'),
+        (ACTION_REPLACE, 'Replace'),
     ]
 
     action = models.CharField(max_length=16, choices=ACTION_CHOICES)
