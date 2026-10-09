@@ -57,7 +57,8 @@ class HomeViewPresentationSelectionTests(TestCase):
         )
 
     def test_home_defaults_to_latest_presentation_and_calendar_context(self):
-        response = self.client.get(reverse("home"))
+        with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 3, 13)):
+            response = self.client.get(reverse("home"))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -80,8 +81,9 @@ class HomeViewPresentationSelectionTests(TestCase):
             },
         )
         self.assertContains(response, 'id="calendar-button"')
-        self.assertContains(response, 'id="replace-button"')
-        self.assertContains(response, 'id="selected-presentation-round-ids"')
+        self.assertContains(response, 'id="gen-button"')
+        self.assertNotContains(response, 'id="replace-button"')
+        self.assertNotContains(response, 'id="cancel-replace-button"')
 
     def test_home_replaces_create_button_when_current_date_already_has_presentation(self):
         with patch("GPTrivia.views._current_trivia_date", return_value=datetime.date(2026, 3, 12)):
@@ -90,6 +92,11 @@ class HomeViewPresentationSelectionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'id="gen-button"')
         self.assertContains(response, 'id="replace-button"')
+        self.assertContains(
+            response,
+            'data-presentation-id="presentation-latest"',
+        )
+        self.assertNotContains(response, 'id="cancel-replace-button"')
 
     def test_home_uses_requested_presentation_id_for_embed(self):
         response = self.client.get(

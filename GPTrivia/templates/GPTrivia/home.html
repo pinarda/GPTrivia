@@ -974,28 +974,25 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             <div class="round-selection-shell">
                 <div class="presentation-actions">
                     <div class="presentation-action-buttons">
-                        {% if not has_current_date_presentation %}
-                            <button
-                                id="gen-button"
-                                type="submit"
-                                name="action"
-                                value="generate"
-                                {% if home_build_state.is_active %}disabled{% endif %}
-                            >Create Presentation</button>
-                        {% endif %}
-                        {% if has_selected_presentation %}
+                        {% if has_current_date_presentation %}
                             <button
                                 id="replace-button"
                                 type="submit"
                                 name="action"
                                 value="replace"
-                                {% if home_build_state.is_active %}disabled{% endif %}
+                                data-presentation-id="{{ current_date_presentation_id }}"
+                                class="disabled-button"
+                                disabled
                             >Replace Presentation</button>
+                        {% else %}
                             <button
-                                id="cancel-replace-button"
-                                type="button"
-                                hidden
-                            >Cancel Replacement</button>
+                                id="gen-button"
+                                type="submit"
+                                name="action"
+                                value="generate"
+                                class="disabled-button"
+                                disabled
+                            >Create Presentation</button>
                         {% endif %}
                         <button
                             id="up-button"
@@ -1137,7 +1134,6 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
 
 {{ presentation_calendar|json_script:"presentation-calendar-data" }}
 {{ home_build_state|json_script:"home-build-state-data" }}
-{{ selected_presentation_round_ids|json_script:"selected-presentation-round-ids" }}
 
 
     <script>
@@ -1158,11 +1154,6 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
         let homeBuildSocket = null;
         let homeBuildReconnectTimer = null;
         let homeBuildLockState = {is_active: false, action: '', presentation_name: '', presentation_id: ''};
-        let homeReplacementMode = false;
-        const selectedPresentationRoundIdsElement = document.getElementById('selected-presentation-round-ids');
-        let homeSelectedPresentationRoundIds = JSON.parse(
-            selectedPresentationRoundIdsElement ? selectedPresentationRoundIdsElement.textContent : '[]'
-        );
         let homeRoundsLoadInFlight = false;
         const homeRoundSaveTimers = new Map();
         const homeRoundSaveControllers = new Map();
@@ -1668,73 +1659,6 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             renderRoundsTable();
         }
 
-        function canLoadSelectedPresentationRounds() {
-            if (!homeSelectedPresentationRoundIds.length || !homeRoundState.rounds.length) {
-                return false;
-            }
-            const availableRoundIds = new Set(
-                homeRoundState.rounds
-                    .map((round) => Number(round.round_id || 0))
-                    .filter(Boolean)
-            );
-            return homeSelectedPresentationRoundIds.every(
-                (roundId) => availableRoundIds.has(Number(roundId))
-            );
-        }
-
-        function setReplacementMode(active) {
-            homeReplacementMode = Boolean(active);
-            const replaceButton = document.getElementById('replace-button');
-            const cancelButton = document.getElementById('cancel-replace-button');
-            if (replaceButton) {
-                replaceButton.textContent = homeReplacementMode
-                    ? 'Build Replacement'
-                    : 'Replace Presentation';
-            }
-            if (cancelButton) {
-                cancelButton.hidden = !homeReplacementMode;
-            }
-            syncHomeActionButtons();
-        }
-
-        function enterReplacementMode() {
-            if (!canLoadSelectedPresentationRounds()) {
-                setStatusMessage(
-                    'The current presentation rounds could not be loaded. Refresh the page and try again.',
-                    '#ffb3b3',
-                    'error',
-                );
-                return false;
-            }
-
-            const selectedOrderByRoundId = new Map(
-                homeSelectedPresentationRoundIds.map((roundId, index) => [Number(roundId), index + 1])
-            );
-            homeRoundState.rounds.forEach((round) => {
-                round.order = selectedOrderByRoundId.get(Number(round.round_id || 0)) || null;
-            });
-            syncSelectedOrdersFromRounds();
-            clearCreatorSpotlightSelection();
-            const roundSearchInput = document.getElementById('round-search-input');
-            if (roundSearchInput) {
-                roundSearchInput.value = '';
-            }
-            filterRounds('');
-            setReplacementMode(true);
-            setStatusMessage(
-                'Current rounds loaded. Reorder, remove, or add rounds, then choose Build Replacement.',
-                'var(--home-table-text)',
-                'status',
-            );
-            return true;
-        }
-
-        function cancelReplacementMode() {
-            setReplacementMode(false);
-            clearSelectedRoundOrders();
-            setStatusMessage('', 'white', 'status');
-        }
-
         function getAvailableRoundSaveKey(round) {
             if (!round) {
                 return '';
@@ -2074,30 +1998,17 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             const shouldDisable = homeFormSubmitInFlight || homeBuildLockState.is_active || !hasRoundsSelected;
             const generateButton = document.getElementById('gen-button');
             const replaceButton = document.getElementById('replace-button');
-            const cancelReplaceButton = document.getElementById('cancel-replace-button');
             const updateButton = document.getElementById('up-button');
             const spinner = document.getElementById('submit-spinner1');
             const messageElement = document.getElementById('msg');
 
-            [generateButton, updateButton].forEach((button) => {
+            [generateButton, replaceButton, updateButton].forEach((button) => {
                 if (!button) {
                     return;
                 }
-                const buttonDisabled = shouldDisable || homeReplacementMode;
-                button.disabled = buttonDisabled;
-                button.classList.toggle('disabled-button', buttonDisabled);
+                button.disabled = shouldDisable;
+                button.classList.toggle('disabled-button', shouldDisable);
             });
-            if (replaceButton) {
-                const replaceDisabled = homeFormSubmitInFlight
-                    || homeBuildLockState.is_active
-                    || (homeReplacementMode ? !hasRoundsSelected : !canLoadSelectedPresentationRounds());
-                replaceButton.disabled = replaceDisabled;
-                replaceButton.classList.toggle('disabled-button', replaceDisabled);
-            }
-            if (cancelReplaceButton) {
-                cancelReplaceButton.disabled = homeFormSubmitInFlight || homeBuildLockState.is_active;
-                cancelReplaceButton.classList.toggle('disabled-button', cancelReplaceButton.disabled);
-            }
 
             if (homeFormSubmitInFlight) {
                 if (spinner) {
@@ -2157,6 +2068,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                 }
                 if (data.type === 'presentation_refresh' && data.presentation) {
                     applyPresentationSelection(data.presentation, {
+                        action: data.action || '',
                         forceReload: true,
                         refreshToken: data.refreshed_at || `${Date.now()}`,
                     });
@@ -2167,6 +2079,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
                     const result = data.result;
                     if (result.presentation) {
                         applyPresentationSelection(result.presentation, {
+                            action: result.action || '',
                             forceReload: true,
                             refreshToken: `${Date.now()}`,
                         });
@@ -2538,6 +2451,24 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             return nextUrl.toString();
         }
 
+        function syncCurrentDatePresentationButton(presentationId, action) {
+            if (!['generate', 'replace'].includes(action)) {
+                return;
+            }
+
+            const actionButton = document.getElementById('gen-button')
+                || document.getElementById('replace-button');
+            if (!actionButton) {
+                return;
+            }
+
+            actionButton.id = 'replace-button';
+            actionButton.value = 'replace';
+            actionButton.textContent = 'Replace Presentation';
+            actionButton.dataset.presentationId = presentationId;
+            syncHomeActionButtons();
+        }
+
         function applyPresentationSelection(presentationData, options = {}) {
             if (!presentationData || !presentationData.presentation_id) {
                 return;
@@ -2559,11 +2490,10 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             if (selectedPresentationInput) {
                 selectedPresentationInput.value = presentationData.presentation_id;
             }
-            if (Array.isArray(presentationData.selected_presentation_round_ids)) {
-                homeSelectedPresentationRoundIds = presentationData.selected_presentation_round_ids;
-            }
-            setReplacementMode(false);
-
+            syncCurrentDatePresentationButton(
+                presentationData.presentation_id,
+                options.action || '',
+            );
             const nextUrl = new URL(window.location.href);
             nextUrl.searchParams.set('presentation_id', presentationData.presentation_id);
             window.history.replaceState({}, '', nextUrl.toString());
@@ -2581,11 +2511,6 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
     // Function to re-enable buttons and hide spinner
     function enableButtons() {
         syncHomeActionButtons();
-    }
-
-    const cancelReplaceButton = document.getElementById('cancel-replace-button');
-    if (cancelReplaceButton) {
-        cancelReplaceButton.addEventListener('click', cancelReplacementMode);
     }
 
     // Submit the form via AJAX
@@ -2611,11 +2536,6 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
         }
 
         const requestedAction = event.submitter.value;
-        if (requestedAction === 'replace' && !homeReplacementMode) {
-            enterReplacementMode();
-            return;
-        }
-
         const selectedRounds = getSelectedRoundsSnapshot();
         if (!selectedRounds.length) {
             setStatusMessage(
@@ -2648,6 +2568,7 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
         formData.set('action', requestedAction);
         if (requestedAction === 'replace') {
             formData.set('replace_confirmed', '1');
+            formData.set('selected_presentation_id', event.submitter.dataset.presentationId || '');
         }
 
         // Get the current page URL as the action
@@ -2677,7 +2598,6 @@ body.site-shell[data-profile-theme="light"] .coop-box:checked::before {
             homeFormSubmitInFlight = false;
             if (payload.build_queued) {
                 setHomeBuildLockState(payload);
-                setReplacementMode(false);
                 clearSelectedRoundOrders();
                 setStatusMessage(
                     payload.detail || getHomeBuildLockMessage(),

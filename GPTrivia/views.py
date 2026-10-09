@@ -6805,6 +6805,9 @@ def _build_home_context(selected_presentation, presentation_calendar, build_stat
         "selected_presentation_round_ids": _get_presentation_round_ids(selected_presentation),
         "has_selected_presentation": selected_presentation is not None,
         "has_current_date_presentation": current_date_presentation is not None,
+        "current_date_presentation_id": (
+            current_date_presentation.presentation_id if current_date_presentation else ""
+        ),
         "presentation_calendar": presentation_calendar,
         "home_build_state": _serialize_home_build_state(build_state),
         "playerColorMapping": build_player_color_mapping(profileable_player_names),
