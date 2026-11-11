@@ -12,6 +12,7 @@ from GPTrivia.mail import (
     _classify_round_source_link,
     _extract_slide_text,
     _extract_speaker_notes_text,
+    _extract_available_round_title,
     _find_slide_index_for_round_title,
     _format_pacific_timestamp,
     _get_shape_text_content,
@@ -32,6 +33,42 @@ from GPTrivia.mail import (
 
 
 class MailHelpersTests(SimpleTestCase):
+    def test_available_round_title_prefers_first_slide_text(self):
+        presentation = {
+            "title": "Deck Filename",
+            "slides": [
+                {
+                    "pageElements": [
+                        {
+                            "shape": {
+                                "text": {
+                                    "textElements": [
+                                        {"textRun": {"content": "  Visible Round Title\n"}},
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+            ],
+        }
+
+        self.assertEqual(
+            _extract_available_round_title(presentation),
+            "Visible Round Title",
+        )
+
+    def test_available_round_title_falls_back_to_presentation_name(self):
+        presentation = {
+            "title": "Funko Time",
+            "slides": [{"pageElements": [{"image": {"contentUrl": "https://example.com/title.png"}}]}],
+        }
+
+        self.assertEqual(
+            _extract_available_round_title(presentation),
+            "Funko Time",
+        )
+
     @patch("GPTrivia.mail._load_google_credentials")
     @patch("GPTrivia.mail.build")
     def test_set_gmail_messages_read_state_adds_unread_label(self, build_mock, credentials_mock):

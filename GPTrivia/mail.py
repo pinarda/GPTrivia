@@ -2115,6 +2115,26 @@ def _pair_full_messages_with_internal_dates(messages_with_date, full_messages_by
     return paired_messages
 
 
+def _extract_available_round_title(shared_presentation):
+    slides = (shared_presentation or {}).get('slides', []) or []
+    title_text = ""
+    if slides:
+        for element in slides[0].get('pageElements', []):
+            shape = element.get('shape', {})
+            text = shape.get('text', {}).get('textElements', [])
+            for text_element in text:
+                if 'textRun' in text_element and 'content' in text_element['textRun']:
+                    title_text += text_element['textRun']['content']
+                    break
+            if title_text:
+                break
+
+    title_text = re.sub(r'\s+', ' ', title_text).strip()
+    if title_text:
+        return title_text
+    return re.sub(r'\s+', ' ', str((shared_presentation or {}).get('title') or '')).strip()
+
+
 def get_round_titles_and_links(processed_senders=None):
     processed_senders = processed_senders or []
     credentials = None
@@ -2244,21 +2264,7 @@ def get_round_titles_and_links(processed_senders=None):
                                     print(f"No slides found in presentation {shared_presentation_id}")
                                     return None
 
-                                first_slide = slides[0]
-
-                                # Extract title_text
-                                title_text = ""
-                                for element in first_slide.get('pageElements', []):
-                                    shape = element.get('shape', {})
-                                    text = shape.get('text', {}).get('textElements', [])
-                                    for text_element in text:
-                                        if 'textRun' in text_element and 'content' in text_element['textRun']:
-                                            title_text += text_element['textRun']['content']
-                                            break
-                                    if title_text:
-                                        break
-
-                                title_text = re.sub(r'\s+', ' ', title_text).strip()
+                                title_text = _extract_available_round_title(shared_presentation)
                                 return {
                                     'sender': sender,
                                     'presentation_url': new_presentation_url,
