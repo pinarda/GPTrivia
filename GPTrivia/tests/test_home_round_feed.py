@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from GPTrivia import views
 from GPTrivia.models import GPTriviaRound, HomePresentationBuildJob, MergedPresentation, SubmittedRound
@@ -226,7 +227,10 @@ class HomeRoundFeedTests(TestCase):
         )
 
     @patch("GPTrivia.views.get_round_titles_and_links")
-    def test_consumed_gmail_message_cannot_reappear_from_cached_metadata(self, mock_get_round_titles_and_links):
+    def test_manually_unread_consumed_message_appears_as_new_and_historical(
+        self,
+        mock_get_round_titles_and_links,
+    ):
         mock_get_round_titles_and_links.return_value = (
             ["https://docs.google.com/presentation/d/hodgepodge-deck/edit"],
             ["🎲 Hodgepodge Round"],
@@ -235,7 +239,7 @@ class HomeRoundFeedTests(TestCase):
             ["2026-06-13"],
             ["gmail-hodgepodge-1"],
         )
-        SubmittedRound.objects.create(
+        submitted_round = SubmittedRound.objects.create(
             presentation_id="hodgepodge-deck",
             gmail_message_id="gmail-hodgepodge-1",
             title="Edited Dice Round",
@@ -248,14 +252,97 @@ class HomeRoundFeedTests(TestCase):
             is_consumed=True,
             is_currently_available=False,
         )
+        GPTriviaRound.objects.create(
+            creator="Alex",
+            title="Edited Dice Round",
+            major_category="",
+            minor_category1="",
+            minor_category2="",
+            date=datetime.date(2026, 6, 13),
+            round_number=4,
+            max_score=10,
+            link="https://docs.google.com/presentation/d/merged-deck/edit#slide=id.round-4",
+            source_link=submitted_round.source_link,
+        )
 
         response = self.client.get(reverse("collect_rounds_api"), {"refresh": "1"})
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["rounds"], [])
-        mock_get_round_titles_and_links.assert_called_once_with(
-            consumed_message_ids=["gmail-hodgepodge-1"],
+        rounds = response.json()["rounds"]
+        self.assertEqual(len(rounds), 2)
+        self.assertTrue(rounds[0]["is_new"])
+        self.assertEqual(rounds[0]["gmail_message_id"], "gmail-hodgepodge-1")
+        self.assertFalse(rounds[1]["is_new"])
+        self.assertEqual(rounds[1]["played_date"], "2026-06-13")
+        mock_get_round_titles_and_links.assert_called_once_with()
+
+    def test_email_scan_started_after_consumption_can_reactivate_same_message(self):
+        submitted_round = SubmittedRound.objects.create(
+            presentation_id="consumed-deck",
+            gmail_message_id="gmail-consumed",
+            title="Consumed Round",
+            source_title="Consumed Round",
+            creator="Zach",
+            source_creator="Zach",
+            link="https://docs.google.com/presentation/d/consumed-deck/edit",
+            is_consumed=True,
+            is_currently_available=False,
         )
+        SubmittedRound.objects.filter(id=submitted_round.id).update(
+            updated_at=timezone.now() - datetime.timedelta(minutes=1),
+        )
+
+        views._save_available_round_metadata(
+            {
+                "title": submitted_round.title,
+                "source_title": submitted_round.source_title,
+                "creator": submitted_round.creator,
+                "source_creator": submitted_round.source_creator,
+                "link": submitted_round.link,
+                "presentation_id": submitted_round.presentation_id,
+                "gmail_message_id": submitted_round.gmail_message_id,
+            },
+            is_consumed=False,
+            is_currently_available=True,
+            email_scan_started_at=timezone.now(),
+        )
+
+        submitted_round.refresh_from_db()
+        self.assertFalse(submitted_round.is_consumed)
+        self.assertTrue(submitted_round.is_currently_available)
+
+    def test_email_scan_started_before_consumption_cannot_reactivate_same_message(self):
+        scan_started_at = timezone.now() - datetime.timedelta(minutes=1)
+        submitted_round = SubmittedRound.objects.create(
+            presentation_id="consumed-during-scan",
+            gmail_message_id="gmail-consumed-during-scan",
+            title="Consumed During Scan",
+            source_title="Consumed During Scan",
+            creator="Zach",
+            source_creator="Zach",
+            link="https://docs.google.com/presentation/d/consumed-during-scan/edit",
+            is_consumed=True,
+            is_currently_available=False,
+        )
+
+        views._save_available_round_metadata(
+            {
+                "title": submitted_round.title,
+                "source_title": submitted_round.source_title,
+                "creator": submitted_round.creator,
+                "source_creator": submitted_round.source_creator,
+                "link": submitted_round.link,
+                "presentation_id": submitted_round.presentation_id,
+                "gmail_message_id": submitted_round.gmail_message_id,
+            },
+            is_consumed=False,
+            is_currently_available=True,
+            email_scan_started_at=scan_started_at,
+        )
+
+        submitted_round.refresh_from_db()
+        self.assertTrue(submitted_round.is_consumed)
+        self.assertFalse(submitted_round.is_currently_available)
 
     def test_stale_refresh_write_cannot_reactivate_same_consumed_gmail_message(self):
         submitted_round = SubmittedRound.objects.create(

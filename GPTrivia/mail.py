@@ -2115,13 +2115,8 @@ def _pair_full_messages_with_internal_dates(messages_with_date, full_messages_by
     return paired_messages
 
 
-def get_round_titles_and_links(processed_senders=None, consumed_message_ids=None):
+def get_round_titles_and_links(processed_senders=None):
     processed_senders = processed_senders or []
-    consumed_message_ids = {
-        str(message_id).strip()
-        for message_id in (consumed_message_ids or [])
-        if str(message_id).strip()
-    }
     credentials = None
     # Check if the token.pickle file exists
     if os.path.exists(token_file_path):
@@ -2291,9 +2286,6 @@ def get_round_titles_and_links(processed_senders=None, consumed_message_ids=None
                 full_messages_by_id,
             ):
                 message_id = str(full_message.get('id') or '').strip()
-                if message_id and message_id in consumed_message_ids:
-                    mark_as_read(gmail_service, message_id)
-                    continue
                 round_data = process_full_message(full_message)
                 if not round_data:
                     continue

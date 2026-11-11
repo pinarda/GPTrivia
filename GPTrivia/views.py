@@ -691,6 +691,7 @@ def _mark_selected_submitted_rounds_consumed(rounds):
         SubmittedRound.objects.filter(id__in=set(matched_ids)).update(
             is_consumed=True,
             is_currently_available=False,
+            updated_at=timezone.now(),
         )
         _bump_site_data_cache_version()
     return matched_ids
@@ -840,7 +841,14 @@ def _build_available_round_persistence_id(link='', old_link='', title='', creato
     return ''
 
 
-def _save_available_round_metadata(data, *, user=None, is_consumed=None, is_currently_available=None):
+def _save_available_round_metadata(
+    data,
+    *,
+    user=None,
+    is_consumed=None,
+    is_currently_available=None,
+    email_scan_started_at=None,
+):
     title = str(data.get('title') or '').strip()
     creator = str(data.get('creator') or '').strip()
     link = _normalize_round_link(data.get('link'))
@@ -913,9 +921,19 @@ def _save_available_round_metadata(data, *, user=None, is_consumed=None, is_curr
         and gmail_message_id
         and submitted_round.gmail_message_id == gmail_message_id
     )
+    consumed_during_email_scan = bool(
+        same_consumed_gmail_message
+        and email_scan_started_at is not None
+        and submitted_round.updated_at
+        and submitted_round.updated_at >= email_scan_started_at
+    )
+    preserve_consumed_state = bool(
+        same_consumed_gmail_message
+        and (email_scan_started_at is None or consumed_during_email_scan)
+    )
     resolved_is_consumed = (
         True
-        if same_consumed_gmail_message
+        if preserve_consumed_state
         else (
             bool(is_consumed)
             if is_consumed is not None
@@ -6117,7 +6135,12 @@ def _normalize_available_round_email_result(email_result):
     ]
 
 
-def _build_available_email_round_payloads(email_rounds, *, persist_available_rounds=False):
+def _build_available_email_round_payloads(
+    email_rounds,
+    *,
+    persist_available_rounds=False,
+    email_scan_started_at=None,
+):
     creators = [round_data["creator"] for round_data in email_rounds]
     submitted_rounds = list(SubmittedRound.objects.order_by('-submitted_at'))
     submitted_round_lookup = _build_submitted_round_lookup(submitted_rounds)
@@ -6139,11 +6162,18 @@ def _build_available_email_round_payloads(email_rounds, *, persist_available_rou
             shared_date=shared_date,
             gmail_message_id=gmail_message_id,
         )
-        if (
+        same_consumed_gmail_message = bool(
             submitted_round
             and submitted_round.is_consumed
             and gmail_message_id
             and submitted_round.gmail_message_id == gmail_message_id
+        )
+        if same_consumed_gmail_message and (
+            email_scan_started_at is None
+            or (
+                submitted_round.updated_at
+                and submitted_round.updated_at >= email_scan_started_at
+            )
         ):
             continue
         if creator_opt_in_map.get(str(creator or '').strip()) and (
@@ -6203,6 +6233,7 @@ def _build_available_email_round_payloads(email_rounds, *, persist_available_rou
                 },
                 is_consumed=False,
                 is_currently_available=True,
+                email_scan_started_at=email_scan_started_at,
             )
             if saved_round:
                 submitted_round = saved_round
@@ -6248,16 +6279,8 @@ def _build_available_email_round_payloads(email_rounds, *, persist_available_rou
 
 
 def _collect_rounds_sync(*, persist_available_rounds=False):
-    consumed_message_ids = list(
-        SubmittedRound.objects.filter(
-            is_consumed=True,
-        ).exclude(
-            gmail_message_id='',
-        ).values_list('gmail_message_id', flat=True)
-    )
-    email_result = get_round_titles_and_links(
-        consumed_message_ids=consumed_message_ids,
-    )
+    email_scan_started_at = timezone.now()
+    email_result = get_round_titles_and_links()
     email_rounds = _normalize_available_round_email_result(email_result)
 
     if persist_available_rounds:
@@ -6268,9 +6291,13 @@ def _collect_rounds_sync(*, persist_available_rounds=False):
             new_rounds = _build_available_email_round_payloads(
                 email_rounds,
                 persist_available_rounds=True,
+                email_scan_started_at=email_scan_started_at,
             )
     else:
-        new_rounds = _build_available_email_round_payloads(email_rounds)
+        new_rounds = _build_available_email_round_payloads(
+            email_rounds,
+            email_scan_started_at=email_scan_started_at,
+        )
 
     historical_rounds = _build_historical_available_round_payloads()
     return new_rounds + historical_rounds
@@ -7690,11 +7717,13 @@ def _execute_home_replace_build_job(job):
                 SubmittedRound.objects.filter(id__in=selected_source_round_ids).update(
                     is_consumed=True,
                     is_currently_available=False,
+                    updated_at=timezone.now(),
                 )
             if restorable_source_round_ids:
                 SubmittedRound.objects.filter(id__in=restorable_source_round_ids).update(
                     is_consumed=False,
                     is_currently_available=True,
+                    updated_at=timezone.now(),
                 )
     except Exception:
         try:
