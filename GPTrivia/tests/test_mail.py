@@ -12,7 +12,6 @@ from GPTrivia.mail import (
     _classify_round_source_link,
     _extract_slide_text,
     _extract_speaker_notes_text,
-    _extract_google_slides_url_from_gmail_message,
     _find_slide_index_for_round_title,
     _format_pacific_timestamp,
     _get_shape_text_content,
@@ -33,57 +32,6 @@ from GPTrivia.mail import (
 
 
 class MailHelpersTests(SimpleTestCase):
-    def test_extract_google_slides_url_from_nested_attachment_message(self):
-        presentation_url = "https://docs.google.com/presentation/d/nested-round/edit?usp=sharing"
-        encoded_body = base64.urlsafe_b64encode(
-            f"A round was shared with you: {presentation_url}".encode("utf-8")
-        ).decode("ascii").rstrip("=")
-        message = {
-            "payload": {
-                "mimeType": "multipart/mixed",
-                "parts": [
-                    {
-                        "mimeType": "multipart/alternative",
-                        "parts": [
-                            {
-                                "mimeType": "text/plain",
-                                "body": {"data": encoded_body},
-                            }
-                        ],
-                    },
-                    {
-                        "mimeType": "application/vnd.google-apps.presentation",
-                        "filename": "Trivia Round",
-                        "body": {"attachmentId": "attachment-1"},
-                    },
-                ],
-            }
-        }
-
-        self.assertEqual(
-            _extract_google_slides_url_from_gmail_message(message),
-            presentation_url,
-        )
-
-    def test_extract_google_slides_url_from_html_only_message(self):
-        encoded_body = base64.urlsafe_b64encode(
-            (
-                '<a href="https://docs.google.com/presentation/d/html-round/edit?usp=sharing&amp;resourcekey=abc">'
-                'Open round</a>'
-            ).encode("utf-8")
-        ).decode("ascii")
-        message = {
-            "payload": {
-                "mimeType": "text/html",
-                "body": {"data": encoded_body},
-            }
-        }
-
-        self.assertEqual(
-            _extract_google_slides_url_from_gmail_message(message),
-            "https://docs.google.com/presentation/d/html-round/edit?usp=sharing&resourcekey=abc",
-        )
-
     @patch("GPTrivia.mail._load_google_credentials")
     @patch("GPTrivia.mail.build")
     def test_set_gmail_messages_read_state_adds_unread_label(self, build_mock, credentials_mock):

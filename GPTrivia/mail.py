@@ -14,7 +14,6 @@ import pytz
 
 from google.oauth2 import service_account
 import base64
-import html
 import re
 import datetime
 import logging
@@ -2097,15 +2096,7 @@ def convert_shared_presentation(presentation_url, credentials):
         return None
 
 # Pre-compile the regex pattern outside the loop for efficiency
-URL_PATTERN = re.compile(r'(https?://docs\.google\.com/presentation/d/[^\s<>"\']+)')
-GMAIL_ROUND_QUERY = (
-    'is:unread {'
-    'subject:"Presentation shared with you:" '
-    'has:drive '
-    'has:attachment '
-    '"docs.google.com/presentation/d/"'
-    '}'
-)
+URL_PATTERN = re.compile(r'(https?://docs\.google\.com/presentation/d/[^\s]+)')
 
 # Assuming MAIL_NAME_MAP is defined elsewhere
 # Example:
@@ -2122,52 +2113,6 @@ def _pair_full_messages_with_internal_dates(messages_with_date, full_messages_by
         if full_message:
             paired_messages.append((full_message, internal_date))
     return paired_messages
-
-
-def _iter_gmail_message_parts(payload):
-    if not isinstance(payload, dict):
-        return
-    yield payload
-    for part in payload.get('parts', []) or []:
-        yield from _iter_gmail_message_parts(part)
-
-
-def _decode_gmail_body_data(encoded_data):
-    if not encoded_data:
-        return ''
-    encoded_text = str(encoded_data)
-    encoded_text += '=' * (-len(encoded_text) % 4)
-    try:
-        return base64.urlsafe_b64decode(encoded_text.encode('ASCII')).decode('utf-8', errors='replace')
-    except (ValueError, TypeError, base64.binascii.Error):
-        return ''
-
-
-def _extract_google_slides_url_from_gmail_message(message):
-    payload = (message or {}).get('payload') or {}
-    candidate_parts = [
-        part
-        for part in _iter_gmail_message_parts(payload)
-        if part.get('mimeType') in {'text/plain', 'text/html'}
-    ]
-    candidate_parts.sort(key=lambda part: part.get('mimeType') != 'text/plain')
-
-    for part in candidate_parts:
-        body_text = _decode_gmail_body_data((part.get('body') or {}).get('data'))
-        if not body_text:
-            continue
-        url_match = URL_PATTERN.search(html.unescape(body_text))
-        if url_match:
-            return url_match.group(1).rstrip('.,);]')
-    return None
-
-
-def _gmail_message_header(message, header_name):
-    header_name = str(header_name or '').casefold()
-    for header in ((message or {}).get('payload') or {}).get('headers', []) or []:
-        if str(header.get('name') or '').casefold() == header_name:
-            return str(header.get('value') or '')
-    return ''
 
 
 def get_round_titles_and_links(processed_senders=None, consumed_message_ids=None):
@@ -2220,32 +2165,15 @@ def get_round_titles_and_links(processed_senders=None, consumed_message_ids=None
         messages_with_date = []
 
         gmail_service = build('gmail', 'v1', credentials=credentials)
-        messages = []
-        page_token = None
-        while True:
-            list_kwargs = {
-                'userId': 'me',
-                'q': GMAIL_ROUND_QUERY,
-                'maxResults': 500,
-            }
-            if page_token:
-                list_kwargs['pageToken'] = page_token
-            response = gmail_service.users().messages().list(**list_kwargs).execute()
-            messages.extend(response.get('messages', []) or [])
-            page_token = response.get('nextPageToken')
-            if not page_token:
-                break
+        query = 'subject:"Presentation shared with you:.*" is:unread'
+        response = gmail_service.users().messages().list(userId='me', q=query, maxResults=500).execute()  # Increased maxResults for batching
 
-        logger.info(
-            "Gmail available-round scan found %s unread candidate message(s)",
-            len(messages),
-        )
-
-        if messages:
+        if 'messages' in response:
+            messages = response['messages']
             # Function to handle batch responses for metadata
             def metadata_callback(request_id, response, exception):
                 if exception is not None:
-                    logger.warning("Error fetching Gmail metadata for message %s: %s", request_id, exception)
+                    print(f"Error fetching metadata for message ID {request_id}: {exception}")
                 else:
                     internal_date = response.get('internalDate', '0')
                     messages_with_date.append((response, internal_date))
@@ -2273,7 +2201,7 @@ def get_round_titles_and_links(processed_senders=None, consumed_message_ids=None
             # Batch callbacks can arrive out of order, so retain message identity.
             def fullmsg_callback(request_id, response, exception):
                 if exception is not None:
-                    logger.warning("Error fetching full Gmail message %s: %s", request_id, exception)
+                    print(f"Error fetching full message for ID {request_id}: {exception}")
                 else:
                     full_messages_by_id[str(request_id)] = response
 
@@ -2288,74 +2216,61 @@ def get_round_titles_and_links(processed_senders=None, consumed_message_ids=None
                 except StopIteration:
                     sender = "Unknown"
 
-                presentation_url = _extract_google_slides_url_from_gmail_message(msg)
-                if not presentation_url:
-                    logger.warning(
-                        "Skipping unread Gmail round candidate %s (%r): no Google Slides URL found in its text body",
-                        msg_id,
-                        _gmail_message_header(msg, 'Subject'),
-                    )
-                    return None
+                parts = msg['payload'].get('parts', [])
 
-                new_presentation_url = convert_shared_presentation(presentation_url, credentials)
-                if not new_presentation_url:
-                    logger.warning(
-                        "Skipping unread Gmail round candidate %s: could not convert or resolve %s",
-                        msg_id,
-                        presentation_url,
-                    )
-                    return None
+                for part in parts:
+                    if part.get('mimeType') == 'text/plain':
+                        data = part.get('body', {}).get('data')
+                        if data:
+                            try:
+                                msg_str = base64.urlsafe_b64decode(data.encode('ASCII')).decode('utf-8')
+                            except (base64.binascii.Error, UnicodeDecodeError) as e:
+                                print(f"Decoding error for message {msg_id}: {e}")
+                                continue
 
-                shared_presentation_id = _presentation_link_id(new_presentation_url)
-                if not shared_presentation_id:
-                    logger.warning(
-                        "Skipping unread Gmail round candidate %s: resolved URL has no presentation ID: %s",
-                        msg_id,
-                        new_presentation_url,
-                    )
-                    return None
-                try:
-                    shared_presentation = slides_service.presentations().get(
-                        presentationId=shared_presentation_id
-                    ).execute()
-                except HttpError as error:
-                    logger.warning(
-                        "Skipping unread Gmail round candidate %s: failed to fetch presentation %s: %s",
-                        msg_id,
-                        shared_presentation_id,
-                        error,
-                    )
-                    return None
+                            url_match = URL_PATTERN.search(msg_str)
+                            if url_match:
+                                presentation_url = url_match.group(1)
+                                new_presentation_url = convert_shared_presentation(presentation_url, credentials)
+                                if not new_presentation_url:
+                                    return None
 
-                slides = shared_presentation.get('slides', [])
-                if not slides:
-                    logger.warning(
-                        "Skipping unread Gmail round candidate %s: presentation %s has no slides",
-                        msg_id,
-                        shared_presentation_id,
-                    )
-                    return None
+                                shared_presentation_id = _presentation_link_id(new_presentation_url)
+                                if not shared_presentation_id:
+                                    return None
+                                try:
+                                    shared_presentation = slides_service.presentations().get(presentationId=shared_presentation_id).execute()
+                                except HttpError as e:
+                                    print(f"Failed to fetch presentation {shared_presentation_id}: {e}")
+                                    return None
 
-                first_slide = slides[0]
+                                slides = shared_presentation.get('slides', [])
+                                if not slides:
+                                    print(f"No slides found in presentation {shared_presentation_id}")
+                                    return None
 
-                title_text = ""
-                for element in first_slide.get('pageElements', []):
-                    shape = element.get('shape', {})
-                    text = shape.get('text', {}).get('textElements', [])
-                    for text_element in text:
-                        if 'textRun' in text_element and 'content' in text_element['textRun']:
-                            title_text += text_element['textRun']['content']
-                            break
-                    if title_text:
-                        break
+                                first_slide = slides[0]
 
-                title_text = re.sub(r'\s+', ' ', title_text).strip()
-                return {
-                    'sender': sender,
-                    'presentation_url': new_presentation_url,
-                    'old_url': presentation_url,
-                    'title': title_text,
-                }
+                                # Extract title_text
+                                title_text = ""
+                                for element in first_slide.get('pageElements', []):
+                                    shape = element.get('shape', {})
+                                    text = shape.get('text', {}).get('textElements', [])
+                                    for text_element in text:
+                                        if 'textRun' in text_element and 'content' in text_element['textRun']:
+                                            title_text += text_element['textRun']['content']
+                                            break
+                                    if title_text:
+                                        break
+
+                                title_text = re.sub(r'\s+', ' ', title_text).strip()
+                                return {
+                                    'sender': sender,
+                                    'presentation_url': new_presentation_url,
+                                    'old_url': presentation_url,
+                                    'title': title_text,
+                                }
+                return None
 
             # Create a batch request for fetching full messages
             fullmsg_batch = gmail_service.new_batch_http_request(callback=fullmsg_callback)
@@ -2379,14 +2294,7 @@ def get_round_titles_and_links(processed_senders=None, consumed_message_ids=None
                 if message_id and message_id in consumed_message_ids:
                     mark_as_read(gmail_service, message_id)
                     continue
-                try:
-                    round_data = process_full_message(full_message)
-                except Exception:
-                    logger.exception(
-                        "Unexpected error processing unread Gmail round candidate %s",
-                        message_id,
-                    )
-                    continue
+                round_data = process_full_message(full_message)
                 if not round_data:
                     continue
                 new_senders.append(round_data['sender'])
